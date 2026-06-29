@@ -235,7 +235,7 @@ function doLogin(){
       return;
     }
     sessionStorage.setItem('smartordi_user',JSON.stringify({role:u==='dr.ahmed'?'arzt':'sekretaerin',name:acc.name}));
-    document.getElementById('successIcon').textContent=u==='dr.ahmed'?'👨‍⚕️':'👩‍💼';
+    document.getElementById('successIcon').textContent=u==='dr.ahmed'?'‍':'‍';
     document.getElementById('successTitle').textContent='Willkommen, '+acc.name+'!';
     document.getElementById('successSub').textContent='Wird geladen...';
     document.getElementById('successOverlay').classList.add('show');

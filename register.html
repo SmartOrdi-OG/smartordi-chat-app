@@ -108,7 +108,7 @@ select.form-input{cursor:pointer;}
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">🇦🇹 Österreich · DSGVO-konform · 30 Tage kostenlos</div>
+  <div class="hero-badge">Österreich · DSGVO-konform · 30 Tage kostenlos</div>
   <div class="hero-title">Ihre Ordination digital.<br>In 5 Minuten live.</div>
   <div class="hero-sub">Sichere Kommunikation zwischen Arzt und Patient. Ende-zu-Ende verschlüsselt. Österreichische Server.</div>
 </div>
@@ -118,7 +118,7 @@ select.form-input{cursor:pointer;}
 
   <!-- Plan Selector -->
   <div class="plan-section">
-    <div class="section-title">📦 Paket wählen <span style="font-size:11px;font-weight:500;color:#64748b;">— 30 Tage kostenlos testen</span></div>
+    <div class="section-title">Paket wählen <span style="font-size:11px;font-weight:500;color:#64748b;">— 30 Tage kostenlos testen</span></div>
     <div class="plans">
       <div class="plan" id="plan-basic" onclick="selectPlan('basic')">
         <div class="plan-name">Basic</div>
@@ -155,9 +155,9 @@ select.form-input{cursor:pointer;}
 
   <!-- Form -->
   <div class="form-section">
-    <div class="section-title">👨‍⚕️ Ihre Daten</div>
+    <div class="section-title">‍ Ihre Daten</div>
 
-    <div class="error-msg" id="errorMsg"><span>⚠️</span><span id="errorText">Bitte alle Pflichtfelder ausfüllen.</span></div>
+    <div class="error-msg" id="errorMsg"><span></span><span id="errorText">Bitte alle Pflichtfelder ausfüllen.</span></div>
 
     <div class="form-grid">
       <div class="form-group">
@@ -222,34 +222,34 @@ select.form-input{cursor:pointer;}
     <div class="checkbox-group" style="margin-bottom:10px;">
       <input type="checkbox" id="cb-dsgvo">
       <label class="checkbox-label" for="cb-dsgvo">
-        Ich stimme der <a href="#">Datenschutzerklärung</a> und dem <a href="#">Auftragsverarbeitungsvertrag (AVV)</a> gemäß Art. 28 DSGVO zu. *
+        Ich stimme der <a href="#">Datenschutzerklärung</a>und dem <a href="#">Auftragsverarbeitungsvertrag (AVV)</a>gemäß Art. 28 DSGVO zu. *
       </label>
     </div>
     <div class="checkbox-group">
       <input type="checkbox" id="cb-agb">
       <label class="checkbox-label" for="cb-agb">
-        Ich akzeptiere die <a href="#">Allgemeinen Geschäftsbedingungen</a> und bestätige, dass ich approbierter Arzt/Ärztin in Österreich bin. *
+        Ich akzeptiere die <a href="#">Allgemeinen Geschäftsbedingungen</a>und bestätige, dass ich approbierter Arzt/Ärztin in Österreich bin. *
       </label>
     </div>
   </div>
 
   <button class="btn-submit" id="submitBtn" onclick="doRegister()">
-    <span id="btnText">🚀 Kostenlos 30 Tage testen</span>
+    <span id="btnText">Kostenlos 30 Tage testen</span>
     <div class="spinner" id="spinner"></div>
   </button>
 
   <div class="trust-bar">
-    <div class="trust-item">🔒 Ende-zu-Ende verschlüsselt</div>
-    <div class="trust-item">🇦🇹 Server in Österreich</div>
+    <div class="trust-item">Ende-zu-Ende verschlüsselt</div>
+    <div class="trust-item">Server in Österreich</div>
     <div class="trust-item">✓ Keine Kreditkarte nötig</div>
-    <div class="trust-item">📋 DSGVO-konform</div>
+    <div class="trust-item">DSGVO-konform</div>
   </div>
 
 </div>
 
 <!-- Success -->
 <div class="success-overlay" id="successOverlay">
-  <div class="success-icon">🎉</div>
+  <div class="success-icon"></div>
   <div class="success-title">Vielen Dank!</div>
   <div class="success-sub">Ihre Registrierung wurde erfolgreich übermittelt. Wir melden uns innerhalb von 24 Stunden bei Ihnen.</div>
   <div class="success-steps">
@@ -274,7 +274,7 @@ let selectedPlan = 'pro';
 
 function selectPlan(plan){
   selectedPlan = plan;
-  document.querySelectorAll('.plan').forEach(p => p.classList.remove('selected'));
+  document.querySelectorAll('.plan').forEach(p =>p.classList.remove('selected'));
   document.getElementById('plan-'+plan).classList.add('selected');
 }
 
