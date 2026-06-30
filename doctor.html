@@ -279,6 +279,14 @@
 .app-wrapper.active .gdpr-banner { display: none !important; }
 .app-wrapper.active .view.active{height:calc(100vh - 90px);}
 @media(max-width:768px){.app-wrapper.active #appNavBar{display:none;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
+@media(min-width:1024px){
+  .app-wrapper.active{overflow-x:visible;}
+  #view-clinic,#view-patient,#view-vertretung,#view-dashboard,#view-settings{margin-left:220px;}
+  .vertretung-main{padding-left:32px !important;}
+  .dash-grid{padding-left:32px !important;}
+  .dash-header{padding-left:32px !important;}
+  .dashboard{padding-left:32px !important;}
+}
 .landing-page.hidden { display: none; }
 
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
@@ -609,8 +617,8 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
   #desktopSidebar{display:flex;}
   #appNavBar{display:none!important;}
   .app-wrapper.active{padding-top:48px;}
-  .app-wrapper.active .view{margin-left:220px;}
-  .app-wrapper.active .view.active{height:calc(100vh - 48px);}
+  .view{margin-left:220px;}
+  .view.active{height:calc(100vh - 48px);}
   .kartei-panel.fullscreen{left:220px!important;}
 }
 
