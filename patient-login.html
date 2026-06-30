@@ -7,7 +7,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 50%,#f0fdf4 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 50%,#f0fdf4 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.footer-note{margin-top:16px;text-align:center;font-size:11px;color:#94a3b8;line-height:1.8;}
+.footer-note a{color:#1e40af;text-decoration:none;font-weight:600;}
+.footer-note a:hover{text-decoration:underline;}
 .card{width:100%;max-width:380px;background:white;border-radius:20px;padding:32px 28px;box-shadow:0 4px 32px rgba(0,0,0,0.08);}
 .card-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;}
 .card-logo-img{width:56px;height:56px;border-radius:12px;object-fit:contain;border:1.5px solid #e2e8f0;}
@@ -132,6 +135,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     <button class="btn-main" onclick="saveNewPw()">✓ Passwort speichern & einloggen</button>
   </div>
 
+</div>
+
+<div class="footer-note">
+  Ende-zu-Ende verschlüsselt · EU-Server Wien<br>
+  <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · Smartordi.eu
 </div>
 
 <div class="success-overlay" id="successOverlay">
