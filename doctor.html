@@ -512,38 +512,39 @@
     </div>
   </div>
   <div id="appNavBar" style="position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:42px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-    <button class="nav-tab active" onclick="switchView('clinic',this)">Praxis</button>
+    <button class="nav-tab active" onclick="openWindow('clinic',this)">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></button>
     <button class="nav-tab" id="karteiNavTab" onclick="openKarteiFullscreen(this)">Kartei</button>
-    <button class="nav-tab" onclick="switchView('patient',this)">Patient</button>
-    <button class="nav-tab vertretung-tab" onclick="switchView('vertretung',this)">Vertretung<span class="new-badge">NEU</span></button>
-    <button class="nav-tab" onclick="switchView('dashboard',this)">Dashboard</button>
-    <button class="nav-tab" onclick="switchView('settings',this)">Einstellungen</button>
+    <button class="nav-tab" onclick="openWindow('patient',this)">Patient</button>
+    <button class="nav-tab vertretung-tab" onclick="openWindow('vertretung',this)">Vertretung<span class="new-badge">NEU</span></button>
+    <button class="nav-tab" onclick="openWindow('dashboard',this)">Dashboard</button>
+    <button class="nav-tab" onclick="openWindow('settings',this)">Einstellungen</button>
   </div>
   <!-- Desktop Sidebar Navigation (>=1024px) -->
   <div id="desktopSidebar">
     <div class="ds-nav">
-      <button class="ds-nav-item active" id="dsnav-clinic" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');switchView('clinic',this)">
+      <button class="ds-nav-item active" id="dsnav-clinic" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('clinic',this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
         <span class="ds-nav-label">Praxis</span>
+        <span class="chat-nav-badge" id="dsNavChatBadge">0</span>
       </button>
       <button class="ds-nav-item" id="dsnav-kartei" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openKarteiFullscreen(this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
         <span class="ds-nav-label">Kartei</span>
       </button>
-      <button class="ds-nav-item" id="dsnav-patient" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');switchView('patient',this)">
+      <button class="ds-nav-item" id="dsnav-patient" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('patient',this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
         <span class="ds-nav-label">Patient</span>
       </button>
-      <button class="ds-nav-item" id="dsnav-vertretung" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');switchView('vertretung',this)">
+      <button class="ds-nav-item" id="dsnav-vertretung" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('vertretung',this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
         <span class="ds-nav-label">Vertretung</span>
         <span class="ds-nav-badge">NEU</span>
       </button>
-      <button class="ds-nav-item" id="dsnav-dashboard" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');switchView('dashboard',this)">
+      <button class="ds-nav-item" id="dsnav-dashboard" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('dashboard',this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
         <span class="ds-nav-label">Dashboard</span>
       </button>
-      <button class="ds-nav-item" id="dsnav-settings" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');switchView('settings',this)">
+      <button class="ds-nav-item" id="dsnav-settings" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('settings',this)">
         <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
         <span class="ds-nav-label">Einstellungen</span>
       </button>
@@ -632,6 +633,27 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 .view{display:none;}
 .view.active{display:flex;height:calc(100vh - 90px);}
 @supports(padding-bottom:env(safe-area-inset-bottom)){.view.active{height:calc(100vh - 90px - env(safe-area-inset-bottom));}}
+
+/* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
+body.windows-mode .app-wrapper.active{position:relative;}
+body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 260px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
+body.windows-mode .view.win-open{display:flex;}
+body.windows-mode .view.win-minimized{display:none!important;}
+.app-window-titlebar{display:none;flex-shrink:0;height:40px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;align-items:center;justify-content:space-between;padding:0 8px 0 14px;cursor:move;user-select:none;font-size:13px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;}
+body.windows-mode .view .app-window-titlebar{display:flex;}
+.app-window-controls{display:flex;gap:6px;}
+.app-window-btn{width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,0.18);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;font-family:inherit;}
+.app-window-btn:hover{background:rgba(255,255,255,0.32);}
+.app-window-btn.win-close:hover{background:#dc2626;}
+.app-window-body{flex:1;min-height:0;display:flex;overflow:auto;}
+.chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
+.chat-nav-badge.show{display:inline-flex;}
+.mobile-nav-item .chat-nav-badge{position:absolute;top:6px;right:calc(50% - 18px);margin-left:0;}
+.mobile-nav-item .chat-nav-badge.show{display:flex;}
+#winTaskbar{position:fixed;left:220px;right:0;bottom:0;height:0;overflow:hidden;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(15,23,42,0.92);z-index:650;transition:height 0.15s;}
+#winTaskbar.has-items{height:44px;}
+.win-chip{background:#fff;color:#0f172a;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.win-chip:hover{background:#eff6ff;color:#1e40af;}
 
 /* ══ PATIENT SIDEBAR ══ */
 .clinic-sidebar{width:300px;background:#fafbfc;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
@@ -1142,11 +1164,12 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 <!-- ══ MOBILE BOTTOM NAV ══ -->
 <nav class="mobile-bottom-nav">
   <div class="mobile-nav-items">
-    <button class="mobile-nav-item active" id="mnav-clinic" onclick="switchView('clinic',null);mnavActive('mnav-clinic')">
+    <button class="mobile-nav-item active" id="mnav-clinic" onclick="openWindow('clinic',null);mnavActive('mnav-clinic')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
       <span>Praxis</span>
+      <span class="chat-nav-badge" id="mobileNavChatBadge">0</span>
     </button>
-    <button class="mobile-nav-item" id="mnav-patient" onclick="switchView('patient',null);mnavActive('mnav-patient')">
+    <button class="mobile-nav-item" id="mnav-patient" onclick="openWindow('patient',null);mnavActive('mnav-patient')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
       <span>Patient</span>
     </button>
@@ -1154,23 +1177,24 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
       <span>Kartei</span>
     </button>
-    <button class="mobile-nav-item" id="mnav-vertretung" onclick="switchView('vertretung',null);mnavActive('mnav-vertretung')">
+    <button class="mobile-nav-item" id="mnav-vertretung" onclick="openWindow('vertretung',null);mnavActive('mnav-vertretung')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
       <span>Vertretung</span>
       <span class="mobile-nav-badge">NEU</span>
     </button>
-    <button class="mobile-nav-item" id="mnav-dashboard" onclick="switchView('dashboard',null);mnavActive('mnav-dashboard')">
+    <button class="mobile-nav-item" id="mnav-dashboard" onclick="openWindow('dashboard',null);mnavActive('mnav-dashboard')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <span>Dashboard</span>
     </button>
-    <button class="mobile-nav-item" id="mnav-settings" onclick="switchView('settings',null);mnavActive('mnav-settings')">
+    <button class="mobile-nav-item" id="mnav-settings" onclick="openWindow('settings',null);mnavActive('mnav-settings')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       <span>Einstellungen</span>
     </button>
   </div>
 </nav>
 
-
+<!-- ══ WINDOW MODE TASKBAR (desktop): minimized windows dock here ══ -->
+<div id="winTaskbar"></div>
 
 <!-- ══ CLINIC VIEW ══ -->
 <div id="view-clinic" class="view active">
@@ -2574,6 +2598,147 @@ function switchView(view,btn){
   document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
 }
 
+/* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
+const WIN_TITLES={clinic:'Praxis',patient:'Patient',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
+const WIN_DEFAULT_POS={clinic:{left:20,top:16},patient:{left:60,top:56},vertretung:{left:100,top:96},dashboard:{left:140,top:136},settings:{left:180,top:176}};
+let winZ=500;
+
+function isDesktopWidth(){ return window.innerWidth>=1024; }
+
+function ensureWindowChrome(){
+  document.querySelectorAll('.view').forEach(function(v){
+    if(v.querySelector(':scope > .app-window-titlebar')) return;
+    const id=v.id.replace('view-','');
+    const title=WIN_TITLES[id]||id;
+    const badgeHtml=id==='clinic'?'<span class="chat-nav-badge" id="winBadge-'+id+'">0</span>':'';
+    const bar=document.createElement('div');
+    bar.className='app-window-titlebar';
+    bar.innerHTML='<span>'+title+badgeHtml+'</span>'+
+      '<div class="app-window-controls">'+
+      '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="Minimieren">–</button>'+
+      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="Schließen">✕</button>'+
+      '</div>';
+    const body=document.createElement('div');
+    body.className='app-window-body';
+    while(v.firstChild) body.appendChild(v.firstChild);
+    v.appendChild(bar);
+    v.appendChild(body);
+    makeWindowDraggable(v,bar);
+  });
+}
+
+function makeWindowDraggable(win,handle){
+  let dragging=false,sx=0,sy=0,ol=0,ot=0;
+  handle.addEventListener('mousedown',function(e){
+    if(e.target.closest('.app-window-btn'))return;
+    if(!isDesktopWidth())return;
+    dragging=true;
+    focusWindow(win.id.replace('view-',''));
+    sx=e.clientX; sy=e.clientY;
+    ol=win.offsetLeft; ot=win.offsetTop;
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging)return;
+    const parent=win.parentElement;
+    let nl=ol+(e.clientX-sx), nt=ot+(e.clientY-sy);
+    nl=Math.max(0,Math.min(nl,parent.clientWidth-80));
+    nt=Math.max(0,Math.min(nt,parent.clientHeight-40));
+    win.style.left=nl+'px'; win.style.top=nt+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(dragging){dragging=false;document.body.style.userSelect='';}
+  });
+}
+
+function focusWindow(id){
+  winZ++;
+  const el=document.getElementById('view-'+id);
+  if(el) el.style.zIndex=winZ;
+}
+
+function openWindow(view,btn){
+  if(!isDesktopWidth()){ switchView(view,btn); return; }
+  ensureWindowChrome();
+  const el=document.getElementById('view-'+view);
+  if(!el) return;
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  if(btn && btn.classList && btn.classList.contains('nav-tab')) btn.classList.add('active');
+  const mmap={'clinic':'mnav-clinic','patient':'mnav-patient','vertretung':'mnav-vertretung','dashboard':'mnav-dashboard','settings':'mnav-settings'};
+  if(mmap[view]) mnavActive(mmap[view]);
+  if(!el.dataset.winPositioned){
+    const pos=WIN_DEFAULT_POS[view]||{left:40,top:40};
+    el.style.left=pos.left+'px'; el.style.top=pos.top+'px';
+    el.dataset.winPositioned='1';
+  }
+  el.classList.remove('win-minimized');
+  el.classList.add('win-open');
+  removeTaskbarChip(view);
+  focusWindow(view);
+}
+
+function closeWindow(id){
+  const el=document.getElementById('view-'+id);
+  if(el){ el.classList.remove('win-open'); el.classList.remove('win-minimized'); }
+  removeTaskbarChip(id);
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+}
+
+function minimizeWindow(id){
+  const el=document.getElementById('view-'+id);
+  if(!el) return;
+  el.classList.add('win-minimized');
+  addTaskbarChip(id);
+}
+
+function addTaskbarChip(id){
+  const bar=document.getElementById('winTaskbar');
+  if(!bar || document.getElementById('winChip-'+id)) return;
+  const chip=document.createElement('button');
+  chip.className='win-chip';
+  chip.id='winChip-'+id;
+  chip.textContent=WIN_TITLES[id]||id;
+  chip.onclick=function(){ openWindow(id); };
+  bar.appendChild(chip);
+  bar.classList.add('has-items');
+}
+
+function removeTaskbarChip(id){
+  const chip=document.getElementById('winChip-'+id);
+  if(chip) chip.remove();
+  const bar=document.getElementById('winTaskbar');
+  if(bar && !bar.querySelector('.win-chip')) bar.classList.remove('has-items');
+}
+
+function updateChatUnreadBadge(){
+  const badges=document.querySelectorAll('#view-clinic .patient-item .unread-badge');
+  let total=0;
+  badges.forEach(function(b){ total+=parseInt(b.textContent,10)||0; });
+  document.querySelectorAll('.chat-nav-badge').forEach(function(b){
+    b.textContent=total;
+    b.classList.toggle('show',total>0);
+  });
+}
+
+function syncWindowsModeState(){
+  const desktop=isDesktopWidth();
+  document.body.classList.toggle('windows-mode',desktop);
+  if(desktop){
+    ensureWindowChrome();
+    const activeView=document.querySelector('.view.active');
+    if(activeView){
+      const id=activeView.id.replace('view-','');
+      if(!activeView.classList.contains('win-open') && !activeView.classList.contains('win-minimized')){
+        openWindow(id);
+      }
+    }
+  }
+  updateChatUnreadBadge();
+}
+window.addEventListener('resize',syncWindowsModeState);
+document.addEventListener('DOMContentLoaded',syncWindowsModeState);
+
 function selectPatient(el,name,status,color,insurance){
   document.querySelectorAll('.patient-item').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');
@@ -2585,6 +2750,7 @@ function selectPatient(el,name,status,color,insurance){
   if(status==='Online'){s.textContent='● Online';s.style.color='#22c55e';}
   else{s.textContent=status;s.style.color='#64748b';}
   const badge=el.querySelector('.unread-badge');if(badge)badge.remove();
+  updateChatUnreadBadge();
   // Mobile: open chat
   mobileOpenChat(name);
   // Update Kartei
