@@ -113,24 +113,6 @@ body{
 .footer-note{margin-top:28px;text-align:center;font-size:11px;color:#0f172a;line-height:1.6;}
 .footer-note a{color:var(--teal);text-decoration:none;font-weight:600;}
 
-/* Success */
-.success-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 55%,#f0fdf4 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.5s ease;}
-.success-overlay.show{opacity:1;pointer-events:all;}
-.success-logo-wrap{position:relative;margin-bottom:24px;}
-.success-logo-ring{position:absolute;inset:-14px;border-radius:36px;background:linear-gradient(135deg,rgba(30,64,175,0.15),rgba(99,102,241,0.1));animation:sRingPulse 2s ease-out infinite;}
-@keyframes sRingPulse{0%{transform:scale(1);opacity:0.8;}60%{transform:scale(1.18);opacity:0;}100%{transform:scale(1);opacity:0;}}
-.success-logo{width:100px;height:100px;object-fit:contain;border-radius:24px;display:block;position:relative;z-index:1;box-shadow:0 8px 32px rgba(30,64,175,0.18);animation:sLogoBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both;}
-@keyframes sLogoBounce{from{transform:scale(0) rotate(-15deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;}}
-.success-check{position:absolute;bottom:-8px;right:-8px;width:32px;height:32px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;z-index:2;box-shadow:0 3px 10px rgba(34,197,94,0.45);animation:sLogoBounce 0.5s 0.35s cubic-bezier(0.34,1.56,0.64,1) both;}
-.success-check svg{width:15px;height:15px;}
-.success-check path{stroke-dasharray:22;stroke-dashoffset:22;animation:sDrawCheck 0.4s 0.75s ease forwards;}
-@keyframes sDrawCheck{to{stroke-dashoffset:0;}}
-.success-title{font-size:22px;font-weight:800;color:#0f172a;text-align:center;animation:sSlideUp 0.5s 0.2s ease both;}
-.success-sub{font-size:13px;color:#64748b;margin-top:7px;text-align:center;animation:sSlideUp 0.5s 0.32s ease both;}
-@keyframes sSlideUp{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.success-bar{width:200px;height:4px;background:#e2e8f0;border-radius:4px;margin-top:28px;overflow:hidden;animation:sSlideUp 0.5s 0.44s ease both;}
-.success-bar-fill{height:100%;background:linear-gradient(90deg,#1e40af,#6366f1,#22c55e);border-radius:4px;width:0%;transition:width 1.5s cubic-bezier(0.4,0,0.2,1);}
-
 /* Dark mode — keep panel white with black text */
 @media(prefers-color-scheme:dark){
   body{background:#0f172a;}
@@ -218,20 +200,6 @@ body{
   </div>
 </div>
 
-<!-- Success -->
-<div class="success-overlay" id="successOverlay">
-  <div class="success-logo-wrap">
-    <div class="success-logo-ring"></div>
-    <img src="logo..jpeg" alt="Logo" class="success-logo">
-    <div class="success-check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-    </div>
-  </div>
-  <div class="success-title" id="successTitle">Willkommen!</div>
-  <div class="success-sub" id="successSub">Wird geladen...</div>
-  <div class="success-bar"><div class="success-bar-fill" id="successBar"></div></div>
-</div>
-
 <script>
 const USERS={
   'dr.ahmed':    {pw:'arzt2026',  dest:'doctor.html', name:'Dr. Ahmed'},
@@ -266,11 +234,7 @@ function doLogin(){
       return;
     }
     sessionStorage.setItem('smartordi_user',JSON.stringify({role:u==='dr.ahmed'?'arzt':'sekretaerin',name:acc.name}));
-    document.getElementById('successTitle').textContent='Willkommen, '+acc.name+'!';
-    document.getElementById('successSub').textContent='Wird geladen...';
-    document.getElementById('successOverlay').classList.add('show');
-    setTimeout(()=>document.getElementById('successBar').style.width='100%',50);
-    setTimeout(()=>window.location.href=acc.dest,1800);
+    window.location.href=acc.dest;
   },900);
 }
 window.addEventListener('load',()=>document.getElementById('username').focus());
