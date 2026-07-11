@@ -764,14 +764,10 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .clinic-node-badge{position:absolute;top:-6px;right:-6px;background:#1e40af;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
 
 /* ══ KARTEI PANEL ══ */
-.kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width 0.3s cubic-bezier(0.4,0,0.2,1);}
-.kartei-panel.open{width:380px;}
-.kartei-panel.fullscreen{position:fixed!important;inset:0!important;width:100%!important;z-index:500!important;transform:none!important;border-left:none!important;border-radius:0;}
-.kartei-fs-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:499;cursor:pointer;}
-.kartei-fs-backdrop.show{display:block;}
-.kartei-fullscreen-btn{background:rgba(30,64,175,0.1);border:1px solid #bfdbfe;color:#1e3a8a;width:24px;height:24px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px;padding:0;flex-shrink:0;}
-.kartei-fullscreen-btn:hover{background:rgba(30,64,175,0.2);color:#1e3a8a;border-color:#93c5fd;}
-.kartei-fullscreen-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+@media(min-width:769px){
+  .kartei-panel.open{position:fixed;inset:0;width:100%;z-index:500;border-left:none;border-radius:0;}
+}
 .kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#eff6ff,#dbeafe);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
 .kartei-header-icon{width:28px;height:28px;background:rgba(30,64,175,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
@@ -1210,7 +1206,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         </div>
       </div>
       <div class="chat-actions">
-        <button class="action-btn" id="karteiBtn" onclick="toggleKartei()" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
+        <button class="action-btn" id="karteiBtn" onclick="openKarteiFullscreen()" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
         <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
         <button class="action-btn call" onclick="showCall()">Anrufen</button>
       </div>
@@ -1280,9 +1276,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     </div>
   </div>
 
-  <!-- Kartei fullscreen backdrop -->
-  <div class="kartei-fs-backdrop" id="karteiFsBackdrop" onclick="closeKarteiFullscreen()"></div>
-
   <!-- ══ KARTEI PANEL ══ -->
   <div class="kartei-panel scrollbar" id="karteiPanel">
     <div class="kartei-header">
@@ -1293,9 +1286,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
           <div class="kartei-header-sub">smartordi.eu</div>
         </div>
       </div>
-      <button class="kartei-fullscreen-btn" id="karteiFullscreenBtn" onclick="toggleKarteiFullscreen()" title="Vollbild">
-        <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-      </button>
       <button class="kartei-close" onclick="toggleKartei()">✕</button>
     </div>
 
@@ -2837,10 +2827,7 @@ function toggleKartei(){
     renderYearPills();
     filterVisits();
   }else{
-    panel.classList.remove('open','fullscreen');
-    document.getElementById('karteiFsBackdrop').classList.remove('show');
-    const fsBtn=document.getElementById('karteiFullscreenBtn');
-    if(fsBtn)fsBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+    panel.classList.remove('open');
     document.getElementById('karteiNavTab').classList.remove('active');
     document.querySelector('#appNavBar .nav-tab').classList.add('active');
     if(btn){btn.textContent='Kartei öffnen';btn.style.background='#f0fdfa';btn.style.color='#1e40af';}
@@ -2860,44 +2847,13 @@ function openKarteiFullscreen(navBtn){
     else clinicEl.classList.add('active');
   }
   const panel=document.getElementById('karteiPanel');
-  panel.classList.add('open','fullscreen');
-  document.getElementById('karteiFsBackdrop').classList.add('show');
-  const fsBtn=document.getElementById('karteiFullscreenBtn');
-  if(fsBtn)fsBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+  panel.classList.add('open');
   const chatBtn=document.getElementById('karteiBtn');
   if(chatBtn){chatBtn.textContent='Kartei schließen';chatBtn.style.background='#1e40af';chatBtn.style.color='white';}
   document.querySelectorAll('#appNavBar .nav-tab').forEach(t=>t.classList.remove('active'));
   if(navBtn)navBtn.classList.add('active');
   switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
   setKarteiDate();renderYearPills();filterVisits();
-}
-
-function toggleKarteiFullscreen(){
-  const panel=document.getElementById('karteiPanel');
-  const fsBtn=document.getElementById('karteiFullscreenBtn');
-  if(panel.classList.contains('fullscreen')){
-    panel.classList.remove('fullscreen');
-    document.getElementById('karteiFsBackdrop').classList.remove('show');
-    document.getElementById('karteiNavTab').classList.remove('active');
-    document.querySelector('#appNavBar .nav-tab').classList.add('active');
-    if(fsBtn)fsBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
-  }else{
-    panel.classList.add('fullscreen');
-    document.getElementById('karteiFsBackdrop').classList.add('show');
-    document.querySelectorAll('#appNavBar .nav-tab').forEach(t=>t.classList.remove('active'));
-    document.getElementById('karteiNavTab').classList.add('active');
-    if(fsBtn)fsBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
-  }
-}
-
-function closeKarteiFullscreen(){
-  const panel=document.getElementById('karteiPanel');
-  panel.classList.remove('fullscreen');
-  document.getElementById('karteiFsBackdrop').classList.remove('show');
-  document.getElementById('karteiNavTab').classList.remove('active');
-  document.querySelector('#appNavBar .nav-tab').classList.add('active');
-  const fsBtn=document.getElementById('karteiFullscreenBtn');
-  if(fsBtn)fsBtn.innerHTML='<svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
 }
 
 function setKarteiDate(){
