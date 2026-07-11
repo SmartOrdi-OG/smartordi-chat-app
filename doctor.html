@@ -1205,7 +1205,7 @@ body.windows-mode .kartei-header{display:none;}
         </div>
       </div>
       <div class="chat-actions">
-        <button class="action-btn" id="karteiBtn" onclick="karteiPatientLoaded=true;openWindow('kartei')" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
+        <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
         <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
         <button class="action-btn call" onclick="showCall()">Anrufen</button>
       </div>
@@ -2847,6 +2847,20 @@ function resetKarteiToSearch(){
 function openKarteiSearch(navBtn){
   openWindow('kartei',navBtn);
   resetKarteiToSearch();
+}
+
+// The "Kartei öffnen" button inside a patient's chat is reachable on mobile
+// too (the demo's default chat is pre-opened). openWindow('kartei') can't be
+// used here on mobile: its fallback path is switchView(), which only ever
+// toggles the .active class -- but Kartei's mobile visibility runs on the
+// separate .open class driven by toggleKartei()/karteiOpen. Route explicitly.
+function openKarteiContextual(){
+  karteiPatientLoaded=true;
+  if(isDesktopWidth()){
+    openWindow('kartei');
+  }else if(!karteiOpen){
+    toggleKartei();
+  }
 }
 
 // Mobile-only: desktop opens/closes Kartei through the generic window
