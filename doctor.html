@@ -596,7 +596,7 @@ body.windows-mode .app-wrapper.active{position:relative;}
 body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
-body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700!important;}
+body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}
 body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
 .app-window-titlebar{display:none;flex-shrink:0;height:32px;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1e3a8a;align-items:center;justify-content:space-between;padding:0 6px 0 14px;cursor:move;user-select:none;font-size:12px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;border-bottom:1px solid #bfdbfe;}
 body.windows-mode .view .app-window-titlebar{display:flex;}
@@ -2145,7 +2145,7 @@ body.windows-mode .kartei-header{display:none;}
       <div class="dash-card">
         <div class="dash-card-header">
            Heutige Termine
-          <span style="font-size:11px;color:#1e40af;font-weight:600;cursor:pointer;">Alle sehen →</span>
+          <span style="font-size:11px;color:#1e40af;font-weight:600;cursor:pointer;" onclick="document.getElementById('allTermineModal').classList.add('show')">Alle sehen →</span>
         </div>
         <div class="dash-card-body" style="padding:8px 16px;">
           <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
@@ -2433,6 +2433,66 @@ body.windows-mode .kartei-header{display:none;}
   </div>
 </div>
 
+<!-- ALLE TERMINE MODAL -->
+<div class="modal-overlay" id="allTermineModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">Alle Termine</div>
+      <button class="modal-close" onclick="document.getElementById('allTermineModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Heute — 3. Juni 2026</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1e40af;flex-shrink:0;">T</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Thomas Müller</div><div style="font-size:11px;color:#64748b;">Kontrolle · ÖGK · 09:00</div></div>
+        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openKarteiForPatientAndShow('Thomas Müller','1234 010185','ÖGK','1985-01-01')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+          <button onclick="openChatForPatient('Thomas Müller','Online','#0d9488','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#7c3aed;flex-shrink:0;">M</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Maria Schreiber</div><div style="font-size:11px;color:#64748b;">Ordination · BVAEB · 10:00</div></div>
+        <span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openKarteiForPatientAndShow('Maria Schreiber','5678 150390','BVAEB','1990-03-15')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+          <button onclick="openChatForPatient('Maria Schreiber','Weitergeleitet','#8b5cf6','BVAEB')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#f59e0b;flex-shrink:0;">H</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Hans Bauer</div><div style="font-size:11px;color:#64748b;">Erstgespräch · SVS · 11:00</div></div>
+        <span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openKarteiForPatientAndShow('Hans Bauer','9012 220775','SVS','1975-07-22')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+          <button onclick="openChatForPatient('Hans Bauer','Offline','#f59e0b','SVS')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+        </div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 4px;">Nächste Woche</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#fdf2f8;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#ec4899;flex-shrink:0;">A</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Anna Weber</div><div style="font-size:11px;color:#64748b;">Kontrolle · ÖGK · Mo 16.06. · 09:30</div></div>
+        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openKarteiForPatientAndShow('Anna Weber','3456 080268','ÖGK','1968-02-08')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+          <button onclick="openChatForPatient('Anna Weber','Offline','#ec4899','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+        <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#0d9488;flex-shrink:0;">T</div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Thomas Müller</div><div style="font-size:11px;color:#64748b;">Folgetermin · ÖGK · Di 17.06. · 14:00</div></div>
+        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button onclick="openKarteiForPatientAndShow('Thomas Müller','1234 010185','ÖGK','1985-01-01')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+          <button onclick="openChatForPatient('Thomas Müller','Online','#0d9488','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 function doctorLogout(){
   if(confirm('Wirklich abmelden?')){
@@ -2567,7 +2627,14 @@ function makeWindowDraggable(win,handle){
 function focusWindow(id){
   winZ++;
   const el=document.getElementById('view-'+id);
-  if(el) el.style.zIndex=winZ;
+  // Fullscreen windows need a higher baseline than floating ones so they
+  // always stay above them, but must still be individually distinguishable
+  // -- two fullscreen windows opened back-to-back (e.g. opening Kartei from
+  // a modal launched off an already-open Dashboard) otherwise tie and the
+  // one later in DOM order silently wins, hiding the one just opened. Kept
+  // to a bounded 700-799 range (via modulo) so it can never grow past
+  // modal-overlay's z-index (900), unlike winZ itself which climbs forever.
+  if(el) el.style.zIndex = el.classList.contains('win-fullscreen') ? 700+(winZ%100) : winZ;
 }
 
 function openWindow(view,btn){
@@ -3541,6 +3608,36 @@ function openKarteiForPatient(name,svnr,versicherung,dob){
   if(kmt) kmt.textContent=versicherung+' · SV '+svnr+' · '+age+' J.';
   showToast('Kartei geöffnet: '+name);
   switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
+}
+
+// Used by "Alle Termine": opens the Kartei window itself (unlike
+// openKarteiForPatient above, which only fills content into an already-open
+// Kartei) and loads the given patient into it.
+function openKarteiForPatientAndShow(name,svnr,versicherung,dob){
+  document.getElementById('allTermineModal').classList.remove('show');
+  karteiPatientLoaded=true;
+  if(isDesktopWidth()){
+    openWindow('kartei');
+  }else if(!karteiOpen){
+    toggleKartei();
+  }
+  openKarteiForPatient(name,svnr,versicherung,dob);
+}
+
+// Used by "Alle Termine": jumps straight to that patient's Praxis chat.
+function openChatForPatient(name,status,color,insurance){
+  document.getElementById('allTermineModal').classList.remove('show');
+  const item=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
+  if(!item) return;
+  selectPatient(item,name,status,color,insurance);
+  if(isDesktopWidth()){
+    openWindow('clinic');
+  }else{
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-clinic').classList.add('active');
+    mnavActive('mnav-clinic');
+    mobileOpenChat(name);
+  }
 }
 
 function generateRezeptPDF(){
