@@ -2727,8 +2727,11 @@ function mobileOpenKartei(){
   const chatHeader=document.getElementById('desktopChatHeader');
   if(chatBack)chatBack.style.display='flex';
   if(chatHeader)chatHeader.style.display='none';
-  // Open kartei
+  // Open kartei -- this is a general entry point (bottom-nav icon), not tied
+  // to a specific patient, so land on the empty Suche tab like the desktop
+  // top-nav icon does, instead of showing whichever patient was last chatted.
   if(!karteiOpen)toggleKartei();
+  resetKarteiToSearch();
 }
 
 function mobileBackToList(){
@@ -2830,8 +2833,7 @@ function renderVisitList(list){
 // patient (unlike the "Kartei öffnen" button inside a patient's chat), so it
 // should land on the empty Suche tab instead of showing whichever patient was
 // last selected in the chat.
-function openKarteiSearch(navBtn){
-  openWindow('kartei',navBtn);
+function resetKarteiToSearch(){
   switchKarteiTab('suche',document.querySelector('.kartei-tab[onclick*="suche"]'));
   const av=document.getElementById('kartei-avatar');
   const nm=document.getElementById('kartei-name');
@@ -2839,6 +2841,11 @@ function openKarteiSearch(navBtn){
   if(av){av.textContent='?';av.style.background='#94a3b8';}
   if(nm) nm.textContent='Kein Patient ausgewählt';
   if(mt) mt.textContent='Bitte Patient suchen';
+}
+
+function openKarteiSearch(navBtn){
+  openWindow('kartei',navBtn);
+  resetKarteiToSearch();
 }
 
 // Mobile-only: desktop opens/closes Kartei through the generic window
