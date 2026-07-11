@@ -281,9 +281,9 @@
 
 /* APP WRAPPER */
 .app-wrapper { display: none; }
-.app-wrapper.active { display: block; overflow-x: hidden; padding-top: 90px; }
+.app-wrapper.active { display: block; overflow-x: hidden; padding-top: 116px; }
 .app-wrapper.active .gdpr-banner { display: none !important; }
-.app-wrapper.active .view.active{height:calc(100vh - 90px);}
+.app-wrapper.active .view.active{height:calc(100vh - 116px);}
 @media(max-width:768px){.app-wrapper.active #appNavBar{display:none;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;}
@@ -510,13 +510,32 @@
       <button onclick="doctorLogout()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;" title="Abmelden">Abmelden</button>
     </div>
   </div>
-  <div id="appNavBar" style="position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:42px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
-    <button class="nav-tab active" onclick="openWindow('clinic',this)">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></button>
-    <button class="nav-tab" id="karteiNavTab" onclick="openKarteiFullscreen(this)">Kartei</button>
-    <button class="nav-tab" onclick="openWindow('patient',this)">Patient</button>
-    <button class="nav-tab vertretung-tab" onclick="openWindow('vertretung',this)">Vertretung<span class="new-badge">NEU</span></button>
-    <button class="nav-tab" onclick="openWindow('dashboard',this)">Dashboard</button>
-    <button class="nav-tab" onclick="openWindow('settings',this)">Einstellungen</button>
+  <div id="appNavBar" style="position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+    <button class="nav-tab active" onclick="openWindow('clinic',this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+      <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
+    </button>
+    <button class="nav-tab" id="karteiNavTab" onclick="openKarteiFullscreen(this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+      <span class="nav-tab-label">Kartei</span>
+    </button>
+    <button class="nav-tab" onclick="openWindow('patient',this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+      <span class="nav-tab-label">Patient</span>
+    </button>
+    <button class="nav-tab vertretung-tab" onclick="openWindow('vertretung',this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
+      <span class="nav-tab-label">Vertretung</span>
+      <span class="new-badge">NEU</span>
+    </button>
+    <button class="nav-tab" onclick="openWindow('dashboard',this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+      <span class="nav-tab-label">Dashboard</span>
+    </button>
+    <button class="nav-tab" onclick="openWindow('settings',this)">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+      <span class="nav-tab-label">Einstellungen</span>
+    </button>
   </div>
   <div>
 <!DOCTYPE html>
@@ -558,9 +577,12 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 /* ══ NAV TABS ══ */
 .nav-tabs{display:flex;gap:4px;background:transparent;padding:4px;border-radius:10px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
 .nav-tabs::-webkit-scrollbar{display:none;}
-.nav-tab{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all 0.18s;color:var(--text-2);background:transparent;white-space:nowrap;letter-spacing:-0.1px;}
+.nav-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:64px;padding:6px 10px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;transition:all 0.18s;color:var(--text-2);background:transparent;white-space:nowrap;letter-spacing:-0.1px;}
+.nav-tab-icon{width:30px;height:30px;border-radius:8px;background:#eef2f7;color:#64748b;display:flex;align-items:center;justify-content:center;transition:all 0.18s;}
 .nav-tab:hover{background:#eff6ff;color:#1e40af;}
-.nav-tab.active{background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-weight:700;box-shadow:0 2px 8px rgba(30,64,175,0.3);}
+.nav-tab:hover .nav-tab-icon{background:#dbeafe;color:#1e40af;}
+.nav-tab.active{background:transparent;color:#1e40af;font-weight:700;}
+.nav-tab.active .nav-tab-icon{background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;box-shadow:0 2px 8px rgba(30,64,175,0.3);}
 .nav-tab.vertretung-tab{position:relative;}
 .nav-tab.vertretung-tab .new-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:8px;}
 .lang-switcher{display:flex;gap:4px;}
@@ -570,8 +592,8 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 
 /* ══ VIEWS ══ */
 .view{display:none;}
-.view.active{display:flex;height:calc(100vh - 90px);}
-@supports(padding-bottom:env(safe-area-inset-bottom)){.view.active{height:calc(100vh - 90px - env(safe-area-inset-bottom));}}
+.view.active{display:flex;height:calc(100vh - 116px);}
+@supports(padding-bottom:env(safe-area-inset-bottom)){.view.active{height:calc(100vh - 116px - env(safe-area-inset-bottom));}}
 
 /* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
 body.windows-mode .app-wrapper.active{position:relative;}
@@ -964,9 +986,11 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 [data-theme="dark"] .logo-text{color:#e2e8f0;}
 [data-theme="dark"] #appNavBar{background:#1e293b;border-bottom-color:#334155;}
 [data-theme="dark"] .nav-tab{color:#94a3b8;background:transparent;}
+[data-theme="dark"] .nav-tab-icon{background:#334155;color:#94a3b8;}
 [data-theme="dark"] .nav-tab:hover{background:#1e3a5f;color:#93c5fd;}
 [data-theme="dark"] .nav-tabs{background:transparent;}
-[data-theme="dark"] .nav-tab.active{background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;}
+[data-theme="dark"] .nav-tab.active{color:#93c5fd;}
+[data-theme="dark"] .nav-tab.active .nav-tab-icon{background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;}
 [data-theme="dark"] .lang-btn{background:#1e293b;color:#94a3b8;border-color:#475569;}
 [data-theme="dark"] .lang-btn.active{background:#1e40af;color:white;}
 [data-theme="dark"] #darkToggle{background:#334155;color:#e2e8f0;}
@@ -2474,7 +2498,7 @@ function switchView(view,btn){
 
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
 const WIN_TITLES={clinic:'Praxis',patient:'Patient',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
-const WIN_MIN_TOP=100;
+const WIN_MIN_TOP=126;
 const WIN_DEFAULT_POS={clinic:{left:20,top:WIN_MIN_TOP+6},patient:{left:60,top:WIN_MIN_TOP+46},vertretung:{left:100,top:WIN_MIN_TOP+86},dashboard:{left:140,top:WIN_MIN_TOP+126},settings:{left:180,top:WIN_MIN_TOP+166}};
 let winZ=500;
 
