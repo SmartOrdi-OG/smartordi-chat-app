@@ -2492,6 +2492,14 @@ function switchView(view,btn){
     var chatHeader=document.getElementById('desktopChatHeader');
     if(chatBack)chatBack.style.display='none';
     if(chatHeader)chatHeader.style.display='flex';
+  }else if(isMobile()){
+    // الرجوع لتبويب Praxis عالجوال لازم يبين قائمة المرضى، مش آخر محادثة كانت مفتوحة
+    var clinicSidebar=document.querySelector('.clinic-sidebar');
+    if(clinicSidebar)clinicSidebar.classList.remove('mobile-hidden');
+    var mChatBack=document.getElementById('mobileChatBack');
+    var mChatHeader=document.getElementById('desktopChatHeader');
+    if(mChatBack)mChatBack.style.display='none';
+    if(mChatHeader)mChatHeader.style.display='flex';
   }
   document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
 }
