@@ -2832,15 +2832,11 @@ function renderVisitList(list){
 // Opening Kartei from the general top-nav icon isn't tied to any specific
 // patient (unlike the "Kartei öffnen" button inside a patient's chat), so it
 // should land on the empty Suche tab instead of showing whichever patient was
-// last selected in the chat.
+// last selected in the chat. The Suche tab itself always clears the patient
+// bar (see switchKarteiTab below) -- searching for someone else shouldn't
+// keep showing whichever patient you were previously viewing.
 function resetKarteiToSearch(){
   switchKarteiTab('suche',document.querySelector('.kartei-tab[onclick*="suche"]'));
-  const av=document.getElementById('kartei-avatar');
-  const nm=document.getElementById('kartei-name');
-  const mt=document.getElementById('kartei-meta');
-  if(av){av.textContent='?';av.style.background='#94a3b8';}
-  if(nm) nm.textContent='Kein Patient ausgewählt';
-  if(mt) mt.textContent='Bitte Patient suchen';
 }
 
 function openKarteiSearch(navBtn){
@@ -2878,6 +2874,16 @@ function switchKarteiTab(tab,btn){
   if(btn)btn.classList.add('active');
   if(tab==='neu')setKarteiDate();
   if(tab==='verlauf'){renderYearPills();filterVisits();}
+  if(tab==='suche'){
+    // Searching for a patient shouldn't keep showing whoever you were
+    // previously viewing -- that reads as if you're still in their record.
+    const av=document.getElementById('kartei-avatar');
+    const nm=document.getElementById('kartei-name');
+    const mt=document.getElementById('kartei-meta');
+    if(av){av.textContent='?';av.style.background='#94a3b8';}
+    if(nm) nm.textContent='Kein Patient ausgewählt';
+    if(mt) mt.textContent='Bitte Patient suchen';
+  }
   if(tab==='rezept'){
     const n=document.getElementById('kartei-name')?.textContent||'—';
     const m=document.getElementById('kartei-meta')?.textContent||'';
