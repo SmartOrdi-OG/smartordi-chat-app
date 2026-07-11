@@ -287,7 +287,6 @@
 @media(max-width:768px){.app-wrapper.active #appNavBar{display:none;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;}
-  #view-clinic,#view-patient,#view-vertretung,#view-dashboard,#view-settings{margin-left:220px;}
   .vertretung-main{padding-left:32px !important;}
   .dash-grid{padding-left:32px !important;}
   .dash-header{padding-left:32px !important;}
@@ -519,44 +518,6 @@
     <button class="nav-tab" onclick="openWindow('dashboard',this)">Dashboard</button>
     <button class="nav-tab" onclick="openWindow('settings',this)">Einstellungen</button>
   </div>
-  <!-- Desktop Sidebar Navigation (>=1024px) -->
-  <div id="desktopSidebar">
-    <div class="ds-nav">
-      <button class="ds-nav-item active" id="dsnav-clinic" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('clinic',this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
-        <span class="ds-nav-label">Praxis</span>
-        <span class="chat-nav-badge" id="dsNavChatBadge">0</span>
-      </button>
-      <button class="ds-nav-item" id="dsnav-kartei" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openKarteiFullscreen(this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
-        <span class="ds-nav-label">Kartei</span>
-      </button>
-      <button class="ds-nav-item" id="dsnav-patient" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('patient',this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-        <span class="ds-nav-label">Patient</span>
-      </button>
-      <button class="ds-nav-item" id="dsnav-vertretung" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('vertretung',this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
-        <span class="ds-nav-label">Vertretung</span>
-        <span class="ds-nav-badge">NEU</span>
-      </button>
-      <button class="ds-nav-item" id="dsnav-dashboard" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('dashboard',this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-        <span class="ds-nav-label">Dashboard</span>
-      </button>
-      <button class="ds-nav-item" id="dsnav-settings" onclick="document.querySelectorAll('.ds-nav-item').forEach(function(e){e.classList.remove('active')});this.classList.add('active');openWindow('settings',this)">
-        <span class="ds-nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-        <span class="ds-nav-label">Einstellungen</span>
-      </button>
-    </div>
-    <div class="ds-profile">
-      <div class="ds-profile-avatar">S</div>
-      <div>
-        <div class="ds-profile-name" id="dsProfileName">Dr. Sarah Ahmed</div>
-        <div class="ds-profile-role">Ärztin · Smartordi</div>
-      </div>
-    </div>
-  </div>
   <div>
 <!DOCTYPE html>
 <html lang="de" dir="ltr">
@@ -606,28 +567,6 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 .lang-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-2);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all 0.2s;}
 .lang-btn.active{background:#1e40af;color:white;border-color:#1e40af;}
 
-/* ══ DESKTOP SIDEBAR ══ */
-#desktopSidebar{display:none;position:fixed;top:48px;left:0;bottom:0;width:220px;background:white;border-right:1px solid var(--border);flex-direction:column;z-index:198;box-shadow:2px 0 12px rgba(0,0,0,0.04);}
-.ds-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
-.ds-nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:none;border-left:3px solid transparent;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-2);background:transparent;text-align:left;width:100%;transition:all 0.15s;position:relative;white-space:nowrap;}
-.ds-nav-item:hover{background:#eff6ff;color:#1e40af;}
-.ds-nav-item.active{background:#eff6ff;color:#1e40af;font-weight:700;border-left-color:#1e40af;}
-.ds-nav-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.ds-nav-label{flex:1;}
-.ds-nav-badge{background:#dc2626;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
-.ds-profile{padding:14px 12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;}
-.ds-profile-avatar{width:36px;height:36px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:800;flex-shrink:0;}
-.ds-profile-name{font-size:12px;font-weight:800;color:var(--text-1);}
-.ds-profile-role{font-size:11px;color:var(--text-2);margin-top:1px;}
-
-@media(min-width:1024px){
-  #desktopSidebar{display:flex;}
-  #appNavBar{display:none!important;}
-  .app-wrapper.active{padding-top:48px;}
-  .view{margin-left:220px;}
-  .view.active{height:calc(100vh - 48px);}
-  .kartei-panel.fullscreen{left:220px!important;}
-}
 
 /* ══ VIEWS ══ */
 .view{display:none;}
@@ -636,7 +575,7 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 
 /* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
 body.windows-mode .app-wrapper.active{position:relative;}
-body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 260px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
+body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
 .app-window-titlebar{display:none;flex-shrink:0;height:40px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;align-items:center;justify-content:space-between;padding:0 8px 0 14px;cursor:move;user-select:none;font-size:13px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;}
@@ -650,7 +589,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .chat-nav-badge.show{display:inline-flex;}
 .mobile-nav-item .chat-nav-badge{position:absolute;top:6px;right:calc(50% - 18px);margin-left:0;}
 .mobile-nav-item .chat-nav-badge.show{display:flex;}
-#winTaskbar{position:fixed;left:220px;right:0;bottom:0;height:0;overflow:hidden;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(15,23,42,0.92);z-index:650;transition:height 0.15s;}
+#winTaskbar{position:fixed;left:0;right:0;bottom:0;height:0;overflow:hidden;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(15,23,42,0.92);z-index:650;transition:height 0.15s;}
 #winTaskbar.has-items{height:44px;}
 .win-chip{background:#fff;color:#0f172a;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .win-chip:hover{background:#eff6ff;color:#1e40af;}
@@ -1049,12 +988,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 [data-theme="dark"] .lang-btn.active{background:#1e40af;color:white;}
 [data-theme="dark"] #darkToggle{background:#334155;color:#e2e8f0;}
 [data-theme="dark"] #doctorNameDisplay{color:#e2e8f0;}
-[data-theme="dark"] #desktopSidebar{background:#1e293b;border-right-color:#334155;}
-[data-theme="dark"] .ds-nav-item{color:#94a3b8;}
-[data-theme="dark"] .ds-nav-item:hover{background:#1e3a5f;color:#93c5fd;}
-[data-theme="dark"] .ds-nav-item.active{background:#1e3a5f;color:#93c5fd;border-left-color:#3b82f6;}
-[data-theme="dark"] .ds-profile{border-top-color:#334155;}
-[data-theme="dark"] .ds-profile-name{color:#e2e8f0;}
 [data-theme="dark"] .clinic-sidebar{background:#162032;border-right-color:#334155;}
 [data-theme="dark"] .sidebar-header{background:#1e293b;border-bottom-color:#334155;}
 [data-theme="dark"] .sidebar-title{color:#e2e8f0;}
@@ -2600,7 +2533,8 @@ function switchView(view,btn){
 
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
 const WIN_TITLES={clinic:'Praxis',patient:'Patient',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
-const WIN_DEFAULT_POS={clinic:{left:20,top:16},patient:{left:60,top:56},vertretung:{left:100,top:96},dashboard:{left:140,top:136},settings:{left:180,top:176}};
+const WIN_MIN_TOP=100;
+const WIN_DEFAULT_POS={clinic:{left:20,top:WIN_MIN_TOP+6},patient:{left:60,top:WIN_MIN_TOP+46},vertretung:{left:100,top:WIN_MIN_TOP+86},dashboard:{left:140,top:WIN_MIN_TOP+126},settings:{left:180,top:WIN_MIN_TOP+166}};
 let winZ=500;
 
 function isDesktopWidth(){ return window.innerWidth>=1024; }
@@ -2644,7 +2578,7 @@ function makeWindowDraggable(win,handle){
     const parent=win.parentElement;
     let nl=ol+(e.clientX-sx), nt=ot+(e.clientY-sy);
     nl=Math.max(0,Math.min(nl,parent.clientWidth-80));
-    nt=Math.max(0,Math.min(nt,parent.clientHeight-40));
+    nt=Math.max(WIN_MIN_TOP,Math.min(nt,parent.clientHeight-40));
     win.style.left=nl+'px'; win.style.top=nt+'px';
   });
   document.addEventListener('mouseup',function(){
