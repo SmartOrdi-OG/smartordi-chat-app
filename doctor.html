@@ -2587,7 +2587,7 @@ function openWindow(view,btn){
 
 function closeWindow(id){
   const el=document.getElementById('view-'+id);
-  if(el){ el.classList.remove('win-open'); el.classList.remove('win-minimized'); }
+  if(el){ el.classList.remove('win-open'); el.classList.remove('win-minimized'); el.classList.remove('active'); }
   removeTaskbarChip(id);
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
 }
