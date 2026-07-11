@@ -2588,6 +2588,7 @@ function openWindow(view,btn){
   el.classList.add('win-open');
   removeTaskbarChip(view);
   focusWindow(view);
+  document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
 }
 
 function closeWindow(id){
