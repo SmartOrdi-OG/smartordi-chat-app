@@ -1330,23 +1330,23 @@ body.windows-mode .kartei-header{display:none;}
       <div id="ktab-stamm" style="display:none;">
         <div class="k-section">
           <div class="k-section-title">Stammdaten — vom Patienten ausgefüllt ✓</div>
-          <div class="k-row"><span class="k-label">Name</span><span class="k-value">Thomas Müller</span></div>
-          <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value">01.01.1985 (41 J.)</span></div>
-          <div class="k-row"><span class="k-label">Telefon</span><span class="k-value">+43 660 123 456</span></div>
-          <div class="k-row"><span class="k-label">Adresse</span><span class="k-value">Mozartstr. 12, Linz</span></div>
-          <div class="k-row"><span class="k-label">Sprache</span><span class="k-value">Deutsch</span></div>
+          <div class="k-row"><span class="k-label">Name</span><span class="k-value" id="k-stamm-name">Thomas Müller</span></div>
+          <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value" id="k-stamm-dob">01.01.1985 (41 J.)</span></div>
+          <div class="k-row"><span class="k-label">Telefon</span><span class="k-value" id="k-stamm-tel">+43 660 123 456</span></div>
+          <div class="k-row"><span class="k-label">Adresse</span><span class="k-value" id="k-stamm-adresse">Mozartstr. 12, Linz</span></div>
+          <div class="k-row"><span class="k-label">Sprache</span><span class="k-value" id="k-stamm-sprache">Deutsch</span></div>
         </div>
         <div class="k-section">
           <div class="k-section-title">Versicherung</div>
-          <div class="k-row"><span class="k-label">Träger</span><span class="k-value">ÖGK</span></div>
-          <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" style="font-family:monospace;">1234 010185</span></div>
-          <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" style="color:#16a34a;">✓ Einwilligung 15.01.2026</span></div>
+          <div class="k-row"><span class="k-label">Träger</span><span class="k-value" id="k-stamm-versicherung">ÖGK</span></div>
+          <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">1234 010185</span></div>
+          <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" id="k-stamm-dsgvo" style="color:#16a34a;">✓ Einwilligung 15.01.2026</span></div>
         </div>
         <div class="k-section">
           <div class="k-section-title">Medizinische Hinweise</div>
-          <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value">A+</span></div>
-          <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value">Hypertonie, Diabetes T2</span></div>
-          <div class="k-alert">Penicillin-Allergie beachten!</div>
+          <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value" id="k-stamm-blutgruppe">A+</span></div>
+          <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">Hypertonie, Diabetes T2</span></div>
+          <div class="k-alert" id="k-stamm-allergie">Penicillin-Allergie beachten!</div>
         </div>
       </div>
 
@@ -2828,30 +2828,49 @@ let karteiPatientLoaded = false;
 let activeYear = 'all';
 
 const VISITS = [
-  {date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
-  {date:'2026-04-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',               notes:'Patient fragte nach Blutwerten. Alles im Normbereich.',therapy:''},
-  {date:'2026-03-15',type:'Ordination',  diag:'J06.9 – Akute Infektion Atemwege',  notes:'Halsschmerzen, leichtes Fieber 37.8°. HNO unauffällig.',therapy:'Paracetamol 500mg bei Bedarf'},
-  {date:'2026-01-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck stabil 135/85 mmHg. Gewicht -2kg.',therapy:'Ramipril 5mg 1×tägl. (unverändert)'},
-  {date:'2025-11-08',type:'Erstgespräch',diag:'I10 – Erstdiagnose Hypertonie',     notes:'Familienanamnese positiv. BMI 28. Lebensstiländerung empfohlen.',therapy:'Ramipril 2.5mg, Lebensstiländerung'},
-  {date:'2025-09-30',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',             notes:'Rückenschmerzen seit 1 Woche. Kein Anhalt für Radikulopathie.',therapy:'Ibuprofen 400mg 3×tägl. für 5 Tage'},
-  {date:'2025-07-14',type:'Kontrolle',   diag:'E11 – Diabetes Typ 2 (V.a.)',      notes:'Nüchternblutzucker 118 mg/dl. HbA1c 6.2%. Grenzwertig.',therapy:'Diät, Bewegung, Kontrolle in 3 Mon.'},
-  {date:'2025-05-20',type:'Ordination',  diag:'J00 – Schnupfen / Erkältung',      notes:'Leichte Erkältungssymptome. Kein Fieber. Selbstlimitierend.',therapy:'Nasenspray, viel Flüssigkeit'},
-  {date:'2025-03-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 150/95 mmHg. Medikament erhöht.',therapy:'Ramipril 5mg (erhöht von 2.5mg)'},
-  {date:'2025-01-10',type:'Ordination',  diag:'B34.9 – Virale Infektion',         notes:'Grippesymptome. Fieber 38.5°. Keine bakt. Infektion.',therapy:'Bettruhe, Paracetamol, Ibuprofen'},
-  {date:'2024-11-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 140/88 mmHg. Patient klagt über Müdigkeit.',therapy:'Blutbild angeordnet'},
-  {date:'2024-09-05',type:'Ordination',  diag:'L20 – Atopisches Ekzem',          notes:'Hautausschlag Unterarme beidseitig. Allergieanamnese positiv.',therapy:'Hydrocortison Creme 1%'},
-  {date:'2024-07-01',type:'Telefonisch', diag:'Rezeptanfrage',                    notes:'Patient bat um Folgerezept. Ausgestellt.',therapy:'Ramipril 2.5mg Folgerezept'},
-  {date:'2024-04-18',type:'Ordination',  diag:'R51 – Kopfschmerz',               notes:'Spannungskopfschmerz. Stress-assoziiert.',therapy:'Paracetamol bei Bedarf'},
-  {date:'2024-02-14',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',     notes:'Erstmessung nach Diagnose. Blutdruck 158/98 mmHg. Therapiebeginn.',therapy:'Ramipril 2.5mg 1×tägl.'},
-  {date:'2023-12-20',type:'Ordination',  diag:'J02.9 – Akute Pharyngitis',       notes:'Starke Halsschmerzen. Tonsillitis ausgeschlossen.',therapy:'Amoxicillin 500mg 3×tägl. 7 Tage'},
-  {date:'2023-10-11',type:'Ordination',  diag:'N39.0 – Harnwegsinfekt',          notes:'Brennen beim Wasserlassen seit 2 Tagen. Urinbefund positiv.',therapy:'Nitrofurantoin 100mg 2×tägl. 5 Tage'},
-  {date:'2023-08-03',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Allgemeiner Gesundheitscheck. Blutdruck grenzwertig.',therapy:'Lebensstiländerung empfohlen'},
-  {date:'2023-05-22',type:'Notfall',     diag:'S61.0 – Wundversorgung Hand',     notes:'Schnittwunde rechte Hand. Wunde gereinigt und vernäht (3 Nähte).',therapy:'Wundversorgung, Kontrolle in 7 Tagen'},
-  {date:'2023-02-14',type:'Ordination',  diag:'G43.9 – Migräne',                notes:'Erstmalig Migräne mit Aura. Neurologe empfohlen.',therapy:'Sumatriptan 50mg, Überweisung Neurologie'},
+  {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
+  {patient:'Thomas Müller',date:'2026-04-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',               notes:'Patient fragte nach Blutwerten. Alles im Normbereich.',therapy:''},
+  {patient:'Thomas Müller',date:'2026-03-15',type:'Ordination',  diag:'J06.9 – Akute Infektion Atemwege',  notes:'Halsschmerzen, leichtes Fieber 37.8°. HNO unauffällig.',therapy:'Paracetamol 500mg bei Bedarf'},
+  {patient:'Thomas Müller',date:'2026-01-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck stabil 135/85 mmHg. Gewicht -2kg.',therapy:'Ramipril 5mg 1×tägl. (unverändert)'},
+  {patient:'Thomas Müller',date:'2025-11-08',type:'Erstgespräch',diag:'I10 – Erstdiagnose Hypertonie',     notes:'Familienanamnese positiv. BMI 28. Lebensstiländerung empfohlen.',therapy:'Ramipril 2.5mg, Lebensstiländerung'},
+  {patient:'Thomas Müller',date:'2025-09-30',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',             notes:'Rückenschmerzen seit 1 Woche. Kein Anhalt für Radikulopathie.',therapy:'Ibuprofen 400mg 3×tägl. für 5 Tage'},
+  {patient:'Thomas Müller',date:'2025-07-14',type:'Kontrolle',   diag:'E11 – Diabetes Typ 2 (V.a.)',      notes:'Nüchternblutzucker 118 mg/dl. HbA1c 6.2%. Grenzwertig.',therapy:'Diät, Bewegung, Kontrolle in 3 Mon.'},
+  {patient:'Thomas Müller',date:'2025-05-20',type:'Ordination',  diag:'J00 – Schnupfen / Erkältung',      notes:'Leichte Erkältungssymptome. Kein Fieber. Selbstlimitierend.',therapy:'Nasenspray, viel Flüssigkeit'},
+  {patient:'Thomas Müller',date:'2025-03-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 150/95 mmHg. Medikament erhöht.',therapy:'Ramipril 5mg (erhöht von 2.5mg)'},
+  {patient:'Thomas Müller',date:'2025-01-10',type:'Ordination',  diag:'B34.9 – Virale Infektion',         notes:'Grippesymptome. Fieber 38.5°. Keine bakt. Infektion.',therapy:'Bettruhe, Paracetamol, Ibuprofen'},
+  {patient:'Thomas Müller',date:'2024-11-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 140/88 mmHg. Patient klagt über Müdigkeit.',therapy:'Blutbild angeordnet'},
+  {patient:'Thomas Müller',date:'2024-09-05',type:'Ordination',  diag:'L20 – Atopisches Ekzem',          notes:'Hautausschlag Unterarme beidseitig. Allergieanamnese positiv.',therapy:'Hydrocortison Creme 1%'},
+  {patient:'Thomas Müller',date:'2024-07-01',type:'Telefonisch', diag:'Rezeptanfrage',                    notes:'Patient bat um Folgerezept. Ausgestellt.',therapy:'Ramipril 2.5mg Folgerezept'},
+  {patient:'Thomas Müller',date:'2024-04-18',type:'Ordination',  diag:'R51 – Kopfschmerz',               notes:'Spannungskopfschmerz. Stress-assoziiert.',therapy:'Paracetamol bei Bedarf'},
+  {patient:'Thomas Müller',date:'2024-02-14',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',     notes:'Erstmessung nach Diagnose. Blutdruck 158/98 mmHg. Therapiebeginn.',therapy:'Ramipril 2.5mg 1×tägl.'},
+  {patient:'Thomas Müller',date:'2023-12-20',type:'Ordination',  diag:'J02.9 – Akute Pharyngitis',       notes:'Starke Halsschmerzen. Tonsillitis ausgeschlossen.',therapy:'Amoxicillin 500mg 3×tägl. 7 Tage'},
+  {patient:'Thomas Müller',date:'2023-10-11',type:'Ordination',  diag:'N39.0 – Harnwegsinfekt',          notes:'Brennen beim Wasserlassen seit 2 Tagen. Urinbefund positiv.',therapy:'Nitrofurantoin 100mg 2×tägl. 5 Tage'},
+  {patient:'Thomas Müller',date:'2023-08-03',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Allgemeiner Gesundheitscheck. Blutdruck grenzwertig.',therapy:'Lebensstiländerung empfohlen'},
+  {patient:'Thomas Müller',date:'2023-05-22',type:'Notfall',     diag:'S61.0 – Wundversorgung Hand',     notes:'Schnittwunde rechte Hand. Wunde gereinigt und vernäht (3 Nähte).',therapy:'Wundversorgung, Kontrolle in 7 Tagen'},
+  {patient:'Thomas Müller',date:'2023-02-14',type:'Ordination',  diag:'G43.9 – Migräne',                notes:'Erstmalig Migräne mit Aura. Neurologe empfohlen.',therapy:'Sumatriptan 50mg, Überweisung Neurologie'},
+
+  {patient:'Maria Schreiber',date:'2026-05-12',type:'Kontrolle',   diag:'G43.9 – Migräne',                notes:'Kopfschmerzattacken ca. 2×/Monat, gut kontrolliert unter Therapie.',therapy:'Sumatriptan 50mg bei Bedarf'},
+  {patient:'Maria Schreiber',date:'2026-02-20',type:'Ordination',  diag:'J06.9 – Akute Infektion Atemwege', notes:'Halsschmerzen, Schnupfen seit 2 Tagen. Kein Fieber.',therapy:'Paracetamol 500mg bei Bedarf'},
+  {patient:'Maria Schreiber',date:'2025-10-05',type:'Erstgespräch',diag:'G43.9 – Erstdiagnose Migräne',    notes:'Migräne mit Aura seit 6 Monaten. MRT unauffällig.',therapy:'Sumatriptan 50mg, Betablocker-Prophylaxe'},
+  {patient:'Maria Schreiber',date:'2025-06-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',            notes:'Patientin fragte nach Medikamenten-Nebenwirkungen.',therapy:''},
+  {patient:'Maria Schreiber',date:'2024-12-02',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Jährlicher Gesundheitscheck. Alle Werte unauffällig.',therapy:''},
+
+  {patient:'Hans Bauer',date:'2026-05-28',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',            notes:'Rückenschmerzen nach Gartenarbeit, seit 3 Tagen.',therapy:'Ibuprofen 400mg 3×tägl.'},
+  {patient:'Hans Bauer',date:'2026-03-10',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',     notes:'Blutdruck 148/92 mmHg. Medikation angepasst.',therapy:'Amlodipin 5mg 1×tägl.'},
+  {patient:'Hans Bauer',date:'2025-11-15',type:'Erstgespräch',diag:'I10 – Erstdiagnose Hypertonie',   notes:'Erstmalig erhöhter Blutdruck bei Routineuntersuchung festgestellt.',therapy:'Amlodipin 5mg, Lebensstiländerung'},
+  {patient:'Hans Bauer',date:'2025-08-02',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',            notes:'Chronische Rückenschmerzen. Physiotherapie empfohlen.',therapy:'Physiotherapie 10×, Ibuprofen bei Bedarf'},
+  {patient:'Hans Bauer',date:'2025-02-19',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Allgemeiner Gesundheitscheck.',therapy:''},
+
+  {patient:'Anna Weber',date:'2026-06-01',type:'Kontrolle',   diag:'M19.9 – Arthrose',                notes:'Knieschmerzen beidseitig, besonders beim Treppensteigen.',therapy:'Paracetamol bei Bedarf, Physiotherapie'},
+  {patient:'Anna Weber',date:'2026-01-15',type:'Kontrolle',   diag:'M81.9 – Osteoporose',              notes:'Knochendichtemessung: T-Score -2.8. Therapie fortgesetzt.',therapy:'Vitamin D3, Calcium, Bisphosphonat wöchentlich'},
+  {patient:'Anna Weber',date:'2025-09-22',type:'Ordination',  diag:'M19.9 – Arthrose',                notes:'Zunehmende Gelenkschmerzen. Röntgen Knie beidseitig angeordnet.',therapy:'Paracetamol 500mg bei Bedarf'},
+  {patient:'Anna Weber',date:'2025-04-10',type:'Erstgespräch',diag:'M81.9 – Erstdiagnose Osteoporose', notes:'Postmenopausale Osteoporose. Knochendichtemessung durchgeführt.',therapy:'Vitamin D3, Calcium'},
+  {patient:'Anna Weber',date:'2024-11-30',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Jährliche Vorsorgeuntersuchung. Achtung: Aspirin/NSAR-Allergie dokumentiert.',therapy:''},
 ];
 
 function renderYearPills(){
-  const years=[...new Set(VISITS.map(v=>v.date.slice(0,4)))].sort((a,b)=>b-a);
+  const patientName=document.getElementById('kartei-name')?.textContent;
+  const years=[...new Set(VISITS.filter(v=>v.patient===patientName).map(v=>v.date.slice(0,4)))].sort((a,b)=>b-a);
   const c=document.getElementById('kYearPills');
   if(!c)return;
   c.innerHTML=`<button class="k-year-pill ${activeYear==='all'?'active':''}" onclick="setYear('all',this)">Alle</button>`+
@@ -2867,10 +2886,12 @@ function setYear(year,btn){
 
 function filterVisits(){
   const q=(document.getElementById('kSearch')?.value||'').toLowerCase();
+  const patientName=document.getElementById('kartei-name')?.textContent;
   const filtered=VISITS.filter(v=>{
+    const pm=v.patient===patientName;
     const ym=activeYear==='all'||v.date.startsWith(activeYear);
     const tm=!q||[v.diag,v.notes,v.type,v.therapy||''].some(s=>s.toLowerCase().includes(q));
-    return ym&&tm;
+    return pm&&ym&&tm;
   });
   renderVisitList(filtered);
 }
@@ -2975,6 +2996,28 @@ function updateKarteiChromeVisibility(){
   });
 }
 
+function populateKarteiStamm(name){
+  const p=DEMO_PATIENTS.find(p=>p.name===name);
+  if(!p) return;
+  const age=new Date().getFullYear()-new Date(p.dob).getFullYear();
+  const dobFmt=new Date(p.dob).toLocaleDateString('de-AT');
+  document.getElementById('k-stamm-name').textContent=p.name;
+  document.getElementById('k-stamm-dob').textContent=dobFmt+' ('+age+' J.)';
+  document.getElementById('k-stamm-tel').textContent=p.tel;
+  document.getElementById('k-stamm-adresse').textContent=p.adresse;
+  document.getElementById('k-stamm-sprache').textContent=p.sprache;
+  document.getElementById('k-stamm-versicherung').textContent=p.versicherung;
+  document.getElementById('k-stamm-svnr').textContent=p.svnr;
+  document.getElementById('k-stamm-dsgvo').textContent='✓ Einwilligung '+p.dsgvoDatum;
+  document.getElementById('k-stamm-blutgruppe').textContent=p.blutgruppe;
+  document.getElementById('k-stamm-diagnosen').textContent=p.diagnosen;
+  const allergieEl=document.getElementById('k-stamm-allergie');
+  if(allergieEl){
+    allergieEl.style.display=p.allergie?'block':'none';
+    allergieEl.textContent=p.allergie||'';
+  }
+}
+
 function switchKarteiTab(tab,btn){
   ['verlauf','stamm','anamnese','neu','ueberweisung','rezept','impfung','labor','suche'].forEach(t=>{
     const el=document.getElementById('ktab-'+t);
@@ -2984,6 +3027,10 @@ function switchKarteiTab(tab,btn){
   if(btn)btn.classList.add('active');
   if(tab==='neu')setKarteiDate();
   if(tab==='verlauf'){renderYearPills();filterVisits();}
+  if(tab==='stamm'){
+    const currentName=document.getElementById('kartei-name')?.textContent;
+    if(currentName) populateKarteiStamm(currentName);
+  }
   if(tab==='suche'){
     // Searching for a patient shouldn't keep showing whoever you were
     // previously viewing -- that reads as if you're still in their record.
@@ -3014,7 +3061,7 @@ function switchKarteiTab(tab,btn){
     const uwa=document.getElementById('uw-patient-adresse');
     if(uwn)uwn.textContent=n;
     if(uwm)uwm.textContent=m;
-    if(uwa)uwa.textContent='Mozartstraße 12, 4020 Linz';
+    if(uwa)uwa.textContent=DEMO_PATIENTS.find(p=>p.name===n)?.adresse||'';
     const dt=document.getElementById('uwDatum');
     if(dt&&!dt.value)dt.value=new Date().toISOString().split('T')[0];
     // sync KT from meta
@@ -3567,10 +3614,10 @@ function addLabor(){
 
 // ══ SUCHE FUNCTIONS ══
 const DEMO_PATIENTS=[
-  {name:'Thomas Müller',svnr:'1234 010185',dob:'1985-01-01',versicherung:'ÖGK',tel:'+43 660 123 4567'},
-  {name:'Maria Schreiber',svnr:'5678 150390',dob:'1990-03-15',versicherung:'BVAEB',tel:'+43 699 234 5678'},
-  {name:'Hans Bauer',svnr:'9012 220775',dob:'1975-07-22',versicherung:'SVS',tel:'+43 676 345 6789'},
-  {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890'},
+  {name:'Thomas Müller',svnr:'1234 010185',dob:'1985-01-01',versicherung:'ÖGK',tel:'+43 660 123 4567',adresse:'Mozartstr. 12, Linz',sprache:'Deutsch',blutgruppe:'A+',diagnosen:'Hypertonie, Diabetes T2',allergie:'Penicillin-Allergie beachten!',dsgvoDatum:'15.01.2026'},
+  {name:'Maria Schreiber',svnr:'5678 150390',dob:'1990-03-15',versicherung:'BVAEB',tel:'+43 699 234 5678',adresse:'Hauptstraße 45, Wien',sprache:'Deutsch',blutgruppe:'0+',diagnosen:'Migräne',allergie:null,dsgvoDatum:'20.02.2026'},
+  {name:'Hans Bauer',svnr:'9012 220775',dob:'1975-07-22',versicherung:'SVS',tel:'+43 676 345 6789',adresse:'Bahnhofstraße 8, Salzburg',sprache:'Deutsch',blutgruppe:'B+',diagnosen:'Kreuzschmerzen, Bluthochdruck',allergie:null,dsgvoDatum:'10.03.2026'},
+  {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890',adresse:'Ringstraße 3, Graz',sprache:'Deutsch',blutgruppe:'AB+',diagnosen:'Arthrose, Osteoporose',allergie:'Aspirin/NSAR-Allergie beachten!',dsgvoDatum:'05.01.2026'},
 ];
 
 function searchPatient(){
