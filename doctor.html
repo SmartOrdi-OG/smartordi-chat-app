@@ -2959,6 +2959,20 @@ function updateKarteiChromeVisibility(){
   const patientBar=document.querySelector('.kartei-patient-bar');
   if(tabs) tabs.style.display=karteiPatientLoaded?'flex':'none';
   if(patientBar) patientBar.style.display=karteiPatientLoaded?'flex':'none';
+
+  // Even once the tab bar is showing, every tab besides Suche displays data
+  // that isn't actually wired to a specific patient in this demo. Disable
+  // them while no patient is actively selected (e.g. right after searching
+  // for someone else clears the patient bar back to neutral) so they can't
+  // be opened to reveal another patient's info under "Kein Patient ausgewählt".
+  const hasActivePatient=document.getElementById('kartei-name')?.textContent!=='Kein Patient ausgewählt';
+  document.querySelectorAll('.kartei-tab').forEach(t=>{
+    const isSuche=(t.getAttribute('onclick')||'').includes("'suche'");
+    const disable=!isSuche&&!hasActivePatient;
+    t.disabled=disable;
+    t.style.opacity=disable?'0.4':'';
+    t.style.cursor=disable?'not-allowed':'';
+  });
 }
 
 function switchKarteiTab(tab,btn){
@@ -2968,7 +2982,6 @@ function switchKarteiTab(tab,btn){
   });
   document.querySelectorAll('.kartei-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  updateKarteiChromeVisibility();
   if(tab==='neu')setKarteiDate();
   if(tab==='verlauf'){renderYearPills();filterVisits();}
   if(tab==='suche'){
@@ -3009,6 +3022,10 @@ function switchKarteiTab(tab,btn){
     const ktEl=document.getElementById('uwKT');
     if(ktEl)ktEl.value=kt;
   }
+  // Runs last so it reflects this call's final state (e.g. the Suche branch
+  // above just cleared the patient bar to neutral) rather than stale data
+  // from before this switch.
+  updateKarteiChromeVisibility();
 }
 
 function openUwPreview(){
