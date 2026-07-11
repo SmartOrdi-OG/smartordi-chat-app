@@ -3541,12 +3541,25 @@ function searchPatient(){
         <div> ${p.tel}</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button onclick="showToast('Kartei öffnen: ${p.name}')" style="flex:1;padding:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:12px;font-weight:700;cursor:pointer;">Kartei öffnen</button>
+        <button onclick="openKarteiForPatient('${p.name}','${p.svnr}','${p.versicherung}','${p.dob}')" style="flex:1;padding:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:12px;font-weight:700;cursor:pointer;">Kartei öffnen</button>
         <button onclick="showToast('Termin für ${p.name} buchen')" style="flex:1;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-size:12px;font-weight:700;cursor:pointer;">Termin buchen</button>
       </div>
     </div>
   `).join('');
   document.getElementById('such-ergebnisse').innerHTML=html;
+}
+
+function openKarteiForPatient(name,svnr,versicherung,dob){
+  const kav=document.getElementById('kartei-avatar');
+  const knm=document.getElementById('kartei-name');
+  const kmt=document.getElementById('kartei-meta');
+  const colors={'Thomas Müller':'#0d9488','Maria Schreiber':'#8b5cf6','Hans Bauer':'#f59e0b','Anna Weber':'#ec4899'};
+  const age=new Date().getFullYear()-new Date(dob).getFullYear();
+  if(kav){kav.textContent=name[0];kav.style.background=colors[name]||'#1e40af';}
+  if(knm) knm.textContent=name;
+  if(kmt) kmt.textContent=versicherung+' · SV '+svnr+' · '+age+' J.';
+  showToast('Kartei geöffnet: '+name);
+  switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
 }
 
 function generateRezeptPDF(){
