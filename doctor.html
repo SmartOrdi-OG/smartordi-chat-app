@@ -689,23 +689,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .send-btn{width:36px;height:36px;border-radius:10px;border:none;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.15s;flex-shrink:0;box-shadow:0 2px 8px rgba(30,64,175,0.35);}
 .send-btn:hover{transform:scale(1.08);box-shadow:0 4px 12px rgba(30,64,175,0.45);}
 
-/* ══ PATIENT VIEW ══ */
-.patient-view-wrap{flex:1;display:flex;align-items:center;justify-content:center;background:#e2e8f0;padding:20px;}
-.phone-frame{width:375px;height:calc(100vh - 96px);max-height:750px;background:white;border-radius:40px;box-shadow:0 25px 80px rgba(0,0,0,0.18),0 0 0 8px #1e293b;overflow:hidden;display:flex;flex-direction:column;position:relative;}
-.phone-status{background:#0f172a;padding:12px 24px 8px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:600;color:white;flex-shrink:0;}
-.phone-chat-header{background:linear-gradient(135deg,#1e40af,#1d4ed8);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.phone-back{color:white;font-size:18px;cursor:pointer;}
-.phone-clinic-info{flex:1;}
-.phone-clinic-name{font-size:15px;font-weight:800;color:white;}
-.phone-clinic-status{font-size:11px;color:rgba(255,255,255,0.8);}
-.phone-call-btn{width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:white;border:none;}
-.phone-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f8fafc;}
-.phone-input-area{background:white;border-top:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.phone-input{flex:1;border:1.5px solid var(--border);border-radius:22px;padding:8px 14px;font-family:inherit;font-size:13px;outline:none;background:#f8fafc;}
-.phone-input:focus{border-color:#1e40af;background:white;}
-.phone-send{width:36px;height:36px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border:none;border-radius:50%;color:white;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.phone-mic{width:36px;height:36px;background:#f1f5f9;border:1px solid var(--border);border-radius:50%;color:var(--text-2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-
 /* ══ VERTRETUNG ══ */
 .vertretung-layout{flex:1;display:flex;overflow:hidden;}
 .vertretung-main{flex:1;overflow-y:auto;padding:28px;background:#f8fafc;}
@@ -1950,48 +1933,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 </div>
 
 </div>
-  <div class="patient-view-wrap">
-    <div class="phone-frame">
-      <div class="phone-status"><span>9:41</span><span> </span></div>
-      <div class="phone-chat-header">
-        <span class="phone-back">‹</span>
-        <div class="avatar" style="background:rgba(255,255,255,0.2);width:36px;height:36px;font-size:14px;">SA</div>
-        <div class="phone-clinic-info">
-          <div class="phone-clinic-name">Ordination Dr. Sarah Ahmed</div>
-          <div class="phone-clinic-status">● Jetzt verfügbar · Wien, 1010</div>
-        </div>
-        <button class="phone-call-btn" onclick="showCall()"></button>
-      </div>
-      <div class="phone-messages scrollbar" id="phone-messages">
-        <div class="date-divider" style="font-size:11px;">Heute</div>
-        <div class="system-msg" style="font-size:11px;">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>
-        <div class="system-msg transfer" style="font-size:11px;margin:8px auto;">Während der Abwesenheit von Dr. Ahmed betreut Sie Dr. Weber (03.–17. Juli)</div>
-        <div class="msg-row out">
-          <div><div class="msg-bubble" style="font-size:13px;">Guten Morgen, sind meine Blutwerte fertig?</div><span class="msg-time">09:15</span></div>
-        </div>
-        <div class="msg-row in">
-          <div class="avatar" style="background:#0d9488;width:26px;height:26px;font-size:10px;flex-shrink:0;">SA</div>
-          <div><div class="msg-bubble" style="font-size:13px;">Ja! Alles in Ordnung  Befund im Anhang.</div><span class="msg-time">09:18</span></div>
-        </div>
-        <div class="msg-row in">
-          <div class="avatar" style="background:#0d9488;width:26px;height:26px;font-size:10px;flex-shrink:0;">SA</div>
-          <div>
-            <div class="msg-bubble" style="font-size:13px;"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">Befundbericht_2026.pdf</div><div class="doc-size">245 KB</div></div></div></div>
-            <span class="msg-time">09:19</span>
-          </div>
-        </div>
-        <div class="msg-row out">
-          <div><div class="msg-bubble" style="font-size:13px;">Danke vielmals! </div><span class="msg-time">09:24 ✓✓</span></div>
-        </div>
-      </div>
-      <div class="phone-input-area">
-        <button class="phone-mic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
-        <input class="phone-input" placeholder="Nachricht..." id="phoneInput">
-        <button class="phone-send" onclick="sendPhoneMsg()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ══ PATIENT VIEW ══ -->
 <div id="view-patient" class="view">
@@ -2710,19 +2651,6 @@ function sendClinicMsg(){
     r.innerHTML=`<div class="avatar" style="background:${document.getElementById('chat-avatar').style.background};width:30px;height:30px;font-size:12px;flex-shrink:0;">${document.getElementById('chat-avatar').textContent}</div><div><div class="msg-bubble">Danke, verstanden! </div><span class="msg-time">${getTime()}</span></div>`;
     msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;
   },1500);
-}
-
-function sendPhoneMsg(){
-  const inp=document.getElementById('phoneInput');const txt=inp.value.trim();if(!txt)return;
-  const msgs=document.getElementById('phone-messages');
-  const row=document.createElement('div');row.className='msg-row out';
-  row.innerHTML=`<div><div class="msg-bubble" style="font-size:13px;">${txt}</div><span class="msg-time">${getTime()} ✓</span></div>`;
-  msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';
-  setTimeout(()=>{
-    const r=document.createElement('div');r.className='msg-row in';
-    r.innerHTML=`<div class="avatar" style="background:#0d9488;width:26px;height:26px;font-size:10px;flex-shrink:0;">SA</div><div><div class="msg-bubble" style="font-size:13px;">Ihre Nachricht wurde empfangen </div><span class="msg-time">${getTime()}</span></div>`;
-    msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;
-  },1200);
 }
 
 
@@ -3785,7 +3713,6 @@ function saveKarteiVisit(){
   }
 }
 
-document.getElementById('phoneInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendPhoneMsg();}});
 document.getElementById('clinicInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendClinicMsg();}});
 let stempelDataUrl = '';
 let sigDataUrl = '';
