@@ -880,8 +880,8 @@ body.windows-mode .kartei-header{display:none;}
 .mobile-back-btn{background:#f1f5f9;border:none;color:var(--text-1);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
 .mobile-chat-back-name{font-size:15px;font-weight:800;color:var(--text-1);flex:1;}
 .mobile-chat-back-actions{display:flex;gap:6px;}
-.mobile-action-icon{background:rgba(255,255,255,0.1);border:none;color:white;width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
-.mobile-action-icon.teal{background:#1e40af;}
+.mobile-action-icon{background:#f1f5f9;border:none;color:var(--text-1);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.mobile-action-icon.teal{background:#1e40af;color:white;}
 
 /* ══ RESPONSIVE ══ */
 @media(max-width:768px){
@@ -892,6 +892,11 @@ body.windows-mode .kartei-header{display:none;}
   .patient-list{overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .chat-area{width:100%;}
   .patient-panel{display:none;}
+  /* Mobile always uses the compact .mobile-chat-back header, never the
+     desktop one -- some entry points (switchView's back-to-clinic branch,
+     etc.) still flip #desktopChatHeader's inline display for legacy reasons,
+     so force it off here regardless of what JS sets. */
+  #desktopChatHeader{display:none!important;}
   .chat-header{padding:10px 14px;gap:8px;}
   .chat-header .avatar{width:34px;height:34px;font-size:13px;}
   .chat-patient-name{font-size:14px;}
@@ -2754,6 +2759,11 @@ function mobileOpenKartei(){
   const chatHeader=document.getElementById('desktopChatHeader');
   if(chatBack)chatBack.style.display='flex';
   if(chatHeader)chatHeader.style.display='none';
+  // Keep the compact header's name in sync with whichever chat is actually
+  // behind it (selectPatient only updates #chat-name, not #mobileChatName).
+  const nm=document.getElementById('mobileChatName');
+  const currentChatName=document.getElementById('chat-name');
+  if(nm && currentChatName) nm.textContent=currentChatName.textContent;
   // Open kartei -- this is a general entry point (bottom-nav icon), not tied
   // to a specific patient, so land on the empty Suche tab like the desktop
   // top-nav icon does, instead of showing whichever patient was last chatted.
