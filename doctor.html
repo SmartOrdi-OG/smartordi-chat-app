@@ -4063,23 +4063,6 @@ function toggleDark(){
 .toast::before{content:'';position:absolute;left:14px;top:50%;transform:translateY(-50%);width:22px;height:22px;background:rgba(255,255,255,0.18) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") no-repeat center/13px;border-radius:50%;}
 .toast.show{transform:translateX(-50%) translateY(0) scale(1);opacity:1;}
 .toast.error{background:linear-gradient(135deg,#991b1b,#dc2626);}
-/* Welcome overlay */
-.welcome-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 55%,#f0fdf4 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:8000;opacity:0;pointer-events:none;transition:opacity 0.6s ease;}
-.welcome-overlay.show{opacity:1;pointer-events:all;}
-.welcome-logo-wrap{position:relative;margin-bottom:24px;}
-.welcome-logo-ring{position:absolute;inset:-14px;border-radius:36px;background:linear-gradient(135deg,rgba(30,64,175,0.15),rgba(99,102,241,0.1));animation:wRingPulse 2s ease-out infinite;}
-@keyframes wRingPulse{0%{transform:scale(1);opacity:0.8;}60%{transform:scale(1.18);opacity:0;}100%{transform:scale(1);opacity:0;}}
-.welcome-logo{width:100px;height:100px;object-fit:contain;border-radius:24px;display:block;position:relative;z-index:1;box-shadow:0 8px 32px rgba(30,64,175,0.18);animation:wLogoBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both;}
-@keyframes wLogoBounce{from{transform:scale(0) rotate(-15deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;}}
-.welcome-check{position:absolute;bottom:-8px;right:-8px;width:32px;height:32px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;z-index:2;box-shadow:0 3px 10px rgba(34,197,94,0.45);animation:wLogoBounce 0.5s 0.35s cubic-bezier(0.34,1.56,0.64,1) both;}
-.welcome-check svg{width:15px;height:15px;}
-.welcome-check path{stroke-dasharray:22;stroke-dashoffset:22;animation:wDrawCheck 0.4s 0.75s ease forwards;}
-@keyframes wDrawCheck{to{stroke-dashoffset:0;}}
-.welcome-title{font-size:22px;font-weight:800;color:#0f172a;text-align:center;animation:wSlideUp 0.5s 0.2s ease both;}
-.welcome-sub{font-size:13px;color:#64748b;margin-top:7px;text-align:center;animation:wSlideUp 0.5s 0.32s ease both;}
-@keyframes wSlideUp{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.welcome-bar{width:200px;height:4px;background:#e2e8f0;border-radius:4px;margin-top:28px;overflow:hidden;animation:wSlideUp 0.5s 0.44s ease both;}
-.welcome-bar-fill{height:100%;background:linear-gradient(90deg,#1e40af,#6366f1,#22c55e);border-radius:4px;width:0%;transition:width 1.8s cubic-bezier(0.4,0,0.2,1);}
 </style>
 
 </body>
@@ -4098,15 +4081,6 @@ function openApp() {
 // فتح التطبيق تلقائياً عند الدخول
 window.addEventListener('load', function() {
   openApp();
-  // Welcome animation
-  const ov=document.getElementById('welcomeOverlay');
-  if(ov){
-    const u=JSON.parse(sessionStorage.getItem('smartordi_user')||'{}');
-    document.getElementById('welcomeName').textContent=u.name?'Willkommen, '+u.name+'!':'Willkommen!';
-    ov.classList.add('show');
-    setTimeout(()=>{const b=document.getElementById('welcomeBar');if(b)b.style.width='100%';},60);
-    setTimeout(()=>ov.classList.remove('show'),2400);
-  }
   const savedFach=localStorage.getItem('fachrichtung');
   if(savedFach){
     const sel=document.getElementById('setFach');
@@ -4224,18 +4198,6 @@ function sendEinladung(){
 }
 </script>
 
-<div class="welcome-overlay" id="welcomeOverlay">
-  <div class="welcome-logo-wrap">
-    <div class="welcome-logo-ring"></div>
-    <img src="logo..jpeg" alt="Logo" class="welcome-logo">
-    <div class="welcome-check">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-    </div>
-  </div>
-  <div class="welcome-title" id="welcomeName">Willkommen!</div>
-  <div class="welcome-sub">Ordination wird geladen...</div>
-  <div class="welcome-bar"><div class="welcome-bar-fill" id="welcomeBar"></div></div>
-</div>
 
 </body>
 </html>
