@@ -602,13 +602,13 @@ body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
 body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700!important;}
 body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
-.app-window-titlebar{display:none;flex-shrink:0;height:40px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;align-items:center;justify-content:space-between;padding:0 8px 0 14px;cursor:move;user-select:none;font-size:13px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;}
+.app-window-titlebar{display:none;flex-shrink:0;height:32px;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1e3a8a;align-items:center;justify-content:space-between;padding:0 6px 0 14px;cursor:move;user-select:none;font-size:12px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;border-bottom:1px solid #bfdbfe;}
 body.windows-mode .view .app-window-titlebar{display:flex;}
-.app-window-controls{display:flex;gap:6px;}
-.app-window-btn{width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,0.18);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;font-family:inherit;}
-.app-window-btn:hover{background:rgba(255,255,255,0.32);}
-.app-window-btn.win-close:hover{background:#dc2626;}
-.app-window-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.app-window-controls{display:flex;gap:5px;}
+.app-window-btn{width:21px;height:21px;border-radius:6px;border:none;background:rgba(30,64,175,0.1);color:#1e3a8a;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;font-family:inherit;}
+.app-window-btn:hover{background:rgba(30,64,175,0.2);}
+.app-window-btn.win-close:hover{background:#fecaca;color:#991b1b;}
+.app-window-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .app-window-body{flex:1;min-height:0;display:flex;overflow:auto;}
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
@@ -773,16 +773,16 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .kartei-panel.fullscreen{position:fixed!important;inset:0!important;width:100%!important;z-index:500!important;transform:none!important;border-left:none!important;border-radius:0;}
 .kartei-fs-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:499;cursor:pointer;}
 .kartei-fs-backdrop.show{display:block;}
-.kartei-fullscreen-btn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.85);width:30px;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px;padding:0;flex-shrink:0;}
-.kartei-fullscreen-btn:hover{background:rgba(255,255,255,0.22);color:white;border-color:rgba(255,255,255,0.35);}
-.kartei-fullscreen-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.kartei-header{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#1e40af,#1d4ed8);flex-shrink:0;}
+.kartei-fullscreen-btn{background:rgba(30,64,175,0.1);border:1px solid #bfdbfe;color:#1e3a8a;width:24px;height:24px;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;margin-right:4px;padding:0;flex-shrink:0;}
+.kartei-fullscreen-btn:hover{background:rgba(30,64,175,0.2);color:#1e3a8a;border-color:#93c5fd;}
+.kartei-fullscreen-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#eff6ff,#dbeafe);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
-.kartei-header-icon{width:34px;height:34px;background:rgba(255,255,255,0.18);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-.kartei-header-title{font-size:14px;font-weight:800;color:white;letter-spacing:-0.2px;}
-.kartei-header-sub{font-size:11px;color:rgba(255,255,255,0.65);margin-top:1px;}
-.kartei-close{background:rgba(255,255,255,0.12);border:none;color:rgba(255,255,255,0.75);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
-.kartei-close:hover{background:rgba(255,255,255,0.22);color:white;}
+.kartei-header-icon{width:28px;height:28px;background:rgba(30,64,175,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.kartei-header-title{font-size:13px;font-weight:800;color:#1e3a8a;letter-spacing:-0.2px;}
+.kartei-header-sub{font-size:10px;color:#3b82f6;margin-top:1px;}
+.kartei-close{background:rgba(30,64,175,0.1);border:none;color:#1e3a8a;width:24px;height:24px;border-radius:7px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.kartei-close:hover{background:#fecaca;color:#991b1b;}
 .kartei-patient-bar{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:#fafbfc;flex-shrink:0;}
 .kartei-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:white;flex-shrink:0;}
 .kartei-patient-name{font-size:13px;font-weight:800;color:var(--text-1);}
@@ -1295,7 +1295,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <div class="kartei-panel scrollbar" id="karteiPanel">
     <div class="kartei-header">
       <div class="kartei-header-left">
-        <div class="kartei-header-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="kartei-header-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
         <div>
           <div class="kartei-header-title">Digitale Kartei</div>
           <div class="kartei-header-sub">smartordi.eu</div>
