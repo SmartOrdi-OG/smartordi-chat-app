@@ -133,12 +133,38 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 </div>
 
 <script>
-// Demo patients — firstLogin:true = muss Passwort ändern
-const PATIENTS = {
-  'thomas.mueller': { pw:'patient2026', name:'Thomas', firstLogin:true },
-};
+// Patient-Konten — lokal gespeichert (localStorage). firstLogin:true = muss Passwort ändern
+const PATIENT_ACCOUNTS_KEY='smartordi_patient_accounts';
 
+function loadPatients(){
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem(PATIENT_ACCOUNTS_KEY))||{}; }catch(e){ accounts={}; }
+  if(!accounts['thomas.mueller']){
+    accounts['thomas.mueller']={ pw:'patient2026', name:'Thomas', firstLogin:true };
+  }
+  return accounts;
+}
+function savePatients(){
+  localStorage.setItem(PATIENT_ACCOUNTS_KEY, JSON.stringify(PATIENTS));
+}
+
+const PATIENTS = loadPatients();
 let currentUser = null;
+
+// QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
+function tryQrLogin(){
+  const params=new URLSearchParams(window.location.search);
+  const u=params.get('u'), t=params.get('t'), n=params.get('n');
+  if(!u||!t) return;
+  history.replaceState(null,'',window.location.pathname);
+  if(!PATIENTS[u]){
+    PATIENTS[u]={ pw:t, name:n||u, firstLogin:true };
+    savePatients();
+  }
+  document.getElementById('username').value=u;
+  document.getElementById('password').value=t;
+  doLogin();
+}
 
 const EYE_OPEN='<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF='<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -233,12 +259,16 @@ function saveNewPw(){
   // Save new password (in real app: API call)
   PATIENTS[currentUser.username].pw = newPw;
   PATIENTS[currentUser.username].firstLogin = false;
+  savePatients();
 
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name}));
   window.location.href='patient.html';
 }
 
-window.addEventListener('load',()=>document.getElementById('username').focus());
+window.addEventListener('load',()=>{
+  document.getElementById('username').focus();
+  tryQrLogin();
+});
 </script>
 </body>
 </html>
