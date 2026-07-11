@@ -541,6 +541,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartordi.chat.eu — Vorschau</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="vendor/anamnese-shared.js"></script>
 <style>
 /* ══ DESIGN SYSTEM ══ */
 :root {
@@ -1359,59 +1360,9 @@ body.windows-mode .kartei-header{display:none;}
           <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;" id="anamnese-fach-label">Medizinische Vorgeschichte</div>
         </div>
 
-        <!-- Common Section -->
-        <div style="background:white;border-left:4px solid #0891b2;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:10px;">Allergien & Unverträglichkeiten</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#dc2626;">Penizillin</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#dc2626;">Aspirin/NSAR</label>
-            <label style="display:flex;align-items:center;gap=6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#dc2626;">Latex</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#dc2626;">Kontrastmittel</label>
-          </div>
-          <input class="k-form-input" placeholder="Weitere Allergien..." style="margin-top:4px;">
-        </div>
-
-        <div style="background:white;border-left:4px solid #0891b2;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:8px;">Aktuelle Medikamente</div>
-          <textarea class="k-form-input" rows="2" placeholder="z.B. Metformin 500mg 2x täglich..." style="resize:none;"></textarea>
-        </div>
-
-        <div style="background:white;border-left:4px solid #0891b2;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:8px;">Frühere Operationen</div>
-          <textarea class="k-form-input" rows="2" placeholder="z.B. Appendektomie 2015..." style="resize:none;"></textarea>
-        </div>
-
-        <div style="background:white;border-left:4px solid #0891b2;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:8px;">‍‍ Familienanamnese</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#0891b2;">Diabetes</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#0891b2;">Herzerkrankung</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#0891b2;">Krebserkrankung</label>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#0891b2;">Schlaganfall</label>
-          </div>
-        </div>
-
-        <div style="background:white;border-left:4px solid #0891b2;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:8px;">Sozialanamnese</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div>
-              <div class="k-form-label">Raucherstatus</div>
-              <select class="k-form-input"><option>Nichtraucher</option><option>Exraucher</option><option>Raucher</option></select>
-            </div>
-            <div>
-              <div class="k-form-label">Alkohol</div>
-              <select class="k-form-input"><option>Kein</option><option>Gelegentlich</option><option>Regelmäßig</option></select>
-            </div>
-            <div>
-              <div class="k-form-label">Beruf</div>
-              <input class="k-form-input" placeholder="z.B. Lehrer">
-            </div>
-            <div>
-              <div class="k-form-label">Sport</div>
-              <select class="k-form-input"><option>Kein</option><option>Gelegentlich</option><option>Regelmäßig</option></select>
-            </div>
-          </div>
-        </div>
+        <!-- Common Section (rendered from vendor/anamnese-shared.js so this
+             matches the patient's fill-in form field-for-field) -->
+        <div id="anamnese-common-section"></div>
 
         <!-- Specialty-specific section -->
         <div id="anamnese-specialty-section"></div>
@@ -2547,6 +2498,15 @@ function switchView(view,btn){
   }
 })();
 
+// Render the shared Anamnese common-section markup once -- kept in
+// vendor/anamnese-shared.js so it's byte-identical to the patient's
+// mandatory fill-in form (needed for collectAnamneseData/applyAnamneseData
+// to round-trip values correctly by field position/label).
+(function initAnamneseCommonSection(){
+  const el=document.getElementById('anamnese-common-section');
+  if(el && typeof ANAMNESE_COMMON_HTML!=='undefined') el.innerHTML=ANAMNESE_COMMON_HTML;
+})();
+
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
 const WIN_TITLES={clinic:'Praxis',kartei:'Kartei',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
 const WIN_MIN_TOP=126;
@@ -2996,11 +2956,20 @@ function updateKarteiChromeVisibility(){
   });
 }
 
+function findPatientRecord(name){
+  const demo=DEMO_PATIENTS.find(p=>p.name===name);
+  if(demo) return demo;
+  const found=findPatientAccountByFullName(name);
+  if(!found) return null;
+  const a=found.accounts[found.username];
+  return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:'—',diagnosen:'—',allergie:null,dsgvoDatum:'—'};
+}
+
 function populateKarteiStamm(name){
-  const p=DEMO_PATIENTS.find(p=>p.name===name);
+  const p=findPatientRecord(name);
   if(!p) return;
-  const age=new Date().getFullYear()-new Date(p.dob).getFullYear();
-  const dobFmt=new Date(p.dob).toLocaleDateString('de-AT');
+  const age=p.dob?new Date().getFullYear()-new Date(p.dob).getFullYear():'—';
+  const dobFmt=p.dob?new Date(p.dob).toLocaleDateString('de-AT'):'—';
   document.getElementById('k-stamm-name').textContent=p.name;
   document.getElementById('k-stamm-dob').textContent=dobFmt+' ('+age+' J.)';
   document.getElementById('k-stamm-tel').textContent=p.tel;
@@ -3030,6 +2999,10 @@ function switchKarteiTab(tab,btn){
   if(tab==='stamm'){
     const currentName=document.getElementById('kartei-name')?.textContent;
     if(currentName) populateKarteiStamm(currentName);
+  }
+  if(tab==='anamnese'){
+    const currentName=document.getElementById('kartei-name')?.textContent;
+    if(currentName && currentName!=='Kein Patient ausgewählt') loadAnamneseForPatient(currentName);
   }
   if(tab==='suche'){
     // Searching for a patient shouldn't keep showing whoever you were
@@ -3351,161 +3324,45 @@ function clearAdvSearch(){
   document.querySelectorAll('.patient-item').forEach(i=>i.style.display='');
 }
 
+// Patient accounts created via secretary.html's QR flow are stored keyed by
+// username, but Kartei only knows the patient's display name -- look them up
+// by the fullName recorded at account-creation time.
+function findPatientAccountByFullName(name){
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const username=Object.keys(accounts).find(u=>accounts[u].fullName===name);
+  return username?{username,accounts}:null;
+}
+
 function saveAnamnese(){
+  const root=document.getElementById('ktab-anamnese');
+  const data=collectAnamneseData(root);
+  const currentName=document.getElementById('kartei-name')?.textContent;
+  if(currentName && currentName!=='Kein Patient ausgewählt'){
+    const found=findPatientAccountByFullName(currentName);
+    if(found){
+      found.accounts[found.username].anamnese=data;
+      localStorage.setItem('smartordi_patient_accounts', JSON.stringify(found.accounts));
+    }
+  }
   showToast('✓ Anamnese gespeichert!');
 }
 
-const SPECIALTY_ANAMNESE = {
-  'Kinderheilkunde': {
-    label: 'Pädiatrie — Kinderheilkunde',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:10px;">Geburts- & Entwicklungsanamnese</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-          <div><div class="k-form-label">Geburtsart</div>
-          <select class="k-form-input"><option>Spontangeburt</option><option>Kaiserschnitt</option><option>Vakuum/Zange</option></select></div>
-          <div><div class="k-form-label">Geburtsgewicht</div><input class="k-form-input" placeholder="z.B. 3.200g"></div>
-          <div><div class="k-form-label">Schwangerschaftswoche</div><input class="k-form-input" placeholder="z.B. 39. SSW"></div>
-          <div><div class="k-form-label">APGAR Score</div><input class="k-form-input" placeholder="z.B. 9/10/10"></div>
-        </div>
-        <div class="k-form-label">Ernährung</div>
-        <select class="k-form-input" style="margin-bottom:10px;"><option>Gestillt</option><option>Flaschenmilch</option><option>Beides</option><option>Beikost</option></select>
-        <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;">ENTWICKLUNG</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <div><div class="k-form-label">Erste Wörter</div><input class="k-form-input" placeholder="z.B. 12 Monate"></div>
-          <div><div class="k-form-label">Laufen</div><input class="k-form-input" placeholder="z.B. 14 Monate"></div>
-        </div>
-      </div>
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#16a34a;margin-bottom:8px;">Schule & Entwicklung</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#16a34a;">Lernprobleme</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#16a34a;">ADHS Verdacht</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#16a34a;">Sprachtherapie</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" style="accent-color:#16a34a;">Ergotherapie</label>
-        </div>
-      </div>`
-  },
-  'Gynäkologie': {
-    label: 'Gynäkologie & Geburtshilfe',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#ec4899;margin-bottom:10px;">Gynäkologische Anamnese</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-          <div><div class="k-form-label">Menarche (erstes Alter)</div><input class="k-form-input" placeholder="z.B. 13 Jahre"></div>
-          <div><div class="k-form-label">Zykluslänge</div><input class="k-form-input" placeholder="z.B. 28 Tage"></div>
-          <div><div class="k-form-label">Letzte Periode</div><input class="k-form-input" type="date"></div>
-          <div><div class="k-form-label">Menopause</div><select class="k-form-input"><option>Nein</option><option>Ja</option><option>Perimenopause</option></select></div>
-        </div>
-        <div class="k-form-label">Beschwerden</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#ec4899;">Dysmenorrhö</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#ec4899;">Menorrhagie</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#ec4899;">Zwischenblutungen</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#ec4899;">Ausfluss</label>
-        </div>
-      </div>
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#ec4899;margin-bottom:8px;">Geburtshilfe</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div><div class="k-form-label">Anzahl Schwangerschaften (G)</div><input class="k-form-input" type="number" min="0" placeholder="0"></div>
-          <div><div class="k-form-label">Anzahl Geburten (P)</div><input class="k-form-input" type="number" min="0" placeholder="0"></div>
-          <div><div class="k-form-label">Fehlgeburten</div><input class="k-form-input" type="number" min="0" placeholder="0"></div>
-          <div><div class="k-form-label">Schwanger aktuell</div><select class="k-form-input"><option>Nein</option><option>Ja</option><option>Unbekannt</option></select></div>
-        </div>
-      </div>`
-  },
-  'Kardiologie': {
-    label: 'Kardiologie — Herzanamnese',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">❤ Kardiale Beschwerden</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Brustschmerz</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Dyspnoe (Ruhe)</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Dyspnoe (Belastung)</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Palpitationen</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Synkope</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#dc2626;">Ödeme (Beine)</label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div><div class="k-form-label">Blutdruck (systolisch)</div><input class="k-form-input" placeholder="z.B. 130 mmHg"></div>
-          <div><div class="k-form-label">Herzfrequenz</div><input class="k-form-input" placeholder="z.B. 72/min"></div>
-          <div><div class="k-form-label">Bekannte Herzerkrankung</div><input class="k-form-input" placeholder="z.B. KHK, VHF..."></div>
-          <div><div class="k-form-label">Herzschrittmacher</div><select class="k-form-input"><option>Nein</option><option>Ja</option></select></div>
-        </div>
-      </div>`
-  },
-  'Neurologie': {
-    label: 'Neurologie — Nervenanamnese',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#7c3aed;margin-bottom:10px;">Neurologische Beschwerden</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Kopfschmerzen</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Migräne</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Schwindel</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Taubheitsgefühl</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Krampfanfälle</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Gedächtnisprobleme</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Tremor</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#7c3aed;">Sehstörungen</label>
-        </div>
-        <div class="k-form-label">Bekannte neurologische Erkrankung</div>
-        <input class="k-form-input" placeholder="z.B. Epilepsie, MS, Parkinson...">
-      </div>`
-  },
-  'Innere Medizin': {
-    label: 'Innere Medizin — Allgemeinanamnese',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:10px;">Gastrointestinal & Allgemein</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Appetitlosigkeit</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Gewichtsverlust</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Übelkeit/Erbrechen</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Dysphagie</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Sodbrennen</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Diarrhö</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Obstipation</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#0891b2;">Blut im Stuhl</label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div><div class="k-form-label">BMI / Gewicht</div><input class="k-form-input" placeholder="z.B. 75kg / BMI 24"></div>
-          <div><div class="k-form-label">Nüchternblutzucker</div><input class="k-form-input" placeholder="z.B. 95 mg/dl"></div>
-        </div>
-      </div>`
-  },
-  'Orthopädie': {
-    label: 'Orthopädie & Traumatologie',
-    html: `
-      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:700;color:#f59e0b;margin-bottom:10px;">Orthopädische Anamnese</div>
-        <div class="k-form-label">Betroffene Region</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Wirbelsäule</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Schulter</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Knie</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Hüfte</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Fuß/Sprunggelenk</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Hand/Ellenbogen</label>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <div><div class="k-form-label">Schmerzcharakter</div>
-          <select class="k-form-input"><option>Dauerschmerz</option><option>Belastungsschmerz</option><option>Nachtschmerz</option><option>Bewegungsschmerz</option></select></div>
-          <div><div class="k-form-label">Seit wann?</div><input class="k-form-input" placeholder="z.B. 3 Monate"></div>
-        </div>
-        <div style="margin-top:10px;">
-          <div class="k-form-label">Trauma / Unfall</div>
-          <textarea class="k-form-input" rows="2" placeholder="z.B. Sturz 2023, Arbeitsunfall..." style="resize:none;"></textarea>
-        </div>
-        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Physiotherapie laufend</label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" style="accent-color:#f59e0b;">Hilfsmittel (Schiene etc.)</label>
-        </div>
-      </div>`
-  }
-};
+// Loads whichever patient is currently shown in Kartei: renders the
+// specialty section for the doctor they were registered under (falling back
+// to this device's own Fachrichtung setting), resets the form, then fills in
+// their submitted answers if any exist.
+function loadAnamneseForPatient(name){
+  const found=findPatientAccountByFullName(name);
+  const account=found?found.accounts[found.username]:null;
+  const fach=account?.fach||localStorage.getItem('fachrichtung')||'Allgemeinmedizin';
+  updateAnamneseByFach(fach);
+  const root=document.getElementById('ktab-anamnese');
+  root.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(el.type==='checkbox') el.checked=false; else el.value='';
+  });
+  if(account && account.anamnese) applyAnamneseData(root,account.anamnese);
+}
 
 function updateAnamneseByFach(fach){
   const label=document.getElementById('anamnese-fach-label');
@@ -3620,6 +3477,18 @@ const DEMO_PATIENTS=[
   {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890',adresse:'Ringstraße 3, Graz',sprache:'Deutsch',blutgruppe:'AB+',diagnosen:'Arthrose, Osteoporose',allergie:'Aspirin/NSAR-Allergie beachten!',dsgvoDatum:'05.01.2026'},
 ];
 
+// Patients onboarded via QR (secretary.html) live only in this browser's
+// localStorage (no real backend yet) -- surfaced here so a doctor can find
+// and open Kartei for a patient who registered on their own device too.
+function loadQrPatientAccounts(){
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  return Object.keys(accounts)
+    .map(u=>accounts[u])
+    .filter(a=>a.fullName && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
+    .map(a=>({name:a.fullName,svnr:a.svnr||'',dob:a.dob||'',versicherung:a.versicherung||'',tel:a.tel||'',adresse:a.adresse||''}));
+}
+
 function searchPatient(){
   const name=(document.getElementById('such-name').value||'').toLowerCase();
   const svnr=(document.getElementById('such-svnr').value||'').toLowerCase();
@@ -3628,9 +3497,10 @@ function searchPatient(){
     document.getElementById('such-ergebnisse').innerHTML='<div style="text-align:center;padding:30px;color:#94a3b8;"><div style="font-size:32px;margin-bottom:8px;"></div><div style="font-size:13px;">Suchbegriff eingeben...</div></div>';
     return;
   }
-  const results=DEMO_PATIENTS.filter(p=>{
+  const allPatients=DEMO_PATIENTS.concat(loadQrPatientAccounts());
+  const results=allPatients.filter(p=>{
     const nameMatch=!name||p.name.toLowerCase().includes(name);
-    const svnrMatch=!svnr||p.svnr.toLowerCase().includes(svnr);
+    const svnrMatch=!svnr||(p.svnr||'').toLowerCase().includes(svnr);
     const dobMatch=!dob||p.dob===dob;
     return nameMatch&&svnrMatch&&dobMatch;
   });
@@ -3644,12 +3514,12 @@ function searchPatient(){
         <div style="width:42px;height:42px;background:#eff6ff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#1e40af;">${p.name[0]}</div>
         <div>
           <div style="font-size:14px;font-weight:700;color:#0f172a;">${p.name}</div>
-          <div style="font-size:11px;color:#64748b;">${p.versicherung} · SV: ${p.svnr}</div>
+          <div style="font-size:11px;color:#64748b;">${p.versicherung||'—'} · SV: ${p.svnr||'—'}</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:#475569;margin-bottom:12px;">
-        <div>Geb: ${new Date(p.dob).toLocaleDateString('de-AT')}</div>
-        <div> ${p.tel}</div>
+        <div>Geb: ${p.dob?new Date(p.dob).toLocaleDateString('de-AT'):'—'}</div>
+        <div> ${p.tel||'—'}</div>
       </div>
       <div style="display:flex;gap:8px;">
         <button onclick="openKarteiForPatient('${p.name}','${p.svnr}','${p.versicherung}','${p.dob}')" style="flex:1;padding:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:12px;font-weight:700;cursor:pointer;">Kartei öffnen</button>
@@ -3665,11 +3535,11 @@ function openKarteiForPatient(name,svnr,versicherung,dob){
   const knm=document.getElementById('kartei-name');
   const kmt=document.getElementById('kartei-meta');
   const colors={'Thomas Müller':'#0d9488','Maria Schreiber':'#8b5cf6','Hans Bauer':'#f59e0b','Anna Weber':'#ec4899'};
-  const age=new Date().getFullYear()-new Date(dob).getFullYear();
+  const age=dob?new Date().getFullYear()-new Date(dob).getFullYear():'—';
   karteiPatientLoaded=true;
   if(kav){kav.textContent=name[0];kav.style.background=colors[name]||'#1e40af';}
   if(knm) knm.textContent=name;
-  if(kmt) kmt.textContent=versicherung+' · SV '+svnr+' · '+age+' J.';
+  if(kmt) kmt.textContent=(versicherung||'—')+' · SV '+(svnr||'—')+' · '+age+' J.';
   showToast('Kartei geöffnet: '+name);
   switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
 }
