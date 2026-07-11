@@ -2299,7 +2299,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
           <div>
             <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:8px;">Vorschau</label>
             <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:white;min-height:120px;display:flex;align-items:center;justify-content:center;position:relative;">
-              <img id="stempelPreview" src="" style="max-width:100%;max-height:100px;display:none;object-fit:contain;">
+              <img id="stempelPreview" src="" alt="Stempel-Vorschau" style="max-width:100%;max-height:100px;display:none;object-fit:contain;">
               <div id="stempelEmpty" style="text-align:center;color:#94a3b8;">
                 <div style="font-size:24px;"></div>
                 <div style="font-size:12px;margin-top:4px;">Kein Stempel hochgeladen</div>
@@ -2339,7 +2339,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
           <div>
             <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:8px;">Gespeicherte Unterschrift</label>
             <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:white;min-height:120px;display:flex;align-items:center;justify-content:center;position:relative;">
-              <img id="sigPreview" src="" style="max-width:100%;max-height:100px;display:none;object-fit:contain;">
+              <img id="sigPreview" src="" alt="Unterschrift-Vorschau" style="max-width:100%;max-height:100px;display:none;object-fit:contain;">
               <div id="sigEmpty" style="text-align:center;color:#94a3b8;">
                 <div style="font-size:24px;">✍</div>
                 <div style="font-size:12px;margin-top:4px;">Keine Unterschrift gespeichert</div>
@@ -2367,11 +2367,11 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
                 <div style="font-size:8px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Stempel und Unterschrift</div>
                 <div style="display:flex;align-items:center;gap:10px;">
                   <div style="border:1px dashed #cbd5e1;border-radius:6px;width:60px;height:50px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fafbfc;">
-                    <img id="previewStempel" style="max-width:54px;max-height:44px;object-fit:contain;display:none;">
+                    <img id="previewStempel" alt="Stempel" style="max-width:54px;max-height:44px;object-fit:contain;display:none;">
                     <span id="previewStempelEmpty" style="font-size:20px;"></span>
                   </div>
                   <div style="border:1px dashed #cbd5e1;border-radius:6px;width:80px;height:50px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fafbfc;">
-                    <img id="previewSig" style="max-width:74px;max-height:44px;object-fit:contain;display:none;">
+                    <img id="previewSig" alt="Unterschrift" style="max-width:74px;max-height:44px;object-fit:contain;display:none;">
                     <span id="previewSigEmpty" style="font-size:10px;color:#94a3b8;">Unterschrift</span>
                   </div>
                 </div>
@@ -3149,9 +3149,9 @@ function buildUwA4(){
           <div style="font-size:8.5px;color:#777;margin-bottom:2px;">Tag &nbsp;&nbsp;&nbsp; Monat &nbsp;&nbsp;&nbsp; Jahr</div>
           <div style="font-size:11px;font-weight:700;margin-bottom:8px;">${d.datum}</div>
           <div style="border:1px dashed #aaa;height:50px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:3px;overflow:hidden;padding:4px;">
-            ${stempelDataUrl ? `<img src="${stempelDataUrl}" style="max-height:40px;max-width:44px;object-fit:contain;">` : '<span style="font-size:7px;color:#aaa;">Stempel</span>'}
+            ${stempelDataUrl ? `<img src="${stempelDataUrl}" alt="Stempel" style="max-height:40px;max-width:44px;object-fit:contain;">` : '<span style="font-size:7px;color:#aaa;">Stempel</span>'}
             <div style="width:1px;height:30px;background:#ddd;"></div>
-            ${sigDataUrl ? `<img src="${sigDataUrl}" style="max-height:40px;max-width:64px;object-fit:contain;">` : '<span style="font-size:7px;color:#aaa;">Unterschrift</span>'}
+            ${sigDataUrl ? `<img src="${sigDataUrl}" alt="Unterschrift" style="max-height:40px;max-width:64px;object-fit:contain;">` : '<span style="font-size:7px;color:#aaa;">Unterschrift</span>'}
           </div>
         </td>
       </tr>
