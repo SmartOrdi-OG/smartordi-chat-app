@@ -600,12 +600,15 @@ body.windows-mode .app-wrapper.active{position:relative;}
 body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
+body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700!important;}
+body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
 .app-window-titlebar{display:none;flex-shrink:0;height:40px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;align-items:center;justify-content:space-between;padding:0 8px 0 14px;cursor:move;user-select:none;font-size:13px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;}
 body.windows-mode .view .app-window-titlebar{display:flex;}
 .app-window-controls{display:flex;gap:6px;}
 .app-window-btn{width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,0.18);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1;font-family:inherit;}
 .app-window-btn:hover{background:rgba(255,255,255,0.32);}
 .app-window-btn.win-close:hover{background:#dc2626;}
+.app-window-btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .app-window-body{flex:1;min-height:0;display:flex;overflow:auto;}
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
@@ -2512,6 +2515,9 @@ let winZ=500;
 
 function isDesktopWidth(){ return window.innerWidth>=1024; }
 
+const WIN_ICON_SHRINK='<path d="M8 3v3a2 2 0 0 1-2 2H3m18-5v3a2 2 0 0 0 2 2h3M3 16h3a2 2 0 0 1 2 2v3m13-5h-3a2 2 0 0 0-2 2v3"/>';
+const WIN_ICON_EXPAND='<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
+
 function ensureWindowChrome(){
   document.querySelectorAll('.view').forEach(function(v){
     if(v.querySelector(':scope > .app-window-titlebar')) return;
@@ -2523,6 +2529,7 @@ function ensureWindowChrome(){
     bar.innerHTML='<span>'+title+badgeHtml+'</span>'+
       '<div class="app-window-controls">'+
       '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="Minimieren">–</button>'+
+      '<button class="app-window-btn win-fs" onclick="toggleWindowFullscreen(\''+id+'\')" title="Verkleinern"><svg viewBox="0 0 24 24">'+WIN_ICON_SHRINK+'</svg></button>'+
       '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="Schließen">✕</button>'+
       '</div>';
     const body=document.createElement('div');
@@ -2534,11 +2541,29 @@ function ensureWindowChrome(){
   });
 }
 
+function toggleWindowFullscreen(id){
+  const el=document.getElementById('view-'+id);
+  if(!el) return;
+  const btn=el.querySelector('.win-fs');
+  const isFs=el.classList.toggle('win-fullscreen');
+  if(btn){
+    btn.innerHTML='<svg viewBox="0 0 24 24">'+(isFs?WIN_ICON_SHRINK:WIN_ICON_EXPAND)+'</svg>';
+    btn.title=isFs?'Verkleinern':'Vollbild';
+  }
+  if(!isFs && !el.dataset.winPositioned){
+    const pos=WIN_DEFAULT_POS[id]||{left:40,top:40};
+    el.style.left=pos.left+'px'; el.style.top=pos.top+'px';
+    el.dataset.winPositioned='1';
+  }
+  focusWindow(id);
+}
+
 function makeWindowDraggable(win,handle){
   let dragging=false,sx=0,sy=0,ol=0,ot=0;
   handle.addEventListener('mousedown',function(e){
     if(e.target.closest('.app-window-btn'))return;
     if(!isDesktopWidth())return;
+    if(win.classList.contains('win-fullscreen'))return;
     dragging=true;
     focusWindow(win.id.replace('view-',''));
     sx=e.clientX; sy=e.clientY;
@@ -2580,6 +2605,7 @@ function openWindow(view,btn){
     el.dataset.winPositioned='1';
   }
   el.classList.remove('win-minimized');
+  if(!el.classList.contains('win-open')) el.classList.add('win-fullscreen');
   el.classList.add('win-open');
   removeTaskbarChip(view);
   focusWindow(view);
@@ -2843,6 +2869,16 @@ function toggleKartei(){
 
 function openKarteiFullscreen(navBtn){
   karteiOpen=true;
+  // Kartei's panel lives inside #view-clinic's DOM; if that view is currently
+  // hidden (minimized, or another tab is active), Kartei would render inside
+  // a display:none ancestor and stay invisible despite its own fixed/fullscreen
+  // styling. Make sure it's not hidden -- it's fully occluded by Kartei anyway.
+  const clinicEl=document.getElementById('view-clinic');
+  if(clinicEl){
+    clinicEl.classList.remove('win-minimized');
+    if(document.body.classList.contains('windows-mode')) clinicEl.classList.add('win-open');
+    else clinicEl.classList.add('active');
+  }
   const panel=document.getElementById('karteiPanel');
   panel.classList.add('open','fullscreen');
   document.getElementById('karteiFsBackdrop').classList.add('show');
