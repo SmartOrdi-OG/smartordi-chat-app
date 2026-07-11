@@ -515,7 +515,7 @@
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
       <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
     </button>
-    <button class="nav-tab" id="karteiNavTab" onclick="openKarteiFullscreen(this)">
+    <button class="nav-tab" id="karteiNavTab" onclick="openWindow('kartei',this)">
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
       <span class="nav-tab-label">Kartei</span>
     </button>
@@ -764,10 +764,9 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .clinic-node-badge{position:absolute;top:-6px;right:-6px;background:#1e40af;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
 
 /* ══ KARTEI PANEL ══ */
-.kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
-@media(min-width:769px){
-  .kartei-panel.open{position:fixed;inset:0;width:100%;z-index:500;border-left:none;border-radius:0;}
-}
+.kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
+body.windows-mode .kartei-header{display:none;}
+#view-kartei > .app-window-body{flex-direction:column;overflow:hidden;}
 .kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#eff6ff,#dbeafe);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
 .kartei-header-icon{width:28px;height:28px;background:rgba(30,64,175,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
@@ -904,7 +903,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   .messages{padding:14px 12px;gap:10px;}
   .msg-bubble{font-size:13px;padding:9px 12px;}
   .chat-input-area{padding:10px 12px;}
-  .kartei-panel{position:fixed;inset:48px 0 62px 0;width:100%!important;z-index:120;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);}
+  .kartei-panel{position:fixed;inset:48px 0 62px 0;width:100%!important;z-index:120;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;}
   .kartei-panel.open{transform:translateX(0);width:100%!important;}
   .kartei-close{width:36px!important;height:36px!important;font-size:18px!important;}
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;}
@@ -1206,7 +1205,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         </div>
       </div>
       <div class="chat-actions">
-        <button class="action-btn" id="karteiBtn" onclick="openKarteiFullscreen()" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
+        <button class="action-btn" id="karteiBtn" onclick="openWindow('kartei')" style="background:#f0fdfa;border-color:#1e40af;color:#1e40af;font-weight:700;">Kartei öffnen</button>
         <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
         <button class="action-btn call" onclick="showCall()">Anrufen</button>
       </div>
@@ -2476,10 +2475,22 @@ function switchView(view,btn){
   document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
 }
 
+// Kartei used to live nested inside #view-clinic; promote it to a top-level
+// view so it can be dragged/minimized/fullscreen-toggled like every other tab.
+(function promoteKarteiToWindow(){
+  const kartei=document.getElementById('karteiPanel');
+  const clinicView=document.getElementById('view-clinic');
+  if(kartei && clinicView && clinicView.parentElement){
+    kartei.id='view-kartei';
+    kartei.classList.add('view');
+    clinicView.parentElement.insertBefore(kartei, clinicView.nextSibling);
+  }
+})();
+
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
-const WIN_TITLES={clinic:'Praxis',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
+const WIN_TITLES={clinic:'Praxis',kartei:'Kartei',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
 const WIN_MIN_TOP=126;
-const WIN_DEFAULT_POS={clinic:{left:20,top:WIN_MIN_TOP+6},vertretung:{left:100,top:WIN_MIN_TOP+86},dashboard:{left:140,top:WIN_MIN_TOP+126},settings:{left:180,top:WIN_MIN_TOP+166}};
+const WIN_DEFAULT_POS={clinic:{left:20,top:WIN_MIN_TOP+6},kartei:{left:60,top:WIN_MIN_TOP+46},vertretung:{left:100,top:WIN_MIN_TOP+86},dashboard:{left:140,top:WIN_MIN_TOP+126},settings:{left:180,top:WIN_MIN_TOP+166}};
 let winZ=500;
 
 function isDesktopWidth(){ return window.innerWidth>=1024; }
@@ -2815,45 +2826,20 @@ function renderVisitList(list){
   }).join('');
 }
 
+// Mobile-only: desktop opens/closes Kartei through the generic window
+// system (openWindow('kartei')/closeWindow('kartei')) instead.
 function toggleKartei(){
   karteiOpen=!karteiOpen;
-  const panel=document.getElementById('karteiPanel');
-  const btn=document.getElementById('karteiBtn');
+  const panel=document.getElementById('view-kartei');
   if(karteiOpen){
     panel.classList.add('open');
-    if(btn){btn.textContent='Kartei schließen';btn.style.background='#1e40af';btn.style.color='white';}
     switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
     setKarteiDate();
     renderYearPills();
     filterVisits();
   }else{
     panel.classList.remove('open');
-    document.getElementById('karteiNavTab').classList.remove('active');
-    document.querySelector('#appNavBar .nav-tab').classList.add('active');
-    if(btn){btn.textContent='Kartei öffnen';btn.style.background='#f0fdfa';btn.style.color='#1e40af';}
   }
-}
-
-function openKarteiFullscreen(navBtn){
-  karteiOpen=true;
-  // Kartei's panel lives inside #view-clinic's DOM; if that view is currently
-  // hidden (minimized, or another tab is active), Kartei would render inside
-  // a display:none ancestor and stay invisible despite its own fixed/fullscreen
-  // styling. Make sure it's not hidden -- it's fully occluded by Kartei anyway.
-  const clinicEl=document.getElementById('view-clinic');
-  if(clinicEl){
-    clinicEl.classList.remove('win-minimized');
-    if(document.body.classList.contains('windows-mode')) clinicEl.classList.add('win-open');
-    else clinicEl.classList.add('active');
-  }
-  const panel=document.getElementById('karteiPanel');
-  panel.classList.add('open');
-  const chatBtn=document.getElementById('karteiBtn');
-  if(chatBtn){chatBtn.textContent='Kartei schließen';chatBtn.style.background='#1e40af';chatBtn.style.color='white';}
-  document.querySelectorAll('#appNavBar .nav-tab').forEach(t=>t.classList.remove('active'));
-  if(navBtn)navBtn.classList.add('active');
-  switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
-  setKarteiDate();renderYearPills();filterVisits();
 }
 
 function setKarteiDate(){
@@ -3884,9 +3870,15 @@ function showToast(msg,type='success'){
 }
 function showToastSettings(msg){showToast(msg,'success');}
 
-// Init canvas when settings view opens
+// Init canvas when settings view opens; refresh Kartei content when it opens
 document.addEventListener('smartordi-view-change', function(e){
   if(e.detail === 'settings') setTimeout(initSigCanvas, 100);
+  if(e.detail === 'kartei'){
+    switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
+    setKarteiDate();
+    renderYearPills();
+    filterVisits();
+  }
 });
 
 
