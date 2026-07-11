@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login</title>
+<script src="vendor/anamnese-shared.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
@@ -52,12 +53,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 .pw-strength-fill{height:100%;border-radius:2px;transition:all 0.3s;width:0%;}
 .pw-strength-label{font-size:10px;color:var(--muted);margin-top:4px;}
 
+/* Anamnese screen */
+.card.wide{max-width:520px;}
+.anamnese-scroll{max-height:60vh;overflow-y:auto;padding-right:4px;margin-bottom:14px;}
+.k-form-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;display:block;}
+.k-form-input{width:100%;padding:9px 12px;border:1.5px solid #C7D7F5;border-radius:9px;font-family:inherit;font-size:12px;color:var(--slate);outline:none;transition:all 0.15s;background:var(--blue-light);}
+.k-form-input:focus{border-color:#1e40af;background:white;box-shadow:0 0 0 3px rgba(30,64,175,0.12);}
+.anamnese-specialty-title{font-size:12px;font-weight:700;color:var(--teal-dark);margin:4px 0 10px;text-transform:uppercase;letter-spacing:0.5px;}
+
 @media(prefers-color-scheme:dark){
   body{background:#0f172a;}
   .card{background:#1e293b;border-radius:16px;padding:24px;}
-  .change-pw-title,.k-label{color:#e2e8f0;}
+  .change-pw-title,.k-label,.k-form-label{color:#e2e8f0;}
   .change-pw-sub,.pw-strength-label{color:#94a3b8;}
-  .form-input{background:#0f172a;border-color:#334155;color:#e2e8f0;}
+  .form-input,.k-form-input{background:#0f172a;border-color:#334155;color:#e2e8f0;}
   .notice{background:#1e293b;border-color:#334155;color:#93c5fd;}
 }
 </style>
@@ -125,6 +134,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     <button class="btn-main" onclick="saveNewPw()">✓ Passwort speichern & einloggen</button>
   </div>
 
+  <!-- SCREEN 3: Anamnese (verpflichtend vor erster Nutzung) -->
+  <div class="screen" id="screen-anamnese">
+    <div class="change-pw-header">
+      <div class="change-pw-icon">📋</div>
+      <div class="change-pw-title">Anamnese ausfüllen</div>
+      <div class="change-pw-sub">Bitte füllen Sie einmalig Ihre medizinische Vorgeschichte aus. Diese Angaben werden an Ihre Ordination übermittelt.</div>
+    </div>
+    <div class="anamnese-scroll" id="anamneseForm">
+      <div id="anamnese-common-section"></div>
+      <div id="anamnese-specialty-title" class="anamnese-specialty-title"></div>
+      <div id="anamnese-specialty-section"></div>
+    </div>
+    <button class="btn-main" onclick="submitAnamnese()">✓ Anamnese absenden</button>
+  </div>
+
 </div>
 
 <div class="footer-note">
@@ -154,11 +178,11 @@ let currentUser = null;
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
 function tryQrLogin(){
   const params=new URLSearchParams(window.location.search);
-  const u=params.get('u'), t=params.get('t'), n=params.get('n');
+  const u=params.get('u'), t=params.get('t'), n=params.get('n'), f=params.get('f');
   if(!u||!t) return;
   history.replaceState(null,'',window.location.pathname);
   if(!PATIENTS[u]){
-    PATIENTS[u]={ pw:t, name:n||u, firstLogin:true };
+    PATIENTS[u]={ pw:t, name:n||u, fach:f||'Allgemeinmedizin', firstLogin:true };
     savePatients();
   }
   document.getElementById('username').value=u;
@@ -259,6 +283,27 @@ function saveNewPw(){
   // Save new password (in real app: API call)
   PATIENTS[currentUser.username].pw = newPw;
   PATIENTS[currentUser.username].firstLogin = false;
+  savePatients();
+
+  document.getElementById('screen-changepw').classList.remove('active');
+  showAnamneseScreen();
+}
+
+function showAnamneseScreen(){
+  document.querySelector('.card').classList.add('wide');
+  const acc=PATIENTS[currentUser.username];
+  const fach=acc.fach||'Allgemeinmedizin';
+  document.getElementById('anamnese-common-section').innerHTML=ANAMNESE_COMMON_HTML;
+  const info=anamneseSpecialtyInfo(fach);
+  document.getElementById('anamnese-specialty-title').textContent=info.html?info.label:'';
+  document.getElementById('anamnese-specialty-section').innerHTML=info.html;
+  document.getElementById('screen-anamnese').classList.add('active');
+}
+
+function submitAnamnese(){
+  const root=document.getElementById('anamneseForm');
+  const data=collectAnamneseData(root);
+  PATIENTS[currentUser.username].anamnese = data;
   savePatients();
 
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name}));
