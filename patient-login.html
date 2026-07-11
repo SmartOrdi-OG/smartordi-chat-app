@@ -314,6 +314,17 @@ window.addEventListener('load',()=>{
   document.getElementById('username').focus();
   tryQrLogin();
 });
+// Coming back via the browser's back/forward cache (e.g. after logging out
+// and navigating back) restores the exact DOM as it was frozen mid-submit --
+// stuck spinner and all -- since no JS re-runs on that restore. Reset it.
+window.addEventListener('pageshow',(e)=>{
+  if(!e.persisted) return;
+  const btn=document.getElementById('loginBtn');
+  btn.classList.remove('loading');
+  document.getElementById('btnText').style.display='block';
+  document.getElementById('spinner').style.display='none';
+  document.getElementById('errorMsg').classList.remove('show');
+});
 </script>
 </body>
 </html>
