@@ -358,6 +358,12 @@ function doRegister(){
   // cosmetic.
   localStorage.setItem('smartordi_plan', selectedPlan);
   if(fach) localStorage.setItem('fachrichtung', fach);
+  // Marks the start of the 30-day free trial -- doctor.html reminds the
+  // doctor as it approaches expiry and locks the app if no plan/payment is
+  // confirmed in time (see openTrialPaymentModal there).
+  if(!localStorage.getItem('smartordi_trial_start')){
+    localStorage.setItem('smartordi_trial_start', Date.now().toString());
+  }
 
   // Simulate API call
   setTimeout(()=>{
