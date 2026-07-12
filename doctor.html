@@ -1376,7 +1376,7 @@ body.windows-mode .kartei-header{display:none;}
               <label class="k-form-label">Hauptbeschwerde</label>
               <textarea class="k-form-input" id="kBeschwerde" rows="2" placeholder="z.B. Husten seit 3 Tagen, Fieber 38.5°C..." style="resize:none;"></textarea>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
               <div class="k-form-group">
                 <label class="k-form-label">Temperatur</label>
                 <input type="text" class="k-form-input" id="kTemp" placeholder="z.B. 38.5°C">
@@ -1384,6 +1384,23 @@ body.windows-mode .kartei-header{display:none;}
               <div class="k-form-group">
                 <label class="k-form-label">Blutdruck</label>
                 <input type="text" class="k-form-input" id="kBD" placeholder="z.B. 120/80">
+              </div>
+              <div class="k-form-group">
+                <label class="k-form-label">Schmerzstärke</label>
+                <select class="k-form-input" id="kSchmerz">
+                  <option value="">— nicht erfasst —</option>
+                  <option value="0">0 – Kein Schmerz</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3 – Leicht</option>
+                  <option value="4">4</option>
+                  <option value="5">5 – Mittel</option>
+                  <option value="6">6</option>
+                  <option value="7">7 – Stark</option>
+                  <option value="8">8</option>
+                  <option value="9">9</option>
+                  <option value="10">10 – Stärkster vorstellbarer Schmerz</option>
+                </select>
               </div>
             </div>
           </div>
@@ -3450,9 +3467,16 @@ function renderVisitList(list){
   c.innerHTML=list.map(v=>{
     const fmt=new Date(v.date).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
     const ts=TYPE_STYLE[v.type]||TYPE_STYLE['Ordination'];
+    const vitals=[
+      v.beschwerde?`Beschwerde: ${v.beschwerde}`:'',
+      v.temp?`Temp. ${v.temp}`:'',
+      v.bd?`RR ${v.bd}`:'',
+      v.schmerz?`Schmerz ${v.schmerz}/10`:'',
+    ].filter(Boolean).join(' · ');
     return `<div class="k-visit">
       <div class="k-visit-header"><span class="k-visit-date">${fmt}</span><span class="k-visit-type" style="${ts}">${v.type}</span></div>
       <div class="k-visit-diag">${v.diag}</div>
+      ${vitals?`<div class="k-visit-notes" style="color:#0891b2;font-weight:600;">${vitals}</div>`:''}
       <div class="k-visit-notes">${v.notes}</div>
       ${v.therapy?`<span class="k-visit-therapy"> ${v.therapy}</span>`:''}
     </div>`;
@@ -4552,12 +4576,21 @@ function downloadUwPDF(){
 }
 
 function saveKarteiVisit(){
+  const patient=document.getElementById('kartei-name')?.textContent||'';
   const date=document.getElementById('kDate').value;
   const type=document.getElementById('kType').value;
+  const beschwerde=document.getElementById('kBeschwerde').value.trim();
+  const temp=document.getElementById('kTemp').value.trim();
+  const bd=document.getElementById('kBD').value.trim();
+  const schmerz=document.getElementById('kSchmerz').value;
   const diag=document.getElementById('kDiag').value.trim()||'Keine Diagnose';
   const notes=document.getElementById('kNotes').value.trim()||'–';
   const therapy=document.getElementById('kTherapy').value.trim();
-  VISITS.unshift({date,type,diag,notes,therapy});
+  VISITS.unshift({patient,date,type,beschwerde,temp,bd,schmerz,diag,notes,therapy});
+  document.getElementById('kBeschwerde').value='';
+  document.getElementById('kTemp').value='';
+  document.getElementById('kBD').value='';
+  document.getElementById('kSchmerz').value='';
   document.getElementById('kDiag').value='';
   document.getElementById('kNotes').value='';
   document.getElementById('kTherapy').value='';
