@@ -2065,25 +2065,9 @@ body.windows-mode .kartei-header{display:none;}
       <div class="dash-card">
         <div class="dash-card-header">
            Heutige Termine
-          <span style="font-size:11px;color:#1e40af;font-weight:600;cursor:pointer;" onclick="document.getElementById('allTermineModal').classList.add('show')">Alle sehen →</span>
+          <span style="font-size:11px;color:#1e40af;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
         </div>
-        <div class="dash-card-body" style="padding:8px 16px;">
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1e40af;flex-shrink:0;">T</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Thomas Müller</div><div style="font-size:11px;color:#64748b;">Kontrolle · ÖGK</div></div>
-            <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">09:00</div><span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;">✓</span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#7c3aed;flex-shrink:0;">M</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Maria Schreiber</div><div style="font-size:11px;color:#64748b;">Ordination · BVAEB</div></div>
-            <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">10:00</div><span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;"></span></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#f59e0b;flex-shrink:0;">H</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Hans Bauer</div><div style="font-size:11px;color:#64748b;">Erstgespräch · SVS</div></div>
-            <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">11:00</div><span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;"></span></div>
-          </div>
-        </div>
+        <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
       </div>
 
       <!-- Network Card -->
@@ -2442,62 +2426,17 @@ body.windows-mode .kartei-header{display:none;}
   </div>
 </div>
 
-<!-- ALLE TERMINE MODAL -->
+<!-- ALLE TERMINE MODAL (Tagesliste) -->
 <div class="modal-overlay" id="allTermineModal">
-  <div class="modal" style="max-width:520px;">
+  <div class="modal" style="max-width:560px;">
     <div class="modal-header">
-      <div class="modal-title">Alle Termine</div>
+      <div class="modal-title">Tagesliste</div>
       <button class="modal-close" onclick="document.getElementById('allTermineModal').classList.remove('show')">✕</button>
     </div>
     <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
-      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Heute — 3. Juni 2026</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#1e40af;flex-shrink:0;">T</div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Thomas Müller</div><div style="font-size:11px;color:#64748b;">Kontrolle · ÖGK · 09:00</div></div>
-        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openKarteiForPatientAndShow('Thomas Müller','1234 010185','ÖGK','1985-01-01')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-          <button onclick="openChatForPatient('Thomas Müller','Online','#0d9488','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#faf5ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#7c3aed;flex-shrink:0;">M</div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Maria Schreiber</div><div style="font-size:11px;color:#64748b;">Ordination · BVAEB · 10:00</div></div>
-        <span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openKarteiForPatientAndShow('Maria Schreiber','5678 150390','BVAEB','1990-03-15')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-          <button onclick="openChatForPatient('Maria Schreiber','Weitergeleitet','#8b5cf6','BVAEB')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#fff7ed;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#f59e0b;flex-shrink:0;">H</div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Hans Bauer</div><div style="font-size:11px;color:#64748b;">Erstgespräch · SVS · 11:00</div></div>
-        <span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openKarteiForPatientAndShow('Hans Bauer','9012 220775','SVS','1975-07-22')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-          <button onclick="openChatForPatient('Hans Bauer','Offline','#f59e0b','SVS')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
-        </div>
-      </div>
-
-      <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 4px;">Nächste Woche</div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#fdf2f8;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#ec4899;flex-shrink:0;">A</div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Anna Weber</div><div style="font-size:11px;color:#64748b;">Kontrolle · ÖGK · Mo 16.06. · 09:30</div></div>
-        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openKarteiForPatientAndShow('Anna Weber','3456 080268','ÖGK','1968-02-08')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-          <button onclick="openChatForPatient('Anna Weber','Offline','#ec4899','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
-        <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#0d9488;flex-shrink:0;">T</div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">Thomas Müller</div><div style="font-size:11px;color:#64748b;">Folgetermin · ÖGK · Di 17.06. · 14:00</div></div>
-        <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button onclick="openKarteiForPatientAndShow('Thomas Müller','1234 010185','ÖGK','1985-01-01')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-          <button onclick="openChatForPatient('Thomas Müller','Online','#0d9488','ÖGK')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
-        </div>
-      </div>
+      <div id="tageslisteSummary" style="font-size:12px;color:#475569;margin-bottom:8px;font-weight:600;"></div>
+      <input type="text" id="tageslisteSearch" placeholder="Patient suchen..." oninput="renderAlleTermine()" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;margin-bottom:12px;">
+      <div id="allTermineRoot"></div>
     </div>
   </div>
 </div>
@@ -2821,6 +2760,101 @@ function appendMessageToThread(name,msg){
     localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
   }
 }
+
+// ── TERMINE (real appointment data, shared with secretary.html via localStorage) ──
+const TERMINE_KEY='smartordi_termine';
+const AVATAR_COLORS=['#1e40af','#7c3aed','#f59e0b','#ec4899','#0d9488','#16a34a','#dc2626','#0891b2'];
+function colorForName(name){
+  let h=0;
+  for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  return AVATAR_COLORS[h%AVATAR_COLORS.length];
+}
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function addDays(days){ return new Date(Date.now()+days*86400000).toISOString().split('T')[0]; }
+function genTerminId(){ return 't_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function saveTermine(list){ localStorage.setItem(TERMINE_KEY, JSON.stringify(list)); }
+// Seeds the same default demo appointments as secretary.html so doctor.html shows
+// a sensible Tagesliste even if opened standalone, before any secretary session ever ran.
+function loadTermine(){
+  let list;
+  try{ list=JSON.parse(localStorage.getItem(TERMINE_KEY)); }catch(e){ list=null; }
+  if(!Array.isArray(list)){
+    const today=todayStr();
+    list=[
+      {id:genTerminId(),patient:'Thomas Müller',art:'Kontrolle',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:today,time:'09:00',status:'neu'},
+      {id:genTerminId(),patient:'Maria Schreiber',art:'Ordination',versicherung:'BVAEB',tel:'+43 699 456 789',svnr:'5678 150390',dob:'1990-03-15',date:today,time:'10:00',status:'bestaetigt'},
+      {id:genTerminId(),patient:'Hans Bauer',art:'Erstgespräch',versicherung:'SVS',tel:'',svnr:'9012 220775',dob:'1975-07-22',date:today,time:'11:00',status:'neu'},
+      {id:genTerminId(),patient:'Anna Weber',art:'Kontrolle',versicherung:'ÖGK',tel:'',svnr:'3456 080268',dob:'1968-02-08',date:addDays(3),time:'09:30',status:'bestaetigt'},
+      {id:genTerminId(),patient:'Thomas Müller',art:'Folgetermin',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:addDays(4),time:'14:00',status:'bestaetigt'},
+    ];
+    saveTermine(list);
+  }
+  return list;
+}
+function dayBoxLabel(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const wd=['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
+  return dateStr===todayStr() ? wd : wd+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
+}
+function longDateDE(dateStr){
+  return new Date(dateStr+'T00:00:00').toLocaleDateString('de-AT',{day:'numeric',month:'long',year:'numeric'});
+}
+function terminStatusBadge(status){
+  if(status==='bestaetigt') return '<span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✓</span>';
+  if(status==='abgesagt') return '<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✗</span>';
+  return '<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>';
+}
+function dashTerminRowHtml(t){
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
+    <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
+    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''}</div></div>
+    <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">${t.time}</div>${terminStatusBadge(t.status)}</div>
+  </div>`;
+}
+function renderDashTermine(){
+  const root=document.getElementById('dashTermineRoot');
+  if(!root) return;
+  const today=todayStr();
+  const heute=loadTermine().filter(t=>t.date===today&&t.status!=='abgesagt').sort((a,b)=>a.time.localeCompare(b.time));
+  root.innerHTML = heute.length
+    ? heute.slice(0,3).map(dashTerminRowHtml).join('')
+    : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+}
+function allTerminRowHtml(t){
+  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
+    <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time:dayBoxLabel(t.date)+' · '+t.time}</div></div>
+    ${terminStatusBadge(t.status)}
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button onclick="openKarteiForPatientAndShow('${t.patient}','${t.svnr||''}','${t.versicherung||''}','${t.dob||''}')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
+      <button onclick="openChatForPatient('${t.patient}','${t.status==='bestaetigt'?'Bestätigt':'Neu'}','${colorForName(t.patient)}','${t.versicherung||''}')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+    </div>
+  </div>`;
+}
+function openAlleTermineModal(){
+  document.getElementById('tageslisteSearch').value='';
+  renderAlleTermine();
+  document.getElementById('allTermineModal').classList.add('show');
+}
+function renderAlleTermine(){
+  const q=(document.getElementById('tageslisteSearch').value||'').toLowerCase().trim();
+  const all=loadTermine().filter(t=>!q||t.patient.toLowerCase().includes(q));
+  const today=todayStr();
+  const heute=all.filter(t=>t.date===today).sort((a,b)=>a.time.localeCompare(b.time));
+  const upcoming=all.filter(t=>t.date>today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  let html=`<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Heute — ${longDateDE(today)}</div>`;
+  html += heute.length ? heute.map(allTerminRowHtml).join('') : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+  if(upcoming.length){
+    html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 4px;">Nächste Termine</div>';
+    html+=upcoming.map(allTerminRowHtml).join('');
+  }
+  document.getElementById('allTermineRoot').innerHTML=html;
+  const allToday=loadTermine().filter(t=>t.date===today);
+  const bestaetigt=allToday.filter(t=>t.status==='bestaetigt').length;
+  const neu=allToday.filter(t=>t.status==='neu').length;
+  document.getElementById('tageslisteSummary').textContent=`${allToday.length} heute · ${bestaetigt} bestätigt · ${neu} neu`;
+}
+
 function patientListEntries(){
   const entries=DEMO_CHAT_LIST.map(p=>Object.assign({},p,{dynamic:false}));
   let accounts;
@@ -3174,6 +3208,7 @@ renderPlanSettings();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');
+renderDashTermine();
 
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
