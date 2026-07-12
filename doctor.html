@@ -1302,6 +1302,8 @@ body.windows-mode .kartei-header{display:none;}
         <div class="kartei-patient-name" id="kartei-name">Thomas Müller</div>
         <div class="kartei-patient-meta" id="kartei-meta">ÖGK · SV 1234 010185 · 41 J.</div>
       </div>
+      <div style="flex:1;"></div>
+      <button onclick="exportPatientCsv()" title="Patientendaten als CSV exportieren, z.B. für einen anderen Arzt" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#1e40af;cursor:pointer;font-family:inherit;white-space:nowrap;">📤 Exportieren</button>
     </div>
 
     <div class="kartei-tabs">
@@ -3256,6 +3258,40 @@ function findPatientRecord(name){
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
   return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+}
+
+// ══ PATIENT CSV EXPORT (e.g. to send to another doctor on request) ══
+// Uses the exact same column set as secretary.html's bulk import, so a file
+// exported here can be handed to another Smartordi practice and re-imported
+// directly, or just opened in Excel by any other system.
+function csvEscape(val){
+  const s=(val===null||val===undefined)?'':String(val);
+  return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function exportPatientCsv(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  const rec=findPatientRecord(name);
+  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+  const nameParts=name.trim().split(/\s+/);
+  const vorname=nameParts[0]||'';
+  const nachname=nameParts.slice(1).join(' ')||'';
+  const impfungenStr=(rec.impfungen||[]).map(i=>i.name+':'+i.datum).join('; ');
+  const visitsStr=VISITS.filter(v=>v.patient===name).map(v=>v.date+'|'+v.type+'|'+v.diag).join('; ');
+  const krankengeschichte=rec.legacyHistory||visitsStr||'';
+  const headers=['Vorname','Nachname','Geburtsdatum','SVNr','Versicherung','Telefon','Adresse','Diagnosen','Allergien','Blutgruppe','Impfungen','Krankengeschichte'];
+  const row=[vorname,nachname,rec.dob||'',rec.svnr==='—'?'':rec.svnr,rec.versicherung==='—'?'':rec.versicherung,rec.tel==='—'?'':rec.tel,rec.adresse==='—'?'':rec.adresse,rec.diagnosen==='—'?'':rec.diagnosen,rec.allergie||'',rec.blutgruppe==='—'?'':rec.blutgruppe,impfungenStr,krankengeschichte];
+  const csv=headers.map(csvEscape).join(',')+'\n'+row.map(csvEscape).join(',');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=('Patient_'+nachname+'_'+vorname+'.csv').replace(/\s+/g,'_');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ Patientendaten exportiert');
 }
 
 function populateKarteiStamm(name){
