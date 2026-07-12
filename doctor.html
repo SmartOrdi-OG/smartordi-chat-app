@@ -2827,7 +2827,7 @@ function patientListEntries(){
   try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
   Object.keys(accounts).forEach(u=>{
     const a=accounts[u];
-    if(!a.fullName||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
+    if(!a.fullName||a.role==='guardian'||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
     const thread=a.messages&&a.messages.length?{items:a.messages}:null;
     const last=thread?thread.items[thread.items.length-1]:null;
     entries.push({
@@ -4051,7 +4051,7 @@ function loadQrPatientAccounts(){
   try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
   return Object.keys(accounts)
     .map(u=>accounts[u])
-    .filter(a=>a.fullName && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
+    .filter(a=>a.fullName && a.role!=='guardian' && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
     .map(a=>({name:a.fullName,svnr:a.svnr||'',dob:a.dob||'',versicherung:a.versicherung||'',tel:a.tel||'',adresse:a.adresse||''}));
 }
 
