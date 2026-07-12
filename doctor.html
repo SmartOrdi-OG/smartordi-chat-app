@@ -1320,6 +1320,13 @@ body.windows-mode .kartei-header{display:none;}
       <!-- Verlauf Tab (default) -->
       <div id="ktab-verlauf">
 
+        <!-- Übernommene Krankengeschichte (Altsystem) -- only shown for
+             patients imported with unstructured legacy history text -->
+        <div id="kLegacyHistory" style="display:none;background:#fefce8;border-left:4px solid #ca8a04;border-radius:12px;padding:12px 14px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">📋 Übernommen aus Altsystem — bitte prüfen</div>
+          <div style="font-size:12px;color:#713f12;white-space:pre-wrap;" id="kLegacyHistoryText"></div>
+        </div>
+
         <!-- Filter Bar -->
         <div class="k-filter-bar">
           <div class="k-search-wrap">
@@ -3244,7 +3251,11 @@ function findPatientRecord(name){
   const found=findPatientAccountByFullName(name);
   if(!found) return null;
   const a=found.accounts[found.username];
-  return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:'—',diagnosen:'—',allergie:null,dsgvoDatum:'—'};
+  // Reads whatever a bulk import (secretary.html) or the doctor's own entry
+  // actually stored on this account, instead of hardcoded placeholders --
+  // otherwise imported diagnoses/allergies/vaccinations would be saved but
+  // silently never shown anywhere in Kartei.
+  return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
 }
 
 function populateKarteiStamm(name){
@@ -3281,7 +3292,16 @@ function switchKarteiTab(tab,btn){
   document.querySelectorAll('.kartei-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
   if(tab==='neu')setKarteiDate();
-  if(tab==='verlauf'){renderYearPills();filterVisits();}
+  if(tab==='verlauf'){
+    renderYearPills();filterVisits();
+    const currentName=document.getElementById('kartei-name')?.textContent;
+    const legacy=currentName?findPatientRecord(currentName)?.legacyHistory:'';
+    const legacyEl=document.getElementById('kLegacyHistory');
+    if(legacyEl){
+      legacyEl.style.display=legacy?'block':'none';
+      if(legacy) document.getElementById('kLegacyHistoryText').textContent=legacy;
+    }
+  }
   if(tab==='stamm'){
     const currentName=document.getElementById('kartei-name')?.textContent;
     if(currentName) populateKarteiStamm(currentName);
@@ -3308,6 +3328,8 @@ function switchKarteiTab(tab,btn){
   }
   if(tab==='impfung'){
     document.getElementById('impf-datum').value=new Date().toISOString().split('T')[0];
+    const currentName=document.getElementById('kartei-name')?.textContent;
+    if(currentName && currentName!=='Kein Patient ausgewählt') populateKarteiImpfung(currentName);
   }
   if(tab==='labor'){
     document.getElementById('labor-datum').value=new Date().toISOString().split('T')[0];
@@ -3671,6 +3693,37 @@ function toggleSonstigeImpf(sel){
 }
 
 // ══ IMPFUNG FUNCTIONS ══
+function renderImpfEintrag(imp){
+  const df=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
+  const nextStr=imp.next?new Date(imp.next).toLocaleDateString('de-AT'):'—';
+  const isExpired=imp.next&&new Date(imp.next)<new Date();
+  const badge=imp.next
+    ?(isExpired
+      ?'<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">Fällig</span>'
+      :'<span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Aktuell</span>')
+    :'';
+  return `<div class="impf-eintrag" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+    <div style="width:40px;height:40px;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;"></div>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${imp.name}${imp.dosis?' — '+imp.dosis:''}</div>
+      <div style="font-size:11px;color:#64748b;">${df}${imp.charge?' · Charge: '+imp.charge:''}${imp.next?' · Nächste: '+nextStr:''}</div>
+    </div>
+    ${badge}
+  </div>`;
+}
+// Renders the currently-loaded patient's own vaccination history (from
+// DEMO_PATIENTS or an imported/QR account) instead of leaving whichever
+// patient's entries happened to be in the DOM last -- vaccination records
+// are exactly the kind of data that must never bleed between patients.
+function populateKarteiImpfung(name){
+  const list=document.getElementById('impfpass-liste');
+  if(!list) return;
+  const rec=findPatientRecord(name);
+  const impfungen=rec?.impfungen||[];
+  list.innerHTML=impfungen.length
+    ? impfungen.map(renderImpfEintrag).join('')
+    : '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">Keine Impfungen erfasst</div>';
+}
 function addImpfung(){
   let name=document.getElementById('impf-name').value;
   if(name==='Sonstige'){
@@ -3682,25 +3735,26 @@ function addImpfung(){
   const next=document.getElementById('impf-next').value;
   const charge=document.getElementById('impf-charge').value;
   if(!datum){alert('Bitte Datum eingeben.');return;}
-  const d=new Date(datum);
-  const df=d.toLocaleDateString('de-AT');
-  const nextStr=next?new Date(next).toLocaleDateString('de-AT'):'—';
-  const isExpired=next&&new Date(next)<new Date();
-  const badge=isExpired
-    ?'<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">Fällig</span>'
-    :'<span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Aktuell</span>';
-  const html=`<div class="impf-eintrag" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-    <div style="width:40px;height:40px;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;"></div>
-    <div style="flex:1;">
-      <div style="font-size:13px;font-weight:700;color:#0f172a;">${name} — ${dosis}</div>
-      <div style="font-size:11px;color:#64748b;">${df}${charge?' · Charge: '+charge:''} · Nächste: ${nextStr}</div>
-    </div>
-    ${badge}
-  </div>`;
-  document.getElementById('impfpass-liste').insertAdjacentHTML('afterbegin',html);
+  const currentName=document.getElementById('kartei-name')?.textContent;
+  if(!currentName||currentName==='Kein Patient ausgewählt'){alert('Bitte zuerst einen Patienten auswählen.');return;}
+  const entry={name,dosis,datum,next,charge};
+  const demo=DEMO_PATIENTS.find(p=>p.name===currentName);
+  if(demo){
+    if(!demo.impfungen) demo.impfungen=[];
+    demo.impfungen.unshift(entry);
+  }else{
+    const found=findPatientAccountByFullName(currentName);
+    if(found){
+      const acc=found.accounts[found.username];
+      if(!acc.impfungen) acc.impfungen=[];
+      acc.impfungen.unshift(entry);
+      localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
+    }
+  }
+  populateKarteiImpfung(currentName);
   document.getElementById('impf-charge').value='';
   document.getElementById('impf-next').value='';
-  showToast(' Impfung eingetragen!');
+  showToast('✓ Impfung eingetragen!');
 }
 
 function printImpfpass(){
@@ -3757,10 +3811,14 @@ function addLabor(){
 
 // ══ SUCHE FUNCTIONS ══
 const DEMO_PATIENTS=[
-  {name:'Thomas Müller',svnr:'1234 010185',dob:'1985-01-01',versicherung:'ÖGK',tel:'+43 660 123 4567',adresse:'Mozartstr. 12, Linz',sprache:'Deutsch',blutgruppe:'A+',diagnosen:'Hypertonie, Diabetes T2',allergie:'Penicillin-Allergie beachten!',dsgvoDatum:'15.01.2026'},
-  {name:'Maria Schreiber',svnr:'5678 150390',dob:'1990-03-15',versicherung:'BVAEB',tel:'+43 699 234 5678',adresse:'Hauptstraße 45, Wien',sprache:'Deutsch',blutgruppe:'0+',diagnosen:'Migräne',allergie:null,dsgvoDatum:'20.02.2026'},
-  {name:'Hans Bauer',svnr:'9012 220775',dob:'1975-07-22',versicherung:'SVS',tel:'+43 676 345 6789',adresse:'Bahnhofstraße 8, Salzburg',sprache:'Deutsch',blutgruppe:'B+',diagnosen:'Kreuzschmerzen, Bluthochdruck',allergie:null,dsgvoDatum:'10.03.2026'},
-  {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890',adresse:'Ringstraße 3, Graz',sprache:'Deutsch',blutgruppe:'AB+',diagnosen:'Arthrose, Osteoporose',allergie:'Aspirin/NSAR-Allergie beachten!',dsgvoDatum:'05.01.2026'},
+  {name:'Thomas Müller',svnr:'1234 010185',dob:'1985-01-01',versicherung:'ÖGK',tel:'+43 660 123 4567',adresse:'Mozartstr. 12, Linz',sprache:'Deutsch',blutgruppe:'A+',diagnosen:'Hypertonie, Diabetes T2',allergie:'Penicillin-Allergie beachten!',dsgvoDatum:'15.01.2026',
+    impfungen:[{name:'FSME',dosis:'2. Dosis',datum:'2024-03-15',next:'2027-03-15',charge:'B98765'},{name:'COVID-19',dosis:'Auffrischung',datum:'2023-11-10',next:'2024-11-10',charge:'XY1234'}]},
+  {name:'Maria Schreiber',svnr:'5678 150390',dob:'1990-03-15',versicherung:'BVAEB',tel:'+43 699 234 5678',adresse:'Hauptstraße 45, Wien',sprache:'Deutsch',blutgruppe:'0+',diagnosen:'Migräne',allergie:null,dsgvoDatum:'20.02.2026',
+    impfungen:[{name:'Tetanus',dosis:'Auffrischung',datum:'2022-06-01',next:'2032-06-01',charge:'T5521'}]},
+  {name:'Hans Bauer',svnr:'9012 220775',dob:'1975-07-22',versicherung:'SVS',tel:'+43 676 345 6789',adresse:'Bahnhofstraße 8, Salzburg',sprache:'Deutsch',blutgruppe:'B+',diagnosen:'Kreuzschmerzen, Bluthochdruck',allergie:null,dsgvoDatum:'10.03.2026',
+    impfungen:[{name:'Influenza',dosis:'Einmaldosis',datum:'2025-10-20',next:'2026-10-20',charge:'FLU2025'},{name:'Pneumokokken',dosis:'Einmaldosis',datum:'2021-09-12',next:'',charge:''}]},
+  {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890',adresse:'Ringstraße 3, Graz',sprache:'Deutsch',blutgruppe:'AB+',diagnosen:'Arthrose, Osteoporose',allergie:'Aspirin/NSAR-Allergie beachten!',dsgvoDatum:'05.01.2026',
+    impfungen:[]},
 ];
 
 // Patients onboarded via QR (secretary.html) live only in this browser's
