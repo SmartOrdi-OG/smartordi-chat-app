@@ -1168,28 +1168,7 @@ body.windows-mode .kartei-header{display:none;}
         <button onclick="clearAdvSearch()" style="width:100%;padding:7px;background:white;border:1px solid #e2e8f0;border-radius:7px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;">✕ Filter zurücksetzen</button>
       </div>
     </div>
-    <div class="patient-list scrollbar">
-      <div class="patient-item active" onclick="selectPatient(this,'Thomas Müller','Online','#0d9488','ÖGK')">
-        <div class="avatar" style="background:#0d9488;">T<div class="avatar-status" style="background:#22c55e;"></div></div>
-        <div class="patient-info"><div class="patient-name">Thomas Müller</div><div class="patient-preview">Danke, ich komme morgen </div></div>
-        <div class="patient-meta"><div class="patient-time">Jetzt</div><div class="unread-badge">2</div></div>
-      </div>
-      <div class="patient-item transferred" onclick="selectPatient(this,'Maria Schreiber','Weitergeleitet','#8b5cf6','BVAEB')">
-        <div class="avatar" style="background:#8b5cf6;">M<div class="avatar-status" style="background:#f59e0b;"></div></div>
-        <div class="patient-info"><div class="patient-name">Maria Schreiber</div><div class="patient-preview">Zu Dr. Weber weitergeleitet</div></div>
-        <div class="patient-meta"><div class="patient-time">10:30</div><div class="transfer-badge">Vertretung</div></div>
-      </div>
-      <div class="patient-item" onclick="selectPatient(this,'Hans Bauer','Offline','#f59e0b','SVS')">
-        <div class="avatar" style="background:#f59e0b;">H<div class="avatar-status" style="background:#94a3b8;"></div></div>
-        <div class="patient-info"><div class="patient-name">Hans Bauer</div><div class="patient-preview">Kann ich den Termin verschieben?</div></div>
-        <div class="patient-meta"><div class="patient-time">Gestern</div><div class="unread-badge">1</div></div>
-      </div>
-      <div class="patient-item" onclick="selectPatient(this,'Anna Weber','Offline','#ec4899','ÖGK')">
-        <div class="avatar" style="background:#ec4899;">A<div class="avatar-status" style="background:#94a3b8;"></div></div>
-        <div class="patient-info"><div class="patient-name">Anna Weber</div><div class="patient-preview">Sind die Blutwerte da?</div></div>
-        <div class="patient-meta"><div class="patient-time">Gestern</div></div>
-      </div>
-    </div>
+    <div class="patient-list scrollbar" id="patientList"></div>
   </div>
 
   <div class="chat-area">
@@ -1218,34 +1197,7 @@ body.windows-mode .kartei-header{display:none;}
         <button class="action-btn call" onclick="showCall()">Anrufen</button>
       </div>
     </div>
-    <div class="messages scrollbar" id="messages">
-      <div class="date-divider">Heute, 3. Juni 2026</div>
-      <div class="system-msg">Termin morgen — Di. 04.06. um 10:00 Uhr</div>
-      <div class="msg-row in">
-        <div class="avatar" style="background:#0d9488;width:30px;height:30px;font-size:12px;flex-shrink:0;">T</div>
-        <div><div class="msg-bubble">Guten Morgen, Frau Doktor. Sind meine Blutwerte schon da?</div><span class="msg-time">09:15</span></div>
-      </div>
-      <div class="msg-row out">
-        <div><div class="msg-bubble">Guten Morgen Herr Müller! Ja, die Werte sind ausgezeichnet </div><span class="msg-time">09:18 ✓✓</span></div>
-      </div>
-      <div class="msg-row in">
-        <div class="avatar" style="background:#0d9488;width:30px;height:30px;font-size:12px;flex-shrink:0;">T</div>
-        <div>
-          <div class="msg-bubble voice-msg"><button class="play-btn">▶</button><div class="voice-wave" id="wave1"></div><span class="voice-duration">0:18</span></div>
-          <span class="msg-time">09:20</span>
-        </div>
-      </div>
-      <div class="msg-row out">
-        <div>
-          <div class="msg-bubble"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">Befundbericht_2026.pdf</div><div class="doc-size">245 KB · PDF</div></div></div></div>
-          <span class="msg-time">09:22 ✓✓</span>
-        </div>
-      </div>
-      <div class="msg-row in">
-        <div class="avatar" style="background:#0d9488;width:30px;height:30px;font-size:12px;flex-shrink:0;">T</div>
-        <div><div class="msg-bubble">Danke, ich komme morgen </div><span class="msg-time">09:24</span></div>
-      </div>
-    </div>
+    <div class="messages scrollbar" id="messages"></div>
     <div class="chat-input-area">
       <div class="input-row">
         <button class="input-btn" title="Emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
@@ -2786,6 +2738,130 @@ function syncWindowsModeState(){
 window.addEventListener('resize',syncWindowsModeState);
 document.addEventListener('DOMContentLoaded',syncWindowsModeState);
 
+// ══ PRAXIS CHAT LIST (data-driven, not just the 4 demo patients) ══
+// Previously the sidebar was 4 hardcoded .patient-item divs and #messages was
+// one hardcoded thread that never changed when you clicked a different
+// patient -- every patient silently showed Thomas Müller's blood-test
+// conversation. With 100s/1000s of real QR-onboarded or imported patients,
+// that bug would mean literally every one of them shows the same wrong
+// conversation, so it had to be fixed here, not just worked around.
+const DEMO_CHAT_LIST=[
+  {name:'Thomas Müller',color:'#0d9488',statusDot:'#22c55e',status:'Online',versicherung:'ÖGK',preview:'Danke, ich komme morgen',time:'Jetzt',badge:2},
+  {name:'Maria Schreiber',color:'#8b5cf6',statusDot:'#f59e0b',status:'Weitergeleitet',versicherung:'BVAEB',preview:'Zu Dr. Weber weitergeleitet',time:'10:30',transferBadge:'Vertretung',transferred:true},
+  {name:'Hans Bauer',color:'#f59e0b',statusDot:'#94a3b8',status:'Offline',versicherung:'SVS',preview:'Kann ich den Termin verschieben?',time:'Gestern',badge:1},
+  {name:'Anna Weber',color:'#ec4899',statusDot:'#94a3b8',status:'Offline',versicherung:'ÖGK',preview:'Sind die Blutwerte da?',time:'Gestern'},
+];
+const MESSAGES={
+  'Thomas Müller':{date:'Heute, 3. Juni 2026',system:'Termin morgen — Di. 04.06. um 10:00 Uhr',items:[
+    {dir:'in',type:'text',text:'Guten Morgen, Frau Doktor. Sind meine Blutwerte schon da?',time:'09:15'},
+    {dir:'out',type:'text',text:'Guten Morgen Herr Müller! Ja, die Werte sind ausgezeichnet',time:'09:18 ✓✓'},
+    {dir:'in',type:'voice',duration:'0:18',time:'09:20'},
+    {dir:'out',type:'doc',filename:'Befundbericht_2026.pdf',size:'245 KB',time:'09:22 ✓✓'},
+    {dir:'in',type:'text',text:'Danke, ich komme morgen',time:'09:24'},
+  ]},
+  'Maria Schreiber':{date:'Gestern, 2. Juni 2026',system:'Zu Dr. Klaus Weber weitergeleitet (Vertretung)',items:[
+    {dir:'in',type:'text',text:'Guten Tag, ich habe wieder starke Migräne-Attacken. Können Sie mir etwas verschreiben?',time:'10:15'},
+    {dir:'out',type:'text',text:'Ich bin aktuell in Vertretung bei Dr. Weber — er wird sich um Ihr Anliegen kümmern.',time:'10:30 ✓✓'},
+  ]},
+  'Hans Bauer':{date:'Gestern, 2. Juni 2026',items:[
+    {dir:'in',type:'text',text:'Kann ich den Termin verschieben? Bin morgen leider verhindert.',time:'14:20'},
+  ]},
+  'Anna Weber':{date:'Gestern, 2. Juni 2026',items:[
+    {dir:'in',type:'text',text:'Sind die Blutwerte da?',time:'08:44'},
+  ]},
+};
+// Real QR-onboarded/imported patients may have a saved conversation on their
+// account (see appendMessageToThread) even though they're not in MESSAGES
+// yet this page load -- pull it in on first access instead of showing blank.
+function getOrHydrateThread(name){
+  if(MESSAGES[name]) return MESSAGES[name];
+  const found=findPatientAccountByFullName(name);
+  const saved=found&&found.accounts[found.username].messages;
+  if(saved&&saved.length){ MESSAGES[name]={date:'',items:saved}; return MESSAGES[name]; }
+  return null;
+}
+function avatarSmallHtml(color,initial){
+  return `<div class="avatar" style="background:${color};width:30px;height:30px;font-size:12px;flex-shrink:0;">${initial}</div>`;
+}
+function msgRowHtml(m,color,initial){
+  const av=m.dir==='in'?avatarSmallHtml(color,initial):'';
+  let bubble;
+  if(m.type==='voice'){
+    bubble=`<div class="msg-bubble voice-msg"><button class="play-btn">▶</button><div class="voice-wave"></div><span class="voice-duration">${m.duration}</span></div>`;
+  }else if(m.type==='doc'){
+    bubble=`<div class="msg-bubble"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">${m.filename}</div><div class="doc-size">${m.size} · PDF</div></div></div></div>`;
+  }else{
+    bubble=`<div class="msg-bubble">${m.text}</div>`;
+  }
+  return `<div class="msg-row ${m.dir}">${av}<div>${bubble}<span class="msg-time">${m.time}</span></div></div>`;
+}
+function renderMessages(name,color){
+  const msgs=document.getElementById('messages');
+  if(!msgs) return;
+  const thread=getOrHydrateThread(name);
+  if(!thread||!thread.items||!thread.items.length){
+    msgs.innerHTML='<div style="text-align:center;padding:40px 20px;color:#94a3b8;font-size:13px;">Noch keine Nachrichten — schreiben Sie die erste Nachricht.</div>';
+    return;
+  }
+  let html=thread.date?`<div class="date-divider">${thread.date}</div>`:'';
+  if(thread.system) html+=`<div class="system-msg">${thread.system}</div>`;
+  thread.items.forEach(m=>{ html+=msgRowHtml(m,color||'#1e40af',name[0]); });
+  msgs.innerHTML=html;
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function appendMessageToThread(name,msg){
+  if(!MESSAGES[name]) MESSAGES[name]={date:'',items:[]};
+  MESSAGES[name].items.push(msg);
+  // Demo patients' new messages are session-only (same as their Impfung/
+  // Verlauf edits); QR/imported patients get theirs persisted so the
+  // conversation survives a reload, same as their other Kartei data.
+  const found=findPatientAccountByFullName(name);
+  if(found){
+    found.accounts[found.username].messages=MESSAGES[name].items;
+    localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
+  }
+}
+function patientListEntries(){
+  const entries=DEMO_CHAT_LIST.map(p=>Object.assign({},p,{dynamic:false}));
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  Object.keys(accounts).forEach(u=>{
+    const a=accounts[u];
+    if(!a.fullName||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
+    const thread=a.messages&&a.messages.length?{items:a.messages}:null;
+    const last=thread?thread.items[thread.items.length-1]:null;
+    entries.push({
+      name:a.fullName,color:'#1e40af',statusDot:'#94a3b8',status:'Offline',
+      versicherung:a.versicherung||'',
+      preview:last?(last.type==='text'?last.text:last.type==='voice'?'🎤 Sprachnachricht':'📄 Dokument'):'Noch keine Nachrichten',
+      time:'',badge:0,dynamic:!last,
+    });
+  });
+  return entries;
+}
+function patientItemHtml(p,activeName){
+  const activeClass=p.name===activeName?' active':'';
+  const transferClass=p.transferred?' transferred':'';
+  const metaHtml=p.transferBadge
+    ?`<div class="patient-time">${p.time}</div><div class="transfer-badge">${p.transferBadge}</div>`
+    :`<div class="patient-time">${p.time}</div>${p.badge?`<div class="unread-badge">${p.badge}</div>`:''}`;
+  const nameEsc=p.name.replace(/'/g,"\\'");
+  return `<div class="patient-item${activeClass}${transferClass}" onclick="selectPatient(this,'${nameEsc}','${p.status}','${p.color}','${p.versicherung}')">
+    <div class="avatar" style="background:${p.color};">${p.name[0]}<div class="avatar-status" style="background:${p.statusDot};"></div></div>
+    <div class="patient-info"><div class="patient-name">${p.name}</div><div class="patient-preview"${p.dynamic?' style="font-style:italic;color:#94a3b8;"':''}>${p.preview}</div></div>
+    <div class="patient-meta">${metaHtml}</div>
+  </div>`;
+}
+// Keeps whichever patient is currently open highlighted across re-renders
+// (e.g. after sendClinicMsg() refreshes the sidebar preview text) instead of
+// resetting back to the default patient every time the list redraws.
+function renderPatientList(){
+  const list=document.getElementById('patientList');
+  if(!list) return;
+  const activeName=document.getElementById('chat-name')?.textContent||'Thomas Müller';
+  list.innerHTML=patientListEntries().map(p=>patientItemHtml(p,activeName)).join('');
+}
+
 function selectPatient(el,name,status,color,insurance){
   document.querySelectorAll('.patient-item').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');
@@ -2797,7 +2873,13 @@ function selectPatient(el,name,status,color,insurance){
   if(status==='Online'){s.textContent='● Online';s.style.color='#22c55e';}
   else{s.textContent=status;s.style.color='#64748b';}
   const badge=el.querySelector('.unread-badge');if(badge)badge.remove();
+  // Mutate the underlying data too, not just this one DOM node -- otherwise
+  // a later renderPatientList() call (e.g. from sendClinicMsg()) would
+  // regenerate the badge from stale data and make it reappear.
+  const demoEntry=DEMO_CHAT_LIST.find(p=>p.name===name);
+  if(demoEntry) demoEntry.badge=0;
   updateChatUnreadBadge();
+  renderMessages(name,color);
   // Mobile: open chat
   mobileOpenChat(name);
   // Update Kartei
@@ -2814,14 +2896,26 @@ function getTime(){const n=new Date();return n.getHours().toString().padStart(2,
 
 function sendClinicMsg(){
   const inp=document.getElementById('clinicInput');const txt=inp.value.trim();if(!txt)return;
+  const name=document.getElementById('chat-name')?.textContent;
   const msgs=document.getElementById('messages');
+  if(msgs.children.length===1 && msgs.firstElementChild.style.textAlign==='center') msgs.innerHTML='';
+  const outTime=getTime()+' ✓';
   const row=document.createElement('div');row.className='msg-row out';
-  row.innerHTML=`<div><div class="msg-bubble">${txt}</div><span class="msg-time">${getTime()} ✓</span></div>`;
+  row.innerHTML=`<div><div class="msg-bubble">${txt}</div><span class="msg-time">${outTime}</span></div>`;
   msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';
+  if(name){
+    appendMessageToThread(name,{dir:'out',type:'text',text:txt,time:outTime});
+    renderPatientList(); // refresh the sidebar preview text to the new message
+  }
   setTimeout(()=>{
+    const inTime=getTime();
     const r=document.createElement('div');r.className='msg-row in';
-    r.innerHTML=`<div class="avatar" style="background:${document.getElementById('chat-avatar').style.background};width:30px;height:30px;font-size:12px;flex-shrink:0;">${document.getElementById('chat-avatar').textContent}</div><div><div class="msg-bubble">Danke, verstanden! </div><span class="msg-time">${getTime()}</span></div>`;
+    r.innerHTML=`<div class="avatar" style="background:${document.getElementById('chat-avatar').style.background};width:30px;height:30px;font-size:12px;flex-shrink:0;">${document.getElementById('chat-avatar').textContent}</div><div><div class="msg-bubble">Danke, verstanden! </div><span class="msg-time">${inTime}</span></div>`;
     msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;
+    if(name){
+      appendMessageToThread(name,{dir:'in',type:'text',text:'Danke, verstanden!',time:inTime});
+      renderPatientList();
+    }
   },1500);
 }
 
@@ -3078,6 +3172,8 @@ function renderPlanSettings(){
 applyPlanGating();
 renderPlanSettings();
 applyTrialStatus();
+renderPatientList();
+renderMessages('Thomas Müller','#0d9488');
 
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
