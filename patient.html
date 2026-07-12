@@ -443,8 +443,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
   <div class="topbar-user">
-    <div class="topbar-avatar">T</div>
-    <div class="topbar-username">Thomas M.</div>
+    <div class="topbar-avatar" id="topbarAvatar">T</div>
+    <div class="topbar-username" id="topbarUsername">Thomas M.</div>
     <button class="topbar-logout" onclick="logout()">Abmelden</button>
   </div>
 </div>
@@ -492,86 +492,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       </div>
     </div>
 
-    <div class="messages" id="messages">
-      <div class="msg-date">Heute, 13. Juni 2026</div>
-
-      <div class="msg-row">
-        <div class="msg-avatar-sm" style="background:#1e40af;">S</div>
-        <div>
-          <div class="msg-bubble">Guten Morgen, Herr Müller! Wie geht es Ihnen heute? </div>
-          <span class="msg-time" style="color:var(--text-muted);">09:10</span>
-        </div>
-      </div>
-
-      <div class="msg-row out">
-        <div>
-          <div class="msg-bubble">Guten Morgen Frau Doktor! Geht mir gut, danke. Wollte fragen ob meine Blutwerte schon da sind?</div>
-          <span class="msg-time">09:12 ✓✓</span>
-        </div>
-      </div>
-
-      <div class="msg-row">
-        <div class="msg-avatar-sm" style="background:#1e40af;">S</div>
-        <div>
-          <div class="msg-bubble">Ja, die Werte sind ausgezeichnet!  Blutdruck stabil, HbA1c verbessert. Ich schicke Ihnen den Befundbericht.</div>
-          <span class="msg-time" style="color:var(--text-muted);">09:15</span>
-        </div>
-      </div>
-
-      <!-- Voice message -->
-      <div class="msg-row">
-        <div class="msg-avatar-sm" style="background:#1e40af;">S</div>
-        <div class="voice-bubble">
-          <button class="voice-play" onclick="showToast('▶ Sprachnachricht wird abgespielt...')">▶</button>
-          <div class="voice-wave" id="wave1"></div>
-          <span class="voice-duration">0:18</span>
-        </div>
-      </div>
-
-      <!-- PDF Befund -->
-      <div class="msg-row">
-        <div class="msg-avatar-sm" style="background:#1e40af;">S</div>
-        <div>
-          <div class="msg-bubble">
-            <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;" onclick="showToast(' Befundbericht wird heruntergeladen...')">
-              <span style="font-size:22px;"></span>
-              <div>
-                <div style="font-size:13px;font-weight:700;">Befundbericht_2026.pdf</div>
-                <div style="font-size:11px;opacity:0.8;">245 KB · PDF</div>
-              </div>
-            </div>
-          </div>
-          <span class="msg-time" style="color:var(--text-muted);">09:22</span>
-        </div>
-      </div>
-
-      <!-- Überweisung -->
-      <div class="msg-row">
-        <div class="msg-avatar-sm" style="background:#1e40af;">S</div>
-        <div>
-          <div class="msg-bubble">
-            Außerdem schicke ich Ihnen eine Überweisung zum Kardiologen 
-            <div class="uw-bubble" onclick="showToast(' Überweisung_Müller.pdf wird heruntergeladen...')">
-              <span class="uw-icon"></span>
-              <div>
-                <div class="uw-info-name">Überweisung_Müller.pdf</div>
-                <div class="uw-info-sub">Kardiologie · Normal · 13.06.2026</div>
-              </div>
-            </div>
-          </div>
-          <span class="msg-time" style="color:var(--text-muted);">09:24</span>
-        </div>
-      </div>
-
-      <div class="msg-row out">
-        <div>
-          <div class="msg-bubble">Danke, ich komme morgen </div>
-          <span class="msg-time">09:26 ✓✓</span>
-        </div>
-      </div>
-
-      <div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>
-    </div>
+    <div class="messages" id="messages"></div>
 
     <div class="chat-input-area">
       <div class="chat-input-wrap">
@@ -741,27 +662,27 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="profil-content">
 
       <div class="profil-header-card">
-        <div class="profil-avatar-lg">T</div>
+        <div class="profil-avatar-lg" id="profilAvatar">T</div>
         <div>
-          <div class="profil-name">Thomas Müller</div>
-          <div class="profil-sub">Patient · ÖGK · Linz</div>
+          <div class="profil-name" id="profilName">Thomas Müller</div>
+          <div class="profil-sub" id="profilSub">Patient · ÖGK · Linz</div>
         </div>
       </div>
 
       <div class="info-card">
         <div class="info-card-header">Persönliche Daten</div>
-        <div class="info-row"><span class="info-label">Vollständiger Name</span><span class="info-value">Thomas Müller</span></div>
-        <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value">01.01.1985 (41 J.)</span></div>
-        <div class="info-row"><span class="info-label">Adresse</span><span class="info-value">Mozartstraße 12, 4020 Linz</span></div>
-        <div class="info-row"><span class="info-label">Telefon</span><span class="info-value">+43 660 123 456</span></div>
-        <div class="info-row"><span class="info-label">E-Mail</span><span class="info-value">t.mueller@email.at</span></div>
+        <div class="info-row"><span class="info-label">Vollständiger Name</span><span class="info-value" id="profilFullName">Thomas Müller</span></div>
+        <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="profilDob">01.01.1985 (41 J.)</span></div>
+        <div class="info-row"><span class="info-label">Adresse</span><span class="info-value" id="profilAdresse">Mozartstraße 12, 4020 Linz</span></div>
+        <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="profilTel">+43 660 123 456</span></div>
+        <div class="info-row"><span class="info-label">E-Mail</span><span class="info-value" id="profilEmail">t.mueller@email.at</span></div>
       </div>
 
       <div class="info-card">
         <div class="info-card-header">Versicherung</div>
-        <div class="info-row"><span class="info-label">Träger</span><span class="info-value">ÖGK</span></div>
-        <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" style="font-family:monospace;">1234 010185</span></div>
-        <div class="info-row"><span class="info-label">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;">✓ 15.01.2026</span></div>
+        <div class="info-row"><span class="info-label">Träger</span><span class="info-value" id="profilVersicherung">ÖGK</span></div>
+        <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:monospace;">1234 010185</span></div>
+        <div class="info-row"><span class="info-label">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;">✓ Erteilt</span></div>
       </div>
 
       <div class="info-card">
@@ -965,6 +886,113 @@ function switchView(v){
   document.getElementById('nav-'+v).classList.add('active');
 }
 
+// ══ PATIENT ACCOUNT DATA (real login, not hardcoded Thomas Müller) ══
+// patient.html previously showed the exact same static demo content no
+// matter who actually logged in (QR-onboarded patient, a different demo
+// account...). It now renders the real account behind the current session,
+// looked up by the username patient-login.html now stores alongside the
+// display name.
+const PATIENT_ACCOUNTS_KEY='smartordi_patient_accounts';
+function loadPatientAccounts(){
+  try{ return JSON.parse(localStorage.getItem(PATIENT_ACCOUNTS_KEY))||{}; }catch(e){ return {}; }
+}
+function savePatientAccounts(accounts){
+  localStorage.setItem(PATIENT_ACCOUNTS_KEY, JSON.stringify(accounts));
+}
+function getSessionUser(){
+  try{ return JSON.parse(sessionStorage.getItem('smartordi_user'))||null; }catch(e){ return null; }
+}
+let currentUsername=null;
+
+function voiceWaveHtml(){
+  const heights=[30,50,70,45,80,55,65,40,75,50,35,60];
+  return heights.map(h=>`<div class="voice-bar" style="height:${h}%;"></div>`).join('');
+}
+// Shared convention with doctor.html's MESSAGES: dir:'in' = written by the
+// patient, dir:'out' = written by the doctor (both sides read/write the same
+// account.messages array in localStorage). From the patient's own screen,
+// their own messages render as the outgoing/blue bubble, so that mapping is
+// the reverse of doctor.html's -- dir:'in' here means "show as outgoing".
+function msgRowHtml(m){
+  const outClass=m.dir==='in'?' out':'';
+  const avatar=m.dir==='out'?'<div class="msg-avatar-sm" style="background:#1e40af;">S</div>':'';
+  const timeStyle=m.dir==='out'?' style="color:var(--text-muted);"':'';
+  if(m.type==='voice'){
+    return `<div class="msg-row${outClass}">${avatar}<div class="voice-bubble"><button class="voice-play" onclick="showToast('▶ Sprachnachricht wird abgespielt...')">▶</button><div class="voice-wave">${voiceWaveHtml()}</div><span class="voice-duration">${m.duration}</span></div></div>`;
+  }
+  let bubble;
+  if(m.type==='doc'){
+    bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;" onclick="showToast('📄 ${m.filename} wird heruntergeladen...')"><span style="font-size:22px;">📄</span><div><div style="font-size:13px;font-weight:700;">${m.filename}</div><div style="font-size:11px;opacity:0.8;">${m.size}</div></div></div></div>`;
+  }else if(m.type==='uw'){
+    bubble=`<div class="msg-bubble">${m.text} <div class="uw-bubble" onclick="showToast('📎 ${m.filename} wird heruntergeladen...')"><span class="uw-icon">📎</span><div><div class="uw-info-name">${m.filename}</div><div class="uw-info-sub">${m.sub}</div></div></div></div>`;
+  }else{
+    bubble=`<div class="msg-bubble">${m.text}</div>`;
+  }
+  return `<div class="msg-row${outClass}"><div>${bubble}<span class="msg-time"${timeStyle}>${m.time}</span></div></div>`;
+}
+function renderPatientMessages(){
+  const msgs=document.getElementById('messages');
+  const account=getCurrentAccount();
+  const items=(account&&account.messages)||[];
+  if(!items.length){
+    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Noch keine Nachrichten</div><div class="empty-sub">Schreiben Sie Ihrer Ordination eine Nachricht</div></div>';
+    return;
+  }
+  msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function getCurrentAccount(){
+  if(!currentUsername) return null;
+  const accounts=loadPatientAccounts();
+  return accounts[currentUsername]||null;
+}
+function appendPatientMessage(msg){
+  if(!currentUsername) return;
+  const accounts=loadPatientAccounts();
+  const acc=accounts[currentUsername];
+  if(!acc) return;
+  if(!acc.messages) acc.messages=[];
+  acc.messages.push(msg);
+  savePatientAccounts(accounts);
+}
+// Fallback conversation shown only if patient.html is opened directly, with
+// no login session at all (e.g. browsing the site without going through
+// patient-login.html first) -- keeps the page from looking broken/blank
+// instead of silently failing.
+const FALLBACK_MESSAGES=[
+  {dir:'out',type:'text',text:'Guten Morgen, Herr Müller! Wie geht es Ihnen heute?',time:'09:10'},
+  {dir:'in',type:'text',text:'Guten Morgen Frau Doktor! Geht mir gut, danke.',time:'09:12 ✓✓'},
+];
+function initPatientData(){
+  const session=getSessionUser();
+  currentUsername=session&&session.username;
+  const account=getCurrentAccount();
+  if(!account){
+    document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
+    return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
+  }
+  const fullName=account.fullName||account.name||'Patient';
+  const initial=fullName[0]||'P';
+  document.getElementById('topbarAvatar').textContent=initial;
+  document.getElementById('topbarUsername').textContent=(account.name||fullName.split(' ')[0]);
+  document.getElementById('profilAvatar').textContent=initial;
+  document.getElementById('profilName').textContent=fullName;
+  document.getElementById('profilSub').textContent='Patient · '+(account.versicherung||'—')+(account.adresse?' · '+account.adresse.split(',').pop().trim():'');
+  document.getElementById('profilFullName').textContent=fullName;
+  const age=account.dob?new Date().getFullYear()-new Date(account.dob).getFullYear():null;
+  document.getElementById('profilDob').textContent=account.dob?new Date(account.dob).toLocaleDateString('de-AT')+(age?' ('+age+' J.)':''):'—';
+  document.getElementById('profilAdresse').textContent=account.adresse||'—';
+  document.getElementById('profilTel').textContent=account.tel||'—';
+  document.getElementById('profilEmail').textContent=account.email||'—';
+  document.getElementById('profilVersicherung').textContent=account.versicherung||'—';
+  document.getElementById('profilSvnr').textContent=account.svnr||'—';
+  renderPatientMessages();
+  if(!(account.messages&&account.messages.length)){
+    const b1=document.querySelector('#nav-chat .nav-badge');if(b1)b1.remove();
+    const b2=document.getElementById('navTabChatBadge');if(b2)b2.remove();
+  }
+}
+
 // ── Chat ──
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,80)+'px';}
 
@@ -972,24 +1000,21 @@ function sendMsg(){
   const inp=document.getElementById('chatInput');
   const txt=inp.value.trim();if(!txt)return;
   const msgs=document.getElementById('messages');
+  if(msgs.querySelector('.empty-state')) msgs.innerHTML='';
   const time=new Date().toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
-  const row=document.createElement('div');row.className='msg-row out';
-  row.innerHTML=`<div><div class="msg-bubble">${txt}</div><span class="msg-time">${time} ✓✓</span></div>`;
-  msgs.appendChild(row);
+  const outMsg={dir:'in',type:'text',text:txt,time:time+' ✓✓'}; // dir:'in' = written by the patient (see msgRowHtml)
+  msgs.insertAdjacentHTML('beforeend',msgRowHtml(outMsg));
+  appendPatientMessage(outMsg);
   inp.value='';inp.style.height='auto';
   msgs.scrollTop=msgs.scrollHeight;
   // Auto reply
   setTimeout(()=>{
-    const rep=document.createElement('div');rep.className='msg-row';
-    rep.innerHTML=`<div class="msg-avatar-sm" style="background:#1e40af;">S</div><div><div class="msg-bubble">Danke für Ihre Nachricht! Ich melde mich bald. </div><span class="msg-time" style="color:var(--text-muted);">${time}</span></div>`;
-    msgs.appendChild(rep);msgs.scrollTop=msgs.scrollHeight;
+    const inMsg={dir:'out',type:'text',text:'Danke für Ihre Nachricht! Ich melde mich bald.',time}; // dir:'out' = written by the doctor
+    msgs.insertAdjacentHTML('beforeend',msgRowHtml(inMsg));
+    msgs.scrollTop=msgs.scrollHeight;
+    appendPatientMessage(inMsg);
   },1200);
 }
-
-// ── Voice wave ──
-const waveEl=document.getElementById('wave1');
-const heights=[30,50,70,45,80,55,65,40,75,50,35,60];
-heights.forEach(h=>{const b=document.createElement('div');b.className='voice-bar';b.style.height=h+'%';waveEl.appendChild(b);});
 
 // ── Calendar ──
 let currentDate=new Date(2026,5,1); // June 2026
@@ -1061,6 +1086,7 @@ function logout(){
 
 // Init
 renderCalendar();
+initPatientData();
 document.getElementById('messages').scrollTop=99999;
 </script>
 </body>
