@@ -225,10 +225,16 @@ function doLogin(){
   btn.classList.add('loading');
   setTimeout(()=>{
     const acc=USERS[u];
-    if(!acc||acc.pw!==p){
+    // Sekretariat access is a Pro/Enterprise feature (see register.html's
+    // "Paket wählen" step) -- Basic only includes the doctor's own login.
+    const planBlocksSekretariat = u==='sekretariat' && localStorage.getItem('smartordi_plan')==='basic';
+    if(!acc||acc.pw!==p||planBlocksSekretariat){
       btn.classList.remove('loading');
       document.getElementById('btnText').style.display='block';
       document.getElementById('spinner').style.display='none';
+      document.getElementById('errorText').textContent = planBlocksSekretariat
+        ? 'Der Sekretariats-Zugang ist im Basic-Paket nicht enthalten. Bitte auf Pro upgraden.'
+        : 'Falscher Benutzername oder Passwort.';
       document.getElementById('errorMsg').classList.add('show');
       document.getElementById('password').value='';
       return;

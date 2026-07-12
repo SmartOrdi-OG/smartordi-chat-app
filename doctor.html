@@ -783,6 +783,7 @@ body.windows-mode .kartei-header{display:none;}
 .kartei-tabs::-webkit-scrollbar{display:none;}
 .kartei-tab{flex-shrink:0;padding:7px 14px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-2);border-radius:8px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:4px;}
 .kartei-tab.active{color:white!important;background:linear-gradient(135deg,#1e40af,#1d4ed8);font-weight:700;box-shadow:0 2px 6px rgba(30,64,175,0.3);}
+.kartei-tab.kartei-tab-locked{opacity:0.55;}
 .kartei-tab:hover:not(.active){color:#1e40af!important;background:#eff6ff;}
 .kartei-body{flex:1;overflow-y:auto;padding:0;}
 
@@ -1308,8 +1309,8 @@ body.windows-mode .kartei-header{display:none;}
       <button class="kartei-tab" onclick="switchKarteiTab('anamnese',this)">Anamnese</button>
       <button class="kartei-tab" onclick="switchKarteiTab('neu',this)">+ Neu</button>
       <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('rezept',this)">Rezept</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('impfung',this)">Impfung</button>
+      <button class="kartei-tab" id="ktab-btn-rezept" onclick="switchKarteiTab('rezept',this)">Rezept</button>
+      <button class="kartei-tab" id="ktab-btn-impfung" onclick="switchKarteiTab('impfung',this)">Impfung</button>
       <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
       <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
     </div>
@@ -2198,6 +2199,12 @@ body.windows-mode .kartei-header{display:none;}
       </div>
     </div>
 
+    <!-- Ihr Paket -->
+    <div class="dash-card" style="margin-bottom:20px;">
+      <div class="dash-card-header">Ihr Paket <span style="font-size:11px;color:#64748b;font-weight:400;">— gewählt bei der Registrierung, hier jederzeit änderbar</span></div>
+      <div class="dash-card-body" id="planSettingsBody" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"></div>
+    </div>
+
     <!-- Stempel -->
     <div class="dash-card" style="margin-bottom:20px;">
       <div class="dash-card-header">Praxisstempel <span style="font-size:11px;color:#64748b;font-weight:400;">— wird automatisch auf jede Überweisung gedruckt</span></div>
@@ -2797,6 +2804,65 @@ let karteiOpen = false;
 let karteiPatientLoaded = false;
 let activeYear = 'all';
 
+// ══ PLAN / PAKET (linked from register.html's "Paket wählen" step) ══
+// No real backend yet, so the chosen plan lives in this browser's
+// localStorage, same as the other registration-time settings (Fachrichtung).
+const PLAN_FEATURES = {
+  basic:      {label:'Basic',      price:'€49',  rezeptImpfung:false, sekretaerin:false, bullets:['1 Arzt','Bis 100 Patienten','Chat & Kartei','Überweisung PDF']},
+  pro:        {label:'Pro',        price:'€99',  rezeptImpfung:true,  sekretaerin:true,  bullets:['1 Arzt + Sekretärin','Bis 500 Patienten','Alles in Basic','Rezept & Impfpass']},
+  enterprise: {label:'Enterprise', price:'€249', rezeptImpfung:true,  sekretaerin:true,  bullets:['Mehrere Ärzte','Unbegrenzte Patienten','Alles in Pro','API & Integration']},
+};
+function getPlan(){
+  const p=localStorage.getItem('smartordi_plan');
+  return PLAN_FEATURES[p]?p:'pro';
+}
+function planHasFeature(feature){
+  return !!PLAN_FEATURES[getPlan()][feature];
+}
+function setPlan(plan){
+  if(!PLAN_FEATURES[plan]) return;
+  localStorage.setItem('smartordi_plan',plan);
+  applyPlanGating();
+  renderPlanSettings();
+  showToast('✓ Paket "'+PLAN_FEATURES[plan].label+'" aktiv');
+}
+function applyPlanGating(){
+  const locked=!planHasFeature('rezeptImpfung');
+  ['rezept','impfung'].forEach(tab=>{
+    const btn=document.getElementById('ktab-btn-'+tab);
+    if(!btn) return;
+    btn.classList.toggle('kartei-tab-locked',locked);
+    const lock=btn.querySelector('.tab-lock');
+    if(locked && !lock){
+      const span=document.createElement('span');
+      span.className='tab-lock';
+      span.textContent='🔒';
+      span.style.marginLeft='4px';
+      span.style.fontSize='10px';
+      btn.appendChild(span);
+    } else if(!locked && lock){
+      lock.remove();
+    }
+  });
+}
+function renderPlanSettings(){
+  const body=document.getElementById('planSettingsBody');
+  if(!body) return;
+  const current=getPlan();
+  body.innerHTML=Object.keys(PLAN_FEATURES).map(key=>{
+    const p=PLAN_FEATURES[key];
+    const active=key===current;
+    return `
+      <div onclick="setPlan('${key}')" style="border:2px solid ${active?'#1e40af':'#e2e8f0'};background:${active?'#eff6ff':'white'};border-radius:12px;padding:12px;cursor:pointer;">
+        <div style="font-size:12px;font-weight:700;color:#0f172a;">${p.label}${active?' <span style="color:#1e40af;">✓ Aktiv</span>':''}</div>
+        <div style="font-size:16px;font-weight:800;color:#1e40af;margin:4px 0 6px;">${p.price}<span style="font-size:10px;font-weight:500;color:#64748b;">/Monat</span></div>
+        ${p.bullets.map(b=>`<div style="font-size:11px;color:#475569;">✓ ${b}</div>`).join('')}
+      </div>`;
+  }).join('');
+}
+applyPlanGating();
+renderPlanSettings();
+
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
   {patient:'Thomas Müller',date:'2026-04-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',               notes:'Patient fragte nach Blutwerten. Alles im Normbereich.',therapy:''},
@@ -2998,6 +3064,10 @@ function populateKarteiStamm(name){
 }
 
 function switchKarteiTab(tab,btn){
+  if((tab==='rezept'||tab==='impfung') && !planHasFeature('rezeptImpfung')){
+    showToast('🔒 Rezept & Impfpass sind erst ab dem Pro-Paket enthalten.');
+    return;
+  }
   ['verlauf','stamm','anamnese','neu','ueberweisung','rezept','impfung','labor','suche'].forEach(t=>{
     const el=document.getElementById('ktab-'+t);
     if(el)el.style.display=t===tab?'block':'none';
