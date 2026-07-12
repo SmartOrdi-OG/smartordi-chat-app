@@ -2800,7 +2800,16 @@ function loadTermine(){
     ];
     saveTermine(list);
   }
+  // Backfill endTime for appointments saved before that field existed.
+  let migrated=false;
+  list.forEach(t=>{ if(!t.endTime){ t.endTime=addMinutesToTime(t.time,30); migrated=true; } });
+  if(migrated) saveTermine(list);
   return list;
+}
+function addMinutesToTime(hhmm,mins){
+  const [h,m]=hhmm.split(':').map(Number);
+  let total=((h*60+m+mins)%1440+1440)%1440;
+  return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
 }
 function dayBoxLabel(dateStr){
   const d=new Date(dateStr+'T00:00:00');
