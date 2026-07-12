@@ -574,18 +574,40 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       </div>
       <div class="modal-body">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
-        <svg viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;">
-          <circle class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="30" r="24"></circle>
-          <rect class="body-part" data-region="hals" onclick="toggleRegion('hals')" x="88" y="52" width="24" height="16"></rect>
-          <rect class="body-part" data-region="brust" onclick="toggleRegion('brust')" x="63" y="70" width="74" height="62" rx="12"></rect>
-          <rect class="body-part" data-region="bauch" onclick="toggleRegion('bauch')" x="70" y="134" width="60" height="50" rx="8"></rect>
-          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="33" y="72" width="24" height="112" rx="10"></rect>
-          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="143" y="72" width="24" height="112" rx="10"></rect>
-          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="70" y="186" width="27" height="142" rx="10"></rect>
-          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="103" y="186" width="27" height="142" rx="10"></rect>
+        <div style="text-align:center;margin-bottom:8px;">
+          <button type="button" class="region-chip" id="bodyViewToggle" onclick="toggleBodyView()" style="font-weight:700;">🔄 Rückansicht anzeigen</button>
+        </div>
+        <svg id="bodyFrontView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;">
+          <circle class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="36" r="24"></circle>
+          <circle class="body-part" data-region="gesicht" onclick="toggleRegion('gesicht')" cx="100" cy="40" r="13"></circle>
+          <rect class="body-part" data-region="hals" onclick="toggleRegion('hals')" x="88" y="58" width="24" height="14" rx="5"></rect>
+          <rect class="body-part" data-region="nacken" onclick="toggleRegion('nacken')" x="50" y="70" width="100" height="14" rx="7"></rect>
+          <rect class="body-part" data-region="brust" onclick="toggleRegion('brust')" x="65" y="86" width="70" height="55" rx="12"></rect>
+          <rect class="body-part" data-region="bauch" onclick="toggleRegion('bauch')" x="67" y="143" width="66" height="48" rx="8"></rect>
+          <rect class="body-part" data-region="becken" onclick="toggleRegion('becken')" x="70" y="193" width="60" height="28" rx="8"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="30" y="88" width="22" height="110" rx="10"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="148" y="88" width="22" height="110" rx="10"></rect>
+          <circle class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="41" cy="208" r="14"></circle>
+          <circle class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="159" cy="208" r="14"></circle>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="72" y="223" width="24" height="85" rx="10"></rect>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="104" y="223" width="24" height="85" rx="10"></rect>
+          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="84" cy="318" rx="16" ry="10"></ellipse>
+          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="116" cy="318" rx="16" ry="10"></ellipse>
+        </svg>
+        <svg id="bodyBackView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:none;margin:0 auto 14px;">
+          <circle class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="36" r="24"></circle>
+          <rect class="body-part" data-region="nacken" onclick="toggleRegion('nacken')" x="50" y="70" width="100" height="14" rx="7"></rect>
+          <rect class="body-part" data-region="ruecken" onclick="toggleRegion('ruecken')" x="62" y="86" width="76" height="130" rx="10"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="30" y="88" width="22" height="110" rx="10"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="148" y="88" width="22" height="110" rx="10"></rect>
+          <circle class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="41" cy="208" r="14"></circle>
+          <circle class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="159" cy="208" r="14"></circle>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="72" y="223" width="24" height="85" rx="10"></rect>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="104" y="223" width="24" height="85" rx="10"></rect>
+          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="84" cy="318" rx="16" ry="10"></ellipse>
+          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="116" cy="318" rx="16" ry="10"></ellipse>
         </svg>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
-          <button class="region-chip" data-region="ruecken" onclick="toggleRegion('ruecken')">Rücken</button>
           <button class="region-chip" data-region="haut" onclick="toggleRegion('haut')">Haut (allgemein)</button>
         </div>
         <div id="symptomRegions"></div>
@@ -1241,29 +1263,45 @@ function renderPatientTermine(){
 
 // ── Symptom picker (reason for visit) ──
 const SYMPTOM_REGIONS={
-  kopf:{label:'Kopf',symptoms:['Kopfschmerzen','Schwindel','Sehstörungen','Ohrenschmerzen','Fieber']},
-  hals:{label:'Hals',symptoms:['Halsschmerzen','Schluckbeschwerden','Heiserkeit','Husten']},
+  kopf:{label:'Kopf (allgemein)',symptoms:['Kopfschmerzen','Schwindel','Migräne','Fieber']},
+  gesicht:{label:'Gesicht / Augen / Ohren',symptoms:['Sehstörungen','Ohrenschmerzen','Hörminderung','Nasenbluten','Zahnschmerzen','Riechstörung']},
+  nacken:{label:'Nacken & Schultern',symptoms:['Nackenschmerzen','Schulterschmerzen','Verspannungen','Eingeschränkte Beweglichkeit']},
+  hals:{label:'Hals (Kehle)',symptoms:['Halsschmerzen','Schluckbeschwerden','Heiserkeit','Husten']},
   brust:{label:'Brust / Herz',symptoms:['Brustschmerzen','Herzrasen','Atemnot','Husten']},
   bauch:{label:'Bauch',symptoms:['Bauchschmerzen','Übelkeit','Erbrechen','Durchfall','Verstopfung','Sodbrennen']},
-  ruecken:{label:'Rücken',symptoms:['Rückenschmerzen','Verspannungen','Ausstrahlende Schmerzen']},
+  becken:{label:'Becken / Unterleib',symptoms:['Unterleibsschmerzen','Brennen beim Wasserlassen','Blasenprobleme','Menstruationsbeschwerden','Ausfluss']},
+  ruecken:{label:'Rücken',symptoms:['Rückenschmerzen','Verspannungen','Ausstrahlende Schmerzen','Ischiasschmerzen']},
   arme:{label:'Arme',symptoms:['Schmerzen','Taubheitsgefühl','Schwellung','Eingeschränkte Beweglichkeit']},
+  haende:{label:'Hände',symptoms:['Schmerzen','Taubheit/Kribbeln','Schwellung','Zittern','Eingeschränkte Fingerbeweglichkeit']},
   beine:{label:'Beine',symptoms:['Schmerzen','Schwellung','Krampfadern','Taubheitsgefühl']},
+  fuesse:{label:'Füße',symptoms:['Schmerzen','Schwellung','Taubheit/Kribbeln','Hautveränderung']},
   haut:{label:'Haut (allgemein)',symptoms:['Ausschlag','Juckreiz','Rötung','Wunde/Verletzung']},
 };
 let activeRegions=new Set();
 let selectedSymptoms=new Set();
 let symptomTerminId=null;
+let showingBodyBack=false;
 
 function openSymptomModal(terminId){
   symptomTerminId=terminId;
   activeRegions=new Set();
   selectedSymptoms=new Set();
+  showingBodyBack=false;
+  document.getElementById('bodyFrontView').style.display='block';
+  document.getElementById('bodyBackView').style.display='none';
+  document.getElementById('bodyViewToggle').textContent='🔄 Rückansicht anzeigen';
   document.querySelectorAll('.body-part,.region-chip').forEach(el=>el.classList.remove('active'));
   document.getElementById('symptomRegions').innerHTML='';
   document.getElementById('symptomNote').value='';
   document.getElementById('symptomModal').classList.add('show');
 }
 function closeSymptomModal(){ document.getElementById('symptomModal').classList.remove('show'); }
+function toggleBodyView(){
+  showingBodyBack=!showingBodyBack;
+  document.getElementById('bodyFrontView').style.display=showingBodyBack?'none':'block';
+  document.getElementById('bodyBackView').style.display=showingBodyBack?'block':'none';
+  document.getElementById('bodyViewToggle').textContent=showingBodyBack?'🔄 Vorderansicht anzeigen':'🔄 Rückansicht anzeigen';
+}
 function toggleRegion(region){
   if(activeRegions.has(region)) activeRegions.delete(region);
   else activeRegions.add(region);
