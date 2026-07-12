@@ -2792,11 +2792,11 @@ function loadTermine(){
   if(!Array.isArray(list)){
     const today=todayStr();
     list=[
-      {id:genTerminId(),patient:'Thomas Müller',art:'Kontrolle',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:today,time:'09:00',status:'neu'},
-      {id:genTerminId(),patient:'Maria Schreiber',art:'Ordination',versicherung:'BVAEB',tel:'+43 699 456 789',svnr:'5678 150390',dob:'1990-03-15',date:today,time:'10:00',status:'bestaetigt'},
-      {id:genTerminId(),patient:'Hans Bauer',art:'Erstgespräch',versicherung:'SVS',tel:'',svnr:'9012 220775',dob:'1975-07-22',date:today,time:'11:00',status:'neu'},
-      {id:genTerminId(),patient:'Anna Weber',art:'Kontrolle',versicherung:'ÖGK',tel:'',svnr:'3456 080268',dob:'1968-02-08',date:addDays(3),time:'09:30',status:'bestaetigt'},
-      {id:genTerminId(),patient:'Thomas Müller',art:'Folgetermin',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:addDays(4),time:'14:00',status:'bestaetigt'},
+      {id:genTerminId(),patient:'Thomas Müller',art:'Kontrolle',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:today,time:'09:00',endTime:'09:30',status:'neu'},
+      {id:genTerminId(),patient:'Maria Schreiber',art:'Ordination',versicherung:'BVAEB',tel:'+43 699 456 789',svnr:'5678 150390',dob:'1990-03-15',date:today,time:'10:00',endTime:'10:30',status:'bestaetigt'},
+      {id:genTerminId(),patient:'Hans Bauer',art:'Erstgespräch',versicherung:'SVS',tel:'',svnr:'9012 220775',dob:'1975-07-22',date:today,time:'11:00',endTime:'11:45',status:'neu'},
+      {id:genTerminId(),patient:'Anna Weber',art:'Kontrolle',versicherung:'ÖGK',tel:'',svnr:'3456 080268',dob:'1968-02-08',date:addDays(3),time:'09:30',endTime:'10:00',status:'bestaetigt'},
+      {id:genTerminId(),patient:'Thomas Müller',art:'Folgetermin',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:addDays(4),time:'14:00',endTime:'14:20',status:'bestaetigt'},
     ];
     saveTermine(list);
   }
@@ -2819,7 +2819,7 @@ function dashTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
     <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
     <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''}</div></div>
-    <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">${t.time}</div>${terminStatusBadge(t.status)}</div>
+    <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">${t.time}${t.endTime?'–'+t.endTime:''}</div>${terminStatusBadge(t.status)}</div>
   </div>`;
 }
 function renderDashTermine(){
@@ -2835,7 +2835,7 @@ function renderDashTermine(){
 function allTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
     <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time:dayBoxLabel(t.date)+' · '+t.time}</div></div>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time+(t.endTime?'–'+t.endTime:''):dayBoxLabel(t.date)+' · '+t.time+(t.endTime?'–'+t.endTime:'')}</div></div>
     ${terminStatusBadge(t.status)}
     <div style="display:flex;gap:6px;flex-shrink:0;">
       <button onclick="openKarteiForPatientAndShow('${t.patient}','${t.svnr||''}','${t.versicherung||''}','${t.dob||''}')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
