@@ -1303,7 +1303,8 @@ body.windows-mode .kartei-header{display:none;}
         <div class="kartei-patient-meta" id="kartei-meta">ÖGK · SV 1234 010185 · 41 J.</div>
       </div>
       <div style="flex:1;"></div>
-      <button onclick="exportPatientCsv()" title="Patientendaten als CSV exportieren, z.B. für einen anderen Arzt" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#1e40af;cursor:pointer;font-family:inherit;white-space:nowrap;">📤 Exportieren</button>
+      <button onclick="exportPatientPdf()" title="Patientenbericht als PDF — zum Lesen/Drucken, z.B. für einen anderen Arzt" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#1e40af;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;">📄 PDF</button>
+      <button onclick="exportPatientCsv()" title="Patientendaten als CSV — für den Import in ein anderes (Smartordi-)System" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;">📊 CSV</button>
     </div>
 
     <div class="kartei-tabs">
@@ -3292,6 +3293,95 @@ function exportPatientCsv(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('✓ Patientendaten exportiert');
+}
+
+// Human-readable counterpart to exportPatientCsv() -- for handing a patient's
+// record to another doctor to read/print/file, rather than importing it into
+// another system (see the same "PATIENTENBERICHT" structure other Kartei PDFs
+// like Überweisung/Rezept already use for a consistent look).
+function exportPatientPdf(){
+  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  const rec=findPatientRecord(name);
+  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const T=(text,x,y,size=10,style='normal',color=[0,0,0])=>{
+    doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);doc.text(String(text||''),x,y);
+  };
+  const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
+  const R=(x,y,w,h,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h);};
+  const arztName=document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed';
+  const arztFach=document.getElementById('setFach')?.value||'Allgemeinmedizin';
+  const arztAdresse=document.getElementById('setAdresse')?.value||'Steingasse 6A, 4020 Linz';
+  const today=new Date().toLocaleDateString('de-AT');
+  const age=rec.dob?new Date().getFullYear()-new Date(rec.dob).getFullYear():null;
+  const dobFmt=rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):'—';
+
+  let y=15;
+  doc.setFillColor(30,64,175);doc.rect(0,0,210,22,'F');
+  T('PATIENTENBERICHT',15,14,18,'bold',[255,255,255]);
+  T('Österreich · DSGVO-konform',150,10,8,'normal',[180,200,255]);
+  T(today,150,16,9,'normal',[180,200,255]);
+  y=32;
+
+  R(10,y,90,22);
+  T('Übermittelnde Ärztin:',13,y+6,8,'normal',[120,120,120]);
+  T(arztName,13,y+12,11,'bold');
+  T(arztFach+' · '+arztAdresse,13,y+18,8);
+
+  R(105,y,95,22);
+  T('Patient/in:',108,y+6,8,'normal',[120,120,120]);
+  T(name,108,y+12,11,'bold');
+  T('SV-Nr: '+(rec.svnr==='—'?'—':rec.svnr)+'  Geb: '+dobFmt+(age?' ('+age+' J.)':''),108,y+18,8);
+  y+=30;
+
+  T('Stammdaten',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  T('Versicherung: '+(rec.versicherung==='—'?'—':rec.versicherung),13,y,9);
+  T('Telefon: '+(rec.tel==='—'?'—':rec.tel),110,y,9);y+=6;
+  T('Adresse: '+(rec.adresse==='—'?'—':rec.adresse),13,y,9);
+  T('Blutgruppe: '+(rec.blutgruppe==='—'?'—':rec.blutgruppe),110,y,9);y+=10;
+
+  T('Diagnosen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  T(rec.diagnosen==='—'?'Keine erfasst':rec.diagnosen,13,y,9);y+=10;
+
+  if(rec.allergie){
+    doc.setFillColor(254,242,242);doc.rect(10,y-5,190,9,'F');
+    T(rec.allergie,13,y,10,'bold',[220,38,38]);y+=10;
+  }
+
+  T('Impfungen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  const impfungen=rec.impfungen||[];
+  if(!impfungen.length){ T('Keine erfasst',13,y,9);y+=8; }
+  else{
+    impfungen.forEach(imp=>{
+      const datumFmt=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
+      T('• '+imp.name+(imp.dosis?' ('+imp.dosis+')':'')+' — '+datumFmt,13,y,9);y+=6;
+    });
+    y+=2;
+  }
+
+  T('Krankengeschichte / Verlauf',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  const visitsText=VISITS.filter(v=>v.patient===name).map(v=>{
+    const df=new Date(v.date).toLocaleDateString('de-AT');
+    return df+' — '+v.type+': '+v.diag;
+  }).join('\n');
+  const history=rec.legacyHistory||visitsText||'Keine Einträge';
+  const lines=doc.splitTextToSize(history,185);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(lines,13,y);
+  y+=lines.length*4.5+8;
+
+  if(y>260) y=260;
+  L(15,y,195,y,0.3);y+=4;
+  T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
+  T('Smartordi.eu | DSGVO-konform | '+today,195,y,7,'normal',[150,150,150]);
+  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,y-28,28,20); }catch(e){} }
+  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){} }
+
+  const nameParts=name.trim().split(/\s+/);
+  doc.save(('Patientenbericht_'+(nameParts[1]||nameParts[0])+'_'+today.replace(/\./g,'-')+'.pdf').replace(/\s+/g,'_'));
 }
 
 function populateKarteiStamm(name){
