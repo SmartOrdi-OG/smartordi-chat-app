@@ -2396,6 +2396,69 @@ body.windows-mode .kartei-header{display:none;}
   </div>
 </div>
 
+<!-- PAKET WECHSELN / ZAHLUNGSMETHODE MODAL -->
+<div class="modal-overlay" id="planChangeModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Paket wechseln — <span id="pcPlanLabel"></span></div>
+      <button class="modal-close" onclick="document.getElementById('planChangeModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12px;color:#1e40af;margin-bottom:14px;">
+        Für den Paketwechsel wird eine Zahlungsmethode benötigt. Ihre Angaben werden nicht wirklich abgebucht (Demo).
+      </div>
+      <div class="error-msg" id="pcErrorMsg" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px;"></div>
+      <div class="form-group">
+        <label class="form-label">Zahlungsmethode</label>
+        <div class="clinic-option selected" id="pcMethodCard" onclick="selectPaymentMethod('card')">
+          <span class="clinic-option-icon">💳</span>
+          <div class="clinic-option-info">
+            <div class="clinic-option-name">Kreditkarte</div>
+            <div class="clinic-option-detail">Visa, Mastercard</div>
+          </div>
+        </div>
+        <div class="clinic-option" id="pcMethodSepa" onclick="selectPaymentMethod('sepa')">
+          <span class="clinic-option-icon">🏦</span>
+          <div class="clinic-option-info">
+            <div class="clinic-option-name">SEPA-Lastschrift</div>
+            <div class="clinic-option-detail">Bankeinzug per IBAN</div>
+          </div>
+        </div>
+      </div>
+      <div id="pcCardFields">
+        <div class="form-group">
+          <label class="form-label">Kartennummer</label>
+          <input class="form-input" id="pcCardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Ablaufdatum</label>
+            <input class="form-input" id="pcCardExpiry" placeholder="MM/JJ" maxlength="5">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">CVC</label>
+            <input class="form-input" id="pcCardCvc" placeholder="123" maxlength="4">
+          </div>
+        </div>
+      </div>
+      <div id="pcSepaFields" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">IBAN</label>
+          <input class="form-input" id="pcIban" placeholder="AT12 3456 7890 1234 5678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kontoinhaber</label>
+          <input class="form-input" id="pcKontoinhaber" placeholder="Vor- und Nachname">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="document.getElementById('planChangeModal').classList.remove('show')">Abbrechen</button>
+      <button class="btn-primary" onclick="confirmPlanChange()">✓ Bestätigen & wechseln</button>
+    </div>
+  </div>
+</div>
+
 <!-- ALLE TERMINE MODAL -->
 <div class="modal-overlay" id="allTermineModal">
   <div class="modal" style="max-width:520px;">
@@ -2826,6 +2889,62 @@ function setPlan(plan){
   renderPlanSettings();
   showToast('✓ Paket "'+PLAN_FEATURES[plan].label+'" aktiv');
 }
+function getPaymentMethod(){
+  try{ return JSON.parse(localStorage.getItem('smartordi_payment'))||null; }catch(e){ return null; }
+}
+
+// A plan change is a billing action, not just a UI toggle -- clicking a
+// package (here, or on register.html) always goes through a payment step
+// before it actually takes effect.
+let pendingPlan=null;
+function openPlanChangeModal(plan){
+  if(plan===getPlan()){ showToast('Dieses Paket ist bereits aktiv.'); return; }
+  pendingPlan=plan;
+  document.getElementById('pcPlanLabel').textContent=PLAN_FEATURES[plan].label+' ('+PLAN_FEATURES[plan].price+'/Monat)';
+  document.getElementById('pcErrorMsg').style.display='none';
+  const saved=getPaymentMethod();
+  selectPaymentMethod(saved?saved.method:'card');
+  document.getElementById('pcCardNumber').value=saved && saved.method==='card' ? saved.number : '';
+  document.getElementById('pcCardExpiry').value=saved && saved.method==='card' ? saved.expiry : '';
+  document.getElementById('pcCardCvc').value='';
+  document.getElementById('pcIban').value=saved && saved.method==='sepa' ? saved.iban : '';
+  document.getElementById('pcKontoinhaber').value=saved && saved.method==='sepa' ? saved.kontoinhaber : '';
+  document.getElementById('planChangeModal').classList.add('show');
+}
+function selectPaymentMethod(method){
+  document.getElementById('pcMethodCard').classList.toggle('selected',method==='card');
+  document.getElementById('pcMethodSepa').classList.toggle('selected',method==='sepa');
+  document.getElementById('pcCardFields').style.display=method==='card'?'block':'none';
+  document.getElementById('pcSepaFields').style.display=method==='sepa'?'block':'none';
+}
+function confirmPlanChange(){
+  const usingCard=document.getElementById('pcMethodCard').classList.contains('selected');
+  const errEl=document.getElementById('pcErrorMsg');
+  let payment;
+  if(usingCard){
+    const number=document.getElementById('pcCardNumber').value.replace(/\s+/g,'');
+    const expiry=document.getElementById('pcCardExpiry').value.trim();
+    const cvc=document.getElementById('pcCardCvc').value.trim();
+    if(!/^\d{13,19}$/.test(number)||!/^\d{2}\/\d{2}$/.test(expiry)||!/^\d{3,4}$/.test(cvc)){
+      errEl.textContent='Bitte eine gültige Kartennummer, Ablaufdatum (MM/JJ) und CVC eingeben.';
+      errEl.style.display='block';
+      return;
+    }
+    payment={method:'card',number,expiry,last4:number.slice(-4)};
+  }else{
+    const iban=document.getElementById('pcIban').value.replace(/\s+/g,'');
+    const kontoinhaber=document.getElementById('pcKontoinhaber').value.trim();
+    if(iban.length<15||!kontoinhaber){
+      errEl.textContent='Bitte eine gültige IBAN und den Kontoinhaber eingeben.';
+      errEl.style.display='block';
+      return;
+    }
+    payment={method:'sepa',iban,kontoinhaber,last4:iban.slice(-4)};
+  }
+  localStorage.setItem('smartordi_payment',JSON.stringify(payment));
+  document.getElementById('planChangeModal').classList.remove('show');
+  setPlan(pendingPlan);
+}
 function applyPlanGating(){
   const locked=!planHasFeature('rezeptImpfung');
   ['rezept','impfung'].forEach(tab=>{
@@ -2849,16 +2968,21 @@ function renderPlanSettings(){
   const body=document.getElementById('planSettingsBody');
   if(!body) return;
   const current=getPlan();
-  body.innerHTML=Object.keys(PLAN_FEATURES).map(key=>{
+  const cards=Object.keys(PLAN_FEATURES).map(key=>{
     const p=PLAN_FEATURES[key];
     const active=key===current;
     return `
-      <div onclick="setPlan('${key}')" style="border:2px solid ${active?'#1e40af':'#e2e8f0'};background:${active?'#eff6ff':'white'};border-radius:12px;padding:12px;cursor:pointer;">
+      <div onclick="openPlanChangeModal('${key}')" style="border:2px solid ${active?'#1e40af':'#e2e8f0'};background:${active?'#eff6ff':'white'};border-radius:12px;padding:12px;cursor:pointer;">
         <div style="font-size:12px;font-weight:700;color:#0f172a;">${p.label}${active?' <span style="color:#1e40af;">✓ Aktiv</span>':''}</div>
         <div style="font-size:16px;font-weight:800;color:#1e40af;margin:4px 0 6px;">${p.price}<span style="font-size:10px;font-weight:500;color:#64748b;">/Monat</span></div>
         ${p.bullets.map(b=>`<div style="font-size:11px;color:#475569;">✓ ${b}</div>`).join('')}
       </div>`;
   }).join('');
+  const payment=getPaymentMethod();
+  const paymentLine=payment
+    ? (payment.method==='card' ? '💳 Kreditkarte •••• '+payment.last4 : '🏦 SEPA-Lastschrift •••• '+payment.last4)
+    : 'Keine Zahlungsmethode hinterlegt';
+  body.innerHTML=cards+`<div style="grid-column:1/-1;font-size:12px;color:#64748b;margin-top:2px;">Zahlungsmethode: <strong style="color:#0f172a;">${paymentLine}</strong></div>`;
 }
 applyPlanGating();
 renderPlanSettings();
