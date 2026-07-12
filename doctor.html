@@ -887,6 +887,7 @@ body.windows-mode .kartei-header{display:none;}
 /* ══ RESPONSIVE ══ */
 @media(max-width:768px){
   .mobile-bottom-nav{display:block;}
+  #trialReminderBanner{bottom:64px;}
   .view.active{height:calc(100vh - 110px);flex-direction:column;}
   .clinic-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);flex-shrink:0;height:100%;}
   .clinic-sidebar.mobile-hidden{display:none;}
@@ -2401,7 +2402,7 @@ body.windows-mode .kartei-header{display:none;}
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Paket wechseln — <span id="pcPlanLabel"></span></div>
-      <button class="modal-close" onclick="document.getElementById('planChangeModal').classList.remove('show')">✕</button>
+      <button class="modal-close" onclick="closePlanChangeModal()">✕</button>
     </div>
     <div class="modal-body">
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12px;color:#1e40af;margin-bottom:14px;">
@@ -2453,9 +2454,29 @@ body.windows-mode .kartei-header{display:none;}
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-secondary" onclick="document.getElementById('planChangeModal').classList.remove('show')">Abbrechen</button>
+      <button class="btn-secondary" onclick="closePlanChangeModal()">Abbrechen</button>
       <button class="btn-primary" onclick="confirmPlanChange()">✓ Bestätigen & wechseln</button>
     </div>
+  </div>
+</div>
+
+<!-- TRIAL REMINDER BANNER: shown a few days before the 30-day trial ends,
+     if no payment method has been confirmed yet -->
+<div id="trialReminderBanner" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:850;background:#fffbeb;border-top:1px solid #fde68a;padding:10px 16px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,0.06);">
+  <span style="font-size:13px;color:#92400e;font-weight:600;" id="trialReminderText"></span>
+  <button onclick="openTrialPaymentModal()" style="padding:6px 14px;background:#1e40af;color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Paket & Zahlung bestätigen</button>
+  <button onclick="dismissTrialReminder()" style="background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:0 4px;" title="Schließen">✕</button>
+</div>
+
+<!-- TRIAL EXPIRED LOCK OVERLAY: blocks the app entirely once the 30 days are
+     up and no payment method has been confirmed -->
+<div id="trialLockOverlay" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,0.75);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:32px;max-width:420px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <div style="font-size:40px;margin-bottom:12px;">⏰</div>
+    <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:8px;">Ihre Testphase ist abgelaufen</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Ihre kostenlose 30-Tage-Testphase ist beendet. Bitte wählen Sie ein Paket und hinterlegen Sie eine Zahlungsmethode, um Smartordi.chat weiter zu nutzen.</div>
+    <button onclick="openTrialPaymentModal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">Paket wählen & fortsetzen</button>
+    <button onclick="doctorLogout()" style="width:100%;padding:10px;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;">Abmelden</button>
   </div>
 </div>
 
@@ -2897,8 +2918,8 @@ function getPaymentMethod(){
 // package (here, or on register.html) always goes through a payment step
 // before it actually takes effect.
 let pendingPlan=null;
-function openPlanChangeModal(plan){
-  if(plan===getPlan()){ showToast('Dieses Paket ist bereits aktiv.'); return; }
+function openPlanChangeModal(plan,force){
+  if(!force && plan===getPlan()){ showToast('Dieses Paket ist bereits aktiv.'); return; }
   pendingPlan=plan;
   document.getElementById('pcPlanLabel').textContent=PLAN_FEATURES[plan].label+' ('+PLAN_FEATURES[plan].price+'/Monat)';
   document.getElementById('pcErrorMsg').style.display='none';
@@ -2944,6 +2965,66 @@ function confirmPlanChange(){
   localStorage.setItem('smartordi_payment',JSON.stringify(payment));
   document.getElementById('planChangeModal').classList.remove('show');
   setPlan(pendingPlan);
+  applyTrialStatus();
+}
+
+// ══ TRIAL STATUS (30 Tage kostenlos, siehe register.html) ══
+// smartordi_trial_start is only set by register.html at signup, so demo
+// logins that skip registration (direct login.html) never see this --
+// getTrialStart() returning null means "no trial to track".
+const TRIAL_DAYS=30;
+const TRIAL_REMINDER_WINDOW_DAYS=7;
+function getTrialStart(){
+  const t=localStorage.getItem('smartordi_trial_start');
+  return t?parseInt(t,10):null;
+}
+function getTrialDaysRemaining(){
+  const start=getTrialStart();
+  if(start===null) return null;
+  const elapsedDays=Math.floor((Date.now()-start)/(24*60*60*1000));
+  return TRIAL_DAYS-elapsedDays;
+}
+function openTrialPaymentModal(){
+  // The lock overlay's z-index is intentionally above the payment modal's
+  // (so it can't be dismissed by clicking through it) -- hide it while the
+  // modal is open, then let applyTrialStatus() decide whether to bring it
+  // back (Abbrechen re-locks if payment still isn't on file; a successful
+  // confirmPlanChange() already re-runs applyTrialStatus() itself).
+  document.getElementById('trialLockOverlay').style.display='none';
+  document.getElementById('trialReminderBanner').style.display='none';
+  openPlanChangeModal(getPlan(),true);
+  document.getElementById('pcPlanLabel').textContent=PLAN_FEATURES[getPlan()].label+' ('+PLAN_FEATURES[getPlan()].price+'/Monat)';
+}
+function closePlanChangeModal(){
+  document.getElementById('planChangeModal').classList.remove('show');
+  applyTrialStatus();
+}
+function dismissTrialReminder(){
+  sessionStorage.setItem('smartordi_trial_reminder_dismissed','1');
+  document.getElementById('trialReminderBanner').style.display='none';
+}
+function applyTrialStatus(){
+  const banner=document.getElementById('trialReminderBanner');
+  const lock=document.getElementById('trialLockOverlay');
+  const daysRemaining=getTrialDaysRemaining();
+  if(daysRemaining===null || getPaymentMethod()){
+    banner.style.display='none';
+    lock.style.display='none';
+    return;
+  }
+  if(daysRemaining<=0){
+    banner.style.display='none';
+    lock.style.display='flex';
+    return;
+  }
+  lock.style.display='none';
+  if(daysRemaining<=TRIAL_REMINDER_WINDOW_DAYS && sessionStorage.getItem('smartordi_trial_reminder_dismissed')!=='1'){
+    document.getElementById('trialReminderText').textContent=
+      'Ihre kostenlose Testphase endet in '+daysRemaining+' Tag'+(daysRemaining===1?'':'en')+'. Wählen Sie ein Paket, um Ihren Zugang zu behalten.';
+    banner.style.display='flex';
+  }else{
+    banner.style.display='none';
+  }
 }
 function applyPlanGating(){
   const locked=!planHasFeature('rezeptImpfung');
@@ -2986,6 +3067,7 @@ function renderPlanSettings(){
 }
 applyPlanGating();
 renderPlanSettings();
+applyTrialStatus();
 
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
