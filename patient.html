@@ -963,13 +963,81 @@ const FALLBACK_MESSAGES=[
   {dir:'out',type:'text',text:'Guten Morgen, Herr Müller! Wie geht es Ihnen heute?',time:'09:10'},
   {dir:'in',type:'text',text:'Guten Morgen Frau Doktor! Geht mir gut, danke.',time:'09:12 ✓✓'},
 ];
+// ══ GUARDIAN / MULTI-CHILD ACCOUNTS ══
+// A guardian logs in with their own credentials but isn't a patient
+// themselves -- their account has role:'guardian' and a list of child
+// profile usernames (no login of their own). Which child is currently being
+// viewed is kept in sessionStorage alongside the guardian's own login, so
+// switching children doesn't require logging in again.
+function setActiveChild(childUsername){
+  const session=getSessionUser()||{};
+  session.activeChildUsername=childUsername;
+  sessionStorage.setItem('smartordi_user',JSON.stringify(session));
+}
+function showChildPicker(guardianAccount,guardianUsername){
+  const accounts=loadPatientAccounts();
+  const children=(guardianAccount.children||[]).map(u=>({username:u,account:accounts[u]})).filter(c=>c.account);
+  const rows=children.map(c=>`
+    <div onclick="selectChild('${c.username}')" style="display:flex;align-items:center;gap:12px;background:white;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <div style="width:44px;height:44px;border-radius:50%;background:#1e40af;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;">${(c.account.fullName||'?')[0]}</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;color:#0f172a;">${c.account.fullName||c.username}</div>
+        <div style="font-size:12px;color:#64748b;">${c.account.dob?new Date().getFullYear()-new Date(c.account.dob).getFullYear()+' Jahre':''}</div>
+      </div>
+      <span style="color:#94a3b8;">›</span>
+    </div>`).join('');
+  document.body.insertAdjacentHTML('beforeend',`
+    <div id="childPickerOverlay" style="position:fixed;inset:0;z-index:900;background:#f8fafc;display:flex;flex-direction:column;">
+      <div style="background:white;padding:16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#0f172a;">Kind auswählen</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px;">Angemeldet als ${guardianAccount.fullName||guardianAccount.name}</div>
+        </div>
+        <button onclick="logout()" style="background:#f1f5f9;border:none;color:#64748b;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Abmelden</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:16px;">${rows||'<div style="text-align:center;color:#94a3b8;padding:40px 20px;">Keine Kinder verknüpft</div>'}</div>
+    </div>`);
+}
+function selectChild(childUsername){
+  setActiveChild(childUsername);
+  const overlay=document.getElementById('childPickerOverlay');
+  if(overlay) overlay.remove();
+  initPatientData();
+}
+function switchChild(){
+  const overlay=document.getElementById('childPickerOverlay');
+  if(overlay) overlay.remove();
+  const session=getSessionUser()||{};
+  const accounts=loadPatientAccounts();
+  const guardianAccount=accounts[session.username];
+  if(guardianAccount) showChildPicker(guardianAccount,session.username);
+}
+
 function initPatientData(){
   const session=getSessionUser();
-  currentUsername=session&&session.username;
+  if(!session||!session.username){
+    document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
+    return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
+  }
+  const accounts=loadPatientAccounts();
+  const baseAccount=accounts[session.username];
+  if(!baseAccount){
+    document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
+    return;
+  }
+  if(baseAccount.role==='guardian'){
+    if(!session.activeChildUsername||!accounts[session.activeChildUsername]){
+      showChildPicker(baseAccount,session.username);
+      return;
+    }
+    currentUsername=session.activeChildUsername;
+  }else{
+    currentUsername=session.username;
+  }
   const account=getCurrentAccount();
   if(!account){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
-    return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
+    return;
   }
   const fullName=account.fullName||account.name||'Patient';
   const initial=fullName[0]||'P';
@@ -990,6 +1058,15 @@ function initPatientData(){
   if(!(account.messages&&account.messages.length)){
     const b1=document.querySelector('#nav-chat .nav-badge');if(b1)b1.remove();
     const b2=document.getElementById('navTabChatBadge');if(b2)b2.remove();
+  }
+  // Guardian viewing one of their children -- offer a way to switch
+  const switchBtn=document.getElementById('topbarSwitchChild');
+  if(account.guardianUsername){
+    if(!switchBtn){
+      document.getElementById('topbarUsername').insertAdjacentHTML('afterend','<button id="topbarSwitchChild" onclick="switchChild()" style="background:#eff6ff;border:none;color:#1e40af;padding:4px 9px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;">🔁 Kind wechseln</button>');
+    }
+  }else if(switchBtn){
+    switchBtn.remove();
   }
 }
 

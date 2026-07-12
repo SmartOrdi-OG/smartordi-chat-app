@@ -304,6 +304,14 @@ function saveNewPw(){
   savePatients();
 
   document.getElementById('screen-changepw').classList.remove('active');
+  // A guardian account isn't itself a patient -- the mandatory Anamnese is
+  // medical history for a specific patient, so it doesn't apply to them;
+  // go straight in and let them pick which child to view.
+  if(PATIENTS[currentUser.username].role==='guardian'){
+    sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
+    window.location.href='patient.html';
+    return;
+  }
   showAnamneseScreen();
 }
 
