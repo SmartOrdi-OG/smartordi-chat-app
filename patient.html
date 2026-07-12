@@ -415,6 +415,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .cal-day.has-termin::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--amber);}
 .cal-day.selected{background:#eff6ff;color:#1e40af;border:2px solid #1e40af;}
 .cal-day.empty{cursor:default;}
+.cal-day.past{opacity:0.3;cursor:not-allowed;}
+.cal-day.past:hover{background:none;color:inherit;}
 
 /* Toast */
 .toast{
@@ -432,6 +434,25 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .toast.error{background:linear-gradient(135deg,#991b1b,#dc2626);}
 
 ::-webkit-scrollbar{width:0;}
+
+/* Modal (symptom picker) */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:900;display:none;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay.show{display:flex;}
+.modal{background:white;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.25);}
+.modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);}
+.modal-body{padding:20px;}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);}
+.btn-confirm{width:100%;padding:11px 18px;border:none;border-radius:12px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+
+.body-part{fill:#dbeafe;stroke:#93c5fd;stroke-width:2;cursor:pointer;transition:fill 0.15s;}
+.body-part:hover{fill:#bfdbfe;}
+.body-part.active{fill:#1e40af;stroke:#1e40af;}
+.region-chip{padding:8px 14px;border-radius:20px;border:1.5px solid #bfdbfe;background:white;color:#1e40af;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.region-chip.active{background:#1e40af;color:white;}
+.symptom-chip{padding:6px 11px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+.symptom-chip.active{background:#1e40af;border-color:#1e40af;color:white;}
 </style>
 </head>
 <body>
@@ -529,77 +550,53 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       <div class="booking-card">
         <div class="booking-card-title">Termin buchen</div>
         <div class="booking-card-sub" id="bookingDate">Wählen Sie einen Tag im Kalender</div>
-        <div class="time-slots" id="timeSlots">
-          <div class="time-slot taken">08:00</div>
-          <div class="time-slot" onclick="selectSlot(this,'09:00')">09:00</div>
-          <div class="time-slot" onclick="selectSlot(this,'09:30')">09:30</div>
-          <div class="time-slot taken">10:00</div>
-          <div class="time-slot" onclick="selectSlot(this,'10:30')">10:30</div>
-          <div class="time-slot" onclick="selectSlot(this,'11:00')">11:00</div>
-          <div class="time-slot taken">14:00</div>
-          <div class="time-slot" onclick="selectSlot(this,'14:30')">14:30</div>
-          <div class="time-slot" onclick="selectSlot(this,'15:00')">15:00</div>
-        </div>
+        <div class="time-slots" id="timeSlots"></div>
         <button class="btn-book" onclick="bookTermin()">✓ Termin bestätigen</button>
       </div>
 
       <!-- Upcoming -->
       <div class="section-title">Kommende Termine</div>
-
-      <div class="termin-card">
-        <div class="termin-date-box">
-          <div class="termin-day">14</div>
-          <div class="termin-month">Jun</div>
-        </div>
-        <div class="termin-info">
-          <div class="termin-title">Kontrolltermin</div>
-          <div class="termin-sub">10:00 Uhr · Dr. Sarah Ahmed · Linz</div>
-        </div>
-        <span class="termin-status status-confirmed">✓ Bestätigt</span>
-      </div>
-
-      <div class="termin-card">
-        <div class="termin-date-box">
-          <div class="termin-day">28</div>
-          <div class="termin-month">Jun</div>
-        </div>
-        <div class="termin-info">
-          <div class="termin-title">Kardiologie – Überweisung</div>
-          <div class="termin-sub">09:30 Uhr · Dr. Weber · Wien</div>
-        </div>
-        <span class="termin-status status-pending">Ausstehend</span>
-      </div>
+      <div id="upcomingTermineRoot"></div>
 
       <!-- Past visits -->
       <div class="section-title" style="margin-top:16px;">Vergangene Besuche</div>
+      <div id="pastTermineRoot"></div>
 
-      <div class="visit-card">
-        <div class="visit-card-top">
-          <span class="visit-card-date">03.06.2026</span>
-          <span class="visit-card-type">Kontrolle</span>
-        </div>
-        <div class="visit-card-title">Blutdruckkontrolle</div>
-        <div class="visit-card-note">Blutdruck 135/85 mmHg — stabil. Nächste Kontrolle in 4 Wochen.</div>
+    </div>
+  </div>
+
+  <!-- SYMPTOM PICKER MODAL -->
+  <div class="modal-overlay" id="symptomModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Grund für den Besuch</div>
+        <button class="modal-close" onclick="closeSymptomModal()">×</button>
       </div>
-
-      <div class="visit-card">
-        <div class="visit-card-top">
-          <span class="visit-card-date">15.03.2026</span>
-          <span class="visit-card-type">Ordination</span>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
+        <svg viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;">
+          <circle class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="30" r="24"></circle>
+          <rect class="body-part" data-region="hals" onclick="toggleRegion('hals')" x="88" y="52" width="24" height="16"></rect>
+          <rect class="body-part" data-region="brust" onclick="toggleRegion('brust')" x="63" y="70" width="74" height="62" rx="12"></rect>
+          <rect class="body-part" data-region="bauch" onclick="toggleRegion('bauch')" x="70" y="134" width="60" height="50" rx="8"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="33" y="72" width="24" height="112" rx="10"></rect>
+          <rect class="body-part" data-region="arme" onclick="toggleRegion('arme')" x="143" y="72" width="24" height="112" rx="10"></rect>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="70" y="186" width="27" height="142" rx="10"></rect>
+          <rect class="body-part" data-region="beine" onclick="toggleRegion('beine')" x="103" y="186" width="27" height="142" rx="10"></rect>
+        </svg>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="region-chip" data-region="ruecken" onclick="toggleRegion('ruecken')">Rücken</button>
+          <button class="region-chip" data-region="haut" onclick="toggleRegion('haut')">Haut (allgemein)</button>
         </div>
-        <div class="visit-card-title">Akute Infektion Atemwege</div>
-        <div class="visit-card-note">Halsschmerzen, leichtes Fieber. Paracetamol verschrieben.</div>
-      </div>
-
-      <div class="visit-card">
-        <div class="visit-card-top">
-          <span class="visit-card-date">08.11.2025</span>
-          <span class="visit-card-type">Erstgespräch</span>
+        <div id="symptomRegions"></div>
+        <div style="margin-top:14px;">
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);">Zusätzliche Erklärung (optional)</label>
+          <textarea id="symptomNote" rows="3" placeholder="Beschreiben Sie kurz Ihre Beschwerden..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
         </div>
-        <div class="visit-card-title">Erstdiagnose Hypertonie</div>
-        <div class="visit-card-note">Therapiebeginn Ramipril 2.5mg. Lebensstiländerung empfohlen.</div>
       </div>
-
+      <div class="modal-footer">
+        <button class="btn-confirm" onclick="submitSymptoms()">✓ Absenden</button>
+      </div>
     </div>
   </div>
 
@@ -1068,6 +1065,8 @@ function initPatientData(){
   }else if(switchBtn){
     switchBtn.remove();
   }
+  renderCalendar();
+  renderPatientTermine();
 }
 
 // ── Chat ──
@@ -1093,11 +1092,32 @@ function sendMsg(){
   },1200);
 }
 
-// ── Calendar ──
-let currentDate=new Date(2026,5,1); // June 2026
-const terminDays=[14,28];
+// ── Termine (real appointment data, shared with secretary.html/doctor.html) ──
+const TERMINE_KEY='smartordi_termine';
+const TIME_SLOTS=['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00'];
+function loadTermine(){
+  try{ const list=JSON.parse(localStorage.getItem(TERMINE_KEY)); return Array.isArray(list)?list:[]; }catch(e){ return []; }
+}
+function saveTermine(list){ localStorage.setItem(TERMINE_KEY, JSON.stringify(list)); }
+function genTerminId(){ return 't_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function dateStr(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function addMinutesToTime(hhmm,mins){
+  const [h,m]=hhmm.split(':').map(Number);
+  let total=((h*60+m+mins)%1440+1440)%1440;
+  return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');
+}
+
+let currentDate=new Date();
 let selectedDay=null;
 let selectedSlot=null;
+
+function myTermine(){
+  const acc=getCurrentAccount();
+  if(!acc) return [];
+  const name=acc.fullName||acc.name;
+  return loadTermine().filter(t=>t.patient===name);
+}
 
 function renderCalendar(){
   const year=currentDate.getFullYear();
@@ -1106,31 +1126,48 @@ function renderCalendar(){
   document.getElementById('calMonth').textContent=`${months[month]} ${year}`;
   const grid=document.getElementById('calGrid');
   grid.innerHTML='';
-  const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  days.forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});
+  const dayLabels=['Mo','Di','Mi','Do','Fr','Sa','So'];
+  dayLabels.forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});
   const first=new Date(year,month,1).getDay();
   const offset=first===0?6:first-1;
   for(let i=0;i<offset;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
   const daysInMonth=new Date(year,month+1,0).getDate();
   const today=new Date();
+  const todayFull=todayStr();
+  const terminDays=new Set(myTermine().filter(t=>t.status!=='abgesagt').map(t=>t.date));
   for(let d=1;d<=daysInMonth;d++){
     const el=document.createElement('div');el.className='cal-day';el.textContent=d;
+    const ds=dateStr(year,month,d);
     if(d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear())el.classList.add('today');
-    if(terminDays.includes(d))el.classList.add('has-termin');
+    if(terminDays.has(ds))el.classList.add('has-termin');
     if(selectedDay===d)el.classList.add('selected');
-    el.onclick=()=>selectDay(d);
+    if(ds<todayFull){ el.classList.add('past'); } else { el.onclick=()=>selectDay(d); }
     grid.appendChild(el);
   }
 }
 
 function selectDay(d){
   selectedDay=d;
+  selectedSlot=null;
   const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
   document.getElementById('bookingDate').textContent=`${d}. ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
   renderCalendar();
+  renderTimeSlots();
 }
 
-function changeMonth(dir){currentDate.setMonth(currentDate.getMonth()+dir);renderCalendar();}
+function changeMonth(dir){currentDate.setMonth(currentDate.getMonth()+dir);selectedDay=null;renderCalendar();renderTimeSlots();}
+
+function renderTimeSlots(){
+  const root=document.getElementById('timeSlots');
+  if(!selectedDay){ root.innerHTML=''; return; }
+  const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
+  const takenTimes=new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt').map(t=>t.time));
+  root.innerHTML=TIME_SLOTS.map(s=>{
+    const taken=takenTimes.has(s);
+    const selected=selectedSlot===s;
+    return `<div class="time-slot${taken?' taken':''}${selected?' selected':''}" ${taken?'':`onclick="selectSlot(this,'${s}')"`}>${s}</div>`;
+  }).join('');
+}
 
 function selectSlot(el,time){
   document.querySelectorAll('.time-slot').forEach(s=>s.classList.remove('selected'));
@@ -1140,10 +1177,130 @@ function selectSlot(el,time){
 function bookTermin(){
   if(!selectedDay){showToast('Bitte zuerst einen Tag wählen');return;}
   if(!selectedSlot){showToast('Bitte eine Uhrzeit wählen');return;}
-  const months=['Januar','Februar','März','April','Mai','Juni'];
-  showToast(`✓ Termin gebucht: ${selectedDay}. Juni um ${selectedSlot} Uhr`,'success');
-  selectedSlot=null;
-  document.querySelectorAll('.time-slot').forEach(s=>s.classList.remove('selected'));
+  const acc=getCurrentAccount();
+  if(!acc){showToast('Kein Konto gefunden','error');return;}
+  const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
+  const list=loadTermine();
+  if(list.some(t=>t.date===d&&t.time===selectedSlot&&t.status!=='abgesagt')){
+    showToast('✗ Diese Uhrzeit ist leider schon vergeben','error');
+    renderTimeSlots();
+    return;
+  }
+  const termin={
+    id:genTerminId(), patient:acc.fullName||acc.name, art:'Ordination', status:'neu',
+    versicherung:acc.versicherung||'', tel:acc.tel||'', svnr:acc.svnr||'', dob:acc.dob||'',
+    date:d, time:selectedSlot, endTime:addMinutesToTime(selectedSlot,20),
+  };
+  list.push(termin);
+  saveTermine(list);
+  const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  showToast(`✓ Termin gebucht: ${selectedDay}. ${months[currentDate.getMonth()]} um ${selectedSlot} Uhr`,'success');
+  selectedDay=null;selectedSlot=null;
+  renderCalendar();renderTimeSlots();renderPatientTermine();
+  document.getElementById('bookingDate').textContent='Wählen Sie einen Tag im Kalender';
+  openSymptomModal(termin.id);
+}
+
+function terminCardHtml(t){
+  const d=new Date(t.date+'T00:00:00');
+  const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const status=t.status==='bestaetigt'?'<span class="termin-status status-confirmed">✓ Bestätigt</span>'
+    :t.status==='abgesagt'?'<span class="termin-status" style="background:#f1f5f9;color:#94a3b8;">✗ Abgesagt</span>'
+    :'<span class="termin-status status-pending">Ausstehend</span>';
+  return `<div class="termin-card">
+    <div class="termin-date-box"><div class="termin-day">${d.getDate()}</div><div class="termin-month">${months[d.getMonth()]}</div></div>
+    <div class="termin-info">
+      <div class="termin-title">${t.art}</div>
+      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} Uhr · Dr. Sarah Ahmed · Linz</div>
+    </div>
+    ${status}
+  </div>`;
+}
+function visitCardHtml(t){
+  const d=new Date(t.date+'T00:00:00');
+  return `<div class="visit-card">
+    <div class="visit-card-top">
+      <span class="visit-card-date">${d.toLocaleDateString('de-AT')}</span>
+      <span class="visit-card-type">${t.art}</span>
+    </div>
+    <div class="visit-card-title">${(t.reason&&t.reason.length)?t.reason.join(', '):t.art}</div>
+    ${t.reasonNote?`<div class="visit-card-note">${t.reasonNote}</div>`:''}
+  </div>`;
+}
+function renderPatientTermine(){
+  const upcomingRoot=document.getElementById('upcomingTermineRoot');
+  const pastRoot=document.getElementById('pastTermineRoot');
+  if(!upcomingRoot||!pastRoot) return;
+  const today=todayStr();
+  const all=myTermine();
+  const upcoming=all.filter(t=>t.date>=today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const past=all.filter(t=>t.date<today).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
+  upcomingRoot.innerHTML=upcoming.length?upcoming.map(terminCardHtml).join(''):'<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">Keine kommenden Termine</div>';
+  pastRoot.innerHTML=past.length?past.map(visitCardHtml).join(''):'<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">Keine vergangenen Besuche</div>';
+}
+
+// ── Symptom picker (reason for visit) ──
+const SYMPTOM_REGIONS={
+  kopf:{label:'Kopf',symptoms:['Kopfschmerzen','Schwindel','Sehstörungen','Ohrenschmerzen','Fieber']},
+  hals:{label:'Hals',symptoms:['Halsschmerzen','Schluckbeschwerden','Heiserkeit','Husten']},
+  brust:{label:'Brust / Herz',symptoms:['Brustschmerzen','Herzrasen','Atemnot','Husten']},
+  bauch:{label:'Bauch',symptoms:['Bauchschmerzen','Übelkeit','Erbrechen','Durchfall','Verstopfung','Sodbrennen']},
+  ruecken:{label:'Rücken',symptoms:['Rückenschmerzen','Verspannungen','Ausstrahlende Schmerzen']},
+  arme:{label:'Arme',symptoms:['Schmerzen','Taubheitsgefühl','Schwellung','Eingeschränkte Beweglichkeit']},
+  beine:{label:'Beine',symptoms:['Schmerzen','Schwellung','Krampfadern','Taubheitsgefühl']},
+  haut:{label:'Haut (allgemein)',symptoms:['Ausschlag','Juckreiz','Rötung','Wunde/Verletzung']},
+};
+let activeRegions=new Set();
+let selectedSymptoms=new Set();
+let symptomTerminId=null;
+
+function openSymptomModal(terminId){
+  symptomTerminId=terminId;
+  activeRegions=new Set();
+  selectedSymptoms=new Set();
+  document.querySelectorAll('.body-part,.region-chip').forEach(el=>el.classList.remove('active'));
+  document.getElementById('symptomRegions').innerHTML='';
+  document.getElementById('symptomNote').value='';
+  document.getElementById('symptomModal').classList.add('show');
+}
+function closeSymptomModal(){ document.getElementById('symptomModal').classList.remove('show'); }
+function toggleRegion(region){
+  if(activeRegions.has(region)) activeRegions.delete(region);
+  else activeRegions.add(region);
+  document.querySelectorAll('[data-region="'+region+'"]').forEach(el=>el.classList.toggle('active',activeRegions.has(region)));
+  renderSymptomRegions();
+}
+function renderSymptomRegions(){
+  const root=document.getElementById('symptomRegions');
+  root.innerHTML=[...activeRegions].map(r=>{
+    const info=SYMPTOM_REGIONS[r];
+    return `<div style="margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px;">${info.label}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${info.symptoms.map(s=>{
+          const key=r+':'+s;
+          return `<button class="symptom-chip${selectedSymptoms.has(key)?' active':''}" onclick="toggleSymptom('${key}',this)">${s}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleSymptom(key,el){
+  if(selectedSymptoms.has(key)) selectedSymptoms.delete(key);
+  else selectedSymptoms.add(key);
+  el.classList.toggle('active',selectedSymptoms.has(key));
+}
+function submitSymptoms(){
+  const list=loadTermine();
+  const t=list.find(x=>x.id===symptomTerminId);
+  if(t){
+    t.reason=[...selectedSymptoms].map(k=>k.split(':')[1]);
+    t.reasonNote=document.getElementById('symptomNote').value.trim();
+    saveTermine(list);
+    renderPatientTermine();
+  }
+  closeSymptomModal();
+  showToast('✓ Danke, Ihre Angaben wurden gespeichert!','success');
 }
 
 // ── Toast ──
