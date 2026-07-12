@@ -1631,6 +1631,8 @@ body.windows-mode .kartei-header{display:none;}
           <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">Österreichischer Impfkalender</div>
         </div>
 
+        <div id="impfpass-warnung" style="display:none;"></div>
+
         <!-- Impfung hinzufügen -->
         <div style="background:#f0fdf4;border-left:4px solid #16a34a;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
           <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:10px;">＋ Neue Impfung eintragen</div>
@@ -2068,6 +2070,15 @@ body.windows-mode .kartei-header{display:none;}
           <span style="font-size:11px;color:#1e40af;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
         </div>
         <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
+      </div>
+
+      <!-- Impfungen fällig -->
+      <div class="dash-card">
+        <div class="dash-card-header">
+           Impfungen fällig
+          <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
+        </div>
+        <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
       </div>
 
       <!-- Network Card -->
@@ -2804,10 +2815,10 @@ function terminStatusBadge(status){
   if(status==='abgesagt') return '<span style="font-size:10px;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">✗</span>';
   return '<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>';
 }
-function dashTerminRowHtml(t){
+function dashTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
     <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
-    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''}</div></div>
+    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''}</div></div>
     <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">${t.time}</div>${terminStatusBadge(t.status)}</div>
   </div>`;
 }
@@ -2816,14 +2827,15 @@ function renderDashTermine(){
   if(!root) return;
   const today=todayStr();
   const heute=loadTermine().filter(t=>t.date===today&&t.status!=='abgesagt').sort((a,b)=>a.time.localeCompare(b.time));
+  const dueSet=dueVaccinationPatientSet();
   root.innerHTML = heute.length
-    ? heute.slice(0,3).map(dashTerminRowHtml).join('')
+    ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
 }
-function allTerminRowHtml(t){
+function allTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
     <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time:dayBoxLabel(t.date)+' · '+t.time}</div></div>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time:dayBoxLabel(t.date)+' · '+t.time}</div></div>
     ${terminStatusBadge(t.status)}
     <div style="display:flex;gap:6px;flex-shrink:0;">
       <button onclick="openKarteiForPatientAndShow('${t.patient}','${t.svnr||''}','${t.versicherung||''}','${t.dob||''}')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
@@ -2842,17 +2854,110 @@ function renderAlleTermine(){
   const today=todayStr();
   const heute=all.filter(t=>t.date===today).sort((a,b)=>a.time.localeCompare(b.time));
   const upcoming=all.filter(t=>t.date>today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const dueSet=dueVaccinationPatientSet();
   let html=`<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Heute — ${longDateDE(today)}</div>`;
-  html += heute.length ? heute.map(allTerminRowHtml).join('') : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+  html += heute.length ? heute.map(t=>allTerminRowHtml(t,dueSet)).join('') : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
   if(upcoming.length){
     html+='<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 4px;">Nächste Termine</div>';
-    html+=upcoming.map(allTerminRowHtml).join('');
+    html+=upcoming.map(t=>allTerminRowHtml(t,dueSet)).join('');
   }
   document.getElementById('allTermineRoot').innerHTML=html;
   const allToday=loadTermine().filter(t=>t.date===today);
   const bestaetigt=allToday.filter(t=>t.status==='bestaetigt').length;
   const neu=allToday.filter(t=>t.status==='neu').length;
   document.getElementById('tageslisteSummary').textContent=`${allToday.length} heute · ${bestaetigt} bestätigt · ${neu} neu`;
+}
+
+// ── IMPFKALENDER (simplified Austrian vaccination schedule, demo scope) ──
+// Two tracks feed the due-list: (1) infant primary-series milestones inferred
+// purely from age, so a child never manually flagged by the doctor still
+// surfaces; (2) any vaccine with an explicit "next" date already recorded on
+// an entry (covers adult boosters like Tetanus/FSME/Influenza), which wins
+// over the age-based guess for that same vaccine if both would apply.
+const CHILD_VACCINE_SCHEDULE=[
+  {name:'Hepatitis B',months:[3,5,12]},
+  {name:'Tetanus',months:[3,5,12]},
+  {name:'Pneumokokken',months:[3,5,12]},
+  {name:'Rotavirus',months:[3,5]},
+  {name:'MMR (Masern-Mumps-Röteln)',months:[12,18]},
+  {name:'Varizellen (Windpocken)',months:[12]},
+  {name:'Meningokokken',months:[12]},
+];
+function ageInMonths(dob){
+  if(!dob) return null;
+  const d=new Date(dob+'T00:00:00'), now=new Date();
+  return (now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth())+(now.getDate()>=d.getDate()?0:-1);
+}
+function daysUntil(dateStr){
+  return Math.round((new Date(dateStr+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
+}
+function dueVaccinationsForPatient(name,dob,impfungen){
+  const due=[];
+  const explicitVaccineNames=new Set();
+  (impfungen||[]).forEach(i=>{
+    if(!i.next) return;
+    const d=daysUntil(i.next);
+    if(d<=30){
+      explicitVaccineNames.add(i.name);
+      due.push({patient:name,vaccine:i.name,status:d<0?'ueberfaellig':'faellig',detail:d<0?`seit ${Math.abs(d)} Tag(en) überfällig`:(d===0?'heute fällig':`in ${d} Tag(en) fällig`)});
+    }
+  });
+  const ageM=ageInMonths(dob);
+  if(ageM!==null && ageM<=30){
+    CHILD_VACCINE_SCHEDULE.forEach(v=>{
+      if(explicitVaccineNames.has(v.name)) return;
+      const givenCount=(impfungen||[]).filter(i=>i.name===v.name).length;
+      const expectedCount=v.months.filter(m=>ageM>=m).length;
+      if(expectedCount>givenCount){
+        const targetMonth=v.months[givenCount];
+        const overdueMonths=ageM-targetMonth;
+        due.push({patient:name,vaccine:v.name,status:overdueMonths>=1?'ueberfaellig':'faellig',detail:overdueMonths>=1?`seit ${overdueMonths} Monat(en) fällig`:'diesen Monat fällig'});
+      }
+    });
+  }
+  return due;
+}
+function allDueVaccinations(){
+  const results=[];
+  DEMO_PATIENTS.forEach(p=>{ results.push(...dueVaccinationsForPatient(p.name,p.dob,p.impfungen)); });
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  Object.values(accounts).forEach(a=>{
+    if(!a.fullName||a.role==='guardian'||DEMO_PATIENTS.some(p=>p.name===a.fullName)) return;
+    results.push(...dueVaccinationsForPatient(a.fullName,a.dob,a.impfungen));
+  });
+  return results.sort((a,b)=>(a.status===b.status)?0:(a.status==='ueberfaellig'?-1:1));
+}
+function dueVaccinationPatientSet(){
+  return new Set(allDueVaccinations().map(d=>d.patient));
+}
+function impfWarnRowHtml(d){
+  const color=d.status==='ueberfaellig'?'#dc2626':'#d97706';
+  const bg=d.status==='ueberfaellig'?'#fef2f2':'#fffbeb';
+  return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f8fafc;">
+    <div style="width:32px;height:32px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"></div>
+    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${d.patient}</div><div style="font-size:11px;color:${color};font-weight:600;">${d.vaccine} · ${d.detail}</div></div>
+    <button onclick="openKarteiForVaccineCheck('${d.patient}')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">Kartei</button>
+  </div>`;
+}
+function openKarteiForVaccineCheck(name){
+  const demo=DEMO_PATIENTS.find(p=>p.name===name);
+  const found=demo?null:findPatientAccountByFullName(name);
+  const acc=demo || (found?found.accounts[found.username]:null);
+  openKarteiForPatientAndShow(name, acc?.svnr||'', acc?.versicherung||'', acc?.dob||'');
+  setTimeout(()=>{
+    const btn=document.getElementById('ktab-btn-impfung');
+    if(btn) switchKarteiTab('impfung',btn);
+  },50);
+}
+function renderImpfWarnungen(){
+  const root=document.getElementById('dashImpfWarnRoot');
+  if(!root) return;
+  const due=allDueVaccinations();
+  document.getElementById('impfWarnCount').textContent=due.length?due.length+' Patient(en)':'';
+  root.innerHTML = due.length
+    ? due.slice(0,5).map(impfWarnRowHtml).join('')
+    : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine fälligen Impfungen</div>';
 }
 
 function patientListEntries(){
@@ -3208,7 +3313,6 @@ renderPlanSettings();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');
-renderDashTermine();
 
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
@@ -3980,6 +4084,15 @@ function populateKarteiImpfung(name){
   list.innerHTML=impfungen.length
     ? impfungen.map(renderImpfEintrag).join('')
     : '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">Keine Impfungen erfasst</div>';
+  const warnBox=document.getElementById('impfpass-warnung');
+  if(warnBox){
+    const due=dueVaccinationsForPatient(name,rec?.dob,impfungen);
+    warnBox.style.display=due.length?'block':'none';
+    warnBox.innerHTML=due.length ? `<div style="background:#fef2f2;border-left:4px solid #dc2626;border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:12px;font-weight:800;color:#991b1b;margin-bottom:6px;">⚠ Fällige Impfungen</div>
+      ${due.map(d=>`<div style="font-size:12px;color:#7f1d1d;">${d.vaccine} — ${d.detail}</div>`).join('')}
+    </div>` : '';
+  }
 }
 function addImpfung(){
   let name=document.getElementById('impf-name').value;
@@ -4601,6 +4714,9 @@ function confirmTransfer(){
   msgs.appendChild(sys);msgs.scrollTop=msgs.scrollHeight;
   alert('✓ Weiterleitung erfolgreich!\n\nDer Patient wird automatisch per SMS benachrichtigt.\nDr. Weber erhält alle relevanten Unterlagen.');
 }
+
+renderDashTermine();
+renderImpfWarnungen();
 </script>
 
 <script>
