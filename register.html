@@ -351,6 +351,14 @@ function doRegister(){
   document.getElementById('spinner').style.display = 'block';
   btn.classList.add('loading');
 
+  // No real backend yet -- persist the chosen plan and Fachrichtung to this
+  // browser's localStorage so doctor.html actually activates them (gates
+  // Rezept/Impfpass and Sekretariat-Login on Basic, renders the right
+  // Anamnese specialty section) instead of the landing page being purely
+  // cosmetic.
+  localStorage.setItem('smartordi_plan', selectedPlan);
+  if(fach) localStorage.setItem('fachrichtung', fach);
+
   // Simulate API call
   setTimeout(()=>{
     document.getElementById('successOverlay').classList.add('show');
