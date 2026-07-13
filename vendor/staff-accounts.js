@@ -44,6 +44,28 @@ function loadStaffAccounts(){
 // wants to gate its first render on it via: await staffRosterReady
 const staffRosterReady=refreshStaffRoster();
 
+// Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
+// shared by the whole team via Supabase instead of living per-device in
+// localStorage, same cache-then-read-sync pattern as the staff roster above.
+let _practiceSettings=null;
+async function refreshPracticeSettings(){
+  const {data,error}=await sb.from('practice_settings').select('*').eq('id',true).maybeSingle();
+  if(error){ console.error('refreshPracticeSettings failed',error); return; }
+  _practiceSettings=data||null;
+}
+function getPracticeSettings(){
+  return _practiceSettings;
+}
+async function savePracticeSettings(fields){
+  const existing=_practiceSettings;
+  const row=Object.assign({id:true},existing,fields);
+  const {data,error}=await sb.from('practice_settings').upsert(row).select().single();
+  if(error){ console.error('savePracticeSettings failed',error); return false; }
+  _practiceSettings=data;
+  return true;
+}
+const practiceSettingsReady=refreshPracticeSettings();
+
 function genStaffInviteToken(){
   return 'inv_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 }
