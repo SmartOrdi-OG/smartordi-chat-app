@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Smartordi – Mein Bereich</title>
 <script src="vendor/i18n-patient.js"></script>
+<script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 
@@ -555,6 +556,9 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       <div class="booking-card">
         <div class="booking-card-title" data-i18n="termine.bookTitle">Termin buchen</div>
         <div class="booking-card-sub" id="bookingDate" data-i18n="termine.chooseDay">Wählen Sie einen Tag im Kalender</div>
+        <div style="margin:10px 0;">
+          <select id="terminArzt" onchange="onArztChange()" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;"></select>
+        </div>
         <div class="time-slots" id="timeSlots"></div>
         <button class="btn-book" onclick="bookTermin()" data-i18n="termine.confirmBtn">✓ Termin bestätigen</button>
       </div>
@@ -714,8 +718,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.ordination">Meine Ordination</div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.arzt">Arzt</span><span class="info-value">Dr. Sarah Ahmed</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.fach">Fachrichtung</span><span class="info-value">Allgemeinmedizin</span></div>
+        <div id="profilArztRows"></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value">Steingasse 6A, 4020 Linz</span></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value">+43 677 62439293</span></div>
       </div>
@@ -1096,7 +1099,15 @@ function initPatientData(){
     switchBtn.remove();
   }
   renderCalendar();
+  populateArztSelect();
   renderPatientTermine();
+  renderProfilArztRows();
+}
+
+function renderProfilArztRows(){
+  const root=document.getElementById('profilArztRows');
+  if(!root) return;
+  root.innerHTML=arztAccounts().map(a=>`<div class="info-row"><span class="info-label">${tr('profil.arzt')}</span><span class="info-value">${a.fullName}${a.fach?' ('+a.fach+')':''}</span></div>`).join('');
 }
 
 // ── Chat ──
@@ -1141,6 +1152,28 @@ function addMinutesToTime(hhmm,mins){
 let currentDate=new Date();
 let selectedDay=null;
 let selectedSlot=null;
+let selectedArzt=null;
+
+function arztAccounts(){
+  const accounts=loadStaffAccounts();
+  return Object.keys(accounts).filter(u=>accounts[u].role==='arzt').map(u=>Object.assign({username:u},accounts[u]));
+}
+function arztDisplayName(username){
+  const accounts=loadStaffAccounts();
+  return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
+}
+function populateArztSelect(){
+  const sel=document.getElementById('terminArzt');
+  const doctors=arztAccounts();
+  sel.innerHTML=doctors.map(a=>`<option value="${a.username}">${a.fullName}${a.fach?' · '+a.fach:''}</option>`).join('');
+  if(!selectedArzt||!doctors.some(a=>a.username===selectedArzt)) selectedArzt=doctors[0]&&doctors[0].username;
+  sel.value=selectedArzt||'';
+}
+function onArztChange(){
+  selectedArzt=document.getElementById('terminArzt').value;
+  selectedSlot=null;
+  renderTimeSlots();
+}
 
 function myTermine(){
   const acc=getCurrentAccount();
@@ -1188,7 +1221,10 @@ function renderTimeSlots(){
   const root=document.getElementById('timeSlots');
   if(!selectedDay){ root.innerHTML=''; return; }
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
-  const takenTimes=new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt').map(t=>t.time));
+  // Only a conflict if the SAME doctor already has an appointment then --
+  // different doctors at the same practice can see different patients at
+  // the same time.
+  const takenTimes=new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt).map(t=>t.time));
   root.innerHTML=TIME_SLOTS.map(s=>{
     const taken=takenTimes.has(s);
     const selected=selectedSlot===s;
@@ -1203,18 +1239,20 @@ function selectSlot(el,time){
 
 function bookTermin(){
   if(!selectedDay){showToast(tr('termine.toast.chooseDay'));return;}
+  if(!selectedArzt){showToast(tr('termine.toast.chooseArzt'));return;}
   if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
   const acc=getCurrentAccount();
   if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
   const list=loadTermine();
-  if(list.some(t=>t.date===d&&t.time===selectedSlot&&t.status!=='abgesagt')){
+  if(list.some(t=>t.date===d&&t.time===selectedSlot&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt)){
     showToast(tr('termine.toast.slotTaken'),'error');
     renderTimeSlots();
     return;
   }
   const termin={
     id:genTerminId(), patient:acc.fullName||acc.name, art:'Ordination', status:'neu',
+    arztUsername:selectedArzt,
     versicherung:acc.versicherung||'', tel:acc.tel||'', svnr:acc.svnr||'', dob:acc.dob||'',
     date:d, time:selectedSlot, endTime:addMinutesToTime(selectedSlot,20),
   };
@@ -1236,7 +1274,7 @@ function terminCardHtml(t){
     <div class="termin-date-box"><div class="termin-day">${d.getDate()}</div><div class="termin-month">${monthsShort()[d.getMonth()]}</div></div>
     <div class="termin-info">
       <div class="termin-title">${t.art}</div>
-      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} ${tr('termine.uhr')} · Dr. Sarah Ahmed · Linz</div>
+      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} ${tr('termine.uhr')} · ${arztDisplayName(t.arztUsername)} · Linz</div>
     </div>
     ${status}
   </div>`;
@@ -1377,6 +1415,7 @@ function onPatientLanguageChanged(){
   renderCalendar();
   renderTimeSlots();
   renderPatientTermine();
+  renderProfilArztRows();
   if(document.getElementById('symptomModal').classList.contains('show')){
     document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
     renderSymptomRegions();

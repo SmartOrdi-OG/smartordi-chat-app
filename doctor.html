@@ -2886,11 +2886,34 @@ function loadTermine(){
     ];
     saveTermine(list);
   }
-  // Backfill endTime for appointments saved before that field existed.
+  // Backfill fields for appointments saved before they existed: endTime, and
+  // arztUsername (see the multi-doctor Team feature) -- older termine
+  // predate per-doctor assignment, so they're attributed to the original
+  // single demo doctor account.
   let migrated=false;
-  list.forEach(t=>{ if(!t.endTime){ t.endTime=addMinutesToTime(t.time,30); migrated=true; } });
+  list.forEach(t=>{
+    if(!t.endTime){ t.endTime=addMinutesToTime(t.time,30); migrated=true; }
+    if(!t.arztUsername){ t.arztUsername='dr.ahmed'; migrated=true; }
+  });
   if(migrated) saveTermine(list);
   return list;
+}
+function arztDisplayName(username){
+  const accounts=loadStaffAccounts();
+  return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
+}
+// Doctors filter their own schedule to their own patients (colleagues at the
+// same practice may treat different specialties); no session (direct
+// navigation, or an account that isn't a doctor) means "don't filter" so
+// admin views / pre-existing tests keep seeing everything, same as before
+// this feature.
+function currentDoctorUsername(){
+  const s=currentStaffSession();
+  return (s&&s.role==='arzt')?s.username:null;
+}
+function filterToMyTermine(list){
+  const me=currentDoctorUsername();
+  return me?list.filter(t=>t.arztUsername===me):list;
 }
 function addMinutesToTime(hhmm,mins){
   const [h,m]=hhmm.split(':').map(Number);
@@ -2921,7 +2944,7 @@ function renderDashTermine(){
   const root=document.getElementById('dashTermineRoot');
   if(!root) return;
   const today=todayStr();
-  const heute=loadTermine().filter(t=>t.date===today&&t.status!=='abgesagt').sort((a,b)=>a.time.localeCompare(b.time));
+  const heute=filterToMyTermine(loadTermine()).filter(t=>t.date===today&&t.status!=='abgesagt').sort((a,b)=>a.time.localeCompare(b.time));
   const dueSet=dueVaccinationPatientSet();
   root.innerHTML = heute.length
     ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
@@ -2930,7 +2953,7 @@ function renderDashTermine(){
 function allTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
     <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
-    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time+(t.endTime?'–'+t.endTime:''):dayBoxLabel(t.date)+' · '+t.time+(t.endTime?'–'+t.endTime:'')}</div></div>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${t.patient}${dueSet.has(t.patient)?' <span title="Impfung fällig">💉</span>':''}</div><div style="font-size:11px;color:#64748b;">${arztDisplayName(t.arztUsername)} · ${t.art}${t.versicherung?' · '+t.versicherung:''} · ${t.date===todayStr()?t.time+(t.endTime?'–'+t.endTime:''):dayBoxLabel(t.date)+' · '+t.time+(t.endTime?'–'+t.endTime:'')}</div></div>
     ${terminStatusBadge(t.status)}
     <div style="display:flex;gap:6px;flex-shrink:0;">
       ${(t.reason&&t.reason.length)||t.reasonNote?`<button onclick="showVisitReason('${t.id}')" style="padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">📋 Grund</button>`:''}
@@ -2956,7 +2979,7 @@ function openAlleTermineModal(){
 }
 function renderAlleTermine(){
   const q=(document.getElementById('tageslisteSearch').value||'').toLowerCase().trim();
-  const all=loadTermine().filter(t=>!q||t.patient.toLowerCase().includes(q));
+  const all=filterToMyTermine(loadTermine()).filter(t=>!q||t.patient.toLowerCase().includes(q));
   const today=todayStr();
   const heute=all.filter(t=>t.date===today).sort((a,b)=>a.time.localeCompare(b.time));
   const upcoming=all.filter(t=>t.date>today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
@@ -2968,7 +2991,7 @@ function renderAlleTermine(){
     html+=upcoming.map(t=>allTerminRowHtml(t,dueSet)).join('');
   }
   document.getElementById('allTermineRoot').innerHTML=html;
-  const allToday=loadTermine().filter(t=>t.date===today);
+  const allToday=filterToMyTermine(loadTermine()).filter(t=>t.date===today);
   const bestaetigt=allToday.filter(t=>t.status==='bestaetigt').length;
   const neu=allToday.filter(t=>t.status==='neu').length;
   document.getElementById('tageslisteSummary').textContent=`${allToday.length} heute · ${bestaetigt} bestätigt · ${neu} neu`;
