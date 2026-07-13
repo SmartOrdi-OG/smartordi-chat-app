@@ -56,11 +56,14 @@ body{
 .topbar-icon{width:52px;height:52px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;}
 .topbar-name{font-size:15px;font-weight:800;color:#0f172a;letter-spacing:-0.3px;}
 .topbar-name span{color:#1e40af;}
-.topbar-user{display:flex;align-items:center;gap:8px;}
-.topbar-avatar{width:34px;height:34px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;}
-.topbar-username{font-size:12px;font-weight:600;color:#64748b;}
-.topbar-logout{background:#f1f5f9;border:none;color:#64748b;padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;}
+.topbar-user{display:flex;align-items:center;gap:8px;min-width:0;}
+.topbar-avatar{width:34px;height:34px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;}
+.topbar-username{font-size:12px;font-weight:600;color:#64748b;white-space:nowrap;}
+.topbar-logout{background:#f1f5f9;border:none;color:#64748b;padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
 .topbar-logout:hover{background:#e2e8f0;color:#0f172a;}
+@media(max-width:400px){
+  .topbar-username{display:none;}
+}
 
 /* ── VIEWS ── */
 .views{flex:1;overflow:hidden;position:relative;min-height:0;}
