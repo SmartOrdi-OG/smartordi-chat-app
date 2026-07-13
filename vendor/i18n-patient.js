@@ -1239,7 +1239,7 @@ function initPatientLanguage(){
 }
 function langSwitcherHtml(id){
   const lang=getPatientLang();
-  return `<select id="${id}" onchange="setPatientLanguage(this.value)" style="font-family:inherit;font-size:11px;font-weight:600;border:1px solid #e2e8f0;border-radius:7px;padding:4px 6px;background:white;color:#334155;cursor:pointer;">`+
+  return `<select id="${id}" onchange="setPatientLanguage(this.value)" style="font-family:inherit;font-size:11px;font-weight:600;border:1px solid #e2e8f0;border-radius:7px;padding:4px 3px;background:white;color:#334155;cursor:pointer;max-width:58px;width:auto;flex-shrink:0;">`+
     PATIENT_LANGS.map(l=>`<option value="${l.code}"${l.code===lang?' selected':''}>${l.label}</option>`).join('')+
     `</select>`;
 }
