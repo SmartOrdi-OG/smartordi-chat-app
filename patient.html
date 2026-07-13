@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Smartordi – Mein Bereich</title>
+<script src="vendor/i18n-patient.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 
@@ -464,9 +465,10 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
   <div class="topbar-user">
+    <span id="langSwitcherWrap"></span>
     <div class="topbar-avatar" id="topbarAvatar">T</div>
     <div class="topbar-username" id="topbarUsername">Thomas M.</div>
-    <button class="topbar-logout" onclick="logout()">Abmelden</button>
+    <button class="topbar-logout" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
   </div>
 </div>
 
@@ -474,19 +476,19 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 <div id="appNavBar">
   <button class="nav-tab active" data-view="chat" onclick="switchView('chat')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-    <span>Chat<span class="nav-tab-badge" id="navTabChatBadge">2</span></span>
+    <span><span data-i18n="nav.chat">Chat</span><span class="nav-tab-badge" id="navTabChatBadge">2</span></span>
   </button>
   <button class="nav-tab" data-view="termine" onclick="switchView('termine')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-    <span>Termine</span>
+    <span data-i18n="nav.termine">Termine</span>
   </button>
   <button class="nav-tab" data-view="dokumente" onclick="switchView('dokumente')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
-    <span>Dokumente</span>
+    <span data-i18n="nav.dokumente">Dokumente</span>
   </button>
   <button class="nav-tab" data-view="profil" onclick="switchView('profil')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-    <span>Profil</span>
+    <span data-i18n="nav.profil">Profil</span>
   </button>
 </div>
 
@@ -518,7 +520,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="chat-input-area">
       <div class="chat-input-wrap">
         <button class="attach-btn" onclick="showToast('Datei anhängen...')" title="Anhang"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-        <textarea class="chat-input" id="chatInput" placeholder="Nachricht schreiben..." rows="1"
+        <textarea class="chat-input" id="chatInput" placeholder="Nachricht schreiben..." data-i18n-ph="chat.placeholder" rows="1"
           oninput="autoResize(this)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}"></textarea>
         <button class="attach-btn" onclick="showToast('Sprachnachricht...')" title="Sprache"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
@@ -530,8 +532,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <!-- ── TERMINE ── -->
   <div class="view" id="view-termine">
     <div class="view-header">
-      <div class="view-title">Meine Termine</div>
-      <div class="view-sub">Ordination Dr. Sarah Ahmed · Linz</div>
+      <div class="view-title" data-i18n="termine.title">Meine Termine</div>
+      <div class="view-sub" data-i18n="termine.sub">Ordination Dr. Sarah Ahmed · Linz</div>
     </div>
 
     <div class="termine-content">
@@ -548,18 +550,18 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
       <!-- Booking -->
       <div class="booking-card">
-        <div class="booking-card-title">Termin buchen</div>
-        <div class="booking-card-sub" id="bookingDate">Wählen Sie einen Tag im Kalender</div>
+        <div class="booking-card-title" data-i18n="termine.bookTitle">Termin buchen</div>
+        <div class="booking-card-sub" id="bookingDate" data-i18n="termine.chooseDay">Wählen Sie einen Tag im Kalender</div>
         <div class="time-slots" id="timeSlots"></div>
-        <button class="btn-book" onclick="bookTermin()">✓ Termin bestätigen</button>
+        <button class="btn-book" onclick="bookTermin()" data-i18n="termine.confirmBtn">✓ Termin bestätigen</button>
       </div>
 
       <!-- Upcoming -->
-      <div class="section-title">Kommende Termine</div>
+      <div class="section-title" data-i18n="termine.upcoming">Kommende Termine</div>
       <div id="upcomingTermineRoot"></div>
 
       <!-- Past visits -->
-      <div class="section-title" style="margin-top:16px;">Vergangene Besuche</div>
+      <div class="section-title" style="margin-top:16px;" data-i18n="termine.past">Vergangene Besuche</div>
       <div id="pastTermineRoot"></div>
 
     </div>
@@ -569,13 +571,13 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <div class="modal-overlay" id="symptomModal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">Grund für den Besuch</div>
+        <div class="modal-title" data-i18n="symptom.title">Grund für den Besuch</div>
         <button class="modal-close" onclick="closeSymptomModal()">×</button>
       </div>
       <div class="modal-body">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="symptom.hint">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
         <div style="text-align:center;margin-bottom:8px;">
-          <button type="button" class="region-chip" id="bodyViewToggle" onclick="toggleBodyView()" style="font-weight:700;">🔄 Rückansicht anzeigen</button>
+          <button type="button" class="region-chip" id="bodyViewToggle" onclick="toggleBodyView()" style="font-weight:700;" data-i18n="symptom.toggleBack">🔄 Rückansicht anzeigen</button>
         </div>
         <svg id="bodyFrontView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;">
           <circle class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="36" r="24"></circle>
@@ -608,16 +610,19 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
           <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="116" cy="318" rx="16" ry="10"></ellipse>
         </svg>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
-          <button class="region-chip" data-region="haut" onclick="toggleRegion('haut')">Haut (allgemein)</button>
+          <button class="region-chip" data-region="haut" onclick="toggleRegion('haut')" data-i18n="region.label.haut">Haut (allgemein)</button>
         </div>
         <div id="symptomRegions"></div>
         <div style="margin-top:14px;">
-          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);">Zusätzliche Erklärung (optional)</label>
-          <textarea id="symptomNote" rows="3" placeholder="Beschreiben Sie kurz Ihre Beschwerden..." style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);">
+            <span data-i18n="symptom.note.label">Zusätzliche Erklärung (optional)</span>
+            <span id="symptomNoteHint" style="font-weight:600;color:#94a3b8;text-transform:none;letter-spacing:0;"></span>
+          </label>
+          <textarea id="symptomNote" rows="3" placeholder="Beschreiben Sie kurz Ihre Beschwerden..." data-i18n-ph="symptom.note.placeholder" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-confirm" onclick="submitSymptoms()">✓ Absenden</button>
+        <button class="btn-confirm" onclick="submitSymptoms()" data-i18n="symptom.submit">✓ Absenden</button>
       </div>
     </div>
   </div>
@@ -625,13 +630,13 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <!-- ── DOKUMENTE ── -->
   <div class="view" id="view-dokumente">
     <div class="view-header">
-      <div class="view-title">Meine Dokumente</div>
-      <div class="view-sub">Befunde · Überweisungen · Rezepte</div>
+      <div class="view-title" data-i18n="dokumente.title">Meine Dokumente</div>
+      <div class="view-sub" data-i18n="dokumente.sub">Befunde · Überweisungen · Rezepte</div>
     </div>
 
     <div class="dokumente-content">
 
-      <div class="section-title">Überweisungen</div>
+      <div class="section-title" data-i18n="dokumente.sect.ueberweisungen">Überweisungen</div>
 
       <div class="doc-card" onclick="showToast(' Überweisung_Müller_13-06-2026.pdf wird heruntergeladen...')">
         <div class="doc-icon-box" style="background:#faf5ff;"></div>
@@ -642,7 +647,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <button class="doc-download">⬇ PDF</button>
       </div>
 
-      <div class="section-title" style="margin-top:14px;">Befunde</div>
+      <div class="section-title" style="margin-top:14px;" data-i18n="dokumente.sect.befunde">Befunde</div>
 
       <div class="doc-card" onclick="showToast(' Befundbericht_2026.pdf wird heruntergeladen...')">
         <div class="doc-icon-box" style="background:#f0fdfa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
@@ -662,7 +667,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <button class="doc-download">⬇ PDF</button>
       </div>
 
-      <div class="section-title" style="margin-top:14px;">Rezepte</div>
+      <div class="section-title" style="margin-top:14px;" data-i18n="dokumente.sect.rezepte">Rezepte</div>
 
       <div class="doc-card" onclick="showToast('Rezept_Ramipril.pdf wird heruntergeladen...')">
         <div class="doc-icon-box" style="background:#fef9c3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
@@ -689,30 +694,30 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       </div>
 
       <div class="info-card">
-        <div class="info-card-header">Persönliche Daten</div>
-        <div class="info-row"><span class="info-label">Vollständiger Name</span><span class="info-value" id="profilFullName">Thomas Müller</span></div>
-        <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="profilDob">01.01.1985 (41 J.)</span></div>
-        <div class="info-row"><span class="info-label">Adresse</span><span class="info-value" id="profilAdresse">Mozartstraße 12, 4020 Linz</span></div>
-        <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="profilTel">+43 660 123 456</span></div>
-        <div class="info-row"><span class="info-label">E-Mail</span><span class="info-value" id="profilEmail">t.mueller@email.at</span></div>
+        <div class="info-card-header" data-i18n="profil.persoenlich">Persönliche Daten</div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.fullName">Vollständiger Name</span><span class="info-value" id="profilFullName">Thomas Müller</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.dob">Geburtsdatum</span><span class="info-value" id="profilDob">01.01.1985 (41 J.)</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="profilAdresse">Mozartstraße 12, 4020 Linz</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilTel">+43 660 123 456</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.email">E-Mail</span><span class="info-value" id="profilEmail">t.mueller@email.at</span></div>
       </div>
 
       <div class="info-card">
-        <div class="info-card-header">Versicherung</div>
-        <div class="info-row"><span class="info-label">Träger</span><span class="info-value" id="profilVersicherung">ÖGK</span></div>
-        <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:monospace;">1234 010185</span></div>
-        <div class="info-row"><span class="info-label">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;">✓ Erteilt</span></div>
+        <div class="info-card-header" data-i18n="profil.versicherung">Versicherung</div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">ÖGK</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.svnr">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:monospace;">1234 010185</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.dsgvo">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;" data-i18n="profil.dsgvoGranted">✓ Erteilt</span></div>
       </div>
 
       <div class="info-card">
-        <div class="info-card-header">Meine Ordination</div>
-        <div class="info-row"><span class="info-label">Arzt</span><span class="info-value">Dr. Sarah Ahmed</span></div>
-        <div class="info-row"><span class="info-label">Fachrichtung</span><span class="info-value">Allgemeinmedizin</span></div>
-        <div class="info-row"><span class="info-label">Adresse</span><span class="info-value">Steingasse 6A, 4020 Linz</span></div>
-        <div class="info-row"><span class="info-label">Telefon</span><span class="info-value">+43 677 62439293</span></div>
+        <div class="info-card-header" data-i18n="profil.ordination">Meine Ordination</div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.arzt">Arzt</span><span class="info-value">Dr. Sarah Ahmed</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.fach">Fachrichtung</span><span class="info-value">Allgemeinmedizin</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value">Steingasse 6A, 4020 Linz</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value">+43 677 62439293</span></div>
       </div>
 
-      <button class="logout-btn" onclick="logout()">Abmelden</button>
+      <button class="logout-btn" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
 
     </div>
   </div>
@@ -723,20 +728,20 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 <nav class="bottom-nav">
   <button class="nav-item active" id="nav-chat" onclick="switchView('chat')">
     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
-    <span>Chat</span>
+    <span data-i18n="nav.chat">Chat</span>
     <span class="nav-badge">2</span>
   </button>
   <button class="nav-item" id="nav-termine" onclick="switchView('termine')">
     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
-    <span>Termine</span>
+    <span data-i18n="nav.termine">Termine</span>
   </button>
   <button class="nav-item" id="nav-dokumente" onclick="switchView('dokumente')">
     <span class="nav-icon"></span>
-    <span>Dokumente</span>
+    <span data-i18n="nav.dokumente">Dokumente</span>
   </button>
   <button class="nav-item" id="nav-profil" onclick="switchView('profil')">
     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-    <span>Profil</span>
+    <span data-i18n="nav.profil">Profil</span>
   </button>
 </nav>
 
@@ -748,7 +753,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable, fullscreen-by-default window ══ */
 let winZ=500;
 const WIN_MIN_TOP=8;
-const WIN_TITLES={chat:'Chat',termine:'Termine',dokumente:'Dokumente',profil:'Profil'};
+function winTitle(id){ return tr('nav.'+id); }
 const WIN_DEFAULT_POS={chat:{left:20,top:WIN_MIN_TOP+10},termine:{left:60,top:WIN_MIN_TOP+50},dokumente:{left:100,top:WIN_MIN_TOP+90},profil:{left:140,top:WIN_MIN_TOP+130}};
 const WIN_ICON_SHRINK='<path d="M8 3v3a2 2 0 0 1-2 2H3m18-5v3a2 2 0 0 0 2 2h3M3 16h3a2 2 0 0 1 2 2v3m13-5h-3a2 2 0 0 0-2 2v3"/>';
 const WIN_ICON_EXPAND='<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
@@ -759,14 +764,14 @@ function ensureWindowChrome(){
   document.querySelectorAll('.view').forEach(function(v){
     if(v.querySelector(':scope > .app-window-titlebar')) return;
     const id=v.id.replace('view-','');
-    const title=WIN_TITLES[id]||id;
+    const title=winTitle(id);
     const bar=document.createElement('div');
     bar.className='app-window-titlebar';
     bar.innerHTML='<span>'+title+'</span>'+
       '<div class="app-window-controls">'+
-      '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="Minimieren">–</button>'+
-      '<button class="app-window-btn win-fs" onclick="toggleWindowFullscreen(\''+id+'\')" title="Verkleinern"><svg viewBox="0 0 24 24">'+WIN_ICON_SHRINK+'</svg></button>'+
-      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="Schließen">✕</button>'+
+      '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="'+tr('win.minimize')+'">–</button>'+
+      '<button class="app-window-btn win-fs" onclick="toggleWindowFullscreen(\''+id+'\')" title="'+tr('win.fullscreen')+'"><svg viewBox="0 0 24 24">'+WIN_ICON_SHRINK+'</svg></button>'+
+      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="'+tr('win.close')+'">✕</button>'+
       '</div>';
     const body=document.createElement('div');
     body.className='app-window-body';
@@ -784,7 +789,7 @@ function toggleWindowFullscreen(id){
   const isFs=el.classList.toggle('win-fullscreen');
   if(btn){
     btn.innerHTML='<svg viewBox="0 0 24 24">'+(isFs?WIN_ICON_SHRINK:WIN_ICON_EXPAND)+'</svg>';
-    btn.title=isFs?'Verkleinern':'Vollbild';
+    btn.title=isFs?tr('win.fullscreen'):tr('win.vollbild');
   }
   if(!isFs && !el.dataset.winPositioned){
     const pos=WIN_DEFAULT_POS[id]||{left:40,top:40};
@@ -1144,12 +1149,10 @@ function myTermine(){
 function renderCalendar(){
   const year=currentDate.getFullYear();
   const month=currentDate.getMonth();
-  const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  document.getElementById('calMonth').textContent=`${months[month]} ${year}`;
+  document.getElementById('calMonth').textContent=`${monthsFull()[month]} ${year}`;
   const grid=document.getElementById('calGrid');
   grid.innerHTML='';
-  const dayLabels=['Mo','Di','Mi','Do','Fr','Sa','So'];
-  dayLabels.forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});
+  dayLabels().forEach(d=>{const el=document.createElement('div');el.className='cal-day-label';el.textContent=d;grid.appendChild(el);});
   const first=new Date(year,month,1).getDay();
   const offset=first===0?6:first-1;
   for(let i=0;i<offset;i++){const el=document.createElement('div');el.className='cal-day empty';grid.appendChild(el);}
@@ -1171,8 +1174,7 @@ function renderCalendar(){
 function selectDay(d){
   selectedDay=d;
   selectedSlot=null;
-  const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  document.getElementById('bookingDate').textContent=`${d}. ${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+  document.getElementById('bookingDate').textContent=`${d}. ${monthsFull()[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
   renderCalendar();
   renderTimeSlots();
 }
@@ -1197,14 +1199,14 @@ function selectSlot(el,time){
 }
 
 function bookTermin(){
-  if(!selectedDay){showToast('Bitte zuerst einen Tag wählen');return;}
-  if(!selectedSlot){showToast('Bitte eine Uhrzeit wählen');return;}
+  if(!selectedDay){showToast(tr('termine.toast.chooseDay'));return;}
+  if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
   const acc=getCurrentAccount();
-  if(!acc){showToast('Kein Konto gefunden','error');return;}
+  if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
   const list=loadTermine();
   if(list.some(t=>t.date===d&&t.time===selectedSlot&&t.status!=='abgesagt')){
-    showToast('✗ Diese Uhrzeit ist leider schon vergeben','error');
+    showToast(tr('termine.toast.slotTaken'),'error');
     renderTimeSlots();
     return;
   }
@@ -1215,25 +1217,23 @@ function bookTermin(){
   };
   list.push(termin);
   saveTermine(list);
-  const months=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  showToast(`✓ Termin gebucht: ${selectedDay}. ${months[currentDate.getMonth()]} um ${selectedSlot} Uhr`,'success');
+  showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
   selectedDay=null;selectedSlot=null;
   renderCalendar();renderTimeSlots();renderPatientTermine();
-  document.getElementById('bookingDate').textContent='Wählen Sie einen Tag im Kalender';
+  document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
   openSymptomModal(termin.id);
 }
 
 function terminCardHtml(t){
   const d=new Date(t.date+'T00:00:00');
-  const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  const status=t.status==='bestaetigt'?'<span class="termin-status status-confirmed">✓ Bestätigt</span>'
-    :t.status==='abgesagt'?'<span class="termin-status" style="background:#f1f5f9;color:#94a3b8;">✗ Abgesagt</span>'
-    :'<span class="termin-status status-pending">Ausstehend</span>';
+  const status=t.status==='bestaetigt'?`<span class="termin-status status-confirmed">${tr('termine.status.confirmed')}</span>`
+    :t.status==='abgesagt'?`<span class="termin-status" style="background:#f1f5f9;color:#94a3b8;">${tr('termine.status.cancelled')}</span>`
+    :`<span class="termin-status status-pending">${tr('termine.status.pending')}</span>`;
   return `<div class="termin-card">
-    <div class="termin-date-box"><div class="termin-day">${d.getDate()}</div><div class="termin-month">${months[d.getMonth()]}</div></div>
+    <div class="termin-date-box"><div class="termin-day">${d.getDate()}</div><div class="termin-month">${monthsShort()[d.getMonth()]}</div></div>
     <div class="termin-info">
       <div class="termin-title">${t.art}</div>
-      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} Uhr · Dr. Sarah Ahmed · Linz</div>
+      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} ${tr('termine.uhr')} · Dr. Sarah Ahmed · Linz</div>
     </div>
     ${status}
   </div>`;
@@ -1245,7 +1245,7 @@ function visitCardHtml(t){
       <span class="visit-card-date">${d.toLocaleDateString('de-AT')}</span>
       <span class="visit-card-type">${t.art}</span>
     </div>
-    <div class="visit-card-title">${(t.reason&&t.reason.length)?t.reason.join(', '):t.art}</div>
+    <div class="visit-card-title">${(t.reason&&t.reason.length)?t.reason.map(trSymptom).join(', '):t.art}</div>
     ${t.reasonNote?`<div class="visit-card-note">${t.reasonNote}</div>`:''}
   </div>`;
 }
@@ -1257,8 +1257,8 @@ function renderPatientTermine(){
   const all=myTermine();
   const upcoming=all.filter(t=>t.date>=today).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   const past=all.filter(t=>t.date<today).sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-  upcomingRoot.innerHTML=upcoming.length?upcoming.map(terminCardHtml).join(''):'<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">Keine kommenden Termine</div>';
-  pastRoot.innerHTML=past.length?past.map(visitCardHtml).join(''):'<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">Keine vergangenen Besuche</div>';
+  upcomingRoot.innerHTML=upcoming.length?upcoming.map(terminCardHtml).join(''):`<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">${tr('termine.noUpcoming')}</div>`;
+  pastRoot.innerHTML=past.length?past.map(visitCardHtml).join(''):`<div style="padding:16px 0;text-align:center;color:var(--text-muted);font-size:13px;">${tr('termine.noPast')}</div>`;
 }
 
 // ── Symptom picker (reason for visit) ──
@@ -1289,10 +1289,11 @@ function openSymptomModal(terminId){
   showingBodyBack=false;
   document.getElementById('bodyFrontView').style.display='block';
   document.getElementById('bodyBackView').style.display='none';
-  document.getElementById('bodyViewToggle').textContent='🔄 Rückansicht anzeigen';
+  document.getElementById('bodyViewToggle').textContent=tr('symptom.toggleBack');
   document.querySelectorAll('.body-part,.region-chip').forEach(el=>el.classList.remove('active'));
   document.getElementById('symptomRegions').innerHTML='';
   document.getElementById('symptomNote').value='';
+  updateSymptomNoteHint();
   document.getElementById('symptomModal').classList.add('show');
 }
 function closeSymptomModal(){ document.getElementById('symptomModal').classList.remove('show'); }
@@ -1300,7 +1301,7 @@ function toggleBodyView(){
   showingBodyBack=!showingBodyBack;
   document.getElementById('bodyFrontView').style.display=showingBodyBack?'none':'block';
   document.getElementById('bodyBackView').style.display=showingBodyBack?'block':'none';
-  document.getElementById('bodyViewToggle').textContent=showingBodyBack?'🔄 Vorderansicht anzeigen':'🔄 Rückansicht anzeigen';
+  document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
 }
 function toggleRegion(region){
   if(activeRegions.has(region)) activeRegions.delete(region);
@@ -1308,16 +1309,21 @@ function toggleRegion(region){
   document.querySelectorAll('[data-region="'+region+'"]').forEach(el=>el.classList.toggle('active',activeRegions.has(region)));
   renderSymptomRegions();
 }
+// NOTE: the displayed region/symptom text is translated via trRegionLabel()/
+// trSymptom() for the patient's chosen UI language, but the *value* stored in
+// toggleSymptom's key (and thus written to the termin record on submit) is
+// always the canonical German string from SYMPTOM_REGIONS -- the doctor's
+// side always reads German regardless of what the patient saw.
 function renderSymptomRegions(){
   const root=document.getElementById('symptomRegions');
   root.innerHTML=[...activeRegions].map(r=>{
     const info=SYMPTOM_REGIONS[r];
     return `<div style="margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px;">${info.label}</div>
+      <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:6px;">${trRegionLabel(r)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
         ${info.symptoms.map(s=>{
           const key=r+':'+s;
-          return `<button class="symptom-chip${selectedSymptoms.has(key)?' active':''}" onclick="toggleSymptom('${key}',this)">${s}</button>`;
+          return `<button class="symptom-chip${selectedSymptoms.has(key)?' active':''}" onclick="toggleSymptom('${key}',this)">${trSymptom(s)}</button>`;
         }).join('')}
       </div>
     </div>`;
@@ -1338,7 +1344,7 @@ function submitSymptoms(){
     renderPatientTermine();
   }
   closeSymptomModal();
-  showToast('✓ Danke, Ihre Angaben wurden gespeichert!','success');
+  showToast(tr('symptom.toast.saved'),'success');
 }
 
 // ── Toast ──
@@ -1357,8 +1363,28 @@ function logout(){
 }
 
 // Init
+document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwitcher');
+initPatientLanguage();
 renderCalendar();
 initPatientData();
+
+// Re-render everything that was built from JS template strings (not caught
+// by applyI18n's static [data-i18n] walk) when the patient switches language.
+function onPatientLanguageChanged(){
+  renderCalendar();
+  renderTimeSlots();
+  renderPatientTermine();
+  if(document.getElementById('symptomModal').classList.contains('show')){
+    document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
+    renderSymptomRegions();
+    updateSymptomNoteHint();
+  }
+}
+function updateSymptomNoteHint(){
+  const hint=document.getElementById('symptomNoteHint');
+  if(!hint) return;
+  hint.textContent=getPatientLang()==='de'?'':'— '+tr('symptom.note.hint');
+}
 document.getElementById('messages').scrollTop=99999;
 </script>
 </body>
