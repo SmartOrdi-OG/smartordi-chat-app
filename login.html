@@ -204,28 +204,30 @@ body{
 
     <div class="error-msg" id="inviteErrorMsg"><span>!</span><span id="inviteErrorText"></span></div>
 
-    <div class="form-group">
-      <label class="form-label">Vorname</label>
-      <input type="text" class="form-input" id="inviteVorname" style="padding-left:14px;">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Nachname</label>
-      <input type="text" class="form-input" id="inviteNachname" style="padding-left:14px;">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Benutzername</label>
-      <input type="text" class="form-input" id="inviteUsername" autocomplete="username" style="padding-left:14px;">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Passwort</label>
-      <input type="password" class="form-input" id="invitePassword" autocomplete="new-password" style="padding-left:14px;">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Passwort bestätigen</label>
-      <input type="password" class="form-input" id="invitePasswordConfirm" autocomplete="new-password" style="padding-left:14px;">
-    </div>
+    <div id="inviteFields">
+      <div class="form-group">
+        <label class="form-label">Vorname</label>
+        <input type="text" class="form-input" id="inviteVorname" style="padding-left:14px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nachname</label>
+        <input type="text" class="form-input" id="inviteNachname" style="padding-left:14px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Benutzername</label>
+        <input type="text" class="form-input" id="inviteUsername" autocomplete="username" style="padding-left:14px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort</label>
+        <input type="password" class="form-input" id="invitePassword" autocomplete="new-password" style="padding-left:14px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort bestätigen</label>
+        <input type="password" class="form-input" id="invitePasswordConfirm" autocomplete="new-password" style="padding-left:14px;">
+      </div>
 
-    <button class="btn-login" onclick="acceptStaffInvite()">Konto erstellen & anmelden</button>
+      <button class="btn-login" onclick="acceptStaffInvite()">Konto erstellen & anmelden</button>
+    </div>
   </div>
 
   <div class="footer-note">
@@ -287,7 +289,7 @@ function tryStaffInviteScreen(){
     document.getElementById('inviteSub').textContent='Dieser Einladungslink ist ungültig oder wurde bereits verwendet.';
     document.getElementById('normalLoginForm').style.display='none';
     document.getElementById('inviteForm').style.display='block';
-    document.querySelector('#inviteForm .btn-login').style.display='none';
+    document.getElementById('inviteFields').style.display='none';
     return;
   }
   staffInviteToken=token;
