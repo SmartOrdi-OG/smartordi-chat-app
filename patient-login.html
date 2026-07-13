@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login</title>
 <script src="vendor/anamnese-shared.js"></script>
+<script src="vendor/i18n-patient.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
@@ -75,23 +76,26 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 <div class="card">
 
   <!-- Logo -->
-  <div class="card-logo">
-    <img src="logo..jpeg" alt="Logo" class="card-logo-img">
-    <div class="card-logo-text">Smartordi<span>.chat</span></div>
+  <div class="card-logo" style="justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <img src="logo..jpeg" alt="Logo" class="card-logo-img">
+      <div class="card-logo-text">Smartordi<span>.chat</span></div>
+    </div>
+    <span id="langSwitcherWrap"></span>
   </div>
 
   <!-- SCREEN 1: Login -->
   <div class="screen active" id="screen-login">
-    <div class="error-msg" id="errorMsg"><span>!</span><span id="errorText">Falscher Benutzername oder Passwort.</span></div>
+    <div class="error-msg" id="errorMsg"><span>!</span><span id="errorText" data-i18n="login.error.wrongCreds">Falscher Benutzername oder Passwort.</span></div>
     <div class="form-group">
-      <label class="form-label">Benutzername</label>
+      <label class="form-label" data-i18n="login.username.label">Benutzername</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-        <input type="text" class="form-input" id="username" placeholder="benutzername" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('password').focus()">
+        <input type="text" class="form-input" id="username" placeholder="benutzername" data-i18n-ph="login.username.placeholder" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('password').focus()">
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label">Passwort</label>
+      <label class="form-label" data-i18n="login.password.label">Passwort</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
         <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
@@ -99,7 +103,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       </div>
     </div>
     <button class="btn-main" id="loginBtn" onclick="doLogin()">
-      <span id="btnText">Anmelden</span>
+      <span id="btnText" data-i18n="login.button">Anmelden</span>
       <div class="spinner" id="spinner"></div>
     </button>
   </div>
@@ -108,52 +112,53 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   <div class="screen" id="screen-changepw">
     <div class="change-pw-header">
       <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-      <div class="change-pw-title">Neues Passwort wählen</div>
-      <div class="change-pw-sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
+      <div class="change-pw-title" data-i18n="changepw.title">Neues Passwort wählen</div>
+      <div class="change-pw-sub" data-i18n="changepw.sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
     </div>
-    <div class="notice">Ihr Passwort ist nur für Sie sichtbar</div>
+    <div class="notice" data-i18n="changepw.notice">Ihr Passwort ist nur für Sie sichtbar</div>
     <div class="error-msg" id="errorMsg2"><span>!</span><span id="errorText2"></span></div>
     <div class="form-group">
-      <label class="form-label">Neues Passwort</label>
+      <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-        <input type="password" class="form-input" id="newPw" placeholder="Mindestens 6 Zeichen" oninput="checkStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('confirmPw').focus()">
+        <input type="password" class="form-input" id="newPw" placeholder="Mindestens 6 Zeichen" data-i18n-ph="changepw.newPw.placeholder" oninput="checkStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('confirmPw').focus()">
         <button class="toggle-pw" onclick="togglePw('newPw','togglePw2')" id="togglePw2" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       <div class="pw-strength"><div class="pw-strength-fill" id="strengthFill"></div></div>
       <div class="pw-strength-label" id="strengthLabel"></div>
     </div>
     <div class="form-group">
-      <label class="form-label">Passwort bestätigen</label>
+      <label class="form-label" data-i18n="changepw.confirmPw.label">Passwort bestätigen</label>
       <div class="input-wrap">
         <span class="input-icon">✓</span>
-        <input type="password" class="form-input" id="confirmPw" placeholder="Passwort wiederholen" onkeydown="if(event.key==='Enter')saveNewPw()">
+        <input type="password" class="form-input" id="confirmPw" placeholder="Passwort wiederholen" data-i18n-ph="changepw.confirmPw.placeholder" onkeydown="if(event.key==='Enter')saveNewPw()">
         <button class="toggle-pw" onclick="togglePw('confirmPw','togglePw3')" id="togglePw3" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
     </div>
-    <button class="btn-main" onclick="saveNewPw()">✓ Passwort speichern & einloggen</button>
+    <button class="btn-main" onclick="saveNewPw()" data-i18n="changepw.save">✓ Passwort speichern & einloggen</button>
   </div>
 
   <!-- SCREEN 3: Anamnese (verpflichtend vor erster Nutzung) -->
   <div class="screen" id="screen-anamnese">
     <div class="change-pw-header">
       <div class="change-pw-icon">📋</div>
-      <div class="change-pw-title">Anamnese ausfüllen</div>
-      <div class="change-pw-sub">Bitte füllen Sie einmalig Ihre medizinische Vorgeschichte aus. Diese Angaben werden an Ihre Ordination übermittelt.</div>
+      <div class="change-pw-title" data-i18n="anamnese.title">Anamnese ausfüllen</div>
+      <div class="change-pw-sub" data-i18n="anamnese.sub">Bitte füllen Sie einmalig Ihre medizinische Vorgeschichte aus. Diese Angaben werden an Ihre Ordination übermittelt.</div>
     </div>
+    <div class="notice" id="anamneseFormNotice" style="display:none;"></div>
     <div class="anamnese-scroll" id="anamneseForm">
       <div id="anamnese-common-section"></div>
       <div id="anamnese-specialty-title" class="anamnese-specialty-title"></div>
       <div id="anamnese-specialty-section"></div>
     </div>
-    <button class="btn-main" onclick="submitAnamnese()">✓ Anamnese absenden</button>
+    <button class="btn-main" onclick="submitAnamnese()" data-i18n="anamnese.submit">✓ Anamnese absenden</button>
   </div>
 
 </div>
 
 <div class="footer-note">
-  Ende-zu-Ende verschlüsselt · EU-Server Wien<br>
-  <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <a href="impressum.html" target="_blank">Impressum</a> · Smartordi.eu
+  <span data-i18n="footer.privacy">Ende-zu-Ende verschlüsselt · EU-Server Wien</span><br>
+  <a href="datenschutz.html" target="_blank" data-i18n="footer.datenschutz">Datenschutz</a> · <a href="agb.html" target="_blank" data-i18n="footer.agb">AGB</a> · <a href="impressum.html" target="_blank" data-i18n="footer.impressum">Impressum</a> · Smartordi.eu
 </div>
 
 <script>
@@ -228,11 +233,11 @@ function checkStrength(pw){
   if(/[0-9]/.test(pw))score++;
   if(/[^A-Za-z0-9]/.test(pw))score++;
   const configs=[
-    {w:'20%',color:'#ef4444',text:'Sehr schwach'},
-    {w:'40%',color:'#f59e0b',text:'Schwach'},
-    {w:'60%',color:'#f59e0b',text:'Mittel'},
-    {w:'80%',color:'#22c55e',text:'Stark'},
-    {w:'100%',color:'#0d9488',text:'Sehr stark'},
+    {w:'20%',color:'#ef4444',text:tr('changepw.strength.veryWeak')},
+    {w:'40%',color:'#f59e0b',text:tr('changepw.strength.weak')},
+    {w:'60%',color:'#f59e0b',text:tr('changepw.strength.medium')},
+    {w:'80%',color:'#22c55e',text:tr('changepw.strength.strong')},
+    {w:'100%',color:'#0d9488',text:tr('changepw.strength.veryStrong')},
   ];
   const c=configs[Math.min(score-1,4)]||configs[0];
   fill.style.width=c.w;fill.style.background=c.color;
@@ -286,15 +291,15 @@ function saveNewPw(){
   errorEl.classList.remove('show');
 
   if(newPw.length < 6){
-    errorText.textContent='Passwort muss mindestens 6 Zeichen haben.';
+    errorText.textContent=tr('changepw.err.tooShort');
     errorEl.classList.add('show');return;
   }
   if(newPw !== confirmPw){
-    errorText.textContent='Passwörter stimmen nicht überein.';
+    errorText.textContent=tr('changepw.err.mismatch');
     errorEl.classList.add('show');return;
   }
   if(newPw === PATIENTS[currentUser.username].pw){
-    errorText.textContent='Bitte wählen Sie ein neues Passwort.';
+    errorText.textContent=tr('changepw.err.sameAsOld');
     errorEl.classList.add('show');return;
   }
 
@@ -323,6 +328,17 @@ function showAnamneseScreen(){
   const info=anamneseSpecialtyInfo(fach);
   document.getElementById('anamnese-specialty-title').textContent=info.html?info.label:'';
   document.getElementById('anamnese-specialty-section').innerHTML=info.html;
+  // The Anamnese form itself is not translated yet (its field labels double as
+  // the storage keys the doctor's Kartei reads back -- translating them would
+  // require a separate refactor to avoid corrupting that round-trip). Tell
+  // non-German patients plainly instead of silently showing a German form.
+  const notice=document.getElementById('anamneseFormNotice');
+  if(getPatientLang()==='de'){
+    notice.style.display='none';
+  }else{
+    notice.textContent=tr('anamnese.formNotice');
+    notice.style.display='flex';
+  }
   document.getElementById('screen-anamnese').classList.add('active');
 }
 
@@ -337,6 +353,8 @@ function submitAnamnese(){
 }
 
 window.addEventListener('load',()=>{
+  document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwitcher');
+  initPatientLanguage();
   document.getElementById('username').focus();
   tryQrLogin();
 });

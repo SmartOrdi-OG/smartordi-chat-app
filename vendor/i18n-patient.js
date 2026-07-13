@@ -1,0 +1,405 @@
+// Shared patient-facing UI translations, used by patient-login.html and
+// patient.html. IMPORTANT: this only translates interface chrome (labels,
+// buttons, calendar names, symptom-picker display text). Any value actually
+// written to a shared record (symptom picker selections, Anamnese answers,
+// free-text notes) is always stored in its canonical German form -- the
+// doctor/secretary side always reads German regardless of which language the
+// patient's UI was set to. Free-text fields (Anamnese, visit notes) are not
+// machine-translated at all: the patient is asked to write those in German,
+// since auto-translating health data through a third-party service would
+// conflict with this app's end-to-end-encrypted / DSGVO-konform handling of
+// medical data.
+
+const PATIENT_LANG_KEY='smartordi_patient_lang';
+const PATIENT_LANGS=[
+  {code:'de',label:'Deutsch'},
+  {code:'en',label:'English'},
+  {code:'ar',label:'العربية'},
+  {code:'tr',label:'Türkçe'},
+  {code:'bs',label:'Bosanski / Srpski / Hrvatski'},
+];
+
+const I18N={
+  de:{
+    'nav.chat':'Chat','nav.termine':'Termine','nav.dokumente':'Dokumente','nav.profil':'Profil',
+    'topbar.logout':'Abmelden',
+    'win.minimize':'Minimieren','win.fullscreen':'Verkleinern','win.vollbild':'Vollbild','win.close':'Schließen',
+    'chat.placeholder':'Nachricht schreiben...',
+    'termine.title':'Meine Termine','termine.sub':'Ordination Dr. Sarah Ahmed · Linz',
+    'termine.bookTitle':'Termin buchen','termine.chooseDay':'Wählen Sie einen Tag im Kalender',
+    'termine.confirmBtn':'✓ Termin bestätigen','termine.upcoming':'Kommende Termine','termine.past':'Vergangene Besuche',
+    'termine.noUpcoming':'Keine kommenden Termine','termine.noPast':'Keine vergangenen Besuche',
+    'termine.status.confirmed':'✓ Bestätigt','termine.status.cancelled':'✗ Abgesagt','termine.status.pending':'Ausstehend',
+    'termine.uhr':'Uhr',
+    'termine.toast.chooseDay':'Bitte zuerst einen Tag wählen','termine.toast.chooseSlot':'Bitte eine Uhrzeit wählen',
+    'termine.toast.noAccount':'Kein Konto gefunden','termine.toast.slotTaken':'✗ Diese Uhrzeit ist leider schon vergeben',
+    'termine.toast.bookedPrefix':'✓ Termin gebucht:','termine.toast.bookedAt':'um',
+    'symptom.title':'Grund für den Besuch',
+    'symptom.hint':'Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.',
+    'symptom.toggleBack':'🔄 Rückansicht anzeigen','symptom.toggleFront':'🔄 Vorderansicht anzeigen',
+    'symptom.note.label':'Zusätzliche Erklärung (optional)','symptom.note.hint':'Bitte auf Deutsch schreiben',
+    'symptom.note.placeholder':'Beschreiben Sie kurz Ihre Beschwerden...',
+    'symptom.submit':'✓ Absenden','symptom.toast.saved':'✓ Danke, Ihre Angaben wurden gespeichert!',
+    'region.label.kopf':'Kopf (allgemein)','region.label.gesicht':'Gesicht / Augen / Ohren',
+    'region.label.nacken':'Nacken & Schultern','region.label.hals':'Hals (Kehle)','region.label.brust':'Brust / Herz',
+    'region.label.bauch':'Bauch','region.label.becken':'Becken / Unterleib','region.label.ruecken':'Rücken',
+    'region.label.arme':'Arme','region.label.haende':'Hände','region.label.beine':'Beine','region.label.fuesse':'Füße',
+    'region.label.haut':'Haut (allgemein)',
+    'dokumente.title':'Meine Dokumente','dokumente.sub':'Befunde · Überweisungen · Rezepte',
+    'dokumente.sect.ueberweisungen':'Überweisungen','dokumente.sect.befunde':'Befunde','dokumente.sect.rezepte':'Rezepte',
+    'profil.persoenlich':'Persönliche Daten','profil.fullName':'Vollständiger Name','profil.dob':'Geburtsdatum',
+    'profil.adresse':'Adresse','profil.tel':'Telefon','profil.email':'E-Mail',
+    'profil.versicherung':'Versicherung','profil.traeger':'Träger','profil.svnr':'SV-Nummer',
+    'profil.dsgvo':'DSGVO-Einwilligung','profil.dsgvoGranted':'✓ Erteilt',
+    'profil.ordination':'Meine Ordination','profil.arzt':'Arzt','profil.fach':'Fachrichtung',
+    'login.username.label':'Benutzername','login.username.placeholder':'benutzername','login.password.label':'Passwort',
+    'login.button':'Anmelden','login.error.wrongCreds':'Falscher Benutzername oder Passwort.',
+    'changepw.title':'Neues Passwort wählen',
+    'changepw.sub':'Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.',
+    'changepw.notice':'Ihr Passwort ist nur für Sie sichtbar',
+    'changepw.newPw.label':'Neues Passwort','changepw.newPw.placeholder':'Mindestens 6 Zeichen',
+    'changepw.confirmPw.label':'Passwort bestätigen','changepw.confirmPw.placeholder':'Passwort wiederholen',
+    'changepw.save':'✓ Passwort speichern & einloggen',
+    'changepw.strength.veryWeak':'Sehr schwach','changepw.strength.weak':'Schwach','changepw.strength.medium':'Mittel',
+    'changepw.strength.strong':'Stark','changepw.strength.veryStrong':'Sehr stark',
+    'changepw.err.tooShort':'Passwort muss mindestens 6 Zeichen haben.',
+    'changepw.err.mismatch':'Passwörter stimmen nicht überein.',
+    'changepw.err.sameAsOld':'Bitte wählen Sie ein neues Passwort.',
+    'anamnese.title':'Anamnese ausfüllen',
+    'anamnese.sub':'Bitte füllen Sie einmalig Ihre medizinische Vorgeschichte aus. Diese Angaben werden an Ihre Ordination übermittelt.',
+    'anamnese.submit':'✓ Anamnese absenden',
+    'anamnese.formNotice':'',
+    'footer.privacy':'Ende-zu-Ende verschlüsselt · EU-Server Wien',
+    'footer.datenschutz':'Datenschutz','footer.agb':'AGB','footer.impressum':'Impressum',
+  },
+  en:{
+    'nav.chat':'Chat','nav.termine':'Appointments','nav.dokumente':'Documents','nav.profil':'Profile',
+    'topbar.logout':'Log out',
+    'win.minimize':'Minimize','win.fullscreen':'Restore','win.vollbild':'Fullscreen','win.close':'Close',
+    'chat.placeholder':'Write a message...',
+    'termine.title':'My Appointments','termine.sub':'Dr. Sarah Ahmed Practice · Linz',
+    'termine.bookTitle':'Book an appointment','termine.chooseDay':'Choose a day in the calendar',
+    'termine.confirmBtn':'✓ Confirm appointment','termine.upcoming':'Upcoming Appointments','termine.past':'Past Visits',
+    'termine.noUpcoming':'No upcoming appointments','termine.noPast':'No past visits',
+    'termine.status.confirmed':'✓ Confirmed','termine.status.cancelled':'✗ Cancelled','termine.status.pending':'Pending',
+    'termine.uhr':'',
+    'termine.toast.chooseDay':'Please choose a day first','termine.toast.chooseSlot':'Please choose a time',
+    'termine.toast.noAccount':'No account found','termine.toast.slotTaken':'✗ Sorry, this time slot is already taken',
+    'termine.toast.bookedPrefix':'✓ Appointment booked:','termine.toast.bookedAt':'at',
+    'symptom.title':'Reason for the visit',
+    'symptom.hint':'Tap the affected body region — you can select several.',
+    'symptom.toggleBack':'🔄 Show back view','symptom.toggleFront':'🔄 Show front view',
+    'symptom.note.label':'Additional explanation (optional)','symptom.note.hint':'Please write in German',
+    'symptom.note.placeholder':'Briefly describe your symptoms...',
+    'symptom.submit':'✓ Submit','symptom.toast.saved':'✓ Thank you, your details have been saved!',
+    'region.label.kopf':'Head (general)','region.label.gesicht':'Face / Eyes / Ears',
+    'region.label.nacken':'Neck & Shoulders','region.label.hals':'Throat','region.label.brust':'Chest / Heart',
+    'region.label.bauch':'Abdomen','region.label.becken':'Pelvis / Lower abdomen','region.label.ruecken':'Back',
+    'region.label.arme':'Arms','region.label.haende':'Hands','region.label.beine':'Legs','region.label.fuesse':'Feet',
+    'region.label.haut':'Skin (general)',
+    'dokumente.title':'My Documents','dokumente.sub':'Reports · Referrals · Prescriptions',
+    'dokumente.sect.ueberweisungen':'Referrals','dokumente.sect.befunde':'Reports','dokumente.sect.rezepte':'Prescriptions',
+    'profil.persoenlich':'Personal Details','profil.fullName':'Full name','profil.dob':'Date of birth',
+    'profil.adresse':'Address','profil.tel':'Phone','profil.email':'Email',
+    'profil.versicherung':'Insurance','profil.traeger':'Provider','profil.svnr':'Social security no.',
+    'profil.dsgvo':'GDPR consent','profil.dsgvoGranted':'✓ Granted',
+    'profil.ordination':'My Practice','profil.arzt':'Doctor','profil.fach':'Specialty',
+    'login.username.label':'Username','login.username.placeholder':'username','login.password.label':'Password',
+    'login.button':'Log in','login.error.wrongCreds':'Wrong username or password.',
+    'changepw.title':'Choose a new password',
+    'changepw.sub':'Please choose a personal password. The practice will not have access to it.',
+    'changepw.notice':'Your password is visible only to you',
+    'changepw.newPw.label':'New password','changepw.newPw.placeholder':'At least 6 characters',
+    'changepw.confirmPw.label':'Confirm password','changepw.confirmPw.placeholder':'Repeat password',
+    'changepw.save':'✓ Save password & log in',
+    'changepw.strength.veryWeak':'Very weak','changepw.strength.weak':'Weak','changepw.strength.medium':'Medium',
+    'changepw.strength.strong':'Strong','changepw.strength.veryStrong':'Very strong',
+    'changepw.err.tooShort':'Password must be at least 6 characters.',
+    'changepw.err.mismatch':'Passwords do not match.',
+    'changepw.err.sameAsOld':'Please choose a new password.',
+    'anamnese.title':'Fill in medical history',
+    'anamnese.sub':'Please fill in your medical history once. This information will be sent to your practice.',
+    'anamnese.submit':'✓ Submit medical history',
+    'anamnese.formNotice':'The form below is currently only available in German. Please fill it in using German terms where possible — ask the practice for help if needed.',
+    'footer.privacy':'End-to-end encrypted · EU servers (Vienna)',
+    'footer.datenschutz':'Privacy Policy','footer.agb':'Terms','footer.impressum':'Legal Notice',
+  },
+  ar:{
+    'nav.chat':'محادثة','nav.termine':'المواعيد','nav.dokumente':'المستندات','nav.profil':'الملف الشخصي',
+    'topbar.logout':'تسجيل الخروج',
+    'win.minimize':'تصغير','win.fullscreen':'استعادة','win.vollbild':'ملء الشاشة','win.close':'إغلاق',
+    'chat.placeholder':'اكتب رسالة...',
+    'termine.title':'مواعيدي','termine.sub':'عيادة د. سارة أحمد · لينز',
+    'termine.bookTitle':'حجز موعد','termine.chooseDay':'اختر يوماً من التقويم',
+    'termine.confirmBtn':'✓ تأكيد الموعد','termine.upcoming':'المواعيد القادمة','termine.past':'الزيارات السابقة',
+    'termine.noUpcoming':'لا توجد مواعيد قادمة','termine.noPast':'لا توجد زيارات سابقة',
+    'termine.status.confirmed':'✓ مؤكَّد','termine.status.cancelled':'✗ ملغى','termine.status.pending':'قيد الانتظار',
+    'termine.uhr':'',
+    'termine.toast.chooseDay':'يرجى اختيار يوم أولاً','termine.toast.chooseSlot':'يرجى اختيار وقت',
+    'termine.toast.noAccount':'لم يتم العثور على حساب','termine.toast.slotTaken':'✗ عذراً، هذا الوقت محجوز مسبقاً',
+    'termine.toast.bookedPrefix':'✓ تم حجز الموعد:','termine.toast.bookedAt':'الساعة',
+    'symptom.title':'سبب الزيارة',
+    'symptom.hint':'اضغط على منطقة الجسم المصابة — يمكنك اختيار أكثر من منطقة.',
+    'symptom.toggleBack':'🔄 عرض الظهر','symptom.toggleFront':'🔄 عرض الأمام',
+    'symptom.note.label':'توضيح إضافي (اختياري)','symptom.note.hint':'يرجى الكتابة باللغة الألمانية',
+    'symptom.note.placeholder':'اكتب وصفاً موجزاً لأعراضك...',
+    'symptom.submit':'✓ إرسال','symptom.toast.saved':'✓ شكراً لك، تم حفظ بياناتك!',
+    'region.label.kopf':'الرأس (عام)','region.label.gesicht':'الوجه / العينين / الأذنين',
+    'region.label.nacken':'الرقبة والكتفين','region.label.hals':'الحلق','region.label.brust':'الصدر / القلب',
+    'region.label.bauch':'البطن','region.label.becken':'الحوض / أسفل البطن','region.label.ruecken':'الظهر',
+    'region.label.arme':'الذراعان','region.label.haende':'اليدان','region.label.beine':'الرجلان','region.label.fuesse':'القدمان',
+    'region.label.haut':'الجلد (عام)',
+    'dokumente.title':'مستنداتي','dokumente.sub':'تقارير · تحويلات · وصفات طبية',
+    'dokumente.sect.ueberweisungen':'تحويلات طبية','dokumente.sect.befunde':'تقارير طبية','dokumente.sect.rezepte':'وصفات طبية',
+    'profil.persoenlich':'البيانات الشخصية','profil.fullName':'الاسم الكامل','profil.dob':'تاريخ الميلاد',
+    'profil.adresse':'العنوان','profil.tel':'الهاتف','profil.email':'البريد الإلكتروني',
+    'profil.versicherung':'التأمين الصحي','profil.traeger':'شركة التأمين','profil.svnr':'الرقم التأميني',
+    'profil.dsgvo':'موافقة حماية البيانات','profil.dsgvoGranted':'✓ ممنوحة',
+    'profil.ordination':'عيادتي','profil.arzt':'الطبيب/ة','profil.fach':'الاختصاص',
+    'login.username.label':'اسم المستخدم','login.username.placeholder':'اسم المستخدم','login.password.label':'كلمة المرور',
+    'login.button':'تسجيل الدخول','login.error.wrongCreds':'اسم المستخدم أو كلمة المرور غير صحيحة.',
+    'changepw.title':'اختر كلمة مرور جديدة',
+    'changepw.sub':'يرجى اختيار كلمة مرور شخصية. العيادة لن تتمكن من الوصول إليها.',
+    'changepw.notice':'كلمة المرور مرئية لك فقط',
+    'changepw.newPw.label':'كلمة المرور الجديدة','changepw.newPw.placeholder':'6 أحرف على الأقل',
+    'changepw.confirmPw.label':'تأكيد كلمة المرور','changepw.confirmPw.placeholder':'أعد كتابة كلمة المرور',
+    'changepw.save':'✓ حفظ كلمة المرور والدخول',
+    'changepw.strength.veryWeak':'ضعيفة جداً','changepw.strength.weak':'ضعيفة','changepw.strength.medium':'متوسطة',
+    'changepw.strength.strong':'قوية','changepw.strength.veryStrong':'قوية جداً',
+    'changepw.err.tooShort':'يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل.',
+    'changepw.err.mismatch':'كلمتا المرور غير متطابقتين.',
+    'changepw.err.sameAsOld':'يرجى اختيار كلمة مرور جديدة.',
+    'anamnese.title':'تعبئة السيرة المرضية',
+    'anamnese.sub':'يرجى تعبئة سيرتك المرضية مرة واحدة. سيتم إرسال هذه المعلومات إلى عيادتك.',
+    'anamnese.submit':'✓ إرسال السيرة المرضية',
+    'anamnese.formNotice':'النموذج أدناه متوفر حالياً باللغة الألمانية فقط. يرجى تعبئته قدر الإمكان بمصطلحات ألمانية — واطلب المساعدة من العيادة عند الحاجة.',
+    'footer.privacy':'مشفّر من طرف إلى طرف · خوادم الاتحاد الأوروبي (فيينا)',
+    'footer.datenschutz':'سياسة الخصوصية','footer.agb':'الشروط والأحكام','footer.impressum':'بيانات الناشر',
+  },
+  tr:{
+    'nav.chat':'Sohbet','nav.termine':'Randevular','nav.dokumente':'Belgeler','nav.profil':'Profil',
+    'topbar.logout':'Çıkış yap',
+    'win.minimize':'Küçült','win.fullscreen':'Geri yükle','win.vollbild':'Tam ekran','win.close':'Kapat',
+    'chat.placeholder':'Mesaj yazın...',
+    'termine.title':'Randevularım','termine.sub':'Dr. Sarah Ahmed Muayenehanesi · Linz',
+    'termine.bookTitle':'Randevu al','termine.chooseDay':'Takvimden bir gün seçin',
+    'termine.confirmBtn':'✓ Randevuyu onayla','termine.upcoming':'Yaklaşan Randevular','termine.past':'Geçmiş Ziyaretler',
+    'termine.noUpcoming':'Yaklaşan randevu yok','termine.noPast':'Geçmiş ziyaret yok',
+    'termine.status.confirmed':'✓ Onaylandı','termine.status.cancelled':'✗ İptal edildi','termine.status.pending':'Beklemede',
+    'termine.uhr':'',
+    'termine.toast.chooseDay':'Lütfen önce bir gün seçin','termine.toast.chooseSlot':'Lütfen bir saat seçin',
+    'termine.toast.noAccount':'Hesap bulunamadı','termine.toast.slotTaken':'✗ Üzgünüz, bu saat dolu',
+    'termine.toast.bookedPrefix':'✓ Randevu alındı:','termine.toast.bookedAt':'saat',
+    'symptom.title':'Ziyaret nedeni',
+    'symptom.hint':'Etkilenen vücut bölgesine dokunun — birden fazla bölge seçebilirsiniz.',
+    'symptom.toggleBack':'🔄 Arka görünümü göster','symptom.toggleFront':'🔄 Ön görünümü göster',
+    'symptom.note.label':'Ek açıklama (isteğe bağlı)','symptom.note.hint':'Lütfen Almanca yazınız',
+    'symptom.note.placeholder':'Şikayetlerinizi kısaca yazın...',
+    'symptom.submit':'✓ Gönder','symptom.toast.saved':'✓ Teşekkürler, bilgileriniz kaydedildi!',
+    'region.label.kopf':'Baş (genel)','region.label.gesicht':'Yüz / Gözler / Kulaklar',
+    'region.label.nacken':'Boyun & Omuzlar','region.label.hals':'Boğaz','region.label.brust':'Göğüs / Kalp',
+    'region.label.bauch':'Karın','region.label.becken':'Pelvis / Alt karın','region.label.ruecken':'Sırt',
+    'region.label.arme':'Kollar','region.label.haende':'Eller','region.label.beine':'Bacaklar','region.label.fuesse':'Ayaklar',
+    'region.label.haut':'Cilt (genel)',
+    'dokumente.title':'Belgelerim','dokumente.sub':'Raporlar · Sevkler · Reçeteler',
+    'dokumente.sect.ueberweisungen':'Sevkler','dokumente.sect.befunde':'Raporlar','dokumente.sect.rezepte':'Reçeteler',
+    'profil.persoenlich':'Kişisel Bilgiler','profil.fullName':'Ad soyad','profil.dob':'Doğum tarihi',
+    'profil.adresse':'Adres','profil.tel':'Telefon','profil.email':'E-posta',
+    'profil.versicherung':'Sigorta','profil.traeger':'Sigorta kurumu','profil.svnr':'Sosyal güvenlik no.',
+    'profil.dsgvo':'Veri koruma onayı','profil.dsgvoGranted':'✓ Verildi',
+    'profil.ordination':'Muayenehanem','profil.arzt':'Doktor','profil.fach':'Uzmanlık',
+    'login.username.label':'Kullanıcı adı','login.username.placeholder':'kullanıcı adı','login.password.label':'Şifre',
+    'login.button':'Giriş yap','login.error.wrongCreds':'Kullanıcı adı veya şifre hatalı.',
+    'changepw.title':'Yeni bir şifre belirleyin',
+    'changepw.sub':'Lütfen kişisel bir şifre belirleyin. Muayenehane bu şifreye erişemeyecektir.',
+    'changepw.notice':'Şifreniz yalnızca size görünür',
+    'changepw.newPw.label':'Yeni şifre','changepw.newPw.placeholder':'En az 6 karakter',
+    'changepw.confirmPw.label':'Şifreyi onayla','changepw.confirmPw.placeholder':'Şifreyi tekrar girin',
+    'changepw.save':'✓ Şifreyi kaydet & giriş yap',
+    'changepw.strength.veryWeak':'Çok zayıf','changepw.strength.weak':'Zayıf','changepw.strength.medium':'Orta',
+    'changepw.strength.strong':'Güçlü','changepw.strength.veryStrong':'Çok güçlü',
+    'changepw.err.tooShort':'Şifre en az 6 karakter olmalıdır.',
+    'changepw.err.mismatch':'Şifreler eşleşmiyor.',
+    'changepw.err.sameAsOld':'Lütfen yeni bir şifre seçin.',
+    'anamnese.title':'Anamnez formunu doldurun',
+    'anamnese.sub':'Lütfen tıbbi geçmişinizi bir kez doldurun. Bu bilgiler muayenehanenize iletilecektir.',
+    'anamnese.submit':'✓ Anamnezi gönder',
+    'anamnese.formNotice':'Aşağıdaki form şu anda yalnızca Almanca olarak mevcuttur. Mümkün olduğunca Almanca terimlerle doldurun — gerekirse muayenehaneden yardım isteyin.',
+    'footer.privacy':'Uçtan uca şifrelenmiş · AB sunucuları (Viyana)',
+    'footer.datenschutz':'Gizlilik Politikası','footer.agb':'Kullanım Şartları','footer.impressum':'Yasal Bilgiler',
+  },
+  bs:{
+    'nav.chat':'Chat','nav.termine':'Termini','nav.dokumente':'Dokumenti','nav.profil':'Profil',
+    'topbar.logout':'Odjava',
+    'win.minimize':'Umanji','win.fullscreen':'Vrati','win.vollbild':'Puni ekran','win.close':'Zatvori',
+    'chat.placeholder':'Napišite poruku...',
+    'termine.title':'Moji termini','termine.sub':'Ordinacija dr. Sarah Ahmed · Linz',
+    'termine.bookTitle':'Zakaži termin','termine.chooseDay':'Odaberite dan u kalendaru',
+    'termine.confirmBtn':'✓ Potvrdi termin','termine.upcoming':'Predstojeći termini','termine.past':'Prošle posjete',
+    'termine.noUpcoming':'Nema predstojećih termina','termine.noPast':'Nema prošlih posjeta',
+    'termine.status.confirmed':'✓ Potvrđeno','termine.status.cancelled':'✗ Otkazano','termine.status.pending':'Na čekanju',
+    'termine.uhr':'h',
+    'termine.toast.chooseDay':'Molimo prvo odaberite dan','termine.toast.chooseSlot':'Molimo odaberite vrijeme',
+    'termine.toast.noAccount':'Nalog nije pronađen','termine.toast.slotTaken':'✗ Nažalost, ovaj termin je zauzet',
+    'termine.toast.bookedPrefix':'✓ Termin zakazan:','termine.toast.bookedAt':'u',
+    'symptom.title':'Razlog posjete',
+    'symptom.hint':'Dodirnite zahvaćeni dio tijela — možete odabrati više njih.',
+    'symptom.toggleBack':'🔄 Prikaži leđa','symptom.toggleFront':'🔄 Prikaži prednju stranu',
+    'symptom.note.label':'Dodatno objašnjenje (opcionalno)','symptom.note.hint':'Molimo pišite na njemačkom jeziku',
+    'symptom.note.placeholder':'Ukratko opišite svoje tegobe...',
+    'symptom.submit':'✓ Pošalji','symptom.toast.saved':'✓ Hvala, vaši podaci su sačuvani!',
+    'region.label.kopf':'Glava (opšte)','region.label.gesicht':'Lice / Oči / Uši',
+    'region.label.nacken':'Vrat i ramena','region.label.hals':'Grlo','region.label.brust':'Grudi / Srce',
+    'region.label.bauch':'Stomak','region.label.becken':'Karlica / donji dio stomaka','region.label.ruecken':'Leđa',
+    'region.label.arme':'Ruke','region.label.haende':'Šake','region.label.beine':'Noge','region.label.fuesse':'Stopala',
+    'region.label.haut':'Koža (opšte)',
+    'dokumente.title':'Moji dokumenti','dokumente.sub':'Nalazi · Uputnice · Recepti',
+    'dokumente.sect.ueberweisungen':'Uputnice','dokumente.sect.befunde':'Nalazi','dokumente.sect.rezepte':'Recepti',
+    'profil.persoenlich':'Lični podaci','profil.fullName':'Puno ime','profil.dob':'Datum rođenja',
+    'profil.adresse':'Adresa','profil.tel':'Telefon','profil.email':'E-mail',
+    'profil.versicherung':'Osiguranje','profil.traeger':'Osiguravajuće društvo','profil.svnr':'Broj socijalnog osiguranja',
+    'profil.dsgvo':'Saglasnost o zaštiti podataka','profil.dsgvoGranted':'✓ Data',
+    'profil.ordination':'Moja ordinacija','profil.arzt':'Ljekar/ka','profil.fach':'Specijalnost',
+    'login.username.label':'Korisničko ime','login.username.placeholder':'korisničko ime','login.password.label':'Lozinka',
+    'login.button':'Prijava','login.error.wrongCreds':'Pogrešno korisničko ime ili lozinka.',
+    'changepw.title':'Odaberite novu lozinku',
+    'changepw.sub':'Molimo odaberite ličnu lozinku. Ordinacija neće imati pristup njoj.',
+    'changepw.notice':'Vašu lozinku vidite samo vi',
+    'changepw.newPw.label':'Nova lozinka','changepw.newPw.placeholder':'Najmanje 6 znakova',
+    'changepw.confirmPw.label':'Potvrdite lozinku','changepw.confirmPw.placeholder':'Ponovite lozinku',
+    'changepw.save':'✓ Sačuvaj lozinku i prijavi se',
+    'changepw.strength.veryWeak':'Vrlo slaba','changepw.strength.weak':'Slaba','changepw.strength.medium':'Srednja',
+    'changepw.strength.strong':'Jaka','changepw.strength.veryStrong':'Vrlo jaka',
+    'changepw.err.tooShort':'Lozinka mora imati najmanje 6 znakova.',
+    'changepw.err.mismatch':'Lozinke se ne podudaraju.',
+    'changepw.err.sameAsOld':'Molimo odaberite novu lozinku.',
+    'anamnese.title':'Popunite anamnezu',
+    'anamnese.sub':'Molimo jednokratno popunite svoju medicinsku historiju. Ovi podaci će biti proslijeđeni vašoj ordinaciji.',
+    'anamnese.submit':'✓ Pošalji anamnezu',
+    'anamnese.formNotice':'Forma ispod je trenutno dostupna samo na njemačkom jeziku. Molimo popunite je njemačkim terminima gdje god je moguće — zatražite pomoć ordinacije ako je potrebno.',
+    'footer.privacy':'End-to-end enkriptovano · EU serveri (Beč)',
+    'footer.datenschutz':'Politika privatnosti','footer.agb':'Uslovi korištenja','footer.impressum':'Impresum',
+  },
+};
+
+// Canonical (German) symptom text -> translations. The value actually
+// submitted/stored is always the German key itself; these translations are
+// display-only.
+const SYMPTOM_TR={
+  'Kopfschmerzen':{en:'Headache',ar:'صداع',tr:'Baş ağrısı',bs:'Glavobolja'},
+  'Schwindel':{en:'Dizziness',ar:'دوخة',tr:'Baş dönmesi',bs:'Vrtoglavica'},
+  'Migräne':{en:'Migraine',ar:'شقيقة (ميغرين)',tr:'Migren',bs:'Migrena'},
+  'Fieber':{en:'Fever',ar:'حمى',tr:'Ateş',bs:'Groznica/Temperatura'},
+  'Sehstörungen':{en:'Vision problems',ar:'اضطرابات في الرؤية',tr:'Görme bozuklukları',bs:'Poremećaji vida'},
+  'Ohrenschmerzen':{en:'Ear pain',ar:'ألم في الأذن',tr:'Kulak ağrısı',bs:'Bol u uhu'},
+  'Hörminderung':{en:'Hearing loss',ar:'ضعف السمع',tr:'İşitme kaybı',bs:'Slabljenje sluha'},
+  'Nasenbluten':{en:'Nosebleed',ar:'رعاف (نزيف الأنف)',tr:'Burun kanaması',bs:'Krvarenje iz nosa'},
+  'Zahnschmerzen':{en:'Toothache',ar:'ألم في الأسنان',tr:'Diş ağrısı',bs:'Zubobolja'},
+  'Riechstörung':{en:'Smell disorder',ar:'اضطراب في حاسة الشم',tr:'Koku alma bozukluğu',bs:'Poremećaj njuha'},
+  'Nackenschmerzen':{en:'Neck pain',ar:'ألم في الرقبة',tr:'Boyun ağrısı',bs:'Bol u vratu'},
+  'Schulterschmerzen':{en:'Shoulder pain',ar:'ألم في الكتف',tr:'Omuz ağrısı',bs:'Bol u ramenu'},
+  'Verspannungen':{en:'Muscle tension',ar:'شد عضلي',tr:'Kas gerginliği',bs:'Mišićna napetost'},
+  'Eingeschränkte Beweglichkeit':{en:'Limited mobility',ar:'محدودية الحركة',tr:'Hareket kısıtlılığı',bs:'Ograničena pokretljivost'},
+  'Halsschmerzen':{en:'Sore throat',ar:'ألم في الحلق',tr:'Boğaz ağrısı',bs:'Bol u grlu'},
+  'Schluckbeschwerden':{en:'Difficulty swallowing',ar:'صعوبة في البلع',tr:'Yutma güçlüğü',bs:'Poteškoće s gutanjem'},
+  'Heiserkeit':{en:'Hoarseness',ar:'بحة في الصوت',tr:'Ses kısıklığı',bs:'Promuklost'},
+  'Husten':{en:'Cough',ar:'سعال',tr:'Öksürük',bs:'Kašalj'},
+  'Brustschmerzen':{en:'Chest pain',ar:'ألم في الصدر',tr:'Göğüs ağrısı',bs:'Bol u grudima'},
+  'Herzrasen':{en:'Racing heart',ar:'خفقان القلب',tr:'Çarpıntı',bs:'Lupanje srca'},
+  'Atemnot':{en:'Shortness of breath',ar:'ضيق في التنفس',tr:'Nefes darlığı',bs:'Otežano disanje'},
+  'Bauchschmerzen':{en:'Abdominal pain',ar:'ألم في البطن',tr:'Karın ağrısı',bs:'Bol u trbuhu'},
+  'Übelkeit':{en:'Nausea',ar:'غثيان',tr:'Mide bulantısı',bs:'Mučnina'},
+  'Erbrechen':{en:'Vomiting',ar:'تقيؤ',tr:'Kusma',bs:'Povraćanje'},
+  'Durchfall':{en:'Diarrhea',ar:'إسهال',tr:'İshal',bs:'Proljev'},
+  'Verstopfung':{en:'Constipation',ar:'إمساك',tr:'Kabızlık',bs:'Zatvor'},
+  'Sodbrennen':{en:'Heartburn',ar:'حرقة في المعدة',tr:'Mide ekşimesi',bs:'Žgaravica'},
+  'Unterleibsschmerzen':{en:'Pelvic pain',ar:'ألم في أسفل البطن/الحوض',tr:'Karın alt bölge ağrısı',bs:'Bol u donjem dijelu trbuha'},
+  'Brennen beim Wasserlassen':{en:'Burning when urinating',ar:'حرقة عند التبول',tr:'İdrar yaparken yanma',bs:'Pečenje pri mokrenju'},
+  'Blasenprobleme':{en:'Bladder problems',ar:'مشاكل في المثانة',tr:'Mesane sorunları',bs:'Problemi s mokraćnim mjehurom'},
+  'Menstruationsbeschwerden':{en:'Menstrual problems',ar:'اضطرابات الدورة الشهرية',tr:'Adet düzensizlikleri',bs:'Menstrualne tegobe'},
+  'Ausfluss':{en:'Discharge',ar:'إفرازات',tr:'Akıntı',bs:'Iscjedak'},
+  'Rückenschmerzen':{en:'Back pain',ar:'ألم في الظهر',tr:'Sırt ağrısı',bs:'Bol u leđima'},
+  'Ausstrahlende Schmerzen':{en:'Radiating pain',ar:'ألم منتشر/متمدد',tr:'Yayılan ağrı',bs:'Bol koji se širi'},
+  'Ischiasschmerzen':{en:'Sciatica',ar:'ألم عرق النسا',tr:'Siyatik ağrısı',bs:'Išijas bol'},
+  'Schmerzen':{en:'Pain',ar:'ألم',tr:'Ağrı',bs:'Bol'},
+  'Taubheitsgefühl':{en:'Numbness',ar:'خدر/تنميل',tr:'Uyuşukluk',bs:'Utrnulost'},
+  'Schwellung':{en:'Swelling',ar:'تورم',tr:'Şişlik',bs:'Oticanje'},
+  'Taubheit/Kribbeln':{en:'Numbness/tingling',ar:'خدر/وخز',tr:'Uyuşma/karıncalanma',bs:'Utrnulost/trnci'},
+  'Zittern':{en:'Trembling',ar:'رجفة/ارتعاش',tr:'Titreme',bs:'Drhtanje'},
+  'Eingeschränkte Fingerbeweglichkeit':{en:'Limited finger mobility',ar:'محدودية حركة الأصابع',tr:'Parmak hareket kısıtlılığı',bs:'Ograničena pokretljivost prstiju'},
+  'Krampfadern':{en:'Varicose veins',ar:'دوالي الأوردة',tr:'Varis',bs:'Proširene vene'},
+  'Hautveränderung':{en:'Skin changes',ar:'تغيرات جلدية',tr:'Cilt değişiklikleri',bs:'Promjene na koži'},
+  'Ausschlag':{en:'Rash',ar:'طفح جلدي',tr:'Döküntü',bs:'Osip'},
+  'Juckreiz':{en:'Itching',ar:'حكة',tr:'Kaşıntı',bs:'Svrbež'},
+  'Rötung':{en:'Redness',ar:'احمرار',tr:'Kızarıklık',bs:'Crvenilo'},
+  'Wunde/Verletzung':{en:'Wound/injury',ar:'جرح/إصابة',tr:'Yara/yaralanma',bs:'Rana/povreda'},
+};
+
+const MONTHS_FULL={
+  de:['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
+  en:['January','February','March','April','May','June','July','August','September','October','November','December'],
+  ar:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+  tr:['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'],
+  bs:['Januar','Februar','Mart','April','Maj','Juni','Juli','Avgust','Septembar','Oktobar','Novembar','Decembar'],
+};
+const MONTHS_SHORT={
+  de:['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+  en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  ar:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+  tr:['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'],
+  bs:['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'],
+};
+const DAY_LABELS={
+  de:['Mo','Di','Mi','Do','Fr','Sa','So'],
+  en:['Mo','Tu','We','Th','Fr','Sa','Su'],
+  ar:['اث','ثل','أر','خم','جم','سب','أح'],
+  tr:['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'],
+  bs:['Pon','Uto','Sri','Čet','Pet','Sub','Ned'],
+};
+
+function getPatientLang(){
+  return localStorage.getItem(PATIENT_LANG_KEY)||'de';
+}
+function tr(key){
+  const lang=getPatientLang();
+  if(I18N[lang]&&I18N[lang][key]!==undefined&&I18N[lang][key]!=='') return I18N[lang][key];
+  return I18N.de[key]!==undefined?I18N.de[key]:key;
+}
+function trSymptom(deText){
+  const lang=getPatientLang();
+  if(lang==='de') return deText;
+  const entry=SYMPTOM_TR[deText];
+  return (entry&&entry[lang])||deText;
+}
+function trRegionLabel(regionId){
+  return tr('region.label.'+regionId);
+}
+function monthsFull(){ return MONTHS_FULL[getPatientLang()]||MONTHS_FULL.de; }
+function monthsShort(){ return MONTHS_SHORT[getPatientLang()]||MONTHS_SHORT.de; }
+function dayLabels(){ return DAY_LABELS[getPatientLang()]||DAY_LABELS.de; }
+
+function applyI18n(root){
+  root=root||document;
+  root.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=tr(el.getAttribute('data-i18n')); });
+  root.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder=tr(el.getAttribute('data-i18n-ph')); });
+  root.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title=tr(el.getAttribute('data-i18n-title')); });
+}
+function setPatientLanguage(lang){
+  localStorage.setItem(PATIENT_LANG_KEY,lang);
+  document.documentElement.setAttribute('lang',lang);
+  document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');
+  applyI18n(document);
+  if(typeof onPatientLanguageChanged==='function') onPatientLanguageChanged(lang);
+}
+function initPatientLanguage(){
+  const lang=getPatientLang();
+  document.documentElement.setAttribute('lang',lang);
+  document.documentElement.setAttribute('dir',lang==='ar'?'rtl':'ltr');
+  applyI18n(document);
+}
+function langSwitcherHtml(id){
+  const lang=getPatientLang();
+  return `<select id="${id}" onchange="setPatientLanguage(this.value)" style="font-family:inherit;font-size:11px;font-weight:600;border:1px solid #e2e8f0;border-radius:7px;padding:4px 6px;background:white;color:#334155;cursor:pointer;">`+
+    PATIENT_LANGS.map(l=>`<option value="${l.code}"${l.code===lang?' selected':''}>${l.label}</option>`).join('')+
+    `</select>`;
+}
