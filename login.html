@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartordi – Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -160,10 +161,10 @@ body{
   <div class="error-msg" id="errorMsg"><span>!</span><span id="errorText">Falscher Benutzername oder Passwort.</span></div>
 
   <div class="form-group">
-    <label class="form-label">Benutzername</label>
+    <label class="form-label">E-Mail</label>
     <div class="input-wrap">
       <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-      <input type="text" class="form-input" id="username" placeholder="benutzername" autocomplete="username"
+      <input type="email" class="form-input" id="email" placeholder="arzt@ordination.at" autocomplete="email"
         onkeydown="if(event.key==='Enter')document.getElementById('password').focus()">
     </div>
   </div>
@@ -214,8 +215,8 @@ body{
         <input type="text" class="form-input" id="inviteNachname" style="padding-left:14px;">
       </div>
       <div class="form-group">
-        <label class="form-label">Benutzername</label>
-        <input type="text" class="form-input" id="inviteUsername" autocomplete="username" style="padding-left:14px;">
+        <label class="form-label">E-Mail</label>
+        <input type="email" class="form-input" id="inviteEmail" autocomplete="email" style="padding-left:14px;">
       </div>
       <div class="form-group">
         <label class="form-label">Passwort</label>
@@ -246,29 +247,36 @@ function togglePw(){
     :'<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 }
 
-function doLogin(){
-  const u=document.getElementById('username').value.trim().toLowerCase();
+async function doLogin(){
+  const email=document.getElementById('email').value.trim();
   const p=document.getElementById('password').value;
-  if(!u||!p)return;
+  if(!email||!p)return;
   const btn=document.getElementById('loginBtn');
   document.getElementById('btnText').style.display='none';
   document.getElementById('spinner').style.display='block';
   btn.classList.add('loading');
-  setTimeout(()=>{
-    const accounts=loadStaffAccounts();
-    const acc=accounts[u];
-    if(!acc||acc.pw!==p){
-      btn.classList.remove('loading');
-      document.getElementById('btnText').style.display='block';
-      document.getElementById('spinner').style.display='none';
-      document.getElementById('errorText').textContent='Falscher Benutzername oder Passwort.';
-      document.getElementById('errorMsg').classList.add('show');
-      document.getElementById('password').value='';
-      return;
-    }
-    sessionStorage.setItem('smartordi_user',JSON.stringify({role:acc.role,name:acc.fullName,username:u,isAdmin:!!acc.isAdmin}));
-    window.location.href=acc.role==='arzt'?'doctor.html':'secretary.html';
-  },900);
+
+  const {data:signInData,error:signInError}=await sb.auth.signInWithPassword({email,password:p});
+  if(signInError||!signInData.user){
+    btn.classList.remove('loading');
+    document.getElementById('btnText').style.display='block';
+    document.getElementById('spinner').style.display='none';
+    document.getElementById('errorText').textContent='Falsche E-Mail oder Passwort.';
+    document.getElementById('errorMsg').classList.add('show');
+    document.getElementById('password').value='';
+    return;
+  }
+  const {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',signInData.user.id).single();
+  if(profileError||!profile){
+    btn.classList.remove('loading');
+    document.getElementById('btnText').style.display='block';
+    document.getElementById('spinner').style.display='none';
+    document.getElementById('errorText').textContent='Kein Praxisprofil für dieses Konto gefunden.';
+    document.getElementById('errorMsg').classList.add('show');
+    return;
+  }
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:signInData.user.id,isAdmin:!!profile.is_admin}));
+  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
 }
 function resetLoginUI(){
   const btn=document.getElementById('loginBtn');
@@ -280,11 +288,12 @@ function resetLoginUI(){
 
 // ── Team-Einladung: ?invite=<token> in der URL statt normalem Login ──
 let staffInviteToken=null;
-function tryStaffInviteScreen(){
+let staffInviteInfo=null;
+async function tryStaffInviteScreen(){
   const params=new URLSearchParams(window.location.search);
   const token=params.get('invite');
   if(!token) return;
-  const invite=findStaffInvite(token);
+  const invite=await validateStaffInvite(token);
   if(!invite){
     document.getElementById('inviteSub').textContent='Dieser Einladungslink ist ungültig oder wurde bereits verwendet.';
     document.getElementById('normalLoginForm').style.display='none';
@@ -293,28 +302,33 @@ function tryStaffInviteScreen(){
     return;
   }
   staffInviteToken=token;
+  staffInviteInfo=invite;
   const roleLabel=invite.role==='arzt'?('Arzt/Ärztin'+(invite.fach?' · '+invite.fach:'')):'Sekretär/in';
-  document.getElementById('inviteSub').textContent='Sie wurden als '+roleLabel+' zu dieser Ordination eingeladen. Wählen Sie Ihren eigenen Benutzernamen und Ihr Passwort.';
+  document.getElementById('inviteSub').textContent='Sie wurden als '+roleLabel+' zu dieser Ordination eingeladen. Wählen Sie Ihre E-Mail und Ihr Passwort.';
   document.getElementById('normalLoginForm').style.display='none';
   document.getElementById('inviteForm').style.display='block';
 }
-function acceptStaffInvite(){
-  const invite=findStaffInvite(staffInviteToken);
+async function acceptStaffInvite(){
   const errorEl=document.getElementById('inviteErrorMsg');
   const errorText=document.getElementById('inviteErrorText');
   errorEl.classList.remove('show');
-  if(!invite){
+  if(!staffInviteToken||!staffInviteInfo){
     errorText.textContent='Dieser Einladungslink ist nicht mehr gültig.';
     errorEl.classList.add('show');
     return;
   }
   const vorname=document.getElementById('inviteVorname').value.trim();
   const nachname=document.getElementById('inviteNachname').value.trim();
-  const username=document.getElementById('inviteUsername').value.trim().toLowerCase();
+  const email=document.getElementById('inviteEmail').value.trim();
   const pw=document.getElementById('invitePassword').value;
   const confirmPw=document.getElementById('invitePasswordConfirm').value;
-  if(!vorname||!nachname||!username||!pw){
+  if(!vorname||!nachname||!email||!pw){
     errorText.textContent='Bitte alle Felder ausfüllen.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(!email.includes('@')){
+    errorText.textContent='Bitte eine gültige E-Mail-Adresse eingeben.';
     errorEl.classList.add('show');
     return;
   }
@@ -328,25 +342,32 @@ function acceptStaffInvite(){
     errorEl.classList.add('show');
     return;
   }
-  const accounts=loadStaffAccounts();
-  if(accounts[username]){
-    errorText.textContent='Dieser Benutzername ist bereits vergeben.';
+
+  const {data:signUpData,error:signUpError}=await sb.auth.signUp({email,password:pw});
+  if(signUpError){
+    errorText.textContent = signUpError.message.includes('already registered')
+      ? 'Diese E-Mail-Adresse ist bereits registriert.'
+      : 'Registrierung fehlgeschlagen: '+signUpError.message;
+    errorEl.classList.add('show');
+    return;
+  }
+  const userId=signUpData.user.id;
+  const {data:consumed,error:consumeError}=await sb.rpc('consume_staff_invite',{
+    p_token:staffInviteToken, p_user_id:userId, p_vorname:vorname, p_nachname:nachname,
+  });
+  if(consumeError||!consumed){
+    errorText.textContent='Dieser Einladungslink wurde inzwischen verwendet oder ist abgelaufen.';
     errorEl.classList.add('show');
     return;
   }
   const fullName=vorname+' '+nachname;
-  accounts[username]={
-    pw, vorname, nachname, fullName, role:invite.role, fach:invite.fach||undefined, isAdmin:false,
-  };
-  saveStaffAccounts(accounts);
-  markStaffInviteUsed(staffInviteToken,username);
-  sessionStorage.setItem('smartordi_user',JSON.stringify({role:invite.role,name:fullName,username,isAdmin:false}));
-  window.location.href=invite.role==='arzt'?'doctor.html':'secretary.html';
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:staffInviteInfo.role,name:fullName,username:userId,isAdmin:false}));
+  window.location.href=staffInviteInfo.role==='arzt'?'doctor.html':'secretary.html';
 }
 
 window.addEventListener('load',()=>{
   tryStaffInviteScreen();
-  document.getElementById('username').focus();
+  document.getElementById('email').focus();
 });
 // Coming back via the browser's back/forward cache (e.g. after logging out
 // and navigating back) restores the exact DOM as it was frozen mid-submit --

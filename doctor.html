@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="vendor/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -3474,7 +3475,7 @@ function renderTeamCard(){
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">
       <div>
         <div style="font-size:13px;font-weight:700;color:#0f172a;">${a.fullName}${adminBadge}</div>
-        <div style="font-size:11px;color:#64748b;">${roleLabel} · ${u}</div>
+        <div style="font-size:11px;color:#64748b;">${roleLabel} · ${a.email||u}</div>
       </div>
     </div>`;
   }).join('');
@@ -3488,12 +3489,18 @@ function openStaffInviteModal(role){
   document.getElementById('staffInviteModal').classList.add('show');
   updateStaffInviteLink();
 }
-function updateStaffInviteLink(){
+async function updateStaffInviteLink(){
   const fach = pendingStaffInviteRole==='arzt' ? document.getElementById('staffInviteFach').value : '';
-  const invites=loadStaffInvites();
   const token=genStaffInviteToken();
-  invites.push({token, role:pendingStaffInviteRole, fach, createdAt:new Date().toISOString(), used:false});
-  saveStaffInvites(invites);
+  const session=currentStaffSession();
+  document.getElementById('staffInviteLinkText').textContent='Wird erstellt…';
+  const {error}=await sb.from('staff_invites').insert({
+    token, role:pendingStaffInviteRole, fach, invited_by:session?session.username:null,
+  });
+  if(error){
+    document.getElementById('staffInviteLinkText').textContent='Fehler beim Erstellen: '+error.message;
+    return;
+  }
   const origin='https://smartordi-chat-app.vercel.app';
   const url=`${origin}/login.html?invite=${token}`;
   document.getElementById('staffInviteLinkText').textContent=url;
@@ -3509,7 +3516,6 @@ function copyStaffInviteLink(){
 
 applyPlanGating();
 renderPlanSettings();
-renderTeamCard();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');
@@ -4935,8 +4941,14 @@ function confirmTransfer(){
   alert('✓ Weiterleitung erfolgreich!\n\nDer Patient wird automatisch per SMS benachrichtigt.\nDr. Weber erhält alle relevanten Unterlagen.');
 }
 
-renderDashTermine();
 renderImpfWarnungen();
+// Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
+// Termine lists) lives in Supabase now -- wait for the fetch kicked off by
+// vendor/staff-accounts.js before the first render that depends on it.
+staffRosterReady.then(()=>{
+  renderTeamCard();
+  renderDashTermine();
+});
 </script>
 
 <script>

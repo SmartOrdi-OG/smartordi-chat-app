@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registrierung – Smartordi.chat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -244,12 +245,8 @@ select.form-input{cursor:pointer;}
 
   <!-- Ihr Zugang -->
   <div class="form-section">
-    <div class="section-title">Ihr Zugang <span style="font-size:11px;font-weight:500;color:#64748b;">— Sie sind Admin Ihrer Ordination und können später weitere Ärzte/Sekretär:innen einladen</span></div>
+    <div class="section-title">Ihr Zugang <span style="font-size:11px;font-weight:500;color:#64748b;">— Anmeldung erfolgt mit Ihrer E-Mail oben. Sie sind Admin Ihrer Ordination und können später weitere Ärzte/Sekretär:innen einladen</span></div>
     <div class="form-grid">
-      <div class="form-group full">
-        <label class="form-label">Benutzername *</label>
-        <input class="form-input" id="f-username" placeholder="benutzername" type="text" autocomplete="username">
-      </div>
       <div class="form-group">
         <label class="form-label">Passwort *</label>
         <input class="form-input" id="f-password" placeholder="Mindestens 6 Zeichen" type="password" autocomplete="new-password">
@@ -335,7 +332,7 @@ function selectPlan(plan){
   document.getElementById('plan-'+plan).classList.add('selected');
 }
 
-function doRegister(){
+async function doRegister(){
   const titel = document.getElementById('f-titel').value;
   const vorname = document.getElementById('f-vorname').value.trim();
   const nachname = document.getElementById('f-nachname').value.trim();
@@ -344,7 +341,6 @@ function doRegister(){
   const adresse = document.getElementById('f-adresse').value.trim();
   const email = document.getElementById('f-email').value.trim();
   const tel = document.getElementById('f-tel').value.trim();
-  const username = document.getElementById('f-username').value.trim().toLowerCase();
   const password = document.getElementById('f-password').value;
   const passwordConfirm = document.getElementById('f-password-confirm').value;
   const dsgvo = document.getElementById('cb-dsgvo').checked;
@@ -354,7 +350,7 @@ function doRegister(){
   const errorText = document.getElementById('errorText');
   errorEl.classList.remove('show');
 
-  if(!vorname||!nachname||!fach||!ordination||!adresse||!email||!tel||!username||!password){
+  if(!vorname||!nachname||!fach||!ordination||!adresse||!email||!tel||!password){
     errorText.textContent = 'Bitte alle Pflichtfelder (*) ausfüllen.';
     errorEl.classList.add('show');
     return;
@@ -374,12 +370,6 @@ function doRegister(){
     errorEl.classList.add('show');
     return;
   }
-  const staffAccounts = loadStaffAccounts();
-  if(staffAccounts[username]){
-    errorText.textContent = 'Dieser Benutzername ist bereits vergeben.';
-    errorEl.classList.add('show');
-    return;
-  }
   if(!dsgvo||!agb){
     errorText.textContent = 'Bitte Datenschutz und AGB akzeptieren.';
     errorEl.classList.add('show');
@@ -391,7 +381,33 @@ function doRegister(){
   document.getElementById('spinner').style.display = 'block';
   btn.classList.add('loading');
 
-  // No real backend yet -- persist the chosen plan and Fachrichtung to this
+  const fullName=(titel?titel+' ':'')+vorname+' '+nachname;
+  const {data:signUpData,error:signUpError}=await sb.auth.signUp({email,password});
+  if(signUpError){
+    btn.classList.remove('loading');
+    document.getElementById('btnText').style.display = 'block';
+    document.getElementById('spinner').style.display = 'none';
+    errorText.textContent = signUpError.message.includes('already registered')
+      ? 'Diese E-Mail-Adresse ist bereits registriert.'
+      : 'Registrierung fehlgeschlagen: '+signUpError.message;
+    errorEl.classList.add('show');
+    return;
+  }
+  const userId=signUpData.user.id;
+  const {error:profileError}=await sb.from('staff_profiles').insert({
+    id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email,
+  });
+  if(profileError){
+    btn.classList.remove('loading');
+    document.getElementById('btnText').style.display = 'block';
+    document.getElementById('spinner').style.display = 'none';
+    errorText.textContent = 'Konto wurde erstellt, aber das Praxisprofil konnte nicht gespeichert werden: '+profileError.message;
+    errorEl.classList.add('show');
+    return;
+  }
+
+  // No real backend yet for the rest of the app (appointments, chat, Kartei,
+  // plan/trial state) -- persist the chosen plan and Fachrichtung to this
   // browser's localStorage so doctor.html actually activates them (gates
   // Rezept/Impfpass, renders the right Anamnese specialty section) instead
   // of the landing page being purely cosmetic.
@@ -405,20 +421,11 @@ function doRegister(){
   }
   localStorage.setItem('smartordi_practice_info', JSON.stringify({ordination, adresse, tel}));
 
-  // Register the doctor's own real login -- they become the practice's
-  // Admin and can invite further Ärzte/Sekretär:innen from doctor.html's
-  // Team settings once logged in.
-  const fullName=(titel?titel+' ':'')+vorname+' '+nachname;
-  staffAccounts[username]={
-    pw:password, vorname, nachname, fullName, role:'arzt', fach, isAdmin:true,
-  };
-  saveStaffAccounts(staffAccounts);
-  sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username, isAdmin:true}));
+  sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username:userId, isAdmin:true}));
 
-  // Simulate API call
   setTimeout(()=>{
     document.getElementById('successOverlay').classList.add('show');
-  }, 1500);
+  }, 500);
 }
 </script>
 </body>
