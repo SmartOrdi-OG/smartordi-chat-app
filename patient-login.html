@@ -145,7 +145,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <div class="change-pw-title" data-i18n="anamnese.title">Anamnese ausfüllen</div>
       <div class="change-pw-sub" data-i18n="anamnese.sub">Bitte füllen Sie einmalig Ihre medizinische Vorgeschichte aus. Diese Angaben werden an Ihre Ordination übermittelt.</div>
     </div>
-    <div class="notice" id="anamneseFormNotice" style="display:none;"></div>
     <div class="anamnese-scroll" id="anamneseForm">
       <div id="anamnese-common-section"></div>
       <div id="anamnese-specialty-title" class="anamnese-specialty-title"></div>
@@ -326,19 +325,14 @@ function showAnamneseScreen(){
   const fach=acc.fach||'Allgemeinmedizin';
   document.getElementById('anamnese-common-section').innerHTML=ANAMNESE_COMMON_HTML;
   const info=anamneseSpecialtyInfo(fach);
-  document.getElementById('anamnese-specialty-title').textContent=info.html?info.label:'';
+  document.getElementById('anamnese-specialty-title').textContent=info.html?tr(info.titleKey):'';
   document.getElementById('anamnese-specialty-section').innerHTML=info.html;
-  // The Anamnese form itself is not translated yet (its field labels double as
-  // the storage keys the doctor's Kartei reads back -- translating them would
-  // require a separate refactor to avoid corrupting that round-trip). Tell
-  // non-German patients plainly instead of silently showing a German form.
-  const notice=document.getElementById('anamneseFormNotice');
-  if(getPatientLang()==='de'){
-    notice.style.display='none';
-  }else{
-    notice.textContent=tr('anamnese.formNotice');
-    notice.style.display='flex';
-  }
+  // Every field here carries a stable data-key (see vendor/anamnese-shared.js)
+  // that collectAnamneseData/applyAnamneseData read instead of the visible
+  // label text, so translating the displayed labels/options below is safe --
+  // the doctor's Kartei view (which never loads i18n-patient.js) still finds
+  // the exact same keys in whatever language the patient filled this out in.
+  applyI18n(document.getElementById('anamneseForm'));
   document.getElementById('screen-anamnese').classList.add('active');
 }
 
