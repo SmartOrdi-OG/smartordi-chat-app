@@ -4991,7 +4991,15 @@ function openApp() {
 // فتح التطبيق تلقائياً عند الدخول
 window.addEventListener('load', async function() {
   openApp();
-  const savedFach=localStorage.getItem('fachrichtung');
+  // Fachrichtung: prefer the CURRENT doctor's own fach from staff_profiles
+  // (Supabase) -- localStorage.fachrichtung is a single device-wide value
+  // that doesn't distinguish between different doctors logged into the same
+  // browser, so it could silently show a colleague's (or an old test
+  // account's) specialty instead of the real logged-in doctor's own.
+  await staffRosterReady;
+  const session=currentStaffSession();
+  const myAccount=session?loadStaffAccounts()[session.username]:null;
+  const savedFach=(myAccount&&myAccount.fach)||localStorage.getItem('fachrichtung');
   if(savedFach){
     const sel=document.getElementById('setFach');
     if(sel)sel.value=savedFach;
@@ -5001,7 +5009,6 @@ window.addEventListener('load', async function() {
   // ("Dr. Sarah Ahmed") never wired to the actual logged-in account, plus
   // Adresse/Telefon captured at registration but never read back -- fill
   // them in from the real session/practice info instead.
-  const session=currentStaffSession();
   if(session && session.name){
     const nameInput=document.getElementById('setArztName');
     if(nameInput) nameInput.value=session.name;
