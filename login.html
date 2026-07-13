@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartordi – Login</title>
+<script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -152,6 +153,7 @@ body{
     <div class="mobile-logo-text">Smartordi<span>.chat</span></div>
   </div>
 
+  <div id="normalLoginForm">
   <div class="form-title">Willkommen zurück</div>
   <div class="form-sub">Melden Sie sich in Ihrer Ordination an</div>
 
@@ -193,6 +195,38 @@ body{
     Noch keine Ordination registriert?
     <a href="register.html" style="color:#1e40af;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
   </div>
+  </div>
+
+  <!-- Team-Einladung (?invite=<token> in der URL) -->
+  <div id="inviteForm" style="display:none;">
+    <div class="form-title" id="inviteTitle">Team beitreten</div>
+    <div class="form-sub" id="inviteSub">Sie wurden eingeladen, dieser Ordination beizutreten.</div>
+
+    <div class="error-msg" id="inviteErrorMsg"><span>!</span><span id="inviteErrorText"></span></div>
+
+    <div class="form-group">
+      <label class="form-label">Vorname</label>
+      <input type="text" class="form-input" id="inviteVorname" style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nachname</label>
+      <input type="text" class="form-input" id="inviteNachname" style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Benutzername</label>
+      <input type="text" class="form-input" id="inviteUsername" autocomplete="username" style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Passwort</label>
+      <input type="password" class="form-input" id="invitePassword" autocomplete="new-password" style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Passwort bestätigen</label>
+      <input type="password" class="form-input" id="invitePasswordConfirm" autocomplete="new-password" style="padding-left:14px;">
+    </div>
+
+    <button class="btn-login" onclick="acceptStaffInvite()">Konto erstellen & anmelden</button>
+  </div>
 
   <div class="footer-note">
     Ende-zu-Ende verschlüsselt · EU-Server Wien<br>
@@ -201,11 +235,6 @@ body{
 </div>
 
 <script>
-const USERS={
-  'dr.ahmed':    {pw:'arzt2026',  dest:'doctor.html', name:'Dr. Ahmed'},
-  'sekretariat': {pw:'buero2026', dest:'secretary.html', name:'Lisa'},
-};
-
 function togglePw(){
   const i=document.getElementById('password');
   const b=document.getElementById('togglePwBtn');
@@ -224,23 +253,19 @@ function doLogin(){
   document.getElementById('spinner').style.display='block';
   btn.classList.add('loading');
   setTimeout(()=>{
-    const acc=USERS[u];
-    // Sekretariat access is a Pro/Enterprise feature (see register.html's
-    // "Paket wählen" step) -- Basic only includes the doctor's own login.
-    const planBlocksSekretariat = u==='sekretariat' && localStorage.getItem('smartordi_plan')==='basic';
-    if(!acc||acc.pw!==p||planBlocksSekretariat){
+    const accounts=loadStaffAccounts();
+    const acc=accounts[u];
+    if(!acc||acc.pw!==p){
       btn.classList.remove('loading');
       document.getElementById('btnText').style.display='block';
       document.getElementById('spinner').style.display='none';
-      document.getElementById('errorText').textContent = planBlocksSekretariat
-        ? 'Der Sekretariats-Zugang ist im Basic-Paket nicht enthalten. Bitte auf Pro upgraden.'
-        : 'Falscher Benutzername oder Passwort.';
+      document.getElementById('errorText').textContent='Falscher Benutzername oder Passwort.';
       document.getElementById('errorMsg').classList.add('show');
       document.getElementById('password').value='';
       return;
     }
-    sessionStorage.setItem('smartordi_user',JSON.stringify({role:u==='dr.ahmed'?'arzt':'sekretaerin',name:acc.name}));
-    window.location.href=acc.dest;
+    sessionStorage.setItem('smartordi_user',JSON.stringify({role:acc.role,name:acc.fullName,username:u,isAdmin:!!acc.isAdmin}));
+    window.location.href=acc.role==='arzt'?'doctor.html':'secretary.html';
   },900);
 }
 function resetLoginUI(){
@@ -250,7 +275,77 @@ function resetLoginUI(){
   document.getElementById('spinner').style.display='none';
   document.getElementById('errorMsg').classList.remove('show');
 }
-window.addEventListener('load',()=>document.getElementById('username').focus());
+
+// ── Team-Einladung: ?invite=<token> in der URL statt normalem Login ──
+let staffInviteToken=null;
+function tryStaffInviteScreen(){
+  const params=new URLSearchParams(window.location.search);
+  const token=params.get('invite');
+  if(!token) return;
+  const invite=findStaffInvite(token);
+  if(!invite){
+    document.getElementById('inviteSub').textContent='Dieser Einladungslink ist ungültig oder wurde bereits verwendet.';
+    document.getElementById('normalLoginForm').style.display='none';
+    document.getElementById('inviteForm').style.display='block';
+    document.querySelector('#inviteForm .btn-login').style.display='none';
+    return;
+  }
+  staffInviteToken=token;
+  const roleLabel=invite.role==='arzt'?('Arzt/Ärztin'+(invite.fach?' · '+invite.fach:'')):'Sekretär/in';
+  document.getElementById('inviteSub').textContent='Sie wurden als '+roleLabel+' zu dieser Ordination eingeladen. Wählen Sie Ihren eigenen Benutzernamen und Ihr Passwort.';
+  document.getElementById('normalLoginForm').style.display='none';
+  document.getElementById('inviteForm').style.display='block';
+}
+function acceptStaffInvite(){
+  const invite=findStaffInvite(staffInviteToken);
+  const errorEl=document.getElementById('inviteErrorMsg');
+  const errorText=document.getElementById('inviteErrorText');
+  errorEl.classList.remove('show');
+  if(!invite){
+    errorText.textContent='Dieser Einladungslink ist nicht mehr gültig.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const vorname=document.getElementById('inviteVorname').value.trim();
+  const nachname=document.getElementById('inviteNachname').value.trim();
+  const username=document.getElementById('inviteUsername').value.trim().toLowerCase();
+  const pw=document.getElementById('invitePassword').value;
+  const confirmPw=document.getElementById('invitePasswordConfirm').value;
+  if(!vorname||!nachname||!username||!pw){
+    errorText.textContent='Bitte alle Felder ausfüllen.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(pw.length<6){
+    errorText.textContent='Das Passwort muss mindestens 6 Zeichen haben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(pw!==confirmPw){
+    errorText.textContent='Die Passwörter stimmen nicht überein.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const accounts=loadStaffAccounts();
+  if(accounts[username]){
+    errorText.textContent='Dieser Benutzername ist bereits vergeben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const fullName=vorname+' '+nachname;
+  accounts[username]={
+    pw, vorname, nachname, fullName, role:invite.role, fach:invite.fach||undefined, isAdmin:false,
+  };
+  saveStaffAccounts(accounts);
+  markStaffInviteUsed(staffInviteToken,username);
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:invite.role,name:fullName,username,isAdmin:false}));
+  window.location.href=invite.role==='arzt'?'doctor.html':'secretary.html';
+}
+
+window.addEventListener('load',()=>{
+  tryStaffInviteScreen();
+  document.getElementById('username').focus();
+});
 // Coming back via the browser's back/forward cache (e.g. after logging out
 // and navigating back) restores the exact DOM as it was frozen mid-submit --
 // stuck spinner and all -- since no JS re-runs on that restore. Reset it.

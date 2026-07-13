@@ -12,6 +12,8 @@
 <title>Smartordi.chat.eu</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="vendor/staff-accounts.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2180,6 +2182,18 @@ body.windows-mode .kartei-header{display:none;}
       <div class="dash-card-body" id="planSettingsBody" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;"></div>
     </div>
 
+    <!-- Team -->
+    <div class="dash-card" style="margin-bottom:20px;" id="teamCard">
+      <div class="dash-card-header">Team <span style="font-size:11px;color:#64748b;font-weight:400;">— Ärzte & Sekretär/innen, unbegrenzt in jedem Paket</span></div>
+      <div class="dash-card-body">
+        <div id="teamList" style="margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="openStaffInviteModal('arzt')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">+ Arzt/Ärztin einladen</button>
+          <button onclick="openStaffInviteModal('sekretaerin')" style="background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">+ Sekretär/in einladen</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Stempel -->
     <div class="dash-card" style="margin-bottom:20px;">
       <div class="dash-card-header">Praxisstempel <span style="font-size:11px;color:#64748b;font-weight:400;">— wird automatisch auf jede Überweisung gedruckt</span></div>
@@ -2482,6 +2496,44 @@ body.windows-mode .kartei-header{display:none;}
       <div id="visitReasonSymptoms" style="margin-bottom:16px;"></div>
       <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Zusätzliche Erklärung</div>
       <div id="visitReasonNote" style="font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border-radius:10px;padding:10px 12px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TEAM-EINLADUNG MODAL -->
+<div class="modal-overlay" id="staffInviteModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title" id="staffInviteTitle">+ Arzt/Ärztin einladen</div>
+      <button class="modal-close" onclick="document.getElementById('staffInviteModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="staffInviteFachRow" style="margin-bottom:14px;">
+        <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:5px;">Fachrichtung</label>
+        <select id="staffInviteFach" onchange="updateStaffInviteLink()" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;background:white;">
+          <option value="Allgemeinmedizin">Allgemeinmedizin</option>
+          <option value="Kinderheilkunde">Kinderheilkunde (Pädiatrie)</option>
+          <option value="Gynäkologie">Gynäkologie & Geburtshilfe</option>
+          <option value="Kardiologie">Kardiologie</option>
+          <option value="Neurologie">Neurologie</option>
+          <option value="Innere Medizin">Innere Medizin</option>
+          <option value="Orthopädie">Orthopädie & Traumatologie</option>
+          <option value="Dermatologie">Dermatologie</option>
+          <option value="Psychiatrie">Psychiatrie & Psychotherapie</option>
+          <option value="HNO">HNO</option>
+          <option value="Augenheilkunde">Augenheilkunde</option>
+          <option value="Urologie">Urologie</option>
+        </select>
+      </div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:12px;">Teilen Sie diesen Link oder QR-Code — die Person wählt beim Öffnen ihren eigenen Namen, Benutzernamen und Passwort.</div>
+      <div style="display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
+        <img id="staffInviteQrImg" src="" alt="Einladungs-QR-Code" style="width:160px;height:160px;border:2px solid #e2e8f0;border-radius:16px;">
+      </div>
+      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:9px 12px;font-size:12px;color:#0f172a;word-break:break-all;" id="staffInviteLinkText"></div>
+      <button onclick="copyStaffInviteLink()" style="width:100%;margin-top:8px;padding:8px;border:1.5px solid #e2e8f0;border-radius:8px;background:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;color:#475569;">📋 Link kopieren</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="document.getElementById('staffInviteModal').classList.remove('show')">Fertig</button>
     </div>
   </div>
 </div>
@@ -3202,9 +3254,9 @@ let activeYear = 'all';
 // No real backend yet, so the chosen plan lives in this browser's
 // localStorage, same as the other registration-time settings (Fachrichtung).
 const PLAN_FEATURES = {
-  basic:      {label:'Basic',      price:'€49',  rezeptImpfung:false, sekretaerin:false, bullets:['1 Arzt','Bis 100 Patienten','Chat & Kartei','Überweisung PDF']},
-  pro:        {label:'Pro',        price:'€99',  rezeptImpfung:true,  sekretaerin:true,  bullets:['1 Arzt + Sekretärin','Bis 500 Patienten','Alles in Basic','Rezept & Impfpass']},
-  enterprise: {label:'Enterprise', price:'€249', rezeptImpfung:true,  sekretaerin:true,  bullets:['Mehrere Ärzte','Unbegrenzte Patienten','Alles in Pro','API & Integration']},
+  basic:      {label:'Basic',      price:'€49',  rezeptImpfung:false, sekretaerin:true, bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 100 Patienten','Chat & Kartei','Überweisung PDF']},
+  pro:        {label:'Pro',        price:'€99',  rezeptImpfung:true,  sekretaerin:true, bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 500 Patienten','Alles in Basic','Rezept & Impfpass']},
+  enterprise: {label:'Enterprise', price:'€249', rezeptImpfung:true,  sekretaerin:true, bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Pro','API & Integration']},
 };
 function getPlan(){
   const p=localStorage.getItem('smartordi_plan');
@@ -3375,8 +3427,66 @@ function renderPlanSettings(){
     : 'Keine Zahlungsmethode hinterlegt';
   body.innerHTML=cards+`<div style="grid-column:1/-1;font-size:12px;color:#64748b;margin-top:2px;">Zahlungsmethode: <strong style="color:#0f172a;">${paymentLine}</strong></div>`;
 }
+// ── Team (Ärzte/Sekretär:innen dieser Ordination, siehe vendor/staff-accounts.js) ──
+function currentStaffSession(){
+  try{ return JSON.parse(sessionStorage.getItem('smartordi_user')); }catch(e){ return null; }
+}
+// No session at all means direct navigation (e.g. an existing bookmark, or a
+// test that skips login.html) -- treated as Admin so the Team card and every
+// other pre-existing behavior keeps working exactly as before this feature.
+function isCurrentUserAdmin(){
+  const s=currentStaffSession();
+  return !s||s.isAdmin===true;
+}
+function renderTeamCard(){
+  const card=document.getElementById('teamCard');
+  if(!card) return;
+  if(!isCurrentUserAdmin()){ card.style.display='none'; return; }
+  card.style.display='block';
+  const accounts=loadStaffAccounts();
+  document.getElementById('teamList').innerHTML=Object.keys(accounts).map(u=>{
+    const a=accounts[u];
+    const roleLabel=a.role==='arzt'?('Arzt/Ärztin'+(a.fach?' · '+a.fach:'')):'Sekretär/in';
+    const adminBadge=a.isAdmin?' <span style="font-size:10px;font-weight:700;color:#1e40af;background:#eff6ff;padding:2px 6px;border-radius:6px;margin-left:4px;">Admin</span>':'';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${a.fullName}${adminBadge}</div>
+        <div style="font-size:11px;color:#64748b;">${roleLabel} · ${u}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let pendingStaffInviteRole=null;
+function openStaffInviteModal(role){
+  pendingStaffInviteRole=role;
+  document.getElementById('staffInviteTitle').textContent = role==='arzt' ? '+ Arzt/Ärztin einladen' : '+ Sekretär/in einladen';
+  document.getElementById('staffInviteFachRow').style.display = role==='arzt' ? 'block' : 'none';
+  document.getElementById('staffInviteModal').classList.add('show');
+  updateStaffInviteLink();
+}
+function updateStaffInviteLink(){
+  const fach = pendingStaffInviteRole==='arzt' ? document.getElementById('staffInviteFach').value : '';
+  const invites=loadStaffInvites();
+  const token=genStaffInviteToken();
+  invites.push({token, role:pendingStaffInviteRole, fach, createdAt:new Date().toISOString(), used:false});
+  saveStaffInvites(invites);
+  const origin='https://smartordi-chat-app.vercel.app';
+  const url=`${origin}/login.html?invite=${token}`;
+  document.getElementById('staffInviteLinkText').textContent=url;
+  const qr=qrcode(0,'M');
+  qr.addData(url);
+  qr.make();
+  document.getElementById('staffInviteQrImg').src=qr.createDataURL(6,4);
+}
+function copyStaffInviteLink(){
+  const text=document.getElementById('staffInviteLinkText').textContent;
+  navigator.clipboard.writeText(text).then(()=>showToast('✓ Link kopiert')).catch(()=>showToast('✗ Kopieren fehlgeschlagen','error'));
+}
+
 applyPlanGating();
 renderPlanSettings();
+renderTeamCard();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');

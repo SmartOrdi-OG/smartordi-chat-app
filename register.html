@@ -10,6 +10,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registrierung – Smartordi.chat</title>
+<script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:100vh;}
@@ -148,7 +149,7 @@ select.form-input{cursor:pointer;}
         <div class="plan-name">Basic</div>
         <div class="plan-price">€49<span>/Monat</span></div>
         <div class="plan-features">
-          <div class="plan-feature">✓ 1 Arzt</div>
+          <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
           <div class="plan-feature">✓ Bis 100 Patienten</div>
           <div class="plan-feature">✓ Chat & Kartei</div>
           <div class="plan-feature">✓ Überweisung PDF</div>
@@ -158,7 +159,7 @@ select.form-input{cursor:pointer;}
         <div class="plan-name">Pro</div>
         <div class="plan-price">€99<span>/Monat</span></div>
         <div class="plan-features">
-          <div class="plan-feature">✓ 1 Arzt + Sekretärin</div>
+          <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
           <div class="plan-feature">✓ Bis 500 Patienten</div>
           <div class="plan-feature">✓ Alles in Basic</div>
           <div class="plan-feature">✓ Rezept & Impfpass</div>
@@ -168,7 +169,7 @@ select.form-input{cursor:pointer;}
         <div class="plan-name">Enterprise</div>
         <div class="plan-price">€249<span>/Monat</span></div>
         <div class="plan-features">
-          <div class="plan-feature">✓ Mehrere Ärzte</div>
+          <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
           <div class="plan-feature">✓ Unbegrenzte Patienten</div>
           <div class="plan-feature">✓ Alles in Pro</div>
           <div class="plan-feature">✓ API & Integration</div>
@@ -241,6 +242,25 @@ select.form-input{cursor:pointer;}
     </div>
   </div>
 
+  <!-- Ihr Zugang -->
+  <div class="form-section">
+    <div class="section-title">Ihr Zugang <span style="font-size:11px;font-weight:500;color:#64748b;">— Sie sind Admin Ihrer Ordination und können später weitere Ärzte/Sekretär:innen einladen</span></div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Benutzername *</label>
+        <input class="form-input" id="f-username" placeholder="benutzername" type="text" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort *</label>
+        <input class="form-input" id="f-password" placeholder="Mindestens 6 Zeichen" type="password" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort bestätigen *</label>
+        <input class="form-input" id="f-password-confirm" placeholder="Passwort wiederholen" type="password" autocomplete="new-password">
+      </div>
+    </div>
+  </div>
+
   <!-- Datenschutz -->
   <div class="form-section">
     <div class="checkbox-group" style="margin-bottom:10px;">
@@ -287,23 +307,23 @@ select.form-input{cursor:pointer;}
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
     </div>
   </div>
-  <div class="success-title">Vielen Dank!</div>
-  <div class="success-sub">Ihre Registrierung wurde erfolgreich übermittelt. Wir melden uns innerhalb von 24 Stunden bei Ihnen.</div>
+  <div class="success-title">Willkommen bei Smartordi!</div>
+  <div class="success-sub">Ihre Ordination ist live. Sie sind als Admin angemeldet und können sofort loslegen.</div>
   <div class="success-steps">
     <div class="success-step">
       <div class="success-step-num">1</div>
-      <div class="success-step-text">Wir prüfen Ihre Daten und richten Ihre Ordination ein</div>
+      <div class="success-step-text">Ihr Zugang wurde soeben erstellt — kein Warten nötig</div>
     </div>
     <div class="success-step">
       <div class="success-step-num">2</div>
-      <div class="success-step-text">Sie erhalten Ihre Zugangsdaten per E-Mail</div>
+      <div class="success-step-text">Laden Sie weitere Ärzte/Sekretär:innen über "Team" in den Einstellungen ein</div>
     </div>
     <div class="success-step">
       <div class="success-step-num">3</div>
-      <div class="success-step-text">In 5 Minuten ist Ihre Ordination live!</div>
+      <div class="success-step-text">Ihre Ordination ist ab sofort live!</div>
     </div>
   </div>
-  <button class="success-btn" onclick="window.location.href='login.html'">Zum Login →</button>
+  <button class="success-btn" onclick="window.location.href='doctor.html'">Zur Ordination →</button>
 </div>
 
 <script>
@@ -316,6 +336,7 @@ function selectPlan(plan){
 }
 
 function doRegister(){
+  const titel = document.getElementById('f-titel').value;
   const vorname = document.getElementById('f-vorname').value.trim();
   const nachname = document.getElementById('f-nachname').value.trim();
   const fach = document.getElementById('f-fach').value;
@@ -323,6 +344,9 @@ function doRegister(){
   const adresse = document.getElementById('f-adresse').value.trim();
   const email = document.getElementById('f-email').value.trim();
   const tel = document.getElementById('f-tel').value.trim();
+  const username = document.getElementById('f-username').value.trim().toLowerCase();
+  const password = document.getElementById('f-password').value;
+  const passwordConfirm = document.getElementById('f-password-confirm').value;
   const dsgvo = document.getElementById('cb-dsgvo').checked;
   const agb = document.getElementById('cb-agb').checked;
 
@@ -330,13 +354,29 @@ function doRegister(){
   const errorText = document.getElementById('errorText');
   errorEl.classList.remove('show');
 
-  if(!vorname||!nachname||!fach||!ordination||!adresse||!email||!tel){
+  if(!vorname||!nachname||!fach||!ordination||!adresse||!email||!tel||!username||!password){
     errorText.textContent = 'Bitte alle Pflichtfelder (*) ausfüllen.';
     errorEl.classList.add('show');
     return;
   }
   if(!email.includes('@')){
     errorText.textContent = 'Bitte eine gültige E-Mail-Adresse eingeben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(password.length<6){
+    errorText.textContent = 'Das Passwort muss mindestens 6 Zeichen haben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(password!==passwordConfirm){
+    errorText.textContent = 'Die Passwörter stimmen nicht überein.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const staffAccounts = loadStaffAccounts();
+  if(staffAccounts[username]){
+    errorText.textContent = 'Dieser Benutzername ist bereits vergeben.';
     errorEl.classList.add('show');
     return;
   }
@@ -353,9 +393,8 @@ function doRegister(){
 
   // No real backend yet -- persist the chosen plan and Fachrichtung to this
   // browser's localStorage so doctor.html actually activates them (gates
-  // Rezept/Impfpass and Sekretariat-Login on Basic, renders the right
-  // Anamnese specialty section) instead of the landing page being purely
-  // cosmetic.
+  // Rezept/Impfpass, renders the right Anamnese specialty section) instead
+  // of the landing page being purely cosmetic.
   localStorage.setItem('smartordi_plan', selectedPlan);
   if(fach) localStorage.setItem('fachrichtung', fach);
   // Marks the start of the 30-day free trial -- doctor.html reminds the
@@ -364,6 +403,17 @@ function doRegister(){
   if(!localStorage.getItem('smartordi_trial_start')){
     localStorage.setItem('smartordi_trial_start', Date.now().toString());
   }
+  localStorage.setItem('smartordi_practice_info', JSON.stringify({ordination, adresse, tel}));
+
+  // Register the doctor's own real login -- they become the practice's
+  // Admin and can invite further Ärzte/Sekretär:innen from doctor.html's
+  // Team settings once logged in.
+  const fullName=(titel?titel+' ':'')+vorname+' '+nachname;
+  staffAccounts[username]={
+    pw:password, vorname, nachname, fullName, role:'arzt', fach, isAdmin:true,
+  };
+  saveStaffAccounts(staffAccounts);
+  sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username, isAdmin:true}));
 
   // Simulate API call
   setTimeout(()=>{
