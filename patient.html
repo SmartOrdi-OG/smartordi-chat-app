@@ -11,6 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Smartordi – Mein Bereich</title>
 <script src="vendor/i18n-patient.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -1117,9 +1118,13 @@ function initPatientData(){
   populateArztSelect();
   renderPatientTermine();
   renderProfilArztRows();
+  // Staff roster (doctor names on appointment cards/select) lives in
+  // Supabase now -- re-render once ready in case it hadn't resolved yet.
+  staffRosterReady.then(renderPatientTermine);
 }
 
-function renderProfilArztRows(){
+async function renderProfilArztRows(){
+  await staffRosterReady;
   const root=document.getElementById('profilArztRows');
   if(!root) return;
   root.innerHTML=arztAccounts().map(a=>`<div class="info-row"><span class="info-label">${tr('profil.arzt')}</span><span class="info-value">${a.fullName}${a.fach?' ('+a.fach+')':''}</span></div>`).join('');
@@ -1177,7 +1182,8 @@ function arztDisplayName(username){
   const accounts=loadStaffAccounts();
   return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
 }
-function populateArztSelect(){
+async function populateArztSelect(){
+  await staffRosterReady;
   const sel=document.getElementById('terminArzt');
   const doctors=arztAccounts();
   sel.innerHTML=doctors.map(a=>`<option value="${a.username}">${a.fullName}${a.fach?' · '+a.fach:''}</option>`).join('');

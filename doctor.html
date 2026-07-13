@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="vendor/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -507,7 +508,7 @@
     <div style="display:flex;align-items:center;gap:8px;">
       <span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px;">DEMO</span>
       <button id="darkToggle" onclick="toggleDark()" style="background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.8);padding:5px 8px;border-radius:7px;font-size:15px;cursor:pointer;line-height:1;" title="Dunkelmodus">◑</button>
-      <div style="width:30px;height:30px;background:#1e40af;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;flex-shrink:0;">S</div>
+      <div id="doctorAvatarDisplay" style="width:30px;height:30px;background:#1e40af;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;flex-shrink:0;">S</div>
       <span id="doctorNameDisplay" style="color:rgba(255,255,255,0.9);font-size:13px;font-weight:600;">Dr. Sarah Ahmed</span>
       <button onclick="doctorLogout()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;padding:5px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;" title="Abmelden">Abmelden</button>
     </div>
@@ -2003,7 +2004,7 @@ body.windows-mode .kartei-header{display:none;}
       <img src="logo..jpeg" alt="Logo" style="width:100px;height:100px;object-fit:contain;border-radius:20px;margin-bottom:12px;display:block;">
       <div class="dash-title">
         Guten Morgen
-        <span>Dr. Sarah Ahmed</span>
+        <span id="dashGreetingName">Dr. Sarah Ahmed</span>
       </div>
       <div class="dash-subtitle">Ordination · Linz · Juni 2026</div>
     </div>
@@ -3474,7 +3475,7 @@ function renderTeamCard(){
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;">
       <div>
         <div style="font-size:13px;font-weight:700;color:#0f172a;">${a.fullName}${adminBadge}</div>
-        <div style="font-size:11px;color:#64748b;">${roleLabel} · ${u}</div>
+        <div style="font-size:11px;color:#64748b;">${roleLabel} · ${a.email||u}</div>
       </div>
     </div>`;
   }).join('');
@@ -3488,12 +3489,18 @@ function openStaffInviteModal(role){
   document.getElementById('staffInviteModal').classList.add('show');
   updateStaffInviteLink();
 }
-function updateStaffInviteLink(){
+async function updateStaffInviteLink(){
   const fach = pendingStaffInviteRole==='arzt' ? document.getElementById('staffInviteFach').value : '';
-  const invites=loadStaffInvites();
   const token=genStaffInviteToken();
-  invites.push({token, role:pendingStaffInviteRole, fach, createdAt:new Date().toISOString(), used:false});
-  saveStaffInvites(invites);
+  const session=currentStaffSession();
+  document.getElementById('staffInviteLinkText').textContent='Wird erstellt…';
+  const {error}=await sb.from('staff_invites').insert({
+    token, role:pendingStaffInviteRole, fach, invited_by:session?session.username:null,
+  });
+  if(error){
+    document.getElementById('staffInviteLinkText').textContent='Fehler beim Erstellen: '+error.message;
+    return;
+  }
   const origin='https://smartordi-chat-app.vercel.app';
   const url=`${origin}/login.html?invite=${token}`;
   document.getElementById('staffInviteLinkText').textContent=url;
@@ -3509,7 +3516,6 @@ function copyStaffInviteLink(){
 
 applyPlanGating();
 renderPlanSettings();
-renderTeamCard();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');
@@ -4533,8 +4539,8 @@ function generateRezeptPDF(){
   // Arzt Info
   R(10,y,90,22);
   T('Ausstellende Ärztin:',13,y+6,8,'normal',[120,120,120]);
-  T('Dr. Sarah Ahmed',13,y+12,11,'bold');
-  T('Allgemeinmedizin · Steingasse 6A, 4020 Linz',13,y+18,8);
+  T(document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed',13,y+12,11,'bold');
+  T((document.getElementById('setFach')?.value||'Allgemeinmedizin')+' · '+(document.getElementById('setAdresse')?.value||'Steingasse 6A, 4020 Linz'),13,y+18,8);
 
   // Patient Info
   R(105,y,95,22);
@@ -4598,8 +4604,8 @@ function generateRezeptPDF(){
   if(stempelImg){try{doc.addImage(stempelImg,'PNG',10,y,35,18);}catch(e){}}
   if(sigData){try{doc.addImage(sigData,'PNG',60,y,50,18);}catch(e){}}
   T('Stempel & Unterschrift',10,y+24,8,'normal',[150,150,150]);
-  T('Dr. Sarah Ahmed',60,y+24,9,'bold');
-  T('Allgemeinmedizin · Linz',60,y+28,7,'normal',[120,120,120]);
+  T(document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed',60,y+24,9,'bold');
+  T((document.getElementById('setFach')?.value||'Allgemeinmedizin')+' · Linz',60,y+28,7,'normal',[120,120,120]);
 
   // Footer
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
@@ -4935,8 +4941,14 @@ function confirmTransfer(){
   alert('✓ Weiterleitung erfolgreich!\n\nDer Patient wird automatisch per SMS benachrichtigt.\nDr. Weber erhält alle relevanten Unterlagen.');
 }
 
-renderDashTermine();
 renderImpfWarnungen();
+// Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
+// Termine lists) lives in Supabase now -- wait for the fetch kicked off by
+// vendor/staff-accounts.js before the first render that depends on it.
+staffRosterReady.then(()=>{
+  renderTeamCard();
+  renderDashTermine();
+});
 </script>
 
 <script>
@@ -4983,6 +4995,33 @@ window.addEventListener('load', function() {
     const sel=document.getElementById('setFach');
     if(sel)sel.value=savedFach;
     updateAnamneseByFach(savedFach);
+  }
+  // Praxisprofil: Name des Arztes/der Ärztin was a static demo placeholder
+  // ("Dr. Sarah Ahmed") never wired to the actual logged-in account, plus
+  // Adresse/Telefon captured at registration but never read back -- fill
+  // them in from the real session/practice info instead.
+  const session=currentStaffSession();
+  if(session && session.name){
+    const nameInput=document.getElementById('setArztName');
+    if(nameInput) nameInput.value=session.name;
+    // Same fix for the topbar name/avatar and dashboard greeting -- both
+    // were the same static "Dr. Sarah Ahmed" placeholder as Praxisprofil.
+    const topbarName=document.getElementById('doctorNameDisplay');
+    if(topbarName) topbarName.textContent=session.name;
+    const topbarAvatar=document.getElementById('doctorAvatarDisplay');
+    if(topbarAvatar) topbarAvatar.textContent=session.name[0];
+    const dashGreeting=document.getElementById('dashGreetingName');
+    if(dashGreeting) dashGreeting.textContent=session.name;
+    const uwVonInput=document.getElementById('uwVon');
+    if(uwVonInput) uwVonInput.value=session.name+' – '+(savedFach||'Allgemeinmedizin')+', Linz';
+  }
+  let practiceInfo;
+  try{ practiceInfo=JSON.parse(localStorage.getItem('smartordi_practice_info')); }catch(e){ practiceInfo=null; }
+  if(practiceInfo){
+    const adresseInput=document.getElementById('setAdresse');
+    if(adresseInput && practiceInfo.adresse) adresseInput.value=practiceInfo.adresse;
+    const telInput=document.getElementById('setTel');
+    if(telInput && practiceInfo.tel) telInput.value=practiceInfo.tel;
   }
 });
 
