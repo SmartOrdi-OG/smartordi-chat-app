@@ -2168,11 +2168,11 @@ body.windows-mode .kartei-header{display:none;}
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Adresse der Ordination</label>
-          <input type="text" id="setAdresse" value="Steingasse 6A, 4020 Linz" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#1e40af'" onblur="this.style.borderColor='#e2e8f0'">
+          <input type="text" id="setAdresse" value="Steingasse 6A, 4020 Linz" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#1e40af'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({adresse:this.value})">
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Telefon</label>
-          <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#1e40af'" onblur="this.style.borderColor='#e2e8f0'">
+          <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#1e40af'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({tel:this.value})">
         </div>
       </div>
     </div>
@@ -3283,21 +3283,22 @@ const PLAN_FEATURES = {
   enterprise: {label:'Enterprise', price:'€249', rezeptImpfung:true,  sekretaerin:true, bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Pro','API & Integration']},
 };
 function getPlan(){
-  const p=localStorage.getItem('smartordi_plan');
+  const p=getPracticeSettings()?.plan;
   return PLAN_FEATURES[p]?p:'pro';
 }
 function planHasFeature(feature){
   return !!PLAN_FEATURES[getPlan()][feature];
 }
-function setPlan(plan){
+async function setPlan(plan){
   if(!PLAN_FEATURES[plan]) return;
-  localStorage.setItem('smartordi_plan',plan);
+  const ok=await savePracticeSettings({plan});
+  if(!ok){ showToast('✗ Speichern fehlgeschlagen','error'); return; }
   applyPlanGating();
   renderPlanSettings();
   showToast('✓ Paket "'+PLAN_FEATURES[plan].label+'" aktiv');
 }
 function getPaymentMethod(){
-  try{ return JSON.parse(localStorage.getItem('smartordi_payment'))||null; }catch(e){ return null; }
+  return getPracticeSettings()?.payment_method||null;
 }
 
 // A plan change is a billing action, not just a UI toggle -- clicking a
@@ -3324,7 +3325,7 @@ function selectPaymentMethod(method){
   document.getElementById('pcCardFields').style.display=method==='card'?'block':'none';
   document.getElementById('pcSepaFields').style.display=method==='sepa'?'block':'none';
 }
-function confirmPlanChange(){
+async function confirmPlanChange(){
   const usingCard=document.getElementById('pcMethodCard').classList.contains('selected');
   const errEl=document.getElementById('pcErrorMsg');
   let payment;
@@ -3348,21 +3349,21 @@ function confirmPlanChange(){
     }
     payment={method:'sepa',iban,kontoinhaber,last4:iban.slice(-4)};
   }
-  localStorage.setItem('smartordi_payment',JSON.stringify(payment));
+  await savePracticeSettings({payment_method:payment});
   document.getElementById('planChangeModal').classList.remove('show');
-  setPlan(pendingPlan);
+  await setPlan(pendingPlan);
   applyTrialStatus();
 }
 
 // ══ TRIAL STATUS (30 Tage kostenlos, siehe register.html) ══
-// smartordi_trial_start is only set by register.html at signup, so demo
-// logins that skip registration (direct login.html) never see this --
-// getTrialStart() returning null means "no trial to track".
+// trial_start lives in the shared practice_settings row now (set once by
+// register.html at signup) -- getTrialStart() returning null means "no
+// trial to track" (e.g. a demo login that never went through registration).
 const TRIAL_DAYS=30;
 const TRIAL_REMINDER_WINDOW_DAYS=7;
 function getTrialStart(){
-  const t=localStorage.getItem('smartordi_trial_start');
-  return t?parseInt(t,10):null;
+  const t=getPracticeSettings()?.trial_start;
+  return t?new Date(t).getTime():null;
 }
 function getTrialDaysRemaining(){
   const start=getTrialStart();
@@ -4988,7 +4989,7 @@ function openApp() {
 }
 
 // فتح التطبيق تلقائياً عند الدخول
-window.addEventListener('load', function() {
+window.addEventListener('load', async function() {
   openApp();
   const savedFach=localStorage.getItem('fachrichtung');
   if(savedFach){
@@ -5015,14 +5016,20 @@ window.addEventListener('load', function() {
     const uwVonInput=document.getElementById('uwVon');
     if(uwVonInput) uwVonInput.value=session.name+' – '+(savedFach||'Allgemeinmedizin')+', Linz';
   }
-  let practiceInfo;
-  try{ practiceInfo=JSON.parse(localStorage.getItem('smartordi_practice_info')); }catch(e){ practiceInfo=null; }
+  // Plan/Praxisprofil (Adresse, Telefon) live in the shared practice_settings
+  // Supabase row now, not per-device localStorage -- wait for the fetch
+  // kicked off by vendor/staff-accounts.js before reading it.
+  await practiceSettingsReady;
+  const practiceInfo=getPracticeSettings();
   if(practiceInfo){
     const adresseInput=document.getElementById('setAdresse');
     if(adresseInput && practiceInfo.adresse) adresseInput.value=practiceInfo.adresse;
     const telInput=document.getElementById('setTel');
     if(telInput && practiceInfo.tel) telInput.value=practiceInfo.tel;
   }
+  applyPlanGating();
+  renderPlanSettings();
+  applyTrialStatus();
 });
 
 function goBack() {

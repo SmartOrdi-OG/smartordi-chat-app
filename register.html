@@ -406,20 +406,14 @@ async function doRegister(){
     return;
   }
 
-  // No real backend yet for the rest of the app (appointments, chat, Kartei,
-  // plan/trial state) -- persist the chosen plan and Fachrichtung to this
-  // browser's localStorage so doctor.html actually activates them (gates
-  // Rezept/Impfpass, renders the right Anamnese specialty section) instead
-  // of the landing page being purely cosmetic.
-  localStorage.setItem('smartordi_plan', selectedPlan);
   if(fach) localStorage.setItem('fachrichtung', fach);
-  // Marks the start of the 30-day free trial -- doctor.html reminds the
-  // doctor as it approaches expiry and locks the app if no plan/payment is
-  // confirmed in time (see openTrialPaymentModal there).
-  if(!localStorage.getItem('smartordi_trial_start')){
-    localStorage.setItem('smartordi_trial_start', Date.now().toString());
-  }
-  localStorage.setItem('smartordi_practice_info', JSON.stringify({ordination, adresse, tel}));
+
+  // Practice-wide plan/trial/practice-info now lives in Supabase (shared by
+  // the whole team) instead of this browser's localStorage -- the first
+  // admin's registration creates the one practice_settings row.
+  await savePracticeSettings({
+    ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString(),
+  });
 
   sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username:userId, isAdmin:true}));
 
