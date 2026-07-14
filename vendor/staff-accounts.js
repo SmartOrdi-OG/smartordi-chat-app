@@ -104,6 +104,100 @@ async function updateHandoffStatus(id,status){
   return true;
 }
 
+// Real patient records (Kartei/Stammdaten), replacing the per-device
+// localStorage `smartordi_patient_accounts` store for everything except the
+// chat message thread (still localStorage for now -- a separate, later
+// migration). Patients are NOT Supabase Auth users (most have no e-mail,
+// and child accounts have no login of their own at all), so every
+// patient-facing read/write goes through a security-definer RPC instead of
+// direct table access -- RLS on `patients` only grants `select`/`insert`/
+// `update` to `authenticated` (i.e. staff), so an anonymous patient browser
+// can never read the raw table, only what a passing RPC hands back.
+//
+// The cache below (`_patients`, keyed by username, camelCase fields matching
+// the old localStorage account shape) is populated via a plain `select *`,
+// which only staff pages (doctor.html/secretary.html, real Supabase Auth
+// sessions) can actually see rows for -- on patient.html/patient-login.html
+// (always anon) it stays empty by design, and those pages instead hold their
+// own single record from the login RPC's response.
+let _patients={};
+async function refreshPatients(){
+  const {data,error}=await sb.from('patients').select('*');
+  if(error){ console.error('refreshPatients failed',error); return; }
+  const byId={};
+  (data||[]).forEach(p=>{ byId[p.id]=p; });
+  const next={};
+  (data||[]).forEach(p=>{
+    next[p.username]=mapPatientRow(p,byId);
+  });
+  (data||[]).forEach(p=>{
+    if(p.guardian_id && byId[p.guardian_id]){
+      const g=next[byId[p.guardian_id].username];
+      if(g){ if(!g.children) g.children=[]; g.children.push(p.username); }
+    }
+  });
+  _patients=next;
+}
+function mapPatientRow(p,byId){
+  const guardianRow=(p.guardian_id&&byId)?byId[p.guardian_id]:null;
+  return {
+    id:p.id, username:p.username,
+    name:p.vorname, fullName:p.full_name, fach:p.fach,
+    dob:p.dob, svnr:p.svnr, versicherung:p.versicherung, tel:p.tel, email:p.email, adresse:p.adresse,
+    blutgruppe:p.blutgruppe, diagnosen:p.diagnosen, allergie:p.allergie, legacyHistory:p.legacy_history,
+    impfungen:p.impfungen||[], anamnese:p.anamnese||{},
+    role:p.role, isChild:p.is_child, guardianUsername:guardianRow?guardianRow.username:undefined,
+    firstLogin:p.must_change_password,
+    joinStatus:p.join_status||undefined, joinNote:p.join_note||'', joinSubmittedAt:p.join_submitted_at,
+  };
+}
+function loadPatientAccounts(){
+  return _patients;
+}
+const patientsReady=refreshPatients();
+
+async function createPatient(fields){
+  const {data,error}=await sb.from('patients').insert(fields).select().single();
+  if(error){ console.error('createPatient failed',error); return null; }
+  await refreshPatients();
+  return mapPatientRow(data);
+}
+async function updatePatient(id,fields){
+  const {error}=await sb.from('patients').update(fields).eq('id',id);
+  if(error){ console.error('updatePatient failed',error); return false; }
+  await refreshPatients();
+  return true;
+}
+// Login (and QR-link login, which is the same credential pair carried in
+// the URL): the only way an anon browser can ever get a patient row back.
+async function authenticatePatient(username,password){
+  const {data,error}=await sb.rpc('authenticate_patient',{p_username:username,p_password:password});
+  if(error||!data||!data.length) return null;
+  return mapPatientRow(data[0]);
+}
+async function setPatientPassword(username,oldPassword,newPassword){
+  const {data,error}=await sb.rpc('set_patient_password',{p_username:username,p_old_password:oldPassword,p_new_password:newPassword});
+  if(error) return false;
+  return !!data;
+}
+async function submitPatientJoinRequest(fields){
+  const {data,error}=await sb.rpc('submit_join_request',{
+    p_username:fields.username, p_password:fields.password, p_vorname:fields.vorname, p_nachname:fields.nachname,
+    p_adresse:fields.adresse, p_svnr:fields.svnr, p_fach:fields.fach,
+  });
+  if(error) return false;
+  return !!data;
+}
+// patient.html (always anon, see the note above) re-verifies the guardian's
+// own password here too, exactly like authenticatePatient -- otherwise
+// anyone who guessed a guardian's username could read their children's
+// medical records with zero authentication.
+async function getPatientChildren(username,password){
+  const {data,error}=await sb.rpc('get_my_children',{p_username:username,p_password:password});
+  if(error||!data) return [];
+  return data.map(p=>mapPatientRow(p));
+}
+
 function genStaffInviteToken(){
   return 'inv_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 }

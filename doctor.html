@@ -2728,7 +2728,7 @@ const MESSAGES={
 // yet this page load -- pull it in on first access instead of showing blank.
 function getOrHydrateThread(name){
   if(MESSAGES[name]) return MESSAGES[name];
-  const found=findPatientAccountByFullName(name);
+  const found=findMessageAccountByFullName(name);
   const saved=found&&found.accounts[found.username].messages;
   if(saved&&saved.length){ MESSAGES[name]={date:'',items:saved}; return MESSAGES[name]; }
   return null;
@@ -2768,7 +2768,7 @@ function appendMessageToThread(name,msg){
   // Demo patients' new messages are session-only (same as their Impfung/
   // Verlauf edits); QR/imported patients get theirs persisted so the
   // conversation survives a reload, same as their other Kartei data.
-  const found=findPatientAccountByFullName(name);
+  const found=findMessageAccountByFullName(name);
   if(found){
     found.accounts[found.username].messages=MESSAGES[name].items;
     localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
@@ -2966,8 +2966,7 @@ function dueVaccinationsForPatient(name,dob,impfungen){
 function allDueVaccinations(){
   const results=[];
   DEMO_PATIENTS.forEach(p=>{ results.push(...dueVaccinationsForPatient(p.name,p.dob,p.impfungen)); });
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatientAccounts();
   Object.values(accounts).forEach(a=>{
     if(!a||!a.fullName||a.role==='guardian'||DEMO_PATIENTS.some(p=>p.name===a.fullName)) return;
     results.push(...dueVaccinationsForPatient(a.fullName,a.dob,a.impfungen));
@@ -3001,8 +3000,7 @@ function impfWarnRowHtml(d){
 }
 function openKarteiForVaccineCheck(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
-  const found=demo?null:findPatientAccountByFullName(name);
-  const acc=demo || (found?found.accounts[found.username]:null);
+  const acc=demo || findPatientByFullName(name);
   openKarteiForPatientAndShow(name, acc?.svnr||'', acc?.versicherung||'', acc?.dob||'');
   setTimeout(()=>{
     const btn=document.getElementById('ktab-btn-impfung');
@@ -3021,13 +3019,14 @@ function renderImpfWarnungen(){
 
 function patientListEntries(){
   const entries=DEMO_CHAT_LIST.map(p=>Object.assign({},p,{dynamic:false}));
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatientAccounts();
+  let msgStore;
+  try{ msgStore=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ msgStore={}; }
   Object.keys(accounts).forEach(u=>{
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
-    const thread=a.messages&&a.messages.length?{items:a.messages}:null;
-    const last=thread?thread.items[thread.items.length-1]:null;
+    const msgs=(msgStore[u]&&msgStore[u].messages)||[];
+    const last=msgs.length?msgs[msgs.length-1]:null;
     entries.push({
       name:a.fullName,color:'#1e40af',statusDot:'#94a3b8',status:'Offline',
       versicherung:a.versicherung||'',
@@ -3616,14 +3615,13 @@ function updateKarteiChromeVisibility(){
 function findPatientRecord(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
   if(demo) return demo;
-  const found=findPatientAccountByFullName(name);
-  if(!found) return null;
-  const a=found.accounts[found.username];
+  const a=findPatientByFullName(name);
+  if(!a) return null;
   // Reads whatever a bulk import (secretary.html) or the doctor's own entry
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
 }
 
 // ══ PATIENT CSV EXPORT (e.g. to send to another doctor on request) ══
@@ -4123,26 +4121,35 @@ function clearAdvSearch(){
   document.querySelectorAll('.patient-item').forEach(i=>i.style.display='');
 }
 
-// Patient accounts created via secretary.html's QR flow are stored keyed by
-// username, but Kartei only knows the patient's display name -- look them up
-// by the fullName recorded at account-creation time.
-function findPatientAccountByFullName(name){
+// Real patient records (Kartei/Stammdaten, diagnosen, allergie, impfungen,
+// anamnese) live in the Supabase `patients` table now (loadPatientAccounts()
+// comes from vendor/staff-accounts.js); Kartei only knows the patient's
+// display name, so look them up by the fullName recorded at creation time.
+function findPatientByFullName(name){
+  const accounts=loadPatientAccounts();
+  const username=Object.keys(accounts).find(u=>accounts[u]&&accounts[u].fullName===name);
+  return username?accounts[username]:null;
+}
+// The chat message thread is a separate, still-localStorage-only store (a
+// later migration) -- keyed by the same username Supabase now owns for
+// identity, so it stays consistent with the real patient record even though
+// the message data itself hasn't moved yet.
+function findMessageAccountByFullName(name){
+  const patient=findPatientByFullName(name);
+  if(!patient) return null;
   let accounts;
   try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
-  const username=Object.keys(accounts).find(u=>accounts[u]&&accounts[u].fullName===name);
-  return username?{username,accounts}:null;
+  if(!accounts[patient.username]) accounts[patient.username]={messages:[]};
+  return {username:patient.username,accounts};
 }
 
-function saveAnamnese(){
+async function saveAnamnese(){
   const root=document.getElementById('ktab-anamnese');
   const data=collectAnamneseData(root);
   const currentName=document.getElementById('kartei-name')?.textContent;
   if(currentName && currentName!=='Kein Patient ausgewählt'){
-    const found=findPatientAccountByFullName(currentName);
-    if(found){
-      found.accounts[found.username].anamnese=data;
-      localStorage.setItem('smartordi_patient_accounts', JSON.stringify(found.accounts));
-    }
+    const found=findPatientByFullName(currentName);
+    if(found) await updatePatient(found.id,{anamnese:data});
   }
   showToast('✓ Anamnese gespeichert!');
 }
@@ -4152,8 +4159,7 @@ function saveAnamnese(){
 // to this device's own Fachrichtung setting), resets the form, then fills in
 // their submitted answers if any exist.
 function loadAnamneseForPatient(name){
-  const found=findPatientAccountByFullName(name);
-  const account=found?found.accounts[found.username]:null;
+  const account=findPatientByFullName(name);
   const fach=account?.fach||localStorage.getItem('fachrichtung')||'Allgemeinmedizin';
   updateAnamneseByFach(fach);
   const root=document.getElementById('ktab-anamnese');
@@ -4228,7 +4234,7 @@ function populateKarteiImpfung(name){
     </div>` : '';
   }
 }
-function addImpfung(){
+async function addImpfung(){
   let name=document.getElementById('impf-name').value;
   if(name==='Sonstige'){
     name=document.getElementById('impf-name-custom').value.trim();
@@ -4247,12 +4253,10 @@ function addImpfung(){
     if(!demo.impfungen) demo.impfungen=[];
     demo.impfungen.unshift(entry);
   }else{
-    const found=findPatientAccountByFullName(currentName);
+    const found=findPatientByFullName(currentName);
     if(found){
-      const acc=found.accounts[found.username];
-      if(!acc.impfungen) acc.impfungen=[];
-      acc.impfungen.unshift(entry);
-      localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
+      const impfungen=[entry,...(found.impfungen||[])];
+      await updatePatient(found.id,{impfungen});
     }
   }
   populateKarteiImpfung(currentName);
@@ -4329,8 +4333,7 @@ const DEMO_PATIENTS=[
 // localStorage (no real backend yet) -- surfaced here so a doctor can find
 // and open Kartei for a patient who registered on their own device too.
 function loadQrPatientAccounts(){
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatientAccounts();
   return Object.keys(accounts)
     .map(u=>accounts[u])
     .filter(a=>a && a.fullName && a.role!=='guardian' && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
@@ -5097,6 +5100,12 @@ renderImpfWarnungen();
 staffRosterReady.then(()=>{
   renderTeamCard();
   renderDashTermine();
+});
+// Same for patient records (Kartei search, chat sidebar, vaccination
+// due-list) -- self-correct once the real fetch resolves.
+patientsReady.then(()=>{
+  renderPatientList();
+  renderImpfWarnungen();
 });
 </script>
 

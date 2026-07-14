@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/staff-accounts.js"></script>
 <script src="vendor/anamnese-shared.js"></script>
 <script src="vendor/i18n-patient.js"></script>
 <style>
@@ -283,17 +285,26 @@ function savePatients(){
 
 const PATIENTS = loadPatients();
 let currentUser = null;
+// The Supabase `patients.anamnese` column always defaults to '{}' (never
+// null/undefined the way a real localStorage account without the key used
+// to be) -- an empty object is still truthy in JS, so a plain `!acc.anamnese`
+// check would incorrectly treat every freshly-approved account as already
+// having filled it out. Checks whether it actually has any data in it.
+function hasAnamnese(acc){
+  return !!(acc && acc.anamnese && Object.keys(acc.anamnese).length);
+}
 
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
 function tryQrLogin(){
   const params=new URLSearchParams(window.location.search);
-  const u=params.get('u'), t=params.get('t'), n=params.get('n'), f=params.get('f');
+  const u=params.get('u'), t=params.get('t');
   if(!u||!t) return;
   history.replaceState(null,'',window.location.pathname);
-  if(!PATIENTS[u]){
-    PATIENTS[u]={ pw:t, name:n||u, fach:f||'Allgemeinmedizin', firstLogin:true };
-    savePatients();
-  }
+  // The account already exists in the real, shared Supabase `patients` table
+  // (secretary.html created it before printing/showing this QR code) -- no
+  // need to fabricate a local copy here anymore, doLogin() below already
+  // falls through to authenticatePatient() for any username it doesn't
+  // recognize as the local demo account.
   document.getElementById('username').value=u;
   document.getElementById('password').value=t;
   doLogin();
@@ -330,7 +341,14 @@ function checkStrength(pw){
   label.textContent=c.text;label.style.color=c.color;
 }
 
-function doLogin(){
+// The one plaintext password briefly held client-side: needed so patient.html
+// (always an anon browser, never a real Supabase Auth session -- see the
+// note above the `patients` table helpers in vendor/staff-accounts.js) can
+// silently re-authenticate via the same RPC on each load instead of only
+// ever seeing a stale, login-time snapshot of its own record.
+let lastLoginPassword=null;
+
+async function doLogin(){
   const u=document.getElementById('username').value.trim().toLowerCase();
   const p=document.getElementById('password').value;
   if(!u||!p)return;
@@ -341,51 +359,53 @@ function doLogin(){
   btn.classList.add('loading');
 
   // Re-read from localStorage instead of trusting the page-load-time PATIENTS
-  // snapshot: a self-registered account's joinStatus can change (secretary
-  // approves/rejects) in a completely different tab/session while this login
-  // screen sits open, so a stale in-memory copy could show the wrong status.
+  // snapshot -- this only matters for the built-in local demo account now,
+  // every real patient is authenticated against Supabase below.
   Object.assign(PATIENTS, loadPatients());
 
-  setTimeout(()=>{
-    const acc=PATIENTS[u];
-    if(!acc||acc.pw!==p){
-      btn.classList.remove('loading');
-      document.getElementById('btnText').style.display='block';
-      document.getElementById('spinner').style.display='none';
-      document.getElementById('errorMsg').classList.add('show');
-      document.getElementById('password').value='';
-      return;
-    }
-    currentUser = {username:u, ...acc};
+  let acc=(PATIENTS[u]&&PATIENTS[u].pw===p)?Object.assign({username:u},PATIENTS[u]):null;
+  if(!acc) acc=await authenticatePatient(u,p);
+
+  const stopLoading=()=>{
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display='block';
     document.getElementById('spinner').style.display='none';
+  };
 
-    // Self-registered account still waiting on (or turned down by) the
-    // Ordination's review -- see submitJoinRequest()/secretary.html's
-    // Beitrittsanfragen queue. Never reaches patient.html until approved.
-    if(acc.joinStatus==='pending'||acc.joinStatus==='rejected'){
-      showRequestStatusScreen(acc);
-      return;
-    }
+  if(!acc){
+    stopLoading();
+    document.getElementById('errorMsg').classList.add('show');
+    document.getElementById('password').value='';
+    return;
+  }
+  lastLoginPassword=p;
+  currentUser=acc;
+  stopLoading();
 
-    if(acc.firstLogin){
-      // Show change password screen
-      document.getElementById('screen-login').classList.remove('active');
-      document.getElementById('screen-changepw').classList.add('active');
-      document.getElementById('newPw').focus();
-    } else if(acc.joinStatus==='approved'&&!acc.anamnese){
-      // Self-registered patient's first login after approval: they already
-      // chose their own real password at request time, so skip straight to
-      // the mandatory Anamnese instead of the temp-password change screen.
-      document.getElementById('screen-login').classList.remove('active');
-      showAnamneseScreen();
-    } else {
-      // Direct login
-      sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:acc.name,username:u}));
-      window.location.href='patient.html';
-    }
-  },900);
+  // Self-registered account still waiting on (or turned down by) the
+  // Ordination's review -- see submitJoinRequest()/secretary.html's
+  // Beitrittsanfragen queue. Never reaches patient.html until approved.
+  if(acc.joinStatus==='pending'||acc.joinStatus==='rejected'){
+    showRequestStatusScreen(acc);
+    return;
+  }
+
+  if(acc.firstLogin){
+    // Show change password screen
+    document.getElementById('screen-login').classList.remove('active');
+    document.getElementById('screen-changepw').classList.add('active');
+    document.getElementById('newPw').focus();
+  } else if(acc.joinStatus==='approved'&&!hasAnamnese(acc)){
+    // Self-registered patient's first login after approval: they already
+    // chose their own real password at request time, so skip straight to
+    // the mandatory Anamnese instead of the temp-password change screen.
+    document.getElementById('screen-login').classList.remove('active');
+    showAnamneseScreen();
+  } else {
+    // Direct login
+    sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:acc.name,username:u,pw:p}));
+    window.location.href='patient.html';
+  }
 }
 
 // ── Self-registration ("Anmeldung beantragen") ──
@@ -422,7 +442,7 @@ function showRequestStatusScreen(acc){
 }
 
 function resubmitJoinRequest(){
-  const acc=PATIENTS[currentUser.username];
+  const acc=currentUser;
   resubmitUsername=currentUser.username;
   document.getElementById('reqVorname').value=acc.name||'';
   document.getElementById('reqNachname').value=(acc.fullName||'').split(' ').slice(1).join(' ');
@@ -438,7 +458,7 @@ function resubmitJoinRequest(){
   document.getElementById('screen-request').classList.add('active');
 }
 
-function submitJoinRequest(){
+async function submitJoinRequest(){
   const vorname=document.getElementById('reqVorname').value.trim();
   const nachname=document.getElementById('reqNachname').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
@@ -467,26 +487,26 @@ function submitJoinRequest(){
     errorText.textContent=tr('request.err.agb');
     errorEl.classList.add('show');return;
   }
+  // Reserved: the built-in local demo login, never a real Supabase account --
+  // real collisions (including "is this username taken by someone else") are
+  // checked authoritatively server-side by the RPC below.
   if(PATIENTS[username]&&username!==resubmitUsername){
     errorText.textContent=tr('request.err.usernameTaken');
     errorEl.classList.add('show');return;
   }
 
-  const existing=resubmitUsername?PATIENTS[resubmitUsername]:null;
-  PATIENTS[username]=Object.assign({},existing,{
-    pw, name:vorname, fullName:vorname+' '+nachname,
-    adresse, svnr, fach:(existing&&existing.fach)||'Allgemeinmedizin',
-    firstLogin:false, joinStatus:'pending', joinSubmittedAt:new Date().toISOString(), joinNote:'',
-    messages:(existing&&existing.messages)||[],
-  });
-  savePatients();
+  const ok=await submitPatientJoinRequest({username,password:pw,vorname,nachname,adresse,svnr,fach:null});
+  if(!ok){
+    errorText.textContent=tr('request.err.usernameTaken');
+    errorEl.classList.add('show');return;
+  }
   resubmitUsername=null;
 
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-request-sent').classList.add('active');
 }
 
-function saveNewPw(){
+async function saveNewPw(){
   const newPw=document.getElementById('newPw').value;
   const confirmPw=document.getElementById('confirmPw').value;
   const errorEl=document.getElementById('errorMsg2');
@@ -502,22 +522,32 @@ function saveNewPw(){
     errorText.textContent=tr('changepw.err.mismatch');
     errorEl.classList.add('show');return;
   }
-  if(newPw === PATIENTS[currentUser.username].pw){
+  if(newPw === lastLoginPassword){
     errorText.textContent=tr('changepw.err.sameAsOld');
     errorEl.classList.add('show');return;
   }
 
-  // Save new password (in real app: API call)
-  PATIENTS[currentUser.username].pw = newPw;
-  PATIENTS[currentUser.username].firstLogin = false;
-  savePatients();
+  const isLocalDemo=!!PATIENTS[currentUser.username];
+  if(isLocalDemo){
+    PATIENTS[currentUser.username].pw=newPw;
+    PATIENTS[currentUser.username].firstLogin=false;
+    savePatients();
+  }else{
+    const ok=await setPatientPassword(currentUser.username,lastLoginPassword,newPw);
+    if(!ok){
+      errorText.textContent=tr('changepw.err.sameAsOld');
+      errorEl.classList.add('show');return;
+    }
+    currentUser.firstLogin=false;
+  }
+  lastLoginPassword=newPw;
 
   document.getElementById('screen-changepw').classList.remove('active');
   // A guardian account isn't itself a patient -- the mandatory Anamnese is
   // medical history for a specific patient, so it doesn't apply to them;
   // go straight in and let them pick which child to view.
-  if(PATIENTS[currentUser.username].role==='guardian'){
-    sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
+  if(currentUser.role==='guardian'){
+    sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username,pw:lastLoginPassword}));
     window.location.href='patient.html';
     return;
   }
@@ -526,7 +556,7 @@ function saveNewPw(){
 
 function showAnamneseScreen(){
   document.querySelector('.card').classList.add('wide');
-  const acc=PATIENTS[currentUser.username];
+  const acc=currentUser;
   const fach=acc.fach||'Allgemeinmedizin';
   document.getElementById('anamnese-common-section').innerHTML=ANAMNESE_COMMON_HTML;
   const info=anamneseSpecialtyInfo(fach);
@@ -541,13 +571,17 @@ function showAnamneseScreen(){
   document.getElementById('screen-anamnese').classList.add('active');
 }
 
-function submitAnamnese(){
+async function submitAnamnese(){
   const root=document.getElementById('anamneseForm');
   const data=collectAnamneseData(root);
-  PATIENTS[currentUser.username].anamnese = data;
-  savePatients();
+  if(PATIENTS[currentUser.username]){
+    PATIENTS[currentUser.username].anamnese=data;
+    savePatients();
+  }else{
+    await updatePatient(currentUser.id,{anamnese:data});
+  }
 
-  sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username,pw:lastLoginPassword}));
   window.location.href='patient.html';
 }
 

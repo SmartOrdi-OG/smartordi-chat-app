@@ -933,22 +933,49 @@ function switchView(v){
 }
 
 // ══ PATIENT ACCOUNT DATA (real login, not hardcoded Thomas Müller) ══
-// patient.html previously showed the exact same static demo content no
-// matter who actually logged in (QR-onboarded patient, a different demo
-// account...). It now renders the real account behind the current session,
-// looked up by the username patient-login.html now stores alongside the
-// display name.
+// Kartei/Stammdaten now live in the real Supabase `patients` table -- but
+// this page is always an anonymous browser (patients aren't Supabase Auth
+// users, see the note above the `patients` helpers in
+// vendor/staff-accounts.js), so it can't use the shared loadPatientAccounts()
+// cache the way doctor.html/secretary.html do (RLS blocks a raw `select *`
+// for anon). Instead it re-authenticates via the same RPCs
+// patient-login.html used, using the session-held username+password, to
+// fetch a fresh copy of just its own (and, for a guardian, their children's)
+// record(s). The built-in local demo account (thomas.mueller) is unaffected
+// -- it still lives in this same localStorage key, which is now otherwise
+// only used for the chat message thread (see appendPatientMessage below).
 const PATIENT_ACCOUNTS_KEY='smartordi_patient_accounts';
-function loadPatientAccounts(){
+function loadLocalPatientAccounts(){
   try{ return JSON.parse(localStorage.getItem(PATIENT_ACCOUNTS_KEY))||{}; }catch(e){ return {}; }
 }
-function savePatientAccounts(accounts){
+function saveLocalPatientAccounts(accounts){
   localStorage.setItem(PATIENT_ACCOUNTS_KEY, JSON.stringify(accounts));
 }
 function getSessionUser(){
   try{ return JSON.parse(sessionStorage.getItem('smartordi_user'))||null; }catch(e){ return null; }
 }
 let currentUsername=null;
+let currentAccount=null;  // the logged-in session's own record (patient or guardian)
+let currentChildren=[];   // populated only when currentAccount.role==='guardian'
+let viewingAccount=null;  // the record actually shown (self, or a chosen child)
+// Only the local demo account ever has a `.pw` field on this store -- every
+// real patient's password now lives hashed in Supabase, never mirrored here.
+async function loadSessionAccounts(session){
+  const local=loadLocalPatientAccounts()[session.username];
+  if(local && local.pw){
+    currentAccount=Object.assign({username:session.username},local);
+    currentChildren=(local.children||[]).map(u=>{
+      const c=loadLocalPatientAccounts()[u];
+      return c?Object.assign({username:u},c):null;
+    }).filter(Boolean);
+    return;
+  }
+  if(!session.pw) return;
+  currentAccount=await authenticatePatient(session.username,session.pw);
+  if(currentAccount&&currentAccount.role==='guardian'){
+    currentChildren=await getPatientChildren(session.username,session.pw);
+  }
+}
 
 function voiceWaveHtml(){
   const heights=[30,50,70,45,80,55,65,40,75,50,35,60];
@@ -976,10 +1003,14 @@ function msgRowHtml(m){
   }
   return `<div class="msg-row${outClass}"><div>${bubble}<span class="msg-time"${timeStyle}>${m.time}</span></div></div>`;
 }
+function getCurrentMessages(){
+  if(!currentUsername) return [];
+  const local=loadLocalPatientAccounts()[currentUsername];
+  return (local&&local.messages)||[];
+}
 function renderPatientMessages(){
   const msgs=document.getElementById('messages');
-  const account=getCurrentAccount();
-  const items=(account&&account.messages)||[];
+  const items=getCurrentMessages();
   if(!items.length){
     msgs.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Noch keine Nachrichten</div><div class="empty-sub">Schreiben Sie Ihrer Ordination eine Nachricht</div></div>';
     return;
@@ -987,19 +1018,18 @@ function renderPatientMessages(){
   msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
   msgs.scrollTop=msgs.scrollHeight;
 }
+// The record currently on screen -- the logged-in patient themselves, or
+// (for a guardian) whichever child they've selected via the child picker.
 function getCurrentAccount(){
-  if(!currentUsername) return null;
-  const accounts=loadPatientAccounts();
-  return accounts[currentUsername]||null;
+  return viewingAccount;
 }
 function appendPatientMessage(msg){
   if(!currentUsername) return;
-  const accounts=loadPatientAccounts();
-  const acc=accounts[currentUsername];
-  if(!acc) return;
-  if(!acc.messages) acc.messages=[];
-  acc.messages.push(msg);
-  savePatientAccounts(accounts);
+  const accounts=loadLocalPatientAccounts();
+  if(!accounts[currentUsername]) accounts[currentUsername]={messages:[]};
+  if(!accounts[currentUsername].messages) accounts[currentUsername].messages=[];
+  accounts[currentUsername].messages.push(msg);
+  saveLocalPatientAccounts(accounts);
 }
 // Fallback conversation shown only if patient.html is opened directly, with
 // no login session at all (e.g. browsing the site without going through
@@ -1020,15 +1050,13 @@ function setActiveChild(childUsername){
   session.activeChildUsername=childUsername;
   sessionStorage.setItem('smartordi_user',JSON.stringify(session));
 }
-function showChildPicker(guardianAccount,guardianUsername){
-  const accounts=loadPatientAccounts();
-  const children=(guardianAccount.children||[]).map(u=>({username:u,account:accounts[u]})).filter(c=>c.account);
-  const rows=children.map(c=>`
+function showChildPicker(){
+  const rows=currentChildren.map(c=>`
     <div onclick="selectChild('${c.username}')" style="display:flex;align-items:center;gap:12px;background:white;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-      <div style="width:44px;height:44px;border-radius:50%;background:#1e40af;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;">${(c.account.fullName||'?')[0]}</div>
+      <div style="width:44px;height:44px;border-radius:50%;background:#1e40af;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;">${(c.fullName||'?')[0]}</div>
       <div style="flex:1;">
-        <div style="font-weight:700;font-size:14px;color:#0f172a;">${c.account.fullName||c.username}</div>
-        <div style="font-size:12px;color:#64748b;">${c.account.dob?new Date().getFullYear()-new Date(c.account.dob).getFullYear()+' Jahre':''}</div>
+        <div style="font-weight:700;font-size:14px;color:#0f172a;">${c.fullName||c.username}</div>
+        <div style="font-size:12px;color:#64748b;">${c.dob?new Date().getFullYear()-new Date(c.dob).getFullYear()+' Jahre':''}</div>
       </div>
       <span style="color:#94a3b8;">›</span>
     </div>`).join('');
@@ -1037,7 +1065,7 @@ function showChildPicker(guardianAccount,guardianUsername){
       <div style="background:white;padding:16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:16px;font-weight:800;color:#0f172a;">Kind auswählen</div>
-          <div style="font-size:12px;color:#64748b;margin-top:2px;">Angemeldet als ${guardianAccount.fullName||guardianAccount.name}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px;">Angemeldet als ${currentAccount.fullName||currentAccount.name}</div>
         </div>
         <button onclick="logout()" style="background:#f1f5f9;border:none;color:#64748b;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">Abmelden</button>
       </div>
@@ -1053,32 +1081,31 @@ function selectChild(childUsername){
 function switchChild(){
   const overlay=document.getElementById('childPickerOverlay');
   if(overlay) overlay.remove();
-  const session=getSessionUser()||{};
-  const accounts=loadPatientAccounts();
-  const guardianAccount=accounts[session.username];
-  if(guardianAccount) showChildPicker(guardianAccount,session.username);
+  showChildPicker();
 }
 
-function initPatientData(){
+async function initPatientData(){
   const session=getSessionUser();
   if(!session||!session.username){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
     return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
   }
-  const accounts=loadPatientAccounts();
-  const baseAccount=accounts[session.username];
-  if(!baseAccount){
+  await loadSessionAccounts(session);
+  if(!currentAccount){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
     return;
   }
-  if(baseAccount.role==='guardian'){
-    if(!session.activeChildUsername||!accounts[session.activeChildUsername]){
-      showChildPicker(baseAccount,session.username);
+  if(currentAccount.role==='guardian'){
+    const activeChild=session.activeChildUsername&&currentChildren.find(c=>c.username===session.activeChildUsername);
+    if(!activeChild){
+      showChildPicker();
       return;
     }
-    currentUsername=session.activeChildUsername;
+    currentUsername=activeChild.username;
+    viewingAccount=activeChild;
   }else{
     currentUsername=session.username;
+    viewingAccount=currentAccount;
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1101,7 +1128,7 @@ function initPatientData(){
   document.getElementById('profilVersicherung').textContent=account.versicherung||'—';
   document.getElementById('profilSvnr').textContent=account.svnr||'—';
   renderPatientMessages();
-  if(!(account.messages&&account.messages.length)){
+  if(!getCurrentMessages().length){
     const b1=document.querySelector('#nav-chat .nav-badge');if(b1)b1.remove();
     const b2=document.getElementById('navTabChatBadge');if(b2)b2.remove();
   }
