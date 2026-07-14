@@ -66,6 +66,44 @@ async function savePracticeSettings(fields){
 }
 const practiceSettingsReady=refreshPracticeSettings();
 
+// Real Vertretung (coverage/locum) system: a doctor's absence period, who is
+// covering (a real colleague already in staff_profiles, or an external
+// doctor entered as free-text contact info), and a lightweight per-patient
+// handoff record (a summary snapshot, not the live patient record itself --
+// patient data still lives in localStorage, not Supabase). Fetched on-demand
+// when the Vertretung tab opens, not kicked off at page load like the
+// roster/practice settings above, since only doctor.html needs it.
+async function loadActiveCoverage(){
+  const {data,error}=await sb.from('practice_coverage').select('*').eq('status','active');
+  if(error){ console.error('loadActiveCoverage failed',error); return []; }
+  return data||[];
+}
+async function createCoverage(fields){
+  const {data,error}=await sb.from('practice_coverage').insert(fields).select().single();
+  if(error){ console.error('createCoverage failed',error); return null; }
+  return data;
+}
+async function cancelCoverage(id){
+  const {error}=await sb.from('practice_coverage').update({status:'cancelled'}).eq('id',id);
+  if(error){ console.error('cancelCoverage failed',error); return false; }
+  return true;
+}
+async function loadHandoffsForCoverage(coverageId){
+  const {data,error}=await sb.from('patient_handoffs').select('*').eq('coverage_id',coverageId);
+  if(error){ console.error('loadHandoffsForCoverage failed',error); return []; }
+  return data||[];
+}
+async function createHandoff(fields){
+  const {data,error}=await sb.from('patient_handoffs').insert(fields).select().single();
+  if(error){ console.error('createHandoff failed',error); return null; }
+  return data;
+}
+async function updateHandoffStatus(id,status){
+  const {error}=await sb.from('patient_handoffs').update({status}).eq('id',id);
+  if(error){ console.error('updateHandoffStatus failed',error); return false; }
+  return true;
+}
+
 function genStaffInviteToken(){
   return 'inv_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 }

@@ -755,17 +755,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .tp-status.sent{background:#dcfce7;color:#16a34a;}
 .tp-status.pending{background:#fef3c7;color:#d97706;}
 .tp-status.accepted{background:#dbeafe;color:#1d4ed8;}
-.network-map{background:white;border-radius:20px;border:1px solid var(--border);padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);}
-.network-title{font-size:14px;font-weight:800;color:var(--text-1);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.clinic-node{background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
-.clinic-node:hover{border-color:#1e40af;background:#eff6ff;transform:translateY(-2px);}
-.clinic-node.current{border-color:#1e40af;background:#eff6ff;border-width:2px;}
-.clinic-node.partner{border-color:#bfdbfe;}
-.clinic-node-icon{font-size:24px;margin-bottom:6px;}
-.clinic-node-name{font-size:12px;font-weight:700;color:var(--text-1);}
-.clinic-node-detail{font-size:10px;color:var(--text-2);margin-top:2px;}
-.clinic-node-badge{position:absolute;top:-6px;right:-6px;background:#1e40af;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
+.tp-status.declined{background:#fee2e2;color:#dc2626;}
 
 /* ══ KARTEI PANEL ══ */
 .kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
@@ -1065,11 +1055,6 @@ body.windows-mode .kartei-header{display:none;}
 [data-theme="dark"] .transfer-patient-item:hover{background:#162032;}
 [data-theme="dark"] .tp-name{color:#e2e8f0;}
 [data-theme="dark"] .tp-details{color:#94a3b8;}
-[data-theme="dark"] .network-map{background:#1e293b;border-color:#334155;}
-[data-theme="dark"] .network-title{color:#e2e8f0;}
-[data-theme="dark"] .clinic-node{background:#162032;border-color:#334155;}
-[data-theme="dark"] .clinic-node-name{color:#e2e8f0;}
-[data-theme="dark"] .clinic-node-detail{color:#94a3b8;}
 [data-theme="dark"] .dashboard{background:#0f172a;}
 [data-theme="dark"] .stat-card{background:#1e293b;box-shadow:0 2px 12px rgba(0,0,0,0.3);}
 [data-theme="dark"] .stat-value{color:#e2e8f0;}
@@ -1889,107 +1874,26 @@ body.windows-mode .kartei-header{display:none;}
   <div class="vertretung-layout">
     <div class="vertretung-main scrollbar">
       <div class="vertretung-title">Vertretung & Weiterleitung</div>
-      <div class="vertretung-subtitle">Verwalten Sie Ihre Abwesenheit und leiten Sie Patienten sicher weiter · Wien, Österreich </div>
+      <div class="vertretung-subtitle">Verwalten Sie Ihre Abwesenheit und leiten Sie Patienten sicher an eine Kollegin/einen Kollegen weiter</div>
 
-      <!-- Active vacation -->
-      <div class="vacation-card">
-        <div class="vacation-header">
-          <div class="vacation-title">Geplante Abwesenheit</div>
-          <span class="status-pill status-planned">Geplant</span>
-        </div>
-        <div class="vacation-dates">
-          <div class="date-box"><div class="date-label">Von</div><div class="date-value">03.07.2026</div></div>
-          <div class="date-arrow">→</div>
-          <div class="date-box"><div class="date-label">Bis</div><div class="date-value">17.07.2026</div></div>
-          <div class="date-box"><div class="date-label">Dauer</div><div class="date-value">14 Tage</div></div>
-        </div>
-        <div style="margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt:</div>
-          <div class="vertretung-doctor">
-            <div class="doc-avatar" style="background:#8b5cf6;">KW</div>
-            <div class="doc-info">
-              <div class="doc-name">Dr. Klaus Weber</div>
-              <div class="doc-details">Allgemeinmedizin · 1020 Wien · +43 1 234 5678</div>
-            </div>
-            <div class="doc-status">✓ Bestätigt</div>
-          </div>
-        </div>
-        <div class="transfer-stats">
-          <div class="transfer-stat"><div class="transfer-stat-value">34</div><div class="transfer-stat-label">Patienten gesamt</div></div>
-          <div class="transfer-stat"><div class="transfer-stat-value" style="color:#22c55e;">28</div><div class="transfer-stat-label">Weitergeleitet</div></div>
-          <div class="transfer-stat"><div class="transfer-stat-value" style="color:#f59e0b;">6</div><div class="transfer-stat-label">Ausstehend</div></div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn-primary" onclick="alert('Alle Patienten werden automatisch benachrichtigt!')">✓ Alle weiterleiten</button>
-          <button class="btn-secondary">✏ Bearbeiten</button>
-        </div>
-      </div>
+      <!-- Own coverage / absence -->
+      <div id="coverageCardRoot"></div>
 
-      <!-- Patient transfer list -->
-      <div class="patient-transfer-list">
+      <!-- Patient handoff list (my own active coverage) -->
+      <div class="patient-transfer-list" id="handoffListCard" style="display:none;">
         <div class="list-header">
           <div class="list-title">Patientenübergabe</div>
           <button class="list-action" onclick="showTransferModal()">+ Patient hinzufügen</button>
         </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#0d9488;width:38px;height:38px;font-size:14px;">T</div>
-          <div class="tp-info"><div class="tp-name">Thomas Müller</div><div class="tp-details">ÖGK · Diabetes, Bluthochdruck · Letzte Konsultation: 12.05.2026</div></div>
-          <span class="tp-status sent">✓ Weitergeleitet</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#8b5cf6;width:38px;height:38px;font-size:14px;">M</div>
-          <div class="tp-info"><div class="tp-name">Maria Schreiber</div><div class="tp-details">BVAEB · Schilddrüse · Termin: 08.07.2026</div></div>
-          <span class="tp-status accepted">✓ Angenommen</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#f59e0b;width:38px;height:38px;font-size:14px;">H</div>
-          <div class="tp-info"><div class="tp-name">Hans Bauer</div><div class="tp-details">SVS · Rückenschmerzen · Nächster Termin offen</div></div>
-          <span class="tp-status pending">Ausstehend</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#ec4899;width:38px;height:38px;font-size:14px;">A</div>
-          <div class="tp-info"><div class="tp-name">Anna Weber</div><div class="tp-details">ÖGK · Routine · Termin: 15.07.2026</div></div>
-          <span class="tp-status sent">✓ Weitergeleitet</span>
-        </div>
+        <div id="handoffListRoot"></div>
       </div>
 
-      <!-- Network -->
-      <div class="network-map">
-        <div class="network-title">Smartordi-Netzwerk Wien <span style="font-size:12px;color:#64748b;font-weight:400;">— Vertrauensärzte in Ihrer Nähe</span></div>
-        <div class="network-grid">
-          <div class="clinic-node current">
-            <div class="clinic-node-badge">Sie</div>
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Sarah Ahmed</div>
-            <div class="clinic-node-detail">1010 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node partner" onclick="alert('Dr. Klaus Weber — Vertretungsarzt bestätigt!')">
-            <div class="clinic-node-badge" style="background:#22c55e;">Vertretung</div>
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Klaus Weber</div>
-            <div class="clinic-node-detail">1020 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Petra Huber — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Petra Huber</div>
-            <div class="clinic-node-detail">1030 Wien · Innere Med.</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Franz Gruber — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Franz Gruber</div>
-            <div class="clinic-node-detail">1040 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Julia Maier — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Julia Maier</div>
-            <div class="clinic-node-detail">1010 Wien · Kardiologie</div>
-          </div>
-          <div class="clinic-node" style="border-style:dashed;cursor:pointer;" onclick="openEinladenModal()">
-            <div class="clinic-node-icon">➕</div>
-            <div class="clinic-node-name">Ordination einladen</div>
-            <div class="clinic-node-detail">Netzwerk erweitern</div>
-          </div>
+      <!-- Incoming handoffs (I'm someone else's substitute) -->
+      <div class="patient-transfer-list" id="incomingHandoffsCard" style="display:none;">
+        <div class="list-header">
+          <div class="list-title">Eingehende Übergaben</div>
         </div>
+        <div id="incomingHandoffsRoot"></div>
       </div>
     </div>
   </div>
@@ -2328,60 +2232,72 @@ body.windows-mode .kartei-header{display:none;}
 </div>
 
 <!-- TRANSFER MODAL -->
+<div class="modal-overlay" id="coverageModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Abwesenheit planen</div>
+      <button class="modal-close" onclick="closeCoverageModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Zeitraum</label>
+        <div style="display:flex;gap:8px;">
+          <input class="form-input" type="date" id="covStart">
+          <input class="form-input" type="date" id="covEnd">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Vertretung</label>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button type="button" class="btn-secondary" id="covTypeInternalBtn" onclick="setCoverageType('internal')" style="flex:1;">Kollege/in aus der Praxis</button>
+          <button type="button" class="btn-secondary" id="covTypeExternalBtn" onclick="setCoverageType('external')" style="flex:1;">Externer Arzt</button>
+        </div>
+      </div>
+      <div id="covInternalFields">
+        <div class="form-group">
+          <label class="form-label">Kollege/in</label>
+          <select class="form-input" id="covSubstituteStaff"></select>
+        </div>
+      </div>
+      <div id="covExternalFields" style="display:none;">
+        <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="covExtName" placeholder="z.B. Dr. Klaus Weber"></div>
+        <div class="form-group"><label class="form-label">Fachrichtung</label><input class="form-input" id="covExtFach" placeholder="z.B. Allgemeinmedizin"></div>
+        <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="covExtPhone" placeholder="Telefonnummer"></div>
+        <div class="form-group"><label class="form-label">E-Mail (optional)</label><input class="form-input" type="email" id="covExtEmail"></div>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12px;color:#1e40af;">
+        Ein externer Arzt erhält keinen Zugang zur App — Patientenübergaben an ihn werden stattdessen als PDF-Dokument exportiert.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeCoverageModal()">Abbrechen</button>
+      <button class="btn-primary" onclick="confirmCreateCoverage()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="transferModal">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Patient weiterleiten</div>
+      <div class="modal-title">Patient übergeben</div>
       <button class="modal-close" onclick="document.getElementById('transferModal').classList.remove('show')">✕</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Patient</label>
-        <input class="form-input" value="Thomas Müller" readonly>
+        <select class="form-input" id="tfPatientSelect"></select>
       </div>
       <div class="form-group">
-        <label class="form-label">Zeitraum der Weiterleitung</label>
-        <div style="display:flex;gap:8px;">
-          <input class="form-input" type="date" value="2026-07-03">
-          <input class="form-input" type="date" value="2026-07-17">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Vertretungsarzt auswählen</label>
-        <div class="clinic-option selected" onclick="selectClinic(this)">
-          <span class="clinic-option-icon"></span>
-          <div class="clinic-option-info">
-            <div class="clinic-option-name">Dr. Klaus Weber</div>
-            <div class="clinic-option-detail">Allgemeinmedizin · 1020 Wien · ✓ Smartordi-Partner</div>
-          </div>
-          <span style="color:#1e40af;font-weight:700;">✓</span>
-        </div>
-        <div class="clinic-option" onclick="selectClinic(this)">
-          <span class="clinic-option-icon"></span>
-          <div class="clinic-option-info">
-            <div class="clinic-option-name">Dr. Petra Huber</div>
-            <div class="clinic-option-detail">Innere Medizin · 1030 Wien · ✓ Smartordi-Partner</div>
-          </div>
-        </div>
-        <div class="clinic-option" onclick="selectClinic(this)">
-          <span class="clinic-option-icon"></span>
-          <div class="clinic-option-info">
-            <div class="clinic-option-name">Dr. Franz Gruber</div>
-            <div class="clinic-option-detail">Allgemeinmedizin · 1040 Wien · ✓ Smartordi-Partner</div>
-          </div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notiz für Vertretungsarzt</label>
-        <textarea class="form-input" rows="3" placeholder="Wichtige Informationen für den Vertretungsarzt...">Patient hat Diabetes Typ 2 und Bluthochdruck. Nächste Blutzuckerkontrolle am 10.07. Penicillin-Allergie beachten!</textarea>
+        <label class="form-label">Notiz für die Vertretung</label>
+        <textarea class="form-input" id="tfNote" rows="3" placeholder="Wichtige Informationen für die Vertretung..."></textarea>
       </div>
       <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:12px;font-size:12px;color:#1d4ed8;">
-         <strong>DSGVO:</strong>Der Patient wird automatisch über die Weiterleitung informiert und muss einwilligen. Alle Daten bleiben verschlüsselt.
+         <strong>DSGVO:</strong> Die Übergabe ist nur für den Vertretungszeitraum sichtbar. Alle Daten bleiben verschlüsselt.
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="document.getElementById('transferModal').classList.remove('show')">Abbrechen</button>
-      <button class="btn-primary" onclick="confirmTransfer()">✓ Weiterleiten</button>
+      <button class="btn-primary" onclick="confirmTransfer()">✓ Übergeben</button>
     </div>
   </div>
 </div>
@@ -4910,6 +4826,7 @@ document.addEventListener('smartordi-view-change', function(e){
     renderYearPills();
     filterVisits();
   }
+  if(e.detail === 'vertretung') refreshVertretungView();
 });
 
 
@@ -4924,22 +4841,253 @@ function showCall(){
 }
 function hideCall(){clearInterval(document.getElementById('callOverlay').dataset.timer);document.getElementById('callOverlay').classList.remove('show');}
 
-function showTransferModal(){document.getElementById('transferModal').classList.add('show');}
-
-function selectClinic(el){
-  document.querySelectorAll('.clinic-option').forEach(c=>{c.classList.remove('selected');c.querySelector('span:last-child')&&(c.querySelector('span:last-child').textContent='');});
-  el.classList.add('selected');
-  const chk=document.createElement('span');chk.style.color='#1e40af';chk.style.fontWeight='700';chk.textContent='✓';
-  el.appendChild(chk);
+// ══ VERTRETUNG (Coverage / patient handoff) ══
+// Real, within-practice-only feature: a doctor plans an absence, picks a
+// substitute (a real colleague already in staff_profiles, or an external
+// doctor entered as free-text contact info), and hands off individual
+// patients with a note. Internal handoffs are visible to the substitute
+// colleague live in the app; external handoffs have no live app access, so
+// they're exported as a PDF document instead (see exportHandoffPdf).
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-function confirmTransfer(){
+let _vertretungCoverages=[];
+let _myCoverage=null;
+let _handoffsCache=[];
+let _incomingHandoffsCache=[];
+async function refreshVertretungView(){
+  const session=currentStaffSession();
+  const myId=session&&session.username;
+  _vertretungCoverages=await loadActiveCoverage();
+  _myCoverage=_vertretungCoverages.find(c=>c.doctor_id===myId)||null;
+  renderCoverageCard();
+  await renderHandoffList();
+  await renderIncomingHandoffs();
+}
+function renderCoverageCard(){
+  const root=document.getElementById('coverageCardRoot');
+  const handoffCard=document.getElementById('handoffListCard');
+  if(!_myCoverage){
+    root.innerHTML='<div class="vacation-card">'
+      +'<div class="vacation-header"><div class="vacation-title">Keine geplante Abwesenheit</div></div>'
+      +'<div style="font-size:13px;color:var(--text-2);margin:8px 0 16px;">Legen Sie einen Zeitraum fest und wählen Sie eine Vertretung, damit Ihre Patienten während Ihrer Abwesenheit weiterversorgt werden.</div>'
+      +'<button class="btn-primary" onclick="openCoverageModal()">+ Abwesenheit planen</button>'
+    +'</div>';
+    handoffCard.style.display='none';
+    return;
+  }
+  const c=_myCoverage;
+  const from=new Date(c.start_date).toLocaleDateString('de-AT');
+  const to=new Date(c.end_date).toLocaleDateString('de-AT');
+  const days=Math.max(1,Math.round((new Date(c.end_date)-new Date(c.start_date))/86400000)+1);
+  const roster=loadStaffAccounts();
+  const subName=c.substitute_type==='internal'?arztDisplayName(c.substitute_staff_id):(c.substitute_name||'—');
+  const subDetail=c.substitute_type==='internal'
+    ?[(roster[c.substitute_staff_id]&&roster[c.substitute_staff_id].fach)||'Allgemeinmedizin'].join(' · ')
+    :[c.substitute_fach,c.substitute_phone].filter(Boolean).join(' · ');
+  const initials=subName.replace(/^Dr\.?\s*/,'').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+  root.innerHTML='<div class="vacation-card">'
+    +'<div class="vacation-header"><div class="vacation-title">Geplante Abwesenheit</div><span class="status-pill status-planned">Aktiv</span></div>'
+    +'<div class="vacation-dates">'
+      +'<div class="date-box"><div class="date-label">Von</div><div class="date-value">'+from+'</div></div>'
+      +'<div class="date-arrow">→</div>'
+      +'<div class="date-box"><div class="date-label">Bis</div><div class="date-value">'+to+'</div></div>'
+      +'<div class="date-box"><div class="date-label">Dauer</div><div class="date-value">'+days+' Tage</div></div>'
+    +'</div>'
+    +'<div style="margin-bottom:16px;">'
+      +'<div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:8px;">Vertretung'+(c.substitute_type==='external'?' (extern)':'')+':</div>'
+      +'<div class="vertretung-doctor">'
+        +'<div class="doc-avatar" style="background:'+(c.substitute_type==='internal'?'#8b5cf6':'#64748b')+';">'+(initials||'?')+'</div>'
+        +'<div class="doc-info"><div class="doc-name">'+escapeHtml(subName)+'</div><div class="doc-details">'+escapeHtml(subDetail||'—')+'</div></div>'
+        +(c.substitute_type==='internal'?'<div class="doc-status">✓ Kollege/in</div>':'<div class="doc-status" style="color:#64748b;">Extern</div>')
+      +'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;">'
+      +'<button class="btn-secondary" onclick="cancelMyCoverage(\''+c.id+'\')">Abwesenheit beenden</button>'
+    +'</div>'
+  +'</div>';
+  handoffCard.style.display='';
+}
+function openCoverageModal(){
+  document.getElementById('covStart').value='';
+  document.getElementById('covEnd').value='';
+  document.getElementById('covExtName').value='';
+  document.getElementById('covExtFach').value='';
+  document.getElementById('covExtPhone').value='';
+  document.getElementById('covExtEmail').value='';
+  const session=currentStaffSession();
+  const myId=session&&session.username;
+  const roster=loadStaffAccounts();
+  const others=Object.keys(roster).filter(id=>id!==myId&&roster[id].role==='arzt');
+  const sel=document.getElementById('covSubstituteStaff');
+  sel.innerHTML=others.length
+    ?others.map(id=>'<option value="'+id+'">'+escapeHtml(roster[id].fullName)+(roster[id].fach?' · '+escapeHtml(roster[id].fach):'')+'</option>').join('')
+    :'<option value="">Keine weiteren Ärzte in der Praxis</option>';
+  setCoverageType('internal');
+  document.getElementById('coverageModal').classList.add('show');
+}
+function closeCoverageModal(){
+  document.getElementById('coverageModal').classList.remove('show');
+}
+let _coverageSubType='internal';
+function setCoverageType(type){
+  _coverageSubType=type;
+  document.getElementById('covInternalFields').style.display=type==='internal'?'':'none';
+  document.getElementById('covExternalFields').style.display=type==='external'?'':'none';
+  const intBtn=document.getElementById('covTypeInternalBtn'),extBtn=document.getElementById('covTypeExternalBtn');
+  intBtn.style.background=type==='internal'?'#eff6ff':'';
+  intBtn.style.borderColor=type==='internal'?'#1e40af':'';
+  intBtn.style.color=type==='internal'?'#1e40af':'';
+  extBtn.style.background=type==='external'?'#eff6ff':'';
+  extBtn.style.borderColor=type==='external'?'#1e40af':'';
+  extBtn.style.color=type==='external'?'#1e40af':'';
+}
+async function confirmCreateCoverage(){
+  const start=document.getElementById('covStart').value;
+  const end=document.getElementById('covEnd').value;
+  if(!start||!end){showToast('Bitte Zeitraum angeben.');return;}
+  if(end<start){showToast('Enddatum muss nach dem Startdatum liegen.');return;}
+  const session=currentStaffSession();
+  const myId=session&&session.username;
+  const fields={doctor_id:myId,start_date:start,end_date:end,substitute_type:_coverageSubType};
+  if(_coverageSubType==='internal'){
+    const staffId=document.getElementById('covSubstituteStaff').value;
+    if(!staffId){showToast('Bitte eine Kollegin/einen Kollegen wählen.');return;}
+    fields.substitute_staff_id=staffId;
+  }else{
+    const name=document.getElementById('covExtName').value.trim();
+    if(!name){showToast('Bitte Name der Vertretung angeben.');return;}
+    fields.substitute_name=name;
+    fields.substitute_fach=document.getElementById('covExtFach').value.trim();
+    fields.substitute_phone=document.getElementById('covExtPhone').value.trim();
+    fields.substitute_email=document.getElementById('covExtEmail').value.trim();
+  }
+  const created=await createCoverage(fields);
+  if(!created){showToast('Speichern fehlgeschlagen.');return;}
+  closeCoverageModal();
+  showToast('✓ Abwesenheit gespeichert.');
+  await refreshVertretungView();
+}
+async function cancelMyCoverage(id){
+  if(!confirm('Abwesenheit wirklich beenden?'))return;
+  const ok=await cancelCoverage(id);
+  if(!ok){showToast('Fehlgeschlagen.');return;}
+  showToast('Abwesenheit beendet.');
+  await refreshVertretungView();
+}
+function showTransferModal(){
+  if(!_myCoverage){showToast('Bitte zuerst eine Abwesenheit planen.');return;}
+  const sel=document.getElementById('tfPatientSelect');
+  sel.innerHTML=patientListEntries().map(p=>'<option value="'+escapeHtml(p.name)+'">'+escapeHtml(p.name)+'</option>').join('');
+  document.getElementById('tfNote').value='';
+  document.getElementById('transferModal').classList.add('show');
+}
+async function confirmTransfer(){
+  if(!_myCoverage)return;
+  const name=document.getElementById('tfPatientSelect').value;
+  const note=document.getElementById('tfNote').value.trim();
+  if(!name){showToast('Bitte einen Patienten wählen.');return;}
+  const session=currentStaffSession();
+  const rec=findPatientRecord(name);
+  const summary=rec?[rec.diagnosen&&rec.diagnosen!=='—'?('Diagnosen: '+rec.diagnosen):null,rec.allergie?('Allergie: '+rec.allergie):null].filter(Boolean).join(' · '):'';
+  const h=await createHandoff({coverage_id:_myCoverage.id,patient_name:name,summary,note,created_by:session&&session.username});
   document.getElementById('transferModal').classList.remove('show');
-  const msgs=document.getElementById('messages');
-  const sys=document.createElement('div');sys.className='system-msg transfer';
-  sys.textContent='atient wurde an Dr. Klaus Weber weitergeleitet (03.–17. Juli 2026)';
-  msgs.appendChild(sys);msgs.scrollTop=msgs.scrollHeight;
-  alert('✓ Weiterleitung erfolgreich!\n\nDer Patient wird automatisch per SMS benachrichtigt.\nDr. Weber erhält alle relevanten Unterlagen.');
+  if(!h){showToast('Übergabe fehlgeschlagen.');return;}
+  showToast('✓ '+name+' wurde übergeben.');
+  await renderHandoffList();
+  if(_myCoverage.substitute_type==='external') exportHandoffPdf(h.id);
+}
+async function renderHandoffList(){
+  const root=document.getElementById('handoffListRoot');
+  if(!_myCoverage){root.innerHTML='';_handoffsCache=[];return;}
+  _handoffsCache=await loadHandoffsForCoverage(_myCoverage.id);
+  if(!_handoffsCache.length){root.innerHTML='<div style="padding:16px;color:var(--text-2);font-size:13px;">Noch keine Patienten übergeben.</div>';return;}
+  root.innerHTML=_handoffsCache.map(h=>{
+    const statusClass=h.status==='accepted'?'accepted':(h.status==='declined'?'declined':'pending');
+    const statusLabel=h.status==='accepted'?'✓ Angenommen':(h.status==='declined'?'✕ Abgelehnt':'Ausstehend');
+    const initials=(h.patient_name.split(/\s+/)[0]||'?')[0].toUpperCase();
+    return '<div class="transfer-patient-item">'
+      +'<div class="avatar" style="background:#0d9488;width:38px;height:38px;font-size:14px;">'+initials+'</div>'
+      +'<div class="tp-info"><div class="tp-name">'+escapeHtml(h.patient_name)+'</div><div class="tp-details">'+escapeHtml(h.note||h.summary||'—')+'</div></div>'
+      +'<span class="tp-status '+statusClass+'">'+statusLabel+'</span>'
+      +'<button class="list-action" style="margin-inline-start:8px;" onclick="exportHandoffPdf(\''+h.id+'\')">PDF</button>'
+    +'</div>';
+  }).join('');
+}
+async function renderIncomingHandoffs(){
+  const session=currentStaffSession();
+  const myId=session&&session.username;
+  const card=document.getElementById('incomingHandoffsCard');
+  const root=document.getElementById('incomingHandoffsRoot');
+  const incomingCoverages=_vertretungCoverages.filter(c=>c.substitute_type==='internal'&&c.substitute_staff_id===myId);
+  if(!incomingCoverages.length){card.style.display='none';_incomingHandoffsCache=[];return;}
+  card.style.display='';
+  let all=[];
+  for(const c of incomingCoverages){
+    const handoffs=await loadHandoffsForCoverage(c.id);
+    handoffs.forEach(h=>all.push(Object.assign({},h,{_doctorName:arztDisplayName(c.doctor_id)})));
+  }
+  _incomingHandoffsCache=all;
+  if(!all.length){root.innerHTML='<div style="padding:16px;color:var(--text-2);font-size:13px;">Keine eingehenden Übergaben.</div>';return;}
+  root.innerHTML=all.map(h=>{
+    const initials=(h.patient_name.split(/\s+/)[0]||'?')[0].toUpperCase();
+    const actions=h.status==='pending'
+      ?'<button class="btn-primary" style="padding:4px 10px;font-size:11px;" onclick="acceptHandoff(\''+h.id+'\')">Annehmen</button> <button class="btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="declineHandoff(\''+h.id+'\')">Ablehnen</button>'
+      :(h.status==='accepted'?'<span class="tp-status accepted">✓ Angenommen</span>':'<span class="tp-status declined">✕ Abgelehnt</span>');
+    return '<div class="transfer-patient-item">'
+      +'<div class="avatar" style="background:#8b5cf6;width:38px;height:38px;font-size:14px;">'+initials+'</div>'
+      +'<div class="tp-info"><div class="tp-name">'+escapeHtml(h.patient_name)+'</div><div class="tp-details">Von '+escapeHtml(h._doctorName)+' · '+escapeHtml(h.note||h.summary||'—')+'</div></div>'
+      +actions
+    +'</div>';
+  }).join('');
+}
+async function acceptHandoff(id){
+  await updateHandoffStatus(id,'accepted');
+  showToast('Übergabe angenommen.');
+  await refreshVertretungView();
+}
+async function declineHandoff(id){
+  await updateHandoffStatus(id,'declined');
+  showToast('Übergabe abgelehnt.');
+  await refreshVertretungView();
+}
+function findHandoffById(id){
+  return _handoffsCache.find(h=>h.id===id)||_incomingHandoffsCache.find(h=>h.id===id);
+}
+function exportHandoffPdf(id){
+  const h=findHandoffById(id);
+  if(!h){showToast('Übergabe nicht gefunden.');return;}
+  if(typeof window.jspdf==='undefined'){alert('jsPDF lädt... Bitte nochmal versuchen.');return;}
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const T=(text,x,y,size=10,style='normal',color=[0,0,0])=>{doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);doc.text(String(text||''),x,y);};
+  const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
+  const R=(x,y,w,h2,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h2);};
+  const arztName=document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed';
+  const today=new Date().toLocaleDateString('de-AT');
+  let y=15;
+  doc.setFillColor(30,64,175);doc.rect(0,0,210,22,'F');
+  T('PATIENTENÜBERGABE',15,14,18,'bold',[255,255,255]);
+  T('Vertretung · DSGVO-konform',150,10,8,'normal',[180,200,255]);
+  T(today,150,16,9,'normal',[180,200,255]);
+  y=32;
+  R(10,y,190,22);
+  T('Übergebende Ärztin/Arzt:',13,y+6,8,'normal',[120,120,120]);
+  T(arztName,13,y+12,11,'bold');
+  y+=30;
+  T('Patient/in',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  T(h.patient_name,13,y,10,'bold');y+=10;
+  T('Zusammenfassung',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  const sumLines=doc.splitTextToSize(h.summary||'—',185);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(sumLines,13,y);y+=sumLines.length*4.5+6;
+  T('Notiz',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+  const noteLines=doc.splitTextToSize(h.note||'—',185);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(noteLines,13,y);y+=noteLines.length*4.5+8;
+  if(y>260)y=260;
+  L(15,y,195,y,0.3);y+=4;
+  T('Smartordi.eu | DSGVO-konform | '+today,15,y,7,'normal',[150,150,150]);
+  const nameParts=h.patient_name.trim().split(/\s+/);
+  doc.save(('Patientenuebergabe_'+(nameParts[1]||nameParts[0])+'_'+today.replace(/\./g,'-')+'.pdf').replace(/\s+/g,'_'));
 }
 
 renderImpfWarnungen();
@@ -5085,66 +5233,6 @@ function openModal(type) {
 
 function closeModal() {
   document.getElementById('modalOverlay').style.display = 'none';
-}
-</script>
-
-<!-- ══ EINLADEN MODAL ══ -->
-<div id="einladenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);z-index:400;align-items:center;justify-content:center;padding:16px;">
-  <div style="background:white;border-radius:20px;width:100%;max-width:420px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
-    <div style="background:linear-gradient(135deg,#1e40af,#1d4ed8);padding:20px 24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div style="font-size:16px;font-weight:800;color:white;">Ordination einladen</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">Netzwerk erweitern</div>
-        </div>
-        <button onclick="closeEinladenModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">×</button>
-      </div>
-    </div>
-    <div style="padding:20px 24px;">
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Name des Arztes / der Ärztin</div>
-        <input id="einladen-name" class="k-form-input" placeholder="z.B. Dr. Julia Maier" style="width:100%;">
-      </div>
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Fachrichtung</div>
-        <input id="einladen-fach" class="k-form-input" placeholder="z.B. Kardiologie" style="width:100%;">
-      </div>
-      <div style="margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">E-Mail Adresse *</div>
-        <input id="einladen-email" class="k-form-input" type="email" placeholder="arzt@ordination.at" style="width:100%;">
-      </div>
-      <div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Persönliche Nachricht (optional)</div>
-        <textarea id="einladen-msg" class="k-form-input" rows="3" placeholder="z.B. Ich würde Sie gerne in mein Netzwerk aufnehmen..." style="resize:none;width:100%;"></textarea>
-      </div>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.5;">
-         Der Kollege erhält eine Einladung per E-Mail mit einem Link zur Registrierung auf Smartordi.chat
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button onclick="closeEinladenModal()" style="flex:1;padding:11px;background:#f1f5f9;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;">Abbrechen</button>
-        <button onclick="sendEinladung()" style="flex:2;padding:11px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;color:white;cursor:pointer;">Einladung senden</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function openEinladenModal(){
-  document.getElementById('einladenModal').style.display='flex';
-}
-function closeEinladenModal(){
-  document.getElementById('einladenModal').style.display='none';
-  document.getElementById('einladen-name').value='';
-  document.getElementById('einladen-fach').value='';
-  document.getElementById('einladen-email').value='';
-  document.getElementById('einladen-msg').value='';
-}
-function sendEinladung(){
-  const email=document.getElementById('einladen-email').value.trim();
-  const name=document.getElementById('einladen-name').value.trim();
-  if(!email){showToast('Bitte E-Mail eingeben');return;}
-  closeEinladenModal();
-  showToast(' Einladung an '+(name||email)+' gesendet!');
 }
 </script>
 
