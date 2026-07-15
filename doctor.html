@@ -1221,26 +1221,30 @@ body.windows-mode .kartei-header{display:none;}
   <div class="patient-panel scrollbar">
     <div class="panel-section">
       <div class="panel-section-title">Patientendaten</div>
-      <div class="info-row"><span class="info-label">Name</span><span class="info-value">Thomas Müller</span></div>
-      <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value">01.01.1985</span></div>
-      <div class="info-row"><span class="info-label">Telefon</span><span class="info-value">+43 660 123 456</span></div>
-      <div class="info-row"><span class="info-label">Versicherung</span><span class="info-value">ÖGK</span></div>
-      <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value">1234 010185</span></div>
+      <div class="info-row"><span class="info-label">Name</span><span class="info-value" id="pp-name">Thomas Müller</span></div>
+      <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="pp-dob">01.01.1985</span></div>
+      <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="pp-tel">+43 660 123 456</span></div>
+      <div class="info-row"><span class="info-label">Versicherung</span><span class="info-value" id="pp-versicherung">ÖGK</span></div>
+      <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="pp-svnr">1234 010185</span></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Diagnosen</div>
-      <span class="tag tag-red">Bluthochdruck</span>
-      <span class="tag tag-amber">Penicillin-Allergie</span>
-      <span class="tag tag-blue">Diabetes Typ 2</span>
+      <div id="pp-diagnosen">
+        <span class="tag tag-red">Bluthochdruck</span>
+        <span class="tag tag-amber">Penicillin-Allergie</span>
+        <span class="tag tag-blue">Diabetes Typ 2</span>
+      </div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Nächste Termine</div>
-      <div class="appt-card"><div class="appt-date">Di. 04.06.2026 — 10:00 Uhr</div><div class="appt-type">Routineuntersuchung · Dr. Ahmed</div></div>
+      <div id="pp-termine">
+        <div class="appt-card"><div class="appt-date">Di. 04.06.2026 — 10:00 Uhr</div><div class="appt-type">Routineuntersuchung · Dr. Ahmed</div></div>
+      </div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">DSGVO-Status</div>
-      <div class="info-row"><span class="info-label">Einwilligung</span><span class="info-value"><span class="tag tag-green">✓ Erteilt</span></span></div>
-      <div class="info-row"><span class="info-label">Datum</span><span class="info-value">15.01.2026</span></div>
+      <div class="info-row"><span class="info-label">Einwilligung</span><span class="info-value" id="pp-dsgvo-status"><span class="tag tag-green">✓ Erteilt</span></span></div>
+      <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="pp-dsgvo-datum">15.01.2026</span></div>
     </div>
   </div>
 
@@ -3156,7 +3160,9 @@ function selectPatient(el,name,status,color,insurance){
   document.getElementById('chat-name').textContent=name;
   document.getElementById('chat-avatar').textContent=name[0];
   document.getElementById('chat-avatar').style.background=color;
-  document.getElementById('chat-insurance').textContent=insurance+' · SV-Nr: 1234 010185';
+  const rec=findPatientRecord(name);
+  document.getElementById('chat-insurance').textContent=insurance+' · SV-Nr: '+((rec&&rec.svnr&&rec.svnr!=='—')?rec.svnr:'—');
+  updatePatientPanel(name);
   const s=document.getElementById('chat-status');
   if(status==='Online'){s.textContent='● Online';s.style.color='#22c55e';}
   else{s.textContent=status;s.style.color='#64748b';}
@@ -3714,6 +3720,51 @@ function findPatientRecord(name){
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
   return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+}
+
+// The chat view's "Patientendaten" side panel (Name/Geburtsdatum/Telefon/
+// Versicherung/SV-Nummer, Diagnosen, Nächste Termine, DSGVO-Status) was
+// static HTML that never updated when switching patients -- selecting any
+// patient (demo or real) always kept showing Thomas Müller's data,
+// including his real diagnoses/allergies, which is actively dangerous if a
+// doctor mistakes it for the selected patient's. Wire it the same way
+// populateKarteiStamm() already does for the Kartei tab.
+function updatePatientPanel(name){
+  const rec=findPatientRecord(name);
+  const nameEl=document.getElementById('pp-name');
+  const dobEl=document.getElementById('pp-dob');
+  const telEl=document.getElementById('pp-tel');
+  const versEl=document.getElementById('pp-versicherung');
+  const svnrEl=document.getElementById('pp-svnr');
+  const diagRoot=document.getElementById('pp-diagnosen');
+  const termineRoot=document.getElementById('pp-termine');
+  const dsgvoStatusEl=document.getElementById('pp-dsgvo-status');
+  const dsgvoDatumEl=document.getElementById('pp-dsgvo-datum');
+
+  if(nameEl) nameEl.textContent=name;
+  if(dobEl) dobEl.textContent=rec&&rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):'—';
+  if(telEl) telEl.textContent=(rec&&rec.tel)||'—';
+  if(versEl) versEl.textContent=(rec&&rec.versicherung)||'—';
+  if(svnrEl) svnrEl.textContent=(rec&&rec.svnr)||'—';
+
+  if(diagRoot){
+    const diagTags=(rec&&rec.diagnosen&&rec.diagnosen!=='—')
+      ?rec.diagnosen.split(',').map(s=>`<span class="tag tag-red">${s.trim()}</span>`)
+      :[];
+    const allergyTag=rec&&rec.allergie?[`<span class="tag tag-amber">${rec.allergie}</span>`]:[];
+    const html=diagTags.concat(allergyTag).join('');
+    diagRoot.innerHTML=html||'<span style="color:#94a3b8;font-size:12px;">Keine Diagnosen erfasst</span>';
+  }
+  if(termineRoot){
+    const upcoming=loadTermine()
+      .filter(t=>t.patient===name&&t.status!=='abgesagt'&&t.date>=todayStr())
+      .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+    termineRoot.innerHTML=upcoming.length
+      ?upcoming.slice(0,3).map(t=>`<div class="appt-card"><div class="appt-date">${new Date(t.date+'T00:00:00').toLocaleDateString('de-AT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})} — ${t.time} Uhr</div><div class="appt-type">${t.art}${t.arztUsername?' · '+arztDisplayName(t.arztUsername):''}</div></div>`).join('')
+      :'<span style="color:#94a3b8;font-size:12px;">Keine bevorstehenden Termine</span>';
+  }
+  if(dsgvoStatusEl) dsgvoStatusEl.innerHTML=(rec&&rec.dsgvoDatum&&rec.dsgvoDatum!=='—')?'<span class="tag tag-green">✓ Erteilt</span>':'<span style="color:#94a3b8;">—</span>';
+  if(dsgvoDatumEl) dsgvoDatumEl.textContent=(rec&&rec.dsgvoDatum&&rec.dsgvoDatum!=='—')?rec.dsgvoDatum:'—';
 }
 
 // ══ PATIENT CSV EXPORT (e.g. to send to another doctor on request) ══
