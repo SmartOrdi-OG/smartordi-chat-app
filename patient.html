@@ -489,7 +489,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
 <!-- DESKTOP ICON-GRID NAV (>=1024px) -->
 <div id="appNavBar">
-  <button class="nav-tab active" data-view="chat" onclick="switchView('chat')">
+  <button class="nav-tab" data-view="chat" onclick="switchView('chat')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
     <span><span data-i18n="nav.chat">Chat</span><span class="nav-tab-badge" id="navTabChatBadge">2</span></span>
   </button>
@@ -514,7 +514,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 <div class="views">
 
   <!-- ── CHAT ── -->
-  <div class="view active" id="view-chat">
+  <div class="view" id="view-chat">
     <div class="chat-header">
       <div class="chat-header-avatar">
         <span id="chatHeaderAvatar">S</span>
@@ -756,7 +756,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-  <button class="nav-item active" id="nav-chat" onclick="switchView('chat')">
+  <button class="nav-item" id="nav-chat" onclick="switchView('chat')">
     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
     <span data-i18n="nav.chat">Chat</span>
     <span class="nav-badge">2</span>
