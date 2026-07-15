@@ -12,6 +12,8 @@
 <title>Login</title>
 <script src="vendor/anamnese-shared.js"></script>
 <script src="vendor/i18n-patient.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/staff-accounts.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
@@ -149,8 +151,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     </div>
     <div class="notice" style="display:block;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" data-i18n="request.clinic.label">Ordination</div>
-      <div style="font-size:13px;font-weight:700;color:var(--slate);">Ordination Dr. Sarah Ahmed</div>
-      <div style="font-size:11px;color:var(--muted);">Allgemeinmedizin · Steingasse 6A, 4020 Linz</div>
+      <div style="font-size:13px;font-weight:700;color:var(--slate);" id="reqClinicName">Ordination Dr. Sarah Ahmed</div>
+      <div style="font-size:11px;color:var(--muted);" id="reqClinicSub">Allgemeinmedizin · Steingasse 6A, 4020 Linz</div>
     </div>
     <div class="form-group">
       <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--slate);cursor:pointer;">
@@ -551,11 +553,26 @@ function submitAnamnese(){
   window.location.href='patient.html';
 }
 
-window.addEventListener('load',()=>{
+window.addEventListener('load',async ()=>{
   document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwitcher');
   initPatientLanguage();
   document.getElementById('username').focus();
   tryQrLogin();
+
+  // The join-request notice used to show a hardcoded "Dr. Sarah Ahmed" /
+  // Steingasse 6A demo placeholder no matter which real practice a patient
+  // was requesting to join -- fill it in from the real Supabase data
+  // (same admin-name/address lookup already used on the secretary/doctor
+  // sides) once it's loaded.
+  await staffRosterReady;
+  await practiceSettingsReady;
+  const accounts=loadStaffAccounts();
+  const admin=Object.values(accounts).find(a=>a.role==='arzt'&&a.isAdmin);
+  const practiceInfo=getPracticeSettings();
+  const nameEl=document.getElementById('reqClinicName');
+  const subEl=document.getElementById('reqClinicSub');
+  if(nameEl) nameEl.textContent='Ordination '+(admin?admin.fullName:'Dr. Sarah Ahmed');
+  if(subEl) subEl.textContent=(admin&&admin.fach||'Allgemeinmedizin')+' · '+((practiceInfo&&practiceInfo.adresse)||'Steingasse 6A, 4020 Linz');
 });
 // Coming back via the browser's back/forward cache (e.g. after logging out
 // and navigating back) restores the exact DOM as it was frozen mid-submit --
