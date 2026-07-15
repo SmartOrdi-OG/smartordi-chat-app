@@ -1913,13 +1913,22 @@ body.windows-mode .kartei-header{display:none;}
           <div class="date-box"><div class="date-label">Bis</div><input type="date" class="form-input" id="vertBis" style="border:none;background:transparent;font-size:14px;font-weight:700;padding:0;width:100%;"></div>
         </div>
         <div style="margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt/-ärztin (auch außerhalb der Ordination):</div>
-          <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="vertName" placeholder="z.B. Dr. Klaus Weber"></div>
-          <div class="form-group"><label class="form-label">Fachrichtung</label><input class="form-input" id="vertFach" placeholder="z.B. Allgemeinmedizin"></div>
-          <div class="form-group"><label class="form-label">Adresse</label><input class="form-input" id="vertAdresse" placeholder="z.B. Hauptstraße 1, 4020 Linz"></div>
-          <div class="form-row" style="display:flex;gap:10px;">
-            <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="vertTel" placeholder="+43 ..."></div>
-            <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="vertEmail" placeholder="..."></div>
+          <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt/-ärztin:</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button type="button" class="btn-secondary" id="vertModeInternalBtn" onclick="setVertretungMode('internal')" style="flex:1;">Aus dieser Ordination</button>
+            <button type="button" class="btn-secondary" id="vertModeExternalBtn" onclick="setVertretungMode('external')" style="flex:1;">Von außerhalb</button>
+          </div>
+          <div id="vertInternalSection">
+            <div id="vertInternalList"></div>
+          </div>
+          <div id="vertExternalSection">
+            <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="vertName" placeholder="z.B. Dr. Klaus Weber"></div>
+            <div class="form-group"><label class="form-label">Fachrichtung</label><input class="form-input" id="vertFach" placeholder="z.B. Allgemeinmedizin"></div>
+            <div class="form-group"><label class="form-label">Adresse</label><input class="form-input" id="vertAdresse" placeholder="z.B. Hauptstraße 1, 4020 Linz"></div>
+            <div class="form-row" style="display:flex;gap:10px;">
+              <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="vertTel" placeholder="+43 ..."></div>
+              <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="vertEmail" placeholder="..."></div>
+            </div>
           </div>
         </div>
         <div class="transfer-stats" style="grid-template-columns:repeat(2,1fr);">
@@ -4934,6 +4943,62 @@ function patientsForCurrentDoctor(){
   const names=new Set(loadTermine().filter(t=>t.arztUsername===me).map(t=>t.patient));
   return [...names];
 }
+
+// Vertretung can point to a real colleague at this practice (their contact
+// info is already known -- same address as this Ordination, no need to
+// type anything) or, if there's no one else registered here, a manually
+// entered external doctor.
+let vertretungMode='external';
+let vertInternalSelected=null;
+function colleaguesForVertretung(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  const accounts=loadStaffAccounts();
+  return Object.keys(accounts).filter(u=>accounts[u].role==='arzt'&&u!==me).map(u=>Object.assign({username:u},accounts[u]));
+}
+function renderVertInternalList(){
+  const colleagues=colleaguesForVertretung();
+  const listRoot=document.getElementById('vertInternalList');
+  if(!listRoot) return;
+  if(!colleagues.length){
+    listRoot.innerHTML='<div style="padding:12px;background:#fef9c3;border:1px solid #fde68a;border-radius:10px;font-size:12px;color:#854d0e;">Keine anderen Ärzt/innen in dieser Ordination registriert. Bitte "Von außerhalb" verwenden.</div>';
+    return;
+  }
+  if(!vertInternalSelected||!colleagues.some(c=>c.username===vertInternalSelected)) vertInternalSelected=colleagues[0].username;
+  listRoot.innerHTML=colleagues.map(function(a){
+    const sel=a.username===vertInternalSelected;
+    return `<div class="clinic-option${sel?' selected':''}" onclick="selectVertInternalDoctor(this,'${a.username}')">
+      <span class="clinic-option-icon"></span>
+      <div class="clinic-option-info">
+        <div class="clinic-option-name">${a.fullName}</div>
+        <div class="clinic-option-detail">${a.fach||'Allgemeinmedizin'}</div>
+      </div>
+      <span style="color:#1e40af;font-weight:700;">${sel?'✓':''}</span>
+    </div>`;
+  }).join('');
+}
+function selectVertInternalDoctor(el,username){
+  document.querySelectorAll('#vertInternalList .clinic-option').forEach(function(c){c.classList.remove('selected');const chk=c.querySelector('span:last-child');if(chk)chk.textContent='';});
+  el.classList.add('selected');
+  const chk=el.querySelector('span:last-child');
+  if(chk) chk.textContent='✓';
+  vertInternalSelected=username;
+}
+function setVertretungMode(mode){
+  if(mode==='internal'&&colleaguesForVertretung().length===0){
+    showToast('Keine anderen Ärzt/innen in dieser Ordination registriert','error');
+    mode='external';
+  }
+  vertretungMode=mode;
+  const internalBtn=document.getElementById('vertModeInternalBtn');
+  const externalBtn=document.getElementById('vertModeExternalBtn');
+  internalBtn.style.background=mode==='internal'?'#1e40af':'#f1f5f9';
+  internalBtn.style.color=mode==='internal'?'white':'#334155';
+  externalBtn.style.background=mode==='external'?'#1e40af':'#f1f5f9';
+  externalBtn.style.color=mode==='external'?'white':'#334155';
+  document.getElementById('vertInternalSection').style.display=mode==='internal'?'block':'none';
+  document.getElementById('vertExternalSection').style.display=mode==='external'?'block':'none';
+  if(mode==='internal') renderVertInternalList();
+}
 // Same "find the real account and append, without clobbering a thread that
 // was never hydrated into the in-memory MESSAGES cache this session" fix
 // used for sendTerminConfirmationMessage-style features elsewhere.
@@ -4948,26 +5013,43 @@ function appendRealMessage(name,msg){
   return true;
 }
 function readVertretungForm(){
-  return {
+  const extName=document.getElementById('vertName').value.trim();
+  const extFach=document.getElementById('vertFach').value.trim();
+  const extAdresse=document.getElementById('vertAdresse').value.trim();
+  const extTel=document.getElementById('vertTel').value.trim();
+  const extEmail=document.getElementById('vertEmail').value.trim();
+  const base={
     von:document.getElementById('vertVon').value,
     bis:document.getElementById('vertBis').value,
-    name:document.getElementById('vertName').value.trim(),
-    fach:document.getElementById('vertFach').value.trim(),
-    adresse:document.getElementById('vertAdresse').value.trim(),
-    tel:document.getElementById('vertTel').value.trim(),
-    email:document.getElementById('vertEmail').value.trim(),
+    mode:vertretungMode,
+    extName:extName, extFach:extFach, extAdresse:extAdresse, extTel:extTel, extEmail:extEmail,
   };
+  if(vertretungMode==='internal'){
+    const colleague=colleaguesForVertretung().find(c=>c.username===vertInternalSelected);
+    return Object.assign(base,{
+      internalUsername:colleague?colleague.username:'',
+      name:colleague?colleague.fullName:'',
+      fach:colleague?(colleague.fach||'Allgemeinmedizin'):'',
+      adresse:'', tel:'', email:'',
+    });
+  }
+  return Object.assign(base,{
+    internalUsername:'',
+    name:extName, fach:extFach, adresse:extAdresse, tel:extTel, email:extEmail,
+  });
 }
 function renderVertretungView(){
   const me=currentDoctorUsername()||'dr.ahmed';
   const v=loadVertretung()||{};
   document.getElementById('vertVon').value=v.von||'';
   document.getElementById('vertBis').value=v.bis||'';
-  document.getElementById('vertName').value=v.name||'';
-  document.getElementById('vertFach').value=v.fach||'';
-  document.getElementById('vertAdresse').value=v.adresse||'';
-  document.getElementById('vertTel').value=v.tel||'';
-  document.getElementById('vertEmail').value=v.email||'';
+  document.getElementById('vertName').value=(v.extName!==undefined?v.extName:v.name)||'';
+  document.getElementById('vertFach').value=(v.extFach!==undefined?v.extFach:v.fach)||'';
+  document.getElementById('vertAdresse').value=(v.extAdresse!==undefined?v.extAdresse:v.adresse)||'';
+  document.getElementById('vertTel').value=(v.extTel!==undefined?v.extTel:v.tel)||'';
+  document.getElementById('vertEmail').value=(v.extEmail!==undefined?v.extEmail:v.email)||'';
+  vertInternalSelected=v.internalUsername||null;
+  setVertretungMode(v.mode==='internal'?'internal':'external');
   document.getElementById('vertStatusPill').style.display=v.von?'inline-block':'none';
   document.getElementById('vertPatientCount').textContent=patientsForCurrentDoctor().length;
   document.getElementById('vertSentCount').textContent=(v.sentTo||[]).length;
@@ -4984,7 +5066,9 @@ function saveVertretung(){
   const me=currentDoctorUsername()||'dr.ahmed';
   const form=readVertretungForm();
   if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
-  if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
+  if(form.mode==='internal'){
+    if(!form.internalUsername){ showToast('Bitte einen Kollegen/eine Kollegin auswählen','error'); return; }
+  } else if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
   const all=loadVertretungAll();
   const existing=all[me]||{};
   all[me]=Object.assign({},existing,form);
@@ -4996,11 +5080,15 @@ function sendVertretungBroadcast(){
   const me=currentDoctorUsername()||'dr.ahmed';
   const form=readVertretungForm();
   if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
-  if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
+  if(form.mode==='internal'){
+    if(!form.internalUsername){ showToast('Bitte einen Kollegen/eine Kollegin auswählen','error'); return; }
+  } else if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
   const myName=(currentStaffSession()&&currentStaffSession().name)||document.getElementById('setArztName')?.value||'Ihr Arzt/Ihre Ärztin';
   const vonFmt=new Date(form.von+'T00:00:00').toLocaleDateString('de-AT');
   const bisFmt=new Date(form.bis+'T00:00:00').toLocaleDateString('de-AT');
-  const contactParts=[form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
+  const contactParts=form.mode==='internal'
+    ? [form.fach,'in dieser Ordination'].filter(Boolean).join(' · ')
+    : [form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
   const text=`ℹ Wichtiger Hinweis: ${myName} ist von ${vonFmt} bis ${bisFmt} abwesend. In dieser Zeit vertritt Sie: ${form.name}${contactParts?' ('+contactParts+')':''}.`;
   const patients=patientsForCurrentDoctor();
   const now=new Date();
