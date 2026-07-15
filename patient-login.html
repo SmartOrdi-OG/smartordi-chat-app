@@ -348,7 +348,7 @@ function doLogin(){
   // screen sits open, so a stale in-memory copy could show the wrong status.
   Object.assign(PATIENTS, loadPatients());
 
-  setTimeout(()=>{
+  setTimeout(async ()=>{
     const acc=PATIENTS[u];
     if(!acc||acc.pw!==p){
       btn.classList.remove('loading');
@@ -358,14 +358,27 @@ function doLogin(){
       document.getElementById('password').value='';
       return;
     }
+
+    // Self-registered account still waiting on (or turned down by) the
+    // Ordination's review -- see submitJoinRequest()/secretary.html's
+    // Beitrittsanfragen queue. The Ordination reviews this from its own
+    // (staff) device, never the patient's, so re-checking localStorage
+    // above isn't enough -- ask Supabase for the real current status
+    // before trusting a possibly-stale local 'pending'/'rejected' flag.
+    if(acc.joinStatus==='pending'||acc.joinStatus==='rejected'){
+      const {data,error}=await sb.rpc('check_join_request_status',{p_username:u});
+      if(!error&&data&&data.length){
+        acc.joinStatus=data[0].status;
+        acc.joinNote=data[0].note||'';
+        savePatients();
+      }
+    }
+
     currentUser = {username:u, ...acc};
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display='block';
     document.getElementById('spinner').style.display='none';
 
-    // Self-registered account still waiting on (or turned down by) the
-    // Ordination's review -- see submitJoinRequest()/secretary.html's
-    // Beitrittsanfragen queue. Never reaches patient.html until approved.
     if(acc.joinStatus==='pending'||acc.joinStatus==='rejected'){
       showRequestStatusScreen(acc);
       return;
@@ -440,7 +453,7 @@ function resubmitJoinRequest(){
   document.getElementById('screen-request').classList.add('active');
 }
 
-function submitJoinRequest(){
+async function submitJoinRequest(){
   const vorname=document.getElementById('reqVorname').value.trim();
   const nachname=document.getElementById('reqNachname').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
@@ -474,9 +487,28 @@ function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
+  const fullName=vorname+' '+nachname;
+  const submitBtn=document.querySelector('#screen-request .btn-main');
+  if(submitBtn) submitBtn.disabled=true;
+  // The Ordination reviews this request from its own (staff) device, which
+  // is never the same browser as the patient's -- a plain localStorage
+  // write here would never reach them, so it has to go through Supabase
+  // (patients aren't Supabase-authenticated, so this insert runs as the
+  // anon role; see the RLS policy that only grants anon INSERT, not
+  // SELECT/UPDATE, on this table).
+  const {error}=await sb.from('patient_join_requests').insert({
+    username, vorname, nachname, full_name:fullName, adresse, svnr,
+  });
+  if(submitBtn) submitBtn.disabled=false;
+  if(error){
+    errorText.textContent=tr('request.err.submitFailed')+' ('+error.message+')';
+    errorEl.classList.add('show');
+    return;
+  }
+
   const existing=resubmitUsername?PATIENTS[resubmitUsername]:null;
   PATIENTS[username]=Object.assign({},existing,{
-    pw, name:vorname, fullName:vorname+' '+nachname,
+    pw, name:vorname, fullName,
     adresse, svnr, fach:(existing&&existing.fach)||'Allgemeinmedizin',
     firstLogin:false, joinStatus:'pending', joinSubmittedAt:new Date().toISOString(), joinNote:'',
     messages:(existing&&existing.messages)||[],

@@ -238,7 +238,7 @@ const I18N={
     'request.status.back':'Zurück zur Anmeldung',
     'request.err.missing':'Bitte füllen Sie alle Felder aus.',
     'request.err.agb':'Bitte akzeptieren Sie die AGB und Datenschutzerklärung.',
-    'request.err.usernameTaken':'Dieser Benutzername ist bereits vergeben.',
+    'request.err.usernameTaken':'Dieser Benutzername ist bereits vergeben.','request.err.submitFailed':'Anfrage konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
   },
   en:{
     'nav.chat':'Chat','nav.termine':'Appointments','nav.dokumente':'Documents','nav.profil':'Profile',
@@ -458,7 +458,7 @@ const I18N={
     'request.status.back':'Back to login',
     'request.err.missing':'Please fill in all fields.',
     'request.err.agb':'Please accept the Terms and Privacy Policy.',
-    'request.err.usernameTaken':'This username is already taken.',
+    'request.err.usernameTaken':'This username is already taken.','request.err.submitFailed':'Could not send your request. Please try again.',
   },
   ar:{
     'nav.chat':'محادثة','nav.termine':'المواعيد','nav.dokumente':'المستندات','nav.profil':'الملف الشخصي',
@@ -678,7 +678,7 @@ const I18N={
     'request.status.back':'العودة لتسجيل الدخول',
     'request.err.missing':'يرجى تعبئة جميع الحقول.',
     'request.err.agb':'يرجى الموافقة على الشروط وسياسة الخصوصية.',
-    'request.err.usernameTaken':'اسم المستخدم هذا مستخدم مسبقاً.',
+    'request.err.usernameTaken':'اسم المستخدم هذا مستخدم مسبقاً.','request.err.submitFailed':'تعذر إرسال الطلب. يرجى المحاولة مرة أخرى.',
   },
   tr:{
     'nav.chat':'Sohbet','nav.termine':'Randevular','nav.dokumente':'Belgeler','nav.profil':'Profil',
@@ -898,7 +898,7 @@ const I18N={
     'request.status.back':'Girişe dön',
     'request.err.missing':'Lütfen tüm alanları doldurun.',
     'request.err.agb':'Lütfen Kullanım Şartları ve Gizlilik Politikasını kabul edin.',
-    'request.err.usernameTaken':'Bu kullanıcı adı zaten alınmış.',
+    'request.err.usernameTaken':'Bu kullanıcı adı zaten alınmış.','request.err.submitFailed':'Talep gönderilemedi. Lütfen tekrar deneyin.',
   },
   bs:{
     'nav.chat':'Chat','nav.termine':'Termini','nav.dokumente':'Dokumenti','nav.profil':'Profil',
@@ -1118,7 +1118,7 @@ const I18N={
     'request.status.back':'Nazad na prijavu',
     'request.err.missing':'Molimo popunite sva polja.',
     'request.err.agb':'Molimo prihvatite Uslove korištenja i Politiku privatnosti.',
-    'request.err.usernameTaken':'Ovo korisničko ime je već zauzeto.',
+    'request.err.usernameTaken':'Ovo korisničko ime je već zauzeto.','request.err.submitFailed':'Zahtjev nije poslan. Pokušajte ponovo.',
   },
 };
 
