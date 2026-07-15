@@ -2118,6 +2118,8 @@ body.windows-mode .kartei-header{display:none;}
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Adresse der Ordination</label>
           <input type="text" id="setAdresse" value="Steingasse 6A, 4020 Linz" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#1e40af'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({adresse:this.value})">
+          <button type="button" onclick="sendAddressChangeBroadcast()" style="margin-top:8px;padding:7px 12px;background:#f1f5f9;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;color:#1e40af;cursor:pointer;">📍 Patient/innen über neue Adresse informieren</button>
+          <div id="addressBroadcastNote" style="font-size:11px;color:#94a3b8;margin-top:6px;"></div>
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Telefon</label>
@@ -5013,6 +5015,32 @@ function sendVertretungBroadcast(){
   renderVertretungView();
   renderPatientList();
   showToast(sentTo.length?'✓ '+sentTo.length+' Patient/in(nen) benachrichtigt':'Keine Patient/innen mit echtem Konto gefunden','success');
+}
+
+// Address changes are a practice-wide setting (see savePracticeSettings()),
+// not tied to one doctor, so unlike Vertretung this broadcasts to every
+// real patient at the practice -- infrequent patients (e.g. once a year)
+// especially have no other way to learn the Ordination moved.
+function sendAddressChangeBroadcast(){
+  const adresse=(document.getElementById('setAdresse')?.value||'').trim();
+  if(!adresse){ showToast('Bitte zuerst eine Adresse eingeben','error'); return; }
+  const text='📍 Wichtiger Hinweis: Unsere Ordination ist umgezogen. Die neue Adresse lautet: '+adresse+'.';
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+' ✓';
+  const sentTo=[];
+  let accounts;
+  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  Object.keys(accounts).forEach(function(u){
+    const a=accounts[u];
+    if(!a||!a.fullName||a.role==='guardian'||a.joinStatus==='pending'||a.joinStatus==='rejected') return;
+    if(appendRealMessage(a.fullName,{dir:'out',type:'text',text,time})) sentTo.push(a.fullName);
+  });
+  renderPatientList();
+  const noteEl=document.getElementById('addressBroadcastNote');
+  if(noteEl) noteEl.textContent=sentTo.length
+    ?'Zuletzt gesendet an '+sentTo.length+' Patient/in(nen) · '+now.toLocaleString('de-AT')
+    :'Keine Patient/innen mit echtem Konto gefunden.';
+  showToast(sentTo.length?'✓ '+sentTo.length+' Patient/in(nen) über neue Adresse informiert':'Keine Patient/innen mit echtem Konto gefunden','success');
 }
 
 
