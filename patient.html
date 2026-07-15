@@ -517,15 +517,15 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <div class="view active" id="view-chat">
     <div class="chat-header">
       <div class="chat-header-avatar">
-        S
+        <span id="chatHeaderAvatar">S</span>
         <div class="online-dot"></div>
       </div>
       <div class="chat-header-info">
-        <div class="chat-doctor-name">Dr. Sarah Ahmed</div>
-        <div class="chat-doctor-sub">● Online · Allgemeinmedizin · Linz</div>
+        <div class="chat-doctor-name" id="chatDoctorName">Dr. Sarah Ahmed</div>
+        <div class="chat-doctor-sub" id="chatDoctorSub">● Online · Allgemeinmedizin · Linz</div>
       </div>
       <div class="chat-header-actions">
-        <button class="chat-action info" onclick="showToast('ℹ Ordination: Steingasse 6A, 4020 Linz')">ℹ</button>
+        <button class="chat-action info" onclick="showToast('ℹ Ordination: '+(window.__practiceOrdinationAddress||'Steingasse 6A, 4020 Linz'))">ℹ</button>
         <button class="chat-action call" onclick="showToast('Anruf wird gestartet...')" title="Anrufen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
       </div>
     </div>
@@ -548,7 +548,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <div class="view" id="view-termine">
     <div class="view-header">
       <div class="view-title" data-i18n="termine.title">Meine Termine</div>
-      <div class="view-sub" data-i18n="termine.sub">Ordination Dr. Sarah Ahmed · Linz</div>
+      <div class="view-sub" id="termineSub" data-i18n="termine.sub">Ordination Dr. Sarah Ahmed · Linz</div>
     </div>
 
     <div class="termine-content">
@@ -1126,9 +1126,37 @@ function initPatientData(){
   populateArztSelect();
   renderPatientTermine();
   renderProfilArztRows();
+  updatePracticeIdentityUI();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
   staffRosterReady.then(renderPatientTermine);
+}
+
+// Chat header, Termine subtitle and the Ordination-info toast used to show
+// a hardcoded "Dr. Sarah Ahmed" / "Steingasse 6A" demo placeholder no matter
+// which real practice/doctor the patient actually belongs to -- fill them
+// in from the real admin doctor + practice_settings, same lookup already
+// used by secretary.html's practiceAdminName() and patient-login.html's
+// join-request notice.
+async function updatePracticeIdentityUI(){
+  await staffRosterReady;
+  await practiceSettingsReady;
+  const accounts=loadStaffAccounts();
+  const admin=Object.values(accounts).find(a=>a.role==='arzt'&&a.isAdmin);
+  const practiceInfo=getPracticeSettings();
+  const adminName=admin?admin.fullName:'Dr. Sarah Ahmed';
+  const adminFach=(admin&&admin.fach)||'Allgemeinmedizin';
+  const adresse=(practiceInfo&&practiceInfo.adresse)||'Steingasse 6A, 4020 Linz';
+
+  const avatarEl=document.getElementById('chatHeaderAvatar');
+  if(avatarEl) avatarEl.textContent=(adminName.replace(/^dr\.?\s*/i,'')[0]||adminName[0]||'?').toUpperCase();
+  const nameEl=document.getElementById('chatDoctorName');
+  if(nameEl) nameEl.textContent=adminName;
+  const subEl=document.getElementById('chatDoctorSub');
+  if(subEl) subEl.textContent='● Online · '+adminFach+' · Linz';
+  const termineSubEl=document.getElementById('termineSub');
+  if(termineSubEl) termineSubEl.textContent='Ordination '+adminName+' · Linz';
+  window.__practiceOrdinationAddress=adresse;
 }
 
 async function renderProfilArztRows(){
