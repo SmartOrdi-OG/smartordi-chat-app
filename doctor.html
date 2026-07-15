@@ -598,6 +598,12 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 /* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
 body.windows-mode .app-wrapper.active{position:relative;}
 body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
+/* Praxis/Kartei-Chat has 3 fixed-width columns (sidebar 300px + patient
+   panel 260px) plus the chat area's own unshrinkable minimum content width
+   (~460px, from the header's name/status/action buttons) -- the generic
+   760px window width is ~260px too narrow for that, silently hiding the
+   whole Patientendaten panel behind an easy-to-miss horizontal scrollbar. */
+body.windows-mode #view-clinic{width:1040px;max-width:calc(100vw - 40px);}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
 body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}

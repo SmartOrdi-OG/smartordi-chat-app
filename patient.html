@@ -34,6 +34,7 @@
   --purple:#7c3aed;
 }
 
+html{overflow-x:hidden;}
 body{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
   background:var(--bg);
@@ -65,6 +66,13 @@ body{
 .topbar-logout:hover{background:#e2e8f0;color:#0f172a;}
 @media(max-width:400px){
   .topbar-username{display:none;}
+  /* The Arabic "Abmelden" translation ("تسجيل الخروج") is noticeably wider
+     than the other languages' -- combined with the wordmark text, avatar
+     and language switcher it no longer fit a narrow phone screen even with
+     the username already hidden above, forcing the whole page into
+     horizontal overflow. The wordmark is just branding (the icon alone is
+     enough once you're already inside the app), so drop it first. */
+  .topbar-name{display:none;}
 }
 
 /* ── VIEWS ── */
