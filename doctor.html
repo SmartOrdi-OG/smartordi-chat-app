@@ -2785,6 +2785,36 @@ function syncWindowsModeState(){
 window.addEventListener('resize',syncWindowsModeState);
 document.addEventListener('DOMContentLoaded',syncWindowsModeState);
 
+// Plain localStorage has no live sync between tabs -- a Termin the
+// secretary confirms/moves/cancels, or a chat message she sends, only ever
+// showed up here after a manual reload of this tab. The 'storage' event
+// fires automatically in every OTHER same-origin tab whenever another tab
+// writes to localStorage, so use it to keep the Dashboard/Tagesliste and
+// Praxis chat list live without needing a real backend for this.
+window.addEventListener('storage',function(e){
+  if(e.key==='smartordi_termine'){
+    renderDashTermine();
+    const allModal=document.getElementById('allTermineModal');
+    if(allModal && allModal.classList.contains('show')) renderAlleTermine();
+  }
+  if(e.key==='smartordi_patient_accounts'){
+    renderPatientList();
+    updateChatUnreadBadge();
+    const openName=document.getElementById('chat-name')?.textContent;
+    if(openName){
+      // getOrHydrateThread() caches a real patient's thread in MESSAGES[name]
+      // after the first read, same as a demo patient's seeded conversation --
+      // drop the cached copy (real patients only, demo ones have no other
+      // source) so renderMessages() re-hydrates from the storage this event
+      // just told us changed, instead of showing the stale cached one.
+      if(!DEMO_CHAT_LIST.some(function(p){return p.name===openName;})) delete MESSAGES[openName];
+      const openColor=document.getElementById('chat-avatar')?.style.background;
+      renderMessages(openName,openColor);
+      updatePatientPanel(openName);
+    }
+  }
+});
+
 // ══ PRAXIS CHAT LIST (data-driven, not just the 4 demo patients) ══
 // Previously the sidebar was 4 hardcoded .patient-item divs and #messages was
 // one hardcoded thread that never changed when you clicked a different
