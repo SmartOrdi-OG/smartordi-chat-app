@@ -911,6 +911,20 @@ function syncWindowsModeState(){
 window.addEventListener('resize',syncWindowsModeState);
 document.addEventListener('DOMContentLoaded',syncWindowsModeState);
 
+// Plain localStorage has no live sync between tabs -- a confirmation/move/
+// cancel chat message the practice sends only ever showed up here after a
+// manual reload. The 'storage' event fires automatically in every OTHER
+// same-origin tab whenever another tab writes to localStorage, so use it
+// to keep the chat and Termine list live without needing a real backend.
+window.addEventListener('storage',function(e){
+  if(e.key==='smartordi_patient_accounts'){
+    renderPatientMessages();
+  }
+  if(e.key==='smartordi_termine'){
+    renderPatientTermine();
+  }
+});
+
 function switchView(v){
   // Remove badge on chat open (works in both mobile and desktop nav)
   if(v==='chat'){
