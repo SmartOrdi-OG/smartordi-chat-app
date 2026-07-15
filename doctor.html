@@ -1899,107 +1899,46 @@ body.windows-mode .kartei-header{display:none;}
   <div class="vertretung-layout">
     <div class="vertretung-main scrollbar">
       <div class="vertretung-title">Vertretung & Weiterleitung</div>
-      <div class="vertretung-subtitle">Verwalten Sie Ihre Abwesenheit und leiten Sie Patienten sicher weiter · Wien, Österreich </div>
+      <div class="vertretung-subtitle">Tragen Sie Ihre Abwesenheit ein und informieren Sie Ihre Patient/innen über die Vertretung</div>
 
-      <!-- Active vacation -->
+      <!-- Vacation / substitute form -->
       <div class="vacation-card">
         <div class="vacation-header">
-          <div class="vacation-title">Geplante Abwesenheit</div>
-          <span class="status-pill status-planned">Geplant</span>
+          <div class="vacation-title">Abwesenheit</div>
+          <span class="status-pill status-planned" id="vertStatusPill" style="display:none;">Gespeichert</span>
         </div>
         <div class="vacation-dates">
-          <div class="date-box"><div class="date-label">Von</div><div class="date-value">03.07.2026</div></div>
+          <div class="date-box"><div class="date-label">Von</div><input type="date" class="form-input" id="vertVon" style="border:none;background:transparent;font-size:14px;font-weight:700;padding:0;width:100%;"></div>
           <div class="date-arrow">→</div>
-          <div class="date-box"><div class="date-label">Bis</div><div class="date-value">17.07.2026</div></div>
-          <div class="date-box"><div class="date-label">Dauer</div><div class="date-value">14 Tage</div></div>
+          <div class="date-box"><div class="date-label">Bis</div><input type="date" class="form-input" id="vertBis" style="border:none;background:transparent;font-size:14px;font-weight:700;padding:0;width:100%;"></div>
         </div>
         <div style="margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt:</div>
-          <div class="vertretung-doctor">
-            <div class="doc-avatar" style="background:#8b5cf6;">KW</div>
-            <div class="doc-info">
-              <div class="doc-name">Dr. Klaus Weber</div>
-              <div class="doc-details">Allgemeinmedizin · 1020 Wien · +43 1 234 5678</div>
-            </div>
-            <div class="doc-status">✓ Bestätigt</div>
+          <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt/-ärztin (auch außerhalb der Ordination):</div>
+          <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="vertName" placeholder="z.B. Dr. Klaus Weber"></div>
+          <div class="form-group"><label class="form-label">Fachrichtung</label><input class="form-input" id="vertFach" placeholder="z.B. Allgemeinmedizin"></div>
+          <div class="form-group"><label class="form-label">Adresse</label><input class="form-input" id="vertAdresse" placeholder="z.B. Hauptstraße 1, 4020 Linz"></div>
+          <div class="form-row" style="display:flex;gap:10px;">
+            <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="vertTel" placeholder="+43 ..."></div>
+            <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="vertEmail" placeholder="..."></div>
           </div>
         </div>
-        <div class="transfer-stats">
-          <div class="transfer-stat"><div class="transfer-stat-value">34</div><div class="transfer-stat-label">Patienten gesamt</div></div>
-          <div class="transfer-stat"><div class="transfer-stat-value" style="color:#22c55e;">28</div><div class="transfer-stat-label">Weitergeleitet</div></div>
-          <div class="transfer-stat"><div class="transfer-stat-value" style="color:#f59e0b;">6</div><div class="transfer-stat-label">Ausstehend</div></div>
+        <div class="transfer-stats" style="grid-template-columns:repeat(2,1fr);">
+          <div class="transfer-stat"><div class="transfer-stat-value" id="vertPatientCount">0</div><div class="transfer-stat-label">Patient/innen gefunden</div></div>
+          <div class="transfer-stat"><div class="transfer-stat-value" style="color:#22c55e;" id="vertSentCount">0</div><div class="transfer-stat-label">Benachrichtigt</div></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn-primary" onclick="alert('Alle Patienten werden automatisch benachrichtigt!')">✓ Alle weiterleiten</button>
-          <button class="btn-secondary">✏ Bearbeiten</button>
+          <button class="btn-secondary" onclick="saveVertretung()">💾 Speichern</button>
+          <button class="btn-primary" onclick="sendVertretungBroadcast()">✓ Alle Patient/innen benachrichtigen</button>
         </div>
+        <div id="vertLastSentNote" style="font-size:12px;color:#64748b;margin-top:10px;"></div>
       </div>
 
-      <!-- Patient transfer list -->
+      <!-- Real recipients, filled in after a broadcast actually goes out -->
       <div class="patient-transfer-list">
         <div class="list-header">
-          <div class="list-title">Patientenübergabe</div>
-          <button class="list-action" onclick="showTransferModal()">+ Patient hinzufügen</button>
+          <div class="list-title">Benachrichtigte Patient/innen</div>
         </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#0d9488;width:38px;height:38px;font-size:14px;">T</div>
-          <div class="tp-info"><div class="tp-name">Thomas Müller</div><div class="tp-details">ÖGK · Diabetes, Bluthochdruck · Letzte Konsultation: 12.05.2026</div></div>
-          <span class="tp-status sent">✓ Weitergeleitet</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#8b5cf6;width:38px;height:38px;font-size:14px;">M</div>
-          <div class="tp-info"><div class="tp-name">Maria Schreiber</div><div class="tp-details">BVAEB · Schilddrüse · Termin: 08.07.2026</div></div>
-          <span class="tp-status accepted">✓ Angenommen</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#f59e0b;width:38px;height:38px;font-size:14px;">H</div>
-          <div class="tp-info"><div class="tp-name">Hans Bauer</div><div class="tp-details">SVS · Rückenschmerzen · Nächster Termin offen</div></div>
-          <span class="tp-status pending">Ausstehend</span>
-        </div>
-        <div class="transfer-patient-item">
-          <div class="avatar" style="background:#ec4899;width:38px;height:38px;font-size:14px;">A</div>
-          <div class="tp-info"><div class="tp-name">Anna Weber</div><div class="tp-details">ÖGK · Routine · Termin: 15.07.2026</div></div>
-          <span class="tp-status sent">✓ Weitergeleitet</span>
-        </div>
-      </div>
-
-      <!-- Network -->
-      <div class="network-map">
-        <div class="network-title">Smartordi-Netzwerk Wien <span style="font-size:12px;color:#64748b;font-weight:400;">— Vertrauensärzte in Ihrer Nähe</span></div>
-        <div class="network-grid">
-          <div class="clinic-node current">
-            <div class="clinic-node-badge">Sie</div>
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Sarah Ahmed</div>
-            <div class="clinic-node-detail">1010 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node partner" onclick="alert('Dr. Klaus Weber — Vertretungsarzt bestätigt!')">
-            <div class="clinic-node-badge" style="background:#22c55e;">Vertretung</div>
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Klaus Weber</div>
-            <div class="clinic-node-detail">1020 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Petra Huber — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Petra Huber</div>
-            <div class="clinic-node-detail">1030 Wien · Innere Med.</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Franz Gruber — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Franz Gruber</div>
-            <div class="clinic-node-detail">1040 Wien · Allgemein</div>
-          </div>
-          <div class="clinic-node" onclick="alert('Dr. Julia Maier — Verbindung anfragen?')">
-            <div class="clinic-node-icon"></div>
-            <div class="clinic-node-name">Dr. Julia Maier</div>
-            <div class="clinic-node-detail">1010 Wien · Kardiologie</div>
-          </div>
-          <div class="clinic-node" style="border-style:dashed;cursor:pointer;" onclick="openEinladenModal()">
-            <div class="clinic-node-icon">➕</div>
-            <div class="clinic-node-name">Ordination einladen</div>
-            <div class="clinic-node-detail">Netzwerk erweitern</div>
-          </div>
-        </div>
+        <div id="vertPatientList"></div>
       </div>
     </div>
   </div>
@@ -4997,7 +4936,112 @@ document.addEventListener('smartordi-view-change', function(e){
     renderYearPills();
     filterVisits();
   }
+  if(e.detail === 'vertretung') renderVertretungView();
 });
+
+// ══ VERTRETUNG (real absence + substitute-doctor notice, replacing the old
+// fully-static "Dr. Klaus Weber" demo and fictional inter-practice network
+// map) ══
+const VERTRETUNG_KEY='smartordi_vertretung';
+function loadVertretungAll(){
+  try{ return JSON.parse(localStorage.getItem(VERTRETUNG_KEY))||{}; }catch(e){ return {}; }
+}
+function loadVertretung(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  return loadVertretungAll()[me]||null;
+}
+function saveVertretungAll(all){ localStorage.setItem(VERTRETUNG_KEY, JSON.stringify(all)); }
+
+// Every patient who's ever had a Termin with this doctor -- "all of this
+// doctor's patients" the way the user described it (not just ones with an
+// appointment during the absence window specifically).
+function patientsForCurrentDoctor(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  const names=new Set(loadTermine().filter(t=>t.arztUsername===me).map(t=>t.patient));
+  return [...names];
+}
+// Same "find the real account and append, without clobbering a thread that
+// was never hydrated into the in-memory MESSAGES cache this session" fix
+// used for sendTerminConfirmationMessage-style features elsewhere.
+function appendRealMessage(name,msg){
+  const found=findPatientAccountByFullName(name);
+  if(!found) return false;
+  const acc=found.accounts[found.username];
+  if(!acc.messages) acc.messages=[];
+  acc.messages.push(msg);
+  localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
+  if(MESSAGES[name]) MESSAGES[name].items.push(msg);
+  return true;
+}
+function readVertretungForm(){
+  return {
+    von:document.getElementById('vertVon').value,
+    bis:document.getElementById('vertBis').value,
+    name:document.getElementById('vertName').value.trim(),
+    fach:document.getElementById('vertFach').value.trim(),
+    adresse:document.getElementById('vertAdresse').value.trim(),
+    tel:document.getElementById('vertTel').value.trim(),
+    email:document.getElementById('vertEmail').value.trim(),
+  };
+}
+function renderVertretungView(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  const v=loadVertretung()||{};
+  document.getElementById('vertVon').value=v.von||'';
+  document.getElementById('vertBis').value=v.bis||'';
+  document.getElementById('vertName').value=v.name||'';
+  document.getElementById('vertFach').value=v.fach||'';
+  document.getElementById('vertAdresse').value=v.adresse||'';
+  document.getElementById('vertTel').value=v.tel||'';
+  document.getElementById('vertEmail').value=v.email||'';
+  document.getElementById('vertStatusPill').style.display=v.von?'inline-block':'none';
+  document.getElementById('vertPatientCount').textContent=patientsForCurrentDoctor().length;
+  document.getElementById('vertSentCount').textContent=(v.sentTo||[]).length;
+  const noteEl=document.getElementById('vertLastSentNote');
+  noteEl.textContent=v.sentAt
+    ? 'Zuletzt an alle Patient/innen gesendet: '+new Date(v.sentAt).toLocaleString('de-AT')
+    : 'Noch nicht an die Patient/innen gesendet.';
+  const listRoot=document.getElementById('vertPatientList');
+  listRoot.innerHTML=(v.sentTo&&v.sentTo.length)
+    ? v.sentTo.map(name=>`<div class="transfer-patient-item"><div class="avatar" style="background:${colorForName(name)};width:38px;height:38px;font-size:14px;">${name[0]}</div><div class="tp-info"><div class="tp-name">${name}</div></div><span class="tp-status sent">✓ Benachrichtigt</span></div>`).join('')
+    : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Noch keine Benachrichtigungen gesendet</div>';
+}
+function saveVertretung(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  const form=readVertretungForm();
+  if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
+  if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
+  const all=loadVertretungAll();
+  const existing=all[me]||{};
+  all[me]=Object.assign({},existing,form);
+  saveVertretungAll(all);
+  renderVertretungView();
+  showToast('✓ Vertretung gespeichert','success');
+}
+function sendVertretungBroadcast(){
+  const me=currentDoctorUsername()||'dr.ahmed';
+  const form=readVertretungForm();
+  if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
+  if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
+  const myName=(currentStaffSession()&&currentStaffSession().name)||document.getElementById('setArztName')?.value||'Ihr Arzt/Ihre Ärztin';
+  const vonFmt=new Date(form.von+'T00:00:00').toLocaleDateString('de-AT');
+  const bisFmt=new Date(form.bis+'T00:00:00').toLocaleDateString('de-AT');
+  const contactParts=[form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
+  const text=`ℹ Wichtiger Hinweis: ${myName} ist von ${vonFmt} bis ${bisFmt} abwesend. In dieser Zeit vertritt Sie: ${form.name}${contactParts?' ('+contactParts+')':''}.`;
+  const patients=patientsForCurrentDoctor();
+  const now=new Date();
+  const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  const sentTo=[];
+  patients.forEach(function(name){
+    if(appendRealMessage(name,{dir:'out',type:'text',text,time})) sentTo.push(name);
+  });
+  const all=loadVertretungAll();
+  all[me]=Object.assign({},all[me],form,{sentAt:now.toISOString(),sentTo});
+  saveVertretungAll(all);
+  renderVertretungView();
+  renderPatientList();
+  showToast(sentTo.length?'✓ '+sentTo.length+' Patient/in(nen) benachrichtigt':'Keine Patient/innen mit echtem Konto gefunden','success');
+}
 
 
 function showCall(){
