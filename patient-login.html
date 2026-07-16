@@ -14,6 +14,7 @@
 <script src="vendor/i18n-patient.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
+<script src="vendor/patient-portal-data.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
@@ -332,7 +333,18 @@ function checkStrength(pw){
   label.textContent=c.text;label.style.color=c.color;
 }
 
-function doLogin(){
+function resetLoginBtn(){
+  const btn=document.getElementById('loginBtn');
+  btn.classList.remove('loading');
+  document.getElementById('btnText').style.display='block';
+  document.getElementById('spinner').style.display='none';
+}
+function showLoginError(){
+  resetLoginBtn();
+  document.getElementById('errorMsg').classList.add('show');
+  document.getElementById('password').value='';
+}
+async function doLogin(){
   const u=document.getElementById('username').value.trim().toLowerCase();
   const p=document.getElementById('password').value;
   if(!u||!p)return;
@@ -349,13 +361,47 @@ function doLogin(){
   Object.assign(PATIENTS, loadPatients());
 
   setTimeout(async ()=>{
-    const acc=PATIENTS[u];
-    if(!acc||acc.pw!==p){
-      btn.classList.remove('loading');
-      document.getElementById('btnText').style.display='block';
-      document.getElementById('spinner').style.display='none';
-      document.getElementById('errorMsg').classList.add('show');
-      document.getElementById('password').value='';
+    let acc=null;
+    // Clear any token left over from a previous session on this device
+    // (e.g. logging out of a real account and into the demo/a guardian
+    // one) -- otherwise a stale token would make patient.html think this
+    // new, local-only session is still the old Supabase-backed patient.
+    setPatientToken(null);
+
+    // Real patient credentials are now validated server-side (hashed
+    // password, via patient_login) -- try that first for anyone except the
+    // built-in local demo login. Guardian accounts aren't migrated yet (no
+    // Supabase patients row for them at all), so a Supabase miss falls back
+    // to the original local password check, which still covers them.
+    if(u!=='thomas.mueller'){
+      const result=await patientLogin(u,p);
+      if(result&&result.token){
+        setPatientToken(result.token);
+        const localAnamnese=(PATIENTS[u]&&PATIENTS[u].anamnese)||null;
+        acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
+             joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:localAnamnese};
+      }
+    }
+    if(!acc){
+      const local=PATIENTS[u];
+      if(local&&local.pw&&local.pw===p) acc=Object.assign({username:u},local);
+    }
+
+    if(!acc){
+      // Neither a real Supabase account nor a local (demo/guardian) one
+      // matched -- could still be a self-registered patient whose join
+      // request just hasn't been approved yet (no patients row exists
+      // until then), so check that queue before giving up with a flat
+      // "wrong password".
+      const {data:statusRows}=await sb.rpc('check_join_request_status',{p_username:u});
+      const status=statusRows&&statusRows[0];
+      if(status&&(status.status==='pending'||status.status==='rejected')){
+        resetLoginBtn();
+        currentUser={username:u, name:status.vorname||u, joinStatus:status.status, joinNote:status.note||''};
+        showRequestStatusScreen(currentUser);
+        return;
+      }
+      showLoginError();
       return;
     }
 
@@ -370,14 +416,12 @@ function doLogin(){
       if(!error&&data&&data.length){
         acc.joinStatus=data[0].status;
         acc.joinNote=data[0].note||'';
-        savePatients();
+        if(PATIENTS[u]){ PATIENTS[u].joinStatus=acc.joinStatus; PATIENTS[u].joinNote=acc.joinNote; savePatients(); }
       }
     }
 
-    currentUser = {username:u, ...acc};
-    btn.classList.remove('loading');
-    document.getElementById('btnText').style.display='block';
-    document.getElementById('spinner').style.display='none';
+    currentUser = acc;
+    resetLoginBtn();
 
     if(acc.joinStatus==='pending'||acc.joinStatus==='rejected'){
       showRequestStatusScreen(acc);
@@ -437,7 +481,10 @@ function showRequestStatusScreen(acc){
 }
 
 function resubmitJoinRequest(){
-  const acc=PATIENTS[currentUser.username];
+  // currentUser may only exist server-side (rejected join request, no local
+  // record on this device at all) -- fall back to whatever currentUser
+  // itself already carries instead of assuming a local account exists.
+  const acc=PATIENTS[currentUser.username]||currentUser||{};
   resubmitUsername=currentUser.username;
   document.getElementById('reqVorname').value=acc.name||'';
   document.getElementById('reqNachname').value=(acc.fullName||'').split(' ').slice(1).join(' ');
@@ -495,9 +542,12 @@ async function submitJoinRequest(){
   // write here would never reach them, so it has to go through Supabase
   // (patients aren't Supabase-authenticated, so this insert runs as the
   // anon role; see the RLS policy that only grants anon INSERT, not
-  // SELECT/UPDATE, on this table).
+  // SELECT/UPDATE, on this table). temp_password is hashed server-side by
+  // the same trigger the patients table uses -- the plaintext never lands
+  // in a column that persists, and this is what lets patient_login
+  // validate this patient's own chosen password once approved.
   const {error}=await sb.from('patient_join_requests').insert({
-    username, vorname, nachname, full_name:fullName, adresse, svnr,
+    username, vorname, nachname, full_name:fullName, adresse, svnr, temp_password:pw,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){
@@ -506,21 +556,17 @@ async function submitJoinRequest(){
     return;
   }
 
-  const existing=resubmitUsername?PATIENTS[resubmitUsername]:null;
-  PATIENTS[username]=Object.assign({},existing,{
-    pw, name:vorname, fullName,
-    adresse, svnr, fach:(existing&&existing.fach)||'Allgemeinmedizin',
-    firstLogin:false, joinStatus:'pending', joinSubmittedAt:new Date().toISOString(), joinNote:'',
-    messages:(existing&&existing.messages)||[],
-  });
-  savePatients();
+  // No local bookkeeping needed anymore -- doLogin() now asks Supabase
+  // directly (via check_join_request_status) whenever a username has no
+  // patients row yet, so this device doesn't need its own copy of the
+  // pending state to show the right screen later.
   resubmitUsername=null;
 
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-request-sent').classList.add('active');
 }
 
-function saveNewPw(){
+async function saveNewPw(){
   const newPw=document.getElementById('newPw').value;
   const confirmPw=document.getElementById('confirmPw').value;
   const errorEl=document.getElementById('errorMsg2');
@@ -536,21 +582,45 @@ function saveNewPw(){
     errorText.textContent=tr('changepw.err.mismatch');
     errorEl.classList.add('show');return;
   }
-  if(newPw === PATIENTS[currentUser.username].pw){
-    errorText.textContent=tr('changepw.err.sameAsOld');
-    errorEl.classList.add('show');return;
-  }
 
-  // Save new password (in real app: API call)
-  PATIENTS[currentUser.username].pw = newPw;
-  PATIENTS[currentUser.username].firstLogin = false;
-  savePatients();
+  const local=PATIENTS[currentUser.username];
+  // Only the built-in demo login and not-yet-migrated guardian accounts
+  // still have a real local password to compare against/overwrite --
+  // everything else changes its password server-side now.
+  const isLocalOnly = currentUser.username==='thomas.mueller' || (local&&local.role==='guardian') || !getPatientToken();
+
+  if(isLocalOnly){
+    if(local&&newPw===local.pw){
+      errorText.textContent=tr('changepw.err.sameAsOld');
+      errorEl.classList.add('show');return;
+    }
+    if(!PATIENTS[currentUser.username]) PATIENTS[currentUser.username]={name:currentUser.name,fullName:currentUser.fullName||currentUser.name};
+    PATIENTS[currentUser.username].pw = newPw;
+    PATIENTS[currentUser.username].firstLogin = false;
+    savePatients();
+  } else {
+    const ok=await patientChangePassword(newPw);
+    if(!ok){
+      errorText.textContent=tr('changepw.err.saveFailed');
+      errorEl.classList.add('show');return;
+    }
+    currentUser.firstLogin=false;
+    // Clear any stale local shadow password left over from the QR
+    // auto-provision step, so a future login can never fall back to an
+    // already-rotated-away local credential -- the real password only
+    // lives in Supabase from here on.
+    if(PATIENTS[currentUser.username]){
+      delete PATIENTS[currentUser.username].pw;
+      PATIENTS[currentUser.username].firstLogin=false;
+      savePatients();
+    }
+  }
 
   document.getElementById('screen-changepw').classList.remove('active');
   // A guardian account isn't itself a patient -- the mandatory Anamnese is
   // medical history for a specific patient, so it doesn't apply to them;
   // go straight in and let them pick which child to view.
-  if(PATIENTS[currentUser.username].role==='guardian'){
+  if(local&&local.role==='guardian'){
     sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
     window.location.href='patient.html';
     return;
@@ -560,7 +630,7 @@ function saveNewPw(){
 
 function showAnamneseScreen(){
   document.querySelector('.card').classList.add('wide');
-  const acc=PATIENTS[currentUser.username];
+  const acc=PATIENTS[currentUser.username]||currentUser||{};
   const fach=acc.fach||'Allgemeinmedizin';
   document.getElementById('anamnese-common-section').innerHTML=ANAMNESE_COMMON_HTML;
   const info=anamneseSpecialtyInfo(fach);
@@ -578,6 +648,12 @@ function showAnamneseScreen(){
 function submitAnamnese(){
   const root=document.getElementById('anamneseForm');
   const data=collectAnamneseData(root);
+  // Anamnese (clinical data) is still local-only -- a real patient logging
+  // in for the first time on this device may have no local record at all
+  // yet, so create a minimal one instead of assuming it already exists.
+  if(!PATIENTS[currentUser.username]){
+    PATIENTS[currentUser.username]={ name:currentUser.name, fullName:currentUser.fullName||currentUser.name, fach:currentUser.fach||'Allgemeinmedizin', messages:[] };
+  }
   PATIENTS[currentUser.username].anamnese = data;
   savePatients();
 
