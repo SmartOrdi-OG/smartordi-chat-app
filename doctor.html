@@ -2785,6 +2785,23 @@ function getOrHydrateThread(name){
   if(saved&&saved.length){ MESSAGES[name]={date:'',items:saved}; return MESSAGES[name]; }
   return null;
 }
+// A patient with a real Supabase identity (from PR4) now sends their OWN
+// messages straight to patient_messages (PR6) -- this device's local copy
+// only ever sees the doctor's/secretary's own dual-written messages, never
+// the patient's, so opening/refreshing a real patient's chat has to pull
+// the full thread from Supabase to show both directions correctly. Demo
+// patients and not-yet-migrated real accounts (no id yet) keep using
+// whatever's already cached/local via getOrHydrateThread() above.
+async function hydrateRealThreadFromSupabase(name){
+  const found=findPatientAccountByFullName(name);
+  const patientId=found&&found.accounts[found.username].id;
+  if(!patientId) return false;
+  const rows=await getMessagesForPatient(patientId);
+  MESSAGES[name]={date:'', items: rows.map(function(r){
+    return {dir:r.dir, type:r.type, text:r.text, time:(r.created_at||'').slice(11,16)};
+  })};
+  return true;
+}
 function avatarSmallHtml(color,initial){
   return `<div class="avatar" style="background:${color};width:30px;height:30px;font-size:12px;flex-shrink:0;">${initial}</div>`;
 }
@@ -3086,7 +3103,12 @@ function selectPatient(el,name,status,color,insurance){
   const demoEntry=DEMO_CHAT_LIST.find(p=>p.name===name);
   if(demoEntry) demoEntry.badge=0;
   updateChatUnreadBadge();
-  renderMessages(name,color);
+  renderMessages(name,color); // instant render from whatever's already cached/local
+  // Upgrade to the real Supabase thread a moment later (only if the doctor
+  // hasn't already switched to a different patient's chat by then).
+  hydrateRealThreadFromSupabase(name).then(function(hydrated){
+    if(hydrated && document.getElementById('chat-name')?.textContent===name) renderMessages(name,color);
+  });
   // Mobile: open chat
   mobileOpenChat(name);
   // Update Kartei
@@ -5348,6 +5370,19 @@ subscribeTermineRealtime(()=>{
   renderDashTermine();
   const allModal=document.getElementById('allTermineModal');
   if(allModal && allModal.classList.contains('show')) renderAlleTermine();
+});
+// A real patient's own messages (sent from their own device via
+// patient.html) never touch this device's localStorage at all, so the
+// only way this device learns about them live is Realtime.
+subscribeMessagesRealtime(()=>{
+  const openName=document.getElementById('chat-name')?.textContent;
+  if(openName){
+    const color=document.getElementById('chat-avatar')?.style.background;
+    hydrateRealThreadFromSupabase(openName).then(function(hydrated){
+      if(hydrated) renderMessages(openName,color);
+    });
+  }
+  renderPatientList();
 });
 </script>
 
