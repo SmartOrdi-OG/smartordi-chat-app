@@ -189,11 +189,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   display:flex;align-items:center;justify-content:center;
   font-size:16px;font-weight:700;color:white;flex-shrink:0;position:relative;
 }
-.online-dot{
-  position:absolute;bottom:1px;right:1px;
-  width:10px;height:10px;background:var(--green);
-  border-radius:50%;border:2px solid white;
-}
 .chat-header-info{flex:1;}
 .chat-doctor-name{font-size:15px;font-weight:700;color:var(--text);}
 .chat-doctor-sub{font-size:11px;color:#0E5E56;font-weight:600;margin-top:1px;}
@@ -560,11 +555,10 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="chat-header">
       <div class="chat-header-avatar">
         <span id="chatHeaderAvatar">S</span>
-        <div class="online-dot"></div>
       </div>
       <div class="chat-header-info">
         <div class="chat-doctor-name" id="chatDoctorName">Dr. Sarah Ahmed</div>
-        <div class="chat-doctor-sub" id="chatDoctorSub">● Online · Allgemeinmedizin · Linz</div>
+        <div class="chat-doctor-sub" id="chatDoctorSub">Allgemeinmedizin · Linz</div>
       </div>
       <div class="chat-header-actions">
         <button class="chat-action info" onclick="showToast('ℹ Ordination: '+(window.__practiceOrdinationAddress||'Steingasse 6A, 4020 Linz'))">ℹ</button>
@@ -1244,7 +1238,7 @@ async function updatePracticeIdentityUI(){
   const nameEl=document.getElementById('chatDoctorName');
   if(nameEl) nameEl.textContent=adminName;
   const subEl=document.getElementById('chatDoctorSub');
-  if(subEl) subEl.textContent='● Online · '+adminFach+' · Linz';
+  if(subEl) subEl.textContent=adminFach+' · Linz';
   const termineSubEl=document.getElementById('termineSub');
   if(termineSubEl) termineSubEl.textContent='Ordination '+adminName+' · Linz';
   window.__practiceOrdinationAddress=adresse;
