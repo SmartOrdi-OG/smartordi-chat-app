@@ -630,7 +630,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .clinic-sidebar{width:300px;background:#fafbfc;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
 .sidebar-header{padding:16px;border-bottom:1px solid var(--border);background:white;}
 .sidebar-title{font-size:15px;font-weight:800;color:var(--text-1);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;letter-spacing:-0.3px;}
-.online-dot{width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;margin-right:6px;box-shadow:0 0 0 3px rgba(34,197,94,0.2);}
 .search-box{position:relative;}
 .search-box input{width:100%;padding:9px 14px 9px 38px;border:1.5px solid var(--border);border-radius:22px;font-family:inherit;font-size:13px;background:#f1f5f9;color:var(--text-1);outline:none;transition:all 0.2s;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);}
 .search-box input:focus{border-color:#1e40af;background:white;box-shadow:0 0 0 3px rgba(30,64,175,0.1);}
@@ -641,7 +640,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .patient-item.active{background:#eff6ff;border-left:3px solid #1e40af;}
 .patient-item.transferred{border-left:3px solid #f59e0b;}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:white;flex-shrink:0;position:relative;}
-.avatar-status{width:10px;height:10px;border-radius:50%;border:2px solid white;position:absolute;bottom:0;right:0;}
 .patient-info{flex:1;min-width:0;}
 .patient-name{font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:3px;letter-spacing:-0.2px;}
 .patient-preview{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1197,7 +1195,6 @@ body.windows-mode .kartei-header{display:none;}
       <div>
         <div class="chat-patient-name" id="chat-name">Kein Patient ausgewählt</div>
         <div style="display:flex;gap:12px;align-items:center;">
-          <span class="chat-patient-status" id="chat-status">—</span>
           <span class="chat-patient-sub" id="chat-insurance">—</span>
         </div>
       </div>
@@ -2857,7 +2854,7 @@ function allTerminRowHtml(t,dueSet){
     <div style="display:flex;gap:6px;flex-shrink:0;">
       ${(t.reason&&t.reason.length)||t.reasonNote?`<button onclick="showVisitReason('${t.id}')" style="padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">📋 Grund</button>`:''}
       <button onclick="openKarteiForPatientAndShow('${t.patient}','${t.svnr||''}','${t.versicherung||''}','${t.dob||''}')" style="padding:6px 10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;color:#1e40af;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-      <button onclick="openChatForPatient('${t.patient}','${t.status==='bestaetigt'?'Bestätigt':'Neu'}','${colorForName(t.patient)}','${t.versicherung||''}')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
+      <button onclick="openChatForPatient('${t.patient}','${colorForName(t.patient)}','${t.versicherung||''}')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
     </div>
   </div>`;
 }
@@ -3010,7 +3007,7 @@ function patientListEntries(){
     const thread=a.messages&&a.messages.length?{items:a.messages}:null;
     const last=thread?thread.items[thread.items.length-1]:null;
     entries.push({
-      name:a.fullName,color:'#1e40af',statusDot:'#94a3b8',status:'Offline',
+      name:a.fullName,color:'#1e40af',
       versicherung:a.versicherung||'',
       preview:last?(last.type==='text'?last.text:last.type==='voice'?'🎤 Sprachnachricht':'📄 Dokument'):'Noch keine Nachrichten',
       time:'',badge:0,dynamic:!last,
@@ -3025,8 +3022,8 @@ function patientItemHtml(p,activeName){
     ?`<div class="patient-time">${p.time}</div><div class="transfer-badge">${p.transferBadge}</div>`
     :`<div class="patient-time">${p.time}</div>${p.badge?`<div class="unread-badge">${p.badge}</div>`:''}`;
   const nameEsc=p.name.replace(/'/g,"\\'");
-  return `<div class="patient-item${activeClass}${transferClass}" onclick="selectPatient(this,'${nameEsc}','${p.status}','${p.color}','${p.versicherung}')">
-    <div class="avatar" style="background:${p.color};">${p.name[0]}<div class="avatar-status" style="background:${p.statusDot};"></div></div>
+  return `<div class="patient-item${activeClass}${transferClass}" onclick="selectPatient(this,'${nameEsc}','${p.color}','${p.versicherung}')">
+    <div class="avatar" style="background:${p.color};">${p.name[0]}</div>
     <div class="patient-info"><div class="patient-name">${p.name}</div><div class="patient-preview"${p.dynamic?' style="font-style:italic;color:#94a3b8;"':''}>${p.preview}</div></div>
     <div class="patient-meta">${metaHtml}</div>
   </div>`;
@@ -3041,7 +3038,7 @@ function renderPatientList(){
   list.innerHTML=patientListEntries().map(p=>patientItemHtml(p,activeName)).join('');
 }
 
-function selectPatient(el,name,status,color,insurance){
+function selectPatient(el,name,color,insurance){
   document.querySelectorAll('.patient-item').forEach(i=>i.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('chat-name').textContent=name;
@@ -3050,9 +3047,6 @@ function selectPatient(el,name,status,color,insurance){
   const rec=findPatientRecord(name);
   document.getElementById('chat-insurance').textContent=insurance+' · SV-Nr: '+((rec&&rec.svnr&&rec.svnr!=='—')?rec.svnr:'—');
   updatePatientPanel(name);
-  const s=document.getElementById('chat-status');
-  if(status==='Online'){s.textContent='● Online';s.style.color='#22c55e';}
-  else{s.textContent=status;s.style.color='#64748b';}
   const badge=el.querySelector('.unread-badge');if(badge)badge.remove();
   // Mutate the underlying data too, not just this one DOM node -- otherwise
   // a later renderPatientList() call (e.g. from sendClinicMsg()) would
@@ -4539,11 +4533,11 @@ function openKarteiForPatientAndShow(name,svnr,versicherung,dob){
 }
 
 // Used by "Alle Termine": jumps straight to that patient's Praxis chat.
-function openChatForPatient(name,status,color,insurance){
+function openChatForPatient(name,color,insurance){
   document.getElementById('allTermineModal').classList.remove('show');
   const item=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
   if(!item) return;
-  selectPatient(item,name,status,color,insurance);
+  selectPatient(item,name,color,insurance);
   if(isDesktopWidth()){
     openWindow('clinic');
   }else{
