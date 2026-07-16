@@ -718,26 +718,26 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="profil-content">
 
       <div class="profil-header-card">
-        <div class="profil-avatar-lg" id="profilAvatar">T</div>
+        <div class="profil-avatar-lg" id="profilAvatar"></div>
         <div>
-          <div class="profil-name" id="profilName">Thomas Müller</div>
-          <div class="profil-sub" id="profilSub">Patient · ÖGK · Linz</div>
+          <div class="profil-name" id="profilName">—</div>
+          <div class="profil-sub" id="profilSub">—</div>
         </div>
       </div>
 
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.persoenlich">Persönliche Daten</div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.fullName">Vollständiger Name</span><span class="info-value" id="profilFullName">Thomas Müller</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.dob">Geburtsdatum</span><span class="info-value" id="profilDob">01.01.1985 (41 J.)</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="profilAdresse">Mozartstraße 12, 4020 Linz</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilTel">+43 660 123 456</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.email">E-Mail</span><span class="info-value" id="profilEmail">t.mueller@email.at</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.fullName">Vollständiger Name</span><span class="info-value" id="profilFullName">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.dob">Geburtsdatum</span><span class="info-value" id="profilDob">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="profilAdresse">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilTel">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.email">E-Mail</span><span class="info-value" id="profilEmail">—</span></div>
       </div>
 
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.versicherung">Versicherung</div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">ÖGK</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.svnr">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:monospace;">1234 010185</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.svnr">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:monospace;">—</span></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.dsgvo">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;" data-i18n="profil.dsgvoGranted">✓ Erteilt</span></div>
       </div>
 
@@ -1057,10 +1057,7 @@ function appendPatientMessage(msg){
 // no login session at all (e.g. browsing the site without going through
 // patient-login.html first) -- keeps the page from looking broken/blank
 // instead of silently failing.
-const FALLBACK_MESSAGES=[
-  {dir:'out',type:'text',text:'Guten Morgen, Herr Müller! Wie geht es Ihnen heute?',time:'09:10'},
-  {dir:'in',type:'text',text:'Guten Morgen Frau Doktor! Geht mir gut, danke.',time:'09:12 ✓✓'},
-];
+const FALLBACK_MESSAGES=[];
 // ══ GUARDIAN / MULTI-CHILD ACCOUNTS ══
 // A guardian logs in with their own credentials but isn't a patient
 // themselves -- their account has role:'guardian' and a list of child
