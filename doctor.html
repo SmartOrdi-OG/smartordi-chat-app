@@ -288,13 +288,25 @@
 .app-wrapper.active { display: block; overflow-x: hidden; padding-top: 116px; }
 .app-wrapper.active .gdpr-banner { display: none !important; }
 .app-wrapper.active .view.active{height:calc(100vh - 116px);}
+#appNavBar{position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
 @media(max-width:768px){.app-wrapper.active #appNavBar{display:none!important;}.app-wrapper.active{padding-top:48px;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
 @media(min-width:1024px){
-  .app-wrapper.active{overflow-x:visible;}
+  .app-wrapper.active{overflow-x:visible;padding-top:48px;padding-left:84px;}
   .vertretung-main{padding-left:32px !important;}
   .dash-grid{padding-left:32px !important;}
   .dash-header{padding-left:32px !important;}
   .dashboard{padding-left:32px !important;}
+  /* Icon nav becomes a fixed left sidebar instead of a horizontal top bar
+     (matching patient.html/secretary.html's desktop layout), so windows
+     open into the remaining space to the right rather than under a top
+     bar. #appMain (wrapping every .view + the window taskbar) is the
+     positioned ancestor for windows-mode's absolutely-positioned windows;
+     it's pinned via position:fixed with explicit insets (not :relative)
+     because it's a plain content div with no intrinsic height of its own
+     -- its children are almost all position:absolute once windows-mode
+     is on, so an auto/flow height would collapse to ~0. */
+  #appNavBar{top:48px;left:0;right:auto;bottom:0;width:84px;height:auto;flex-direction:column;border-bottom:none;border-right:1px solid #e2e8f0;padding:14px 8px;gap:6px;overflow-y:auto;}
+  body.windows-mode #appMain{position:fixed;top:48px;left:84px;right:0;bottom:0;}
 }
 .landing-page.hidden { display: none; }
 
@@ -514,7 +526,7 @@
       <button onclick="doctorLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:5px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;" title="Abmelden">Abmelden</button>
     </div>
   </div>
-  <div id="appNavBar" style="position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+  <div id="appNavBar">
     <button class="nav-tab" onclick="openWindow('clinic',this)">
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
       <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
@@ -537,6 +549,7 @@
       <span class="nav-tab-label">Einstellungen</span>
     </button>
   </div>
+  <div id="appMain">
   <div>
 <!DOCTYPE html>
 <html lang="de" dir="ltr">
@@ -597,7 +610,10 @@ body{font-family:'Inter','DM Sans',sans-serif;background:var(--bg);color:var(--t
 @supports(padding-bottom:env(safe-area-inset-bottom)){.view.active{height:calc(100vh - 116px - env(safe-area-inset-bottom));}}
 
 /* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
-body.windows-mode .app-wrapper.active{position:relative;}
+/* Positioned ancestor for the absolute .view windows below is #appMain
+   (set in the >=1024px media query above), not .app-wrapper itself --
+   #appMain is scoped to the area right of the sidebar via padding-left
+   on .app-wrapper, so windows never open underneath/behind the sidebar. */
 body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 /* Praxis/Kartei-Chat has 3 fixed-width columns (sidebar 300px + patient
    panel 260px) plus the chat area's own unshrinkable minimum content width
@@ -607,7 +623,7 @@ body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:ca
 body.windows-mode #view-clinic{width:1040px;max-width:calc(100vw - 40px);}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
-body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}
+body.windows-mode .view.win-fullscreen{position:absolute!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}
 body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
 .app-window-titlebar{display:none;flex-shrink:0;height:32px;background:linear-gradient(135deg,#eff6ff,#dbeafe);color:#1e3a8a;align-items:center;justify-content:space-between;padding:0 6px 0 14px;cursor:move;user-select:none;font-size:12px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;border-bottom:1px solid #bfdbfe;}
 body.windows-mode .view .app-window-titlebar{display:flex;}
@@ -2233,6 +2249,7 @@ body.windows-mode .kartei-header{display:none;}
     <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:4px;">Alle Daten werden lokal gespeichert · DSGVO-konform</div>
   </div>
 </div>
+  </div>
 
 <!-- CALL OVERLAY -->
 <div class="call-overlay" id="callOverlay">
