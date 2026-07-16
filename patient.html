@@ -141,13 +141,17 @@ body{
   border-radius:8px;min-width:16px;text-align:center;
 }
 
-/* ══ DESKTOP ICON-GRID NAV (>=1024px) ══ */
+/* ══ DESKTOP ICON SIDEBAR NAV (>=1024px) ══ */
 #appNavBar{display:none;}
 @media(min-width:1024px){
   .bottom-nav{display:none!important;}
-  #appNavBar{display:flex;background:white;border-bottom:1px solid #E4DFD3;padding:6px 12px;gap:2px;align-items:center;flex-shrink:0;}
+  body{display:grid;grid-template-columns:84px 1fr;grid-template-rows:56px 1fr;grid-template-areas:"topbar topbar" "nav main";}
+  .topbar{grid-area:topbar;}
+  #appNavBar{display:flex;grid-area:nav;background:white;border-right:1px solid #E4DFD3;border-bottom:none;flex-direction:column;padding:14px 8px;gap:6px;align-items:center;flex-shrink:0;overflow-y:auto;}
+  .views{grid-area:main;}
+  #winTaskbar{left:84px;}
 }
-.nav-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:64px;padding:6px 10px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;transition:all 0.18s;color:#5B6B66;background:transparent;white-space:nowrap;}
+.nav-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:64px;padding:6px 10px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;font-size:11px;font-weight:600;transition:all 0.18s;color:#5B6B66;background:transparent;white-space:nowrap;}
 .nav-tab-icon{width:30px;height:30px;border-radius:8px;background:#EDE9DE;color:#5B6B66;display:flex;align-items:center;justify-content:center;transition:all 0.18s;}
 .nav-tab:hover{background:#EAF4F1;color:#0E5E56;}
 .nav-tab:hover .nav-tab-icon{background:#DCEAE6;color:#0E5E56;}
@@ -159,7 +163,7 @@ body{
 body.windows-mode .view{position:absolute;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:#fff;border:1px solid #E4DFD3;border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;display:none;}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
-body.windows-mode .view.win-fullscreen{position:fixed!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700!important;}
+body.windows-mode .view.win-fullscreen{position:absolute!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700!important;}
 body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
 .app-window-titlebar{display:none;flex-shrink:0;height:32px;background:linear-gradient(135deg,#EAF4F1,#DCEAE6);color:#0A4A44;align-items:center;justify-content:space-between;padding:0 6px 0 14px;cursor:move;user-select:none;font-size:12px;font-weight:700;border-radius:12px 12px 0 0;border-bottom:1px solid #BFE0D9;}
 body.windows-mode .view .app-window-titlebar{display:flex;}
