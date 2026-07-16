@@ -13,6 +13,7 @@
 <script src="vendor/i18n-patient.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
+<script src="vendor/patient-portal-data.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 
@@ -1009,10 +1010,39 @@ function renderPatientMessages(){
   msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
   msgs.scrollTop=msgs.scrollHeight;
 }
+// Real (Supabase-backed) patient identity/messages/termine, refreshed via
+// vendor/patient-portal-data.js's RPCs whenever a session token exists
+// (set at login by patient-login.html's doLogin()) -- null for the
+// built-in demo login and guardian/child accounts, which aren't migrated
+// yet and keep working entirely off localStorage, as before.
+let _remoteProfile=null;
+let _remoteMessages=null;
+let _remoteTermine=null;
+async function refreshRemoteProfile(){
+  if(!getPatientToken()){ _remoteProfile=null; return; }
+  _remoteProfile=await patientGetProfile();
+}
+async function refreshRemoteMessages(){
+  if(!getPatientToken()){ _remoteMessages=null; return; }
+  _remoteMessages=await patientGetMessages();
+}
+async function refreshRemoteTermine(){
+  if(!getPatientToken()){ _remoteTermine=null; return; }
+  _remoteTermine=await patientGetTermine();
+}
 function getCurrentAccount(){
   if(!currentUsername) return null;
   const accounts=loadPatientAccounts();
-  return accounts[currentUsername]||null;
+  const local=accounts[currentUsername]||null;
+  if(getPatientToken()&&_remoteProfile){
+    return Object.assign({},local||{},{
+      fullName:_remoteProfile.fullName, name:_remoteProfile.name, fach:_remoteProfile.fach,
+      dob:_remoteProfile.dob, adresse:_remoteProfile.adresse, tel:_remoteProfile.tel,
+      email:_remoteProfile.email, versicherung:_remoteProfile.versicherung, svnr:_remoteProfile.svnr,
+      messages:_remoteMessages||[],
+    });
+  }
+  return local;
 }
 function appendPatientMessage(msg){
   if(!currentUsername) return;
@@ -1081,7 +1111,7 @@ function switchChild(){
   if(guardianAccount) showChildPicker(guardianAccount,session.username);
 }
 
-function initPatientData(){
+async function initPatientData(){
   const session=getSessionUser();
   if(!session||!session.username){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
@@ -1089,11 +1119,15 @@ function initPatientData(){
   }
   const accounts=loadPatientAccounts();
   const baseAccount=accounts[session.username];
-  if(!baseAccount){
+  // A real (Supabase-backed) patient may have no local record at all on a
+  // fresh device -- getPatientToken() (set at login) is the real proof of
+  // who they are now, so a missing local baseAccount alone isn't reason to
+  // bail out for them the way it still is for a fully local-only session.
+  if(!baseAccount&&!getPatientToken()){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
     return;
   }
-  if(baseAccount.role==='guardian'){
+  if(baseAccount&&baseAccount.role==='guardian'){
     if(!session.activeChildUsername||!accounts[session.activeChildUsername]){
       showChildPicker(baseAccount,session.username);
       return;
@@ -1101,6 +1135,11 @@ function initPatientData(){
     currentUsername=session.activeChildUsername;
   }else{
     currentUsername=session.username;
+  }
+  if(getPatientToken()){
+    await refreshRemoteProfile();
+    await refreshRemoteMessages();
+    await refreshRemoteTermine();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1183,7 +1222,7 @@ async function renderProfilArztRows(){
 // ── Chat ──
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,80)+'px';}
 
-function sendMsg(){
+async function sendMsg(){
   const inp=document.getElementById('chatInput');
   const txt=inp.value.trim();if(!txt)return;
   const msgs=document.getElementById('messages');
@@ -1194,13 +1233,14 @@ function sendMsg(){
   appendPatientMessage(outMsg);
   inp.value='';inp.style.height='auto';
   msgs.scrollTop=msgs.scrollHeight;
-  // Auto reply
-  setTimeout(()=>{
-    const inMsg={dir:'out',type:'text',text:'Danke für Ihre Nachricht! Ich melde mich bald.',time}; // dir:'out' = written by the doctor
-    msgs.insertAdjacentHTML('beforeend',msgRowHtml(inMsg));
-    msgs.scrollTop=msgs.scrollHeight;
-    appendPatientMessage(inMsg);
-  },1200);
+  // Real (Supabase-backed) patients also mirror this into patient_messages,
+  // so it actually reaches the practice's own devices -- no more fake
+  // auto-reply once a message is a real one, same reasoning as removing it
+  // from doctor.html's sendClinicMsg() in an earlier migration step.
+  if(getPatientToken()){
+    try{ await patientSendMessage(txt); await refreshRemoteMessages(); }
+    catch(err){ console.error('patientSendMessage failed',err); }
+  }
 }
 
 // ── Termine (real appointment data, shared with secretary.html/doctor.html) ──
@@ -1247,6 +1287,7 @@ function onArztChange(){
 }
 
 function myTermine(){
+  if(getPatientToken()) return _remoteTermine||[];
   const acc=getCurrentAccount();
   if(!acc) return [];
   const name=acc.fullName||acc.name;
@@ -1294,8 +1335,14 @@ function renderTimeSlots(){
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
   // Only a conflict if the SAME doctor already has an appointment then --
   // different doctors at the same practice can see different patients at
-  // the same time.
-  const takenTimes=new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt).map(t=>t.time));
+  // the same time. A real (Supabase-backed) patient can't see other
+  // patients' schedules at all (RLS blocks direct table access by design),
+  // so slots aren't pre-greyed for them -- a conflicting booking attempt
+  // is rejected server-side instead, see bookTermin(). Demo/guardian
+  // accounts keep the original local pre-check since their termine are
+  // all local anyway.
+  const takenTimes=getPatientToken() ? new Set()
+    : new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt).map(t=>t.time));
   root.innerHTML=TIME_SLOTS.map(s=>{
     const taken=takenTimes.has(s);
     const selected=selectedSlot===s;
@@ -1308,13 +1355,33 @@ function selectSlot(el,time){
   el.classList.add('selected');selectedSlot=time;
 }
 
-function bookTermin(){
+async function bookTermin(){
   if(!selectedDay){showToast(tr('termine.toast.chooseDay'));return;}
   if(!selectedArzt){showToast(tr('termine.toast.chooseArzt'));return;}
   if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
   const acc=getCurrentAccount();
   if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
+
+  if(getPatientToken()){
+    try{
+      const termin=await patientBookTermin({date:d,time:selectedSlot,endTime:addMinutesToTime(selectedSlot,20),art:'Ordination',arztUsername:selectedArzt});
+      await refreshRemoteTermine();
+      showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
+      selectedDay=null;selectedSlot=null;
+      renderCalendar();renderTimeSlots();renderPatientTermine();
+      document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
+      openSymptomModal(termin.id);
+    }catch(err){
+      console.error('patientBookTermin failed',err);
+      const isSlotTaken=err&&err.message&&err.message.indexOf('slot_taken')!==-1;
+      showToast(tr(isSlotTaken?'termine.toast.slotTaken':'termine.toast.noAccount'),'error');
+      if(isSlotTaken) renderTimeSlots();
+    }
+    return;
+  }
+
+  // Demo/guardian accounts: original fully-local booking path, unchanged.
   const list=loadTermine();
   if(list.some(t=>t.date===d&&t.time===selectedSlot&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt)){
     showToast(tr('termine.toast.slotTaken'),'error');
@@ -1446,14 +1513,24 @@ function toggleSymptom(key,el){
   else selectedSymptoms.add(key);
   el.classList.toggle('active',selectedSymptoms.has(key));
 }
-function submitSymptoms(){
-  const list=loadTermine();
-  const t=list.find(x=>x.id===symptomTerminId);
-  if(t){
-    t.reason=[...selectedSymptoms].map(k=>k.split(':')[1]);
-    t.reasonNote=document.getElementById('symptomNote').value.trim();
-    saveTermine(list);
-    renderPatientTermine();
+async function submitSymptoms(){
+  const reason=[...selectedSymptoms].map(k=>k.split(':')[1]);
+  const reasonNote=document.getElementById('symptomNote').value.trim();
+  if(getPatientToken()){
+    try{
+      await patientSetSymptoms(symptomTerminId,reason,reasonNote);
+      await refreshRemoteTermine();
+      renderPatientTermine();
+    }catch(err){ console.error('patientSetSymptoms failed',err); }
+  }else{
+    const list=loadTermine();
+    const t=list.find(x=>x.id===symptomTerminId);
+    if(t){
+      t.reason=reason;
+      t.reasonNote=reasonNote;
+      saveTermine(list);
+      renderPatientTermine();
+    }
   }
   closeSymptomModal();
   showToast(tr('symptom.toast.saved'),'success');
@@ -1470,6 +1547,7 @@ function showToast(msg,type=''){
 function logout(){
   if(confirm('Wirklich abmelden?')){
     sessionStorage.removeItem('smartordi_user');
+    setPatientToken(null);
     window.location.href='login.html';
   }
 }
@@ -1479,6 +1557,24 @@ document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwit
 initPatientLanguage();
 renderCalendar();
 initPatientData();
+
+// Real (Supabase-backed) patients have no Realtime subscription (anon has
+// no direct table access, only the RPCs above) -- poll instead, on tab
+// focus/visibility and periodically, so messages/termine another device
+// (or the practice) changed still show up without a manual reload.
+async function pollPatientData(){
+  if(!getPatientToken()) return;
+  await refreshRemoteProfile();
+  await refreshRemoteMessages();
+  await refreshRemoteTermine();
+  renderPatientMessages();
+  renderPatientTermine();
+  renderCalendar();
+  renderTimeSlots();
+}
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') pollPatientData(); });
+window.addEventListener('focus',pollPatientData);
+setInterval(pollPatientData,25000);
 
 // Re-render everything that was built from JS template strings (not caught
 // by applyI18n's static [data-i18n] walk) when the patient switches language.
