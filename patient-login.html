@@ -257,27 +257,6 @@ const PATIENT_ACCOUNTS_KEY='smartordi_patient_accounts';
 function loadPatients(){
   let accounts;
   try{ accounts=JSON.parse(localStorage.getItem(PATIENT_ACCOUNTS_KEY))||{}; }catch(e){ accounts={}; }
-  if(!accounts['thomas.mueller']){
-    // Full demo seed so patient.html (which now renders real account data
-    // instead of hardcoded content) has something realistic to show for the
-    // built-in demo login, matching what was previously just static HTML there.
-    accounts['thomas.mueller']={
-      pw:'patient2026', name:'Thomas', fullName:'Thomas Müller', firstLogin:true,
-      dob:'1985-01-01', adresse:'Mozartstraße 12, 4020 Linz', tel:'+43 660 123 456',
-      email:'t.mueller@email.at', versicherung:'ÖGK', svnr:'1234 010185', fach:'Allgemeinmedizin',
-      // dir:'in' = written by the patient, dir:'out' = written by the doctor
-      // -- same convention doctor.html uses for this shared account.messages array.
-      messages:[
-        {dir:'out',type:'text',text:'Guten Morgen, Herr Müller! Wie geht es Ihnen heute?',time:'09:10'},
-        {dir:'in',type:'text',text:'Guten Morgen Frau Doktor! Geht mir gut, danke. Wollte fragen ob meine Blutwerte schon da sind?',time:'09:12 ✓✓'},
-        {dir:'out',type:'text',text:'Ja, die Werte sind ausgezeichnet! Blutdruck stabil, HbA1c verbessert. Ich schicke Ihnen den Befundbericht.',time:'09:15'},
-        {dir:'out',type:'voice',duration:'0:18',time:'09:18'},
-        {dir:'out',type:'doc',filename:'Befundbericht_2026.pdf',size:'245 KB · PDF',time:'09:22'},
-        {dir:'out',type:'uw',text:'Außerdem schicke ich Ihnen eine Überweisung zum Kardiologen',filename:'Überweisung_Müller.pdf',sub:'Kardiologie · Normal · 13.06.2026',time:'09:24'},
-        {dir:'in',type:'text',text:'Danke, ich komme morgen',time:'09:26 ✓✓'},
-      ],
-    };
-  }
   return accounts;
 }
 function savePatients(){
@@ -368,19 +347,17 @@ async function doLogin(){
     // new, local-only session is still the old Supabase-backed patient.
     setPatientToken(null);
 
-    // Real patient credentials are now validated server-side (hashed
-    // password, via patient_login) -- try that first for anyone except the
-    // built-in local demo login. Guardian accounts aren't migrated yet (no
-    // Supabase patients row for them at all), so a Supabase miss falls back
-    // to the original local password check, which still covers them.
-    if(u!=='thomas.mueller'){
-      const result=await patientLogin(u,p);
-      if(result&&result.token){
-        setPatientToken(result.token);
-        const localAnamnese=(PATIENTS[u]&&PATIENTS[u].anamnese)||null;
-        acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
-             joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:localAnamnese};
-      }
+    // Real patient credentials are validated server-side (hashed password,
+    // via patient_login) -- try that first. Guardian accounts aren't
+    // migrated yet (no Supabase patients row for them at all), so a
+    // Supabase miss falls back to the original local password check, which
+    // still covers them.
+    const result=await patientLogin(u,p);
+    if(result&&result.token){
+      setPatientToken(result.token);
+      const localAnamnese=(PATIENTS[u]&&PATIENTS[u].anamnese)||null;
+      acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
+           joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:localAnamnese};
     }
     if(!acc){
       const local=PATIENTS[u];
@@ -584,10 +561,10 @@ async function saveNewPw(){
   }
 
   const local=PATIENTS[currentUser.username];
-  // Only the built-in demo login and not-yet-migrated guardian accounts
-  // still have a real local password to compare against/overwrite --
-  // everything else changes its password server-side now.
-  const isLocalOnly = currentUser.username==='thomas.mueller' || (local&&local.role==='guardian') || !getPatientToken();
+  // Only not-yet-migrated guardian accounts (and any session with no
+  // Supabase token at all) still have a real local password to compare
+  // against/overwrite -- everything else changes its password server-side.
+  const isLocalOnly = (local&&local.role==='guardian') || !getPatientToken();
 
   if(isLocalOnly){
     if(local&&newPw===local.pw){

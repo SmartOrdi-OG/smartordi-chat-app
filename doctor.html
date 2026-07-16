@@ -1185,7 +1185,7 @@ body.windows-mode .kartei-header{display:none;}
     <!-- Mobile back header (shown only on mobile when chat is open) -->
     <div class="mobile-chat-back" id="mobileChatBack">
       <button class="mobile-back-btn" onclick="mobileBackToList()">‹</button>
-      <div class="mobile-chat-back-name" id="mobileChatName">Thomas Müller</div>
+      <div class="mobile-chat-back-name" id="mobileChatName"></div>
       <div class="mobile-chat-back-actions">
         <button class="mobile-action-icon" onclick="karteiPatientLoaded=true;toggleKartei()" title="Kartei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
         <button class="mobile-action-icon" onclick="showTransferModal()" title="Weiterleiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
@@ -1193,12 +1193,12 @@ body.windows-mode .kartei-header{display:none;}
       </div>
     </div>
     <div class="chat-header" id="desktopChatHeader">
-      <div class="avatar" id="chat-avatar" style="background:#0d9488;width:38px;height:38px;font-size:14px;">T</div>
+      <div class="avatar" id="chat-avatar" style="background:#94a3b8;width:38px;height:38px;font-size:14px;"></div>
       <div>
-        <div class="chat-patient-name" id="chat-name">Thomas Müller</div>
+        <div class="chat-patient-name" id="chat-name">Kein Patient ausgewählt</div>
         <div style="display:flex;gap:12px;align-items:center;">
-          <span class="chat-patient-status" id="chat-status">● Online</span>
-          <span class="chat-patient-sub" id="chat-insurance">ÖGK · SV-Nr: 1234 010185</span>
+          <span class="chat-patient-status" id="chat-status">—</span>
+          <span class="chat-patient-sub" id="chat-insurance">—</span>
         </div>
       </div>
       <div class="chat-actions">
@@ -1222,30 +1222,24 @@ body.windows-mode .kartei-header{display:none;}
   <div class="patient-panel scrollbar">
     <div class="panel-section">
       <div class="panel-section-title">Patientendaten</div>
-      <div class="info-row"><span class="info-label">Name</span><span class="info-value" id="pp-name">Thomas Müller</span></div>
-      <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="pp-dob">01.01.1985</span></div>
-      <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="pp-tel">+43 660 123 456</span></div>
-      <div class="info-row"><span class="info-label">Versicherung</span><span class="info-value" id="pp-versicherung">ÖGK</span></div>
-      <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="pp-svnr">1234 010185</span></div>
+      <div class="info-row"><span class="info-label">Name</span><span class="info-value" id="pp-name">—</span></div>
+      <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="pp-dob">—</span></div>
+      <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="pp-tel">—</span></div>
+      <div class="info-row"><span class="info-label">Versicherung</span><span class="info-value" id="pp-versicherung">—</span></div>
+      <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="pp-svnr">—</span></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Diagnosen</div>
-      <div id="pp-diagnosen">
-        <span class="tag tag-red">Bluthochdruck</span>
-        <span class="tag tag-amber">Penicillin-Allergie</span>
-        <span class="tag tag-blue">Diabetes Typ 2</span>
-      </div>
+      <div id="pp-diagnosen"><span style="color:#94a3b8;font-size:12px;">Keine Diagnosen erfasst</span></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Nächste Termine</div>
-      <div id="pp-termine">
-        <div class="appt-card"><div class="appt-date">Di. 04.06.2026 — 10:00 Uhr</div><div class="appt-type">Routineuntersuchung · Dr. Ahmed</div></div>
-      </div>
+      <div id="pp-termine"><span style="color:#94a3b8;font-size:12px;">Keine bevorstehenden Termine</span></div>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">DSGVO-Status</div>
-      <div class="info-row"><span class="info-label">Einwilligung</span><span class="info-value" id="pp-dsgvo-status"><span class="tag tag-green">✓ Erteilt</span></span></div>
-      <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="pp-dsgvo-datum">15.01.2026</span></div>
+      <div class="info-row"><span class="info-label">Einwilligung</span><span class="info-value" id="pp-dsgvo-status">—</span></div>
+      <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="pp-dsgvo-datum">—</span></div>
     </div>
   </div>
 
@@ -1263,10 +1257,10 @@ body.windows-mode .kartei-header{display:none;}
     </div>
 
     <div class="kartei-patient-bar">
-      <div class="kartei-avatar" id="kartei-avatar" style="background:#0d9488;">T</div>
+      <div class="kartei-avatar" id="kartei-avatar" style="background:#94a3b8;"></div>
       <div>
-        <div class="kartei-patient-name" id="kartei-name">Thomas Müller</div>
-        <div class="kartei-patient-meta" id="kartei-meta">ÖGK · SV 1234 010185 · 41 J.</div>
+        <div class="kartei-patient-name" id="kartei-name">Kein Patient ausgewählt</div>
+        <div class="kartei-patient-meta" id="kartei-meta">—</div>
       </div>
       <div style="flex:1;"></div>
       <button onclick="exportPatientPdf()" title="Patientenbericht als PDF — zum Lesen/Drucken, z.B. für einen anderen Arzt" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#1e40af;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;">📄 PDF</button>
@@ -1314,11 +1308,11 @@ body.windows-mode .kartei-header{display:none;}
       <div id="ktab-stamm" style="display:none;">
         <div class="k-section">
           <div class="k-section-title">Stammdaten — vom Patienten ausgefüllt ✓</div>
-          <div class="k-row"><span class="k-label">Name</span><span class="k-value" id="k-stamm-name">Thomas Müller</span></div>
-          <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value" id="k-stamm-dob">01.01.1985 (41 J.)</span></div>
-          <div class="k-row"><span class="k-label">Telefon</span><span class="k-value" id="k-stamm-tel">+43 660 123 456</span></div>
-          <div class="k-row"><span class="k-label">Adresse</span><span class="k-value" id="k-stamm-adresse">Mozartstr. 12, Linz</span></div>
-          <div class="k-row"><span class="k-label">Sprache</span><span class="k-value" id="k-stamm-sprache">Deutsch</span></div>
+          <div class="k-row"><span class="k-label">Name</span><span class="k-value" id="k-stamm-name">—</span></div>
+          <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value" id="k-stamm-dob">—</span></div>
+          <div class="k-row"><span class="k-label">Telefon</span><span class="k-value" id="k-stamm-tel">—</span></div>
+          <div class="k-row"><span class="k-label">Adresse</span><span class="k-value" id="k-stamm-adresse">—</span></div>
+          <div class="k-row"><span class="k-label">Sprache</span><span class="k-value" id="k-stamm-sprache">—</span></div>
         </div>
         <div class="k-section">
           <div class="k-section-title">Versicherung</div>
@@ -1452,9 +1446,9 @@ body.windows-mode .kartei-header{display:none;}
           <!-- Patient auto-filled -->
           <div style="background:#faf5ff;border-left:4px solid #7c3aed;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:10px 12px;margin-bottom:12px;">
             <div style="font-size:9px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Patient — automatisch ausgefüllt ✓</div>
-            <div style="font-weight:700;color:#0f172a;font-size:13px;" id="uw-patient-name">Thomas Müller</div>
-            <div style="color:#64748b;font-size:11px;margin-top:1px;" id="uw-patient-meta">ÖGK · SV 1234 010185 · 41 J.</div>
-            <div style="color:#64748b;font-size:11px;" id="uw-patient-adresse">Mozartstraße 12, 4020 Linz</div>
+            <div style="font-weight:700;color:#0f172a;font-size:13px;" id="uw-patient-name">—</div>
+            <div style="color:#64748b;font-size:11px;margin-top:1px;" id="uw-patient-meta">—</div>
+            <div style="color:#64748b;font-size:11px;" id="uw-patient-adresse">—</div>
           </div>
 
           <!-- Kostenträger -->
@@ -2034,11 +2028,7 @@ body.windows-mode .kartei-header{display:none;}
           <span style="font-size:11px;color:#94a3b8;">Heute</span>
         </div>
         <div class="dash-card-body">
-          <div class="activity-item"><div class="activity-dot" style="background:#1e40af;"></div><div class="activity-text">Neue Nachricht — Thomas Müller</div><div class="activity-time">Jetzt</div></div>
-          <div class="activity-item"><div class="activity-dot" style="background:#7c3aed;"></div><div class="activity-text">Maria Schreiber → Dr. Weber weitergeleitet</div><div class="activity-time">10:30</div></div>
-          <div class="activity-item"><div class="activity-dot" style="background:#f59e0b;"></div><div class="activity-text">Befund gesendet — Hans Bauer</div><div class="activity-time">09:45</div></div>
-          <div class="activity-item"><div class="activity-dot" style="background:#22c55e;"></div><div class="activity-text">Dr. Weber hat Vertretung bestätigt ✓</div><div class="activity-time">09:10</div></div>
-          <div class="activity-item"><div class="activity-dot" style="background:#ec4899;"></div><div class="activity-text">Neuer Patient: Anna Weber (ÖGK)</div><div class="activity-time">Gestern</div></div>
+          <span style="color:#94a3b8;font-size:12px;">Keine aktuelle Aktivität</span>
         </div>
       </div>
 
@@ -2290,9 +2280,9 @@ body.windows-mode .kartei-header{display:none;}
 <!-- CALL OVERLAY -->
 <div class="call-overlay" id="callOverlay">
   <div class="call-card">
-    <div class="call-avatar">TM</div>
-    <div class="call-name">Thomas Müller</div>
-    <div class="call-sub">ÖGK · Wien</div>
+    <div class="call-avatar" id="call-avatar"></div>
+    <div class="call-name" id="call-name"></div>
+    <div class="call-sub" id="call-sub"></div>
     <div class="call-status" id="callStatus">Verbinde...</div>
     <div class="call-btns"><button class="call-mute"></button><button class="call-end" onclick="hideCall()"></button></div>
   </div>
@@ -2750,31 +2740,8 @@ window.addEventListener('storage',function(e){
 // conversation. With 100s/1000s of real QR-onboarded or imported patients,
 // that bug would mean literally every one of them shows the same wrong
 // conversation, so it had to be fixed here, not just worked around.
-const DEMO_CHAT_LIST=[
-  {name:'Thomas Müller',color:'#0d9488',statusDot:'#22c55e',status:'Online',versicherung:'ÖGK',preview:'Danke, ich komme morgen',time:'Jetzt',badge:2},
-  {name:'Maria Schreiber',color:'#8b5cf6',statusDot:'#f59e0b',status:'Weitergeleitet',versicherung:'BVAEB',preview:'Zu Dr. Weber weitergeleitet',time:'10:30',transferBadge:'Vertretung',transferred:true},
-  {name:'Hans Bauer',color:'#f59e0b',statusDot:'#94a3b8',status:'Offline',versicherung:'SVS',preview:'Kann ich den Termin verschieben?',time:'Gestern',badge:1},
-  {name:'Anna Weber',color:'#ec4899',statusDot:'#94a3b8',status:'Offline',versicherung:'ÖGK',preview:'Sind die Blutwerte da?',time:'Gestern'},
-];
-const MESSAGES={
-  'Thomas Müller':{date:'Heute, 3. Juni 2026',system:'Termin morgen — Di. 04.06. um 10:00 Uhr',items:[
-    {dir:'in',type:'text',text:'Guten Morgen, Frau Doktor. Sind meine Blutwerte schon da?',time:'09:15'},
-    {dir:'out',type:'text',text:'Guten Morgen Herr Müller! Ja, die Werte sind ausgezeichnet',time:'09:18 ✓✓'},
-    {dir:'in',type:'voice',duration:'0:18',time:'09:20'},
-    {dir:'out',type:'doc',filename:'Befundbericht_2026.pdf',size:'245 KB',time:'09:22 ✓✓'},
-    {dir:'in',type:'text',text:'Danke, ich komme morgen',time:'09:24'},
-  ]},
-  'Maria Schreiber':{date:'Gestern, 2. Juni 2026',system:'Zu Dr. Klaus Weber weitergeleitet (Vertretung)',items:[
-    {dir:'in',type:'text',text:'Guten Tag, ich habe wieder starke Migräne-Attacken. Können Sie mir etwas verschreiben?',time:'10:15'},
-    {dir:'out',type:'text',text:'Ich bin aktuell in Vertretung bei Dr. Weber — er wird sich um Ihr Anliegen kümmern.',time:'10:30 ✓✓'},
-  ]},
-  'Hans Bauer':{date:'Gestern, 2. Juni 2026',items:[
-    {dir:'in',type:'text',text:'Kann ich den Termin verschieben? Bin morgen leider verhindert.',time:'14:20'},
-  ]},
-  'Anna Weber':{date:'Gestern, 2. Juni 2026',items:[
-    {dir:'in',type:'text',text:'Sind die Blutwerte da?',time:'08:44'},
-  ]},
-};
+const DEMO_CHAT_LIST=[];
+const MESSAGES={};
 // Real QR-onboarded/imported patients may have a saved conversation on their
 // account (see appendRealMessage) even though they're not in MESSAGES
 // yet this page load -- pull it in on first access instead of showing blank.
@@ -3080,7 +3047,7 @@ function patientItemHtml(p,activeName){
 function renderPatientList(){
   const list=document.getElementById('patientList');
   if(!list) return;
-  const activeName=document.getElementById('chat-name')?.textContent||'Thomas Müller';
+  const activeName=document.getElementById('chat-name')?.textContent||'';
   list.innerHTML=patientListEntries().map(p=>patientItemHtml(p,activeName)).join('');
 }
 
@@ -3115,10 +3082,9 @@ function selectPatient(el,name,status,color,insurance){
   const kav=document.getElementById('kartei-avatar');
   const knm=document.getElementById('kartei-name');
   const kmt=document.getElementById('kartei-meta');
-  const kd={'Thomas Müller':'ÖGK · SV 1234 010185 · 41 J.','Maria Schreiber':'BVAEB · SV 5678 200490 · 38 J.','Hans Bauer':'SVS · SV 9012 030552 · 55 J.','Anna Weber':'ÖGK · SV 3456 150883 · 29 J.'};
   if(kav){kav.textContent=name[0];kav.style.background=color;}
   if(knm) knm.textContent=name;
-  if(kmt) kmt.textContent=kd[name]||insurance+' · –';
+  if(kmt) kmt.textContent=insurance+' · –';
 }
 
 function getTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
@@ -3456,52 +3422,12 @@ applyPlanGating();
 renderPlanSettings();
 applyTrialStatus();
 renderPatientList();
-renderMessages('Thomas Müller','#0d9488');
 // Real patient identity now lives in Supabase -- re-render once the fetch
 // kicked off by vendor/patient-data.js resolves, in case it hadn't finished
 // yet on the very first render above.
 patientsReady.then(renderPatientList);
 
-const VISITS = [
-  {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
-  {patient:'Thomas Müller',date:'2026-04-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',               notes:'Patient fragte nach Blutwerten. Alles im Normbereich.',therapy:''},
-  {patient:'Thomas Müller',date:'2026-03-15',type:'Ordination',  diag:'J06.9 – Akute Infektion Atemwege',  notes:'Halsschmerzen, leichtes Fieber 37.8°. HNO unauffällig.',therapy:'Paracetamol 500mg bei Bedarf'},
-  {patient:'Thomas Müller',date:'2026-01-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck stabil 135/85 mmHg. Gewicht -2kg.',therapy:'Ramipril 5mg 1×tägl. (unverändert)'},
-  {patient:'Thomas Müller',date:'2025-11-08',type:'Erstgespräch',diag:'I10 – Erstdiagnose Hypertonie',     notes:'Familienanamnese positiv. BMI 28. Lebensstiländerung empfohlen.',therapy:'Ramipril 2.5mg, Lebensstiländerung'},
-  {patient:'Thomas Müller',date:'2025-09-30',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',             notes:'Rückenschmerzen seit 1 Woche. Kein Anhalt für Radikulopathie.',therapy:'Ibuprofen 400mg 3×tägl. für 5 Tage'},
-  {patient:'Thomas Müller',date:'2025-07-14',type:'Kontrolle',   diag:'E11 – Diabetes Typ 2 (V.a.)',      notes:'Nüchternblutzucker 118 mg/dl. HbA1c 6.2%. Grenzwertig.',therapy:'Diät, Bewegung, Kontrolle in 3 Mon.'},
-  {patient:'Thomas Müller',date:'2025-05-20',type:'Ordination',  diag:'J00 – Schnupfen / Erkältung',      notes:'Leichte Erkältungssymptome. Kein Fieber. Selbstlimitierend.',therapy:'Nasenspray, viel Flüssigkeit'},
-  {patient:'Thomas Müller',date:'2025-03-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 150/95 mmHg. Medikament erhöht.',therapy:'Ramipril 5mg (erhöht von 2.5mg)'},
-  {patient:'Thomas Müller',date:'2025-01-10',type:'Ordination',  diag:'B34.9 – Virale Infektion',         notes:'Grippesymptome. Fieber 38.5°. Keine bakt. Infektion.',therapy:'Bettruhe, Paracetamol, Ibuprofen'},
-  {patient:'Thomas Müller',date:'2024-11-22',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',      notes:'Blutdruck 140/88 mmHg. Patient klagt über Müdigkeit.',therapy:'Blutbild angeordnet'},
-  {patient:'Thomas Müller',date:'2024-09-05',type:'Ordination',  diag:'L20 – Atopisches Ekzem',          notes:'Hautausschlag Unterarme beidseitig. Allergieanamnese positiv.',therapy:'Hydrocortison Creme 1%'},
-  {patient:'Thomas Müller',date:'2024-07-01',type:'Telefonisch', diag:'Rezeptanfrage',                    notes:'Patient bat um Folgerezept. Ausgestellt.',therapy:'Ramipril 2.5mg Folgerezept'},
-  {patient:'Thomas Müller',date:'2024-04-18',type:'Ordination',  diag:'R51 – Kopfschmerz',               notes:'Spannungskopfschmerz. Stress-assoziiert.',therapy:'Paracetamol bei Bedarf'},
-  {patient:'Thomas Müller',date:'2024-02-14',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',     notes:'Erstmessung nach Diagnose. Blutdruck 158/98 mmHg. Therapiebeginn.',therapy:'Ramipril 2.5mg 1×tägl.'},
-  {patient:'Thomas Müller',date:'2023-12-20',type:'Ordination',  diag:'J02.9 – Akute Pharyngitis',       notes:'Starke Halsschmerzen. Tonsillitis ausgeschlossen.',therapy:'Amoxicillin 500mg 3×tägl. 7 Tage'},
-  {patient:'Thomas Müller',date:'2023-10-11',type:'Ordination',  diag:'N39.0 – Harnwegsinfekt',          notes:'Brennen beim Wasserlassen seit 2 Tagen. Urinbefund positiv.',therapy:'Nitrofurantoin 100mg 2×tägl. 5 Tage'},
-  {patient:'Thomas Müller',date:'2023-08-03',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Allgemeiner Gesundheitscheck. Blutdruck grenzwertig.',therapy:'Lebensstiländerung empfohlen'},
-  {patient:'Thomas Müller',date:'2023-05-22',type:'Notfall',     diag:'S61.0 – Wundversorgung Hand',     notes:'Schnittwunde rechte Hand. Wunde gereinigt und vernäht (3 Nähte).',therapy:'Wundversorgung, Kontrolle in 7 Tagen'},
-  {patient:'Thomas Müller',date:'2023-02-14',type:'Ordination',  diag:'G43.9 – Migräne',                notes:'Erstmalig Migräne mit Aura. Neurologe empfohlen.',therapy:'Sumatriptan 50mg, Überweisung Neurologie'},
-
-  {patient:'Maria Schreiber',date:'2026-05-12',type:'Kontrolle',   diag:'G43.9 – Migräne',                notes:'Kopfschmerzattacken ca. 2×/Monat, gut kontrolliert unter Therapie.',therapy:'Sumatriptan 50mg bei Bedarf'},
-  {patient:'Maria Schreiber',date:'2026-02-20',type:'Ordination',  diag:'J06.9 – Akute Infektion Atemwege', notes:'Halsschmerzen, Schnupfen seit 2 Tagen. Kein Fieber.',therapy:'Paracetamol 500mg bei Bedarf'},
-  {patient:'Maria Schreiber',date:'2025-10-05',type:'Erstgespräch',diag:'G43.9 – Erstdiagnose Migräne',    notes:'Migräne mit Aura seit 6 Monaten. MRT unauffällig.',therapy:'Sumatriptan 50mg, Betablocker-Prophylaxe'},
-  {patient:'Maria Schreiber',date:'2025-06-18',type:'Telefonisch', diag:'Allgemeine Rückfrage',            notes:'Patientin fragte nach Medikamenten-Nebenwirkungen.',therapy:''},
-  {patient:'Maria Schreiber',date:'2024-12-02',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Jährlicher Gesundheitscheck. Alle Werte unauffällig.',therapy:''},
-
-  {patient:'Hans Bauer',date:'2026-05-28',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',            notes:'Rückenschmerzen nach Gartenarbeit, seit 3 Tagen.',therapy:'Ibuprofen 400mg 3×tägl.'},
-  {patient:'Hans Bauer',date:'2026-03-10',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',     notes:'Blutdruck 148/92 mmHg. Medikation angepasst.',therapy:'Amlodipin 5mg 1×tägl.'},
-  {patient:'Hans Bauer',date:'2025-11-15',type:'Erstgespräch',diag:'I10 – Erstdiagnose Hypertonie',   notes:'Erstmalig erhöhter Blutdruck bei Routineuntersuchung festgestellt.',therapy:'Amlodipin 5mg, Lebensstiländerung'},
-  {patient:'Hans Bauer',date:'2025-08-02',type:'Ordination',  diag:'M54.5 – Kreuzschmerz',            notes:'Chronische Rückenschmerzen. Physiotherapie empfohlen.',therapy:'Physiotherapie 10×, Ibuprofen bei Bedarf'},
-  {patient:'Hans Bauer',date:'2025-02-19',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Allgemeiner Gesundheitscheck.',therapy:''},
-
-  {patient:'Anna Weber',date:'2026-06-01',type:'Kontrolle',   diag:'M19.9 – Arthrose',                notes:'Knieschmerzen beidseitig, besonders beim Treppensteigen.',therapy:'Paracetamol bei Bedarf, Physiotherapie'},
-  {patient:'Anna Weber',date:'2026-01-15',type:'Kontrolle',   diag:'M81.9 – Osteoporose',              notes:'Knochendichtemessung: T-Score -2.8. Therapie fortgesetzt.',therapy:'Vitamin D3, Calcium, Bisphosphonat wöchentlich'},
-  {patient:'Anna Weber',date:'2025-09-22',type:'Ordination',  diag:'M19.9 – Arthrose',                notes:'Zunehmende Gelenkschmerzen. Röntgen Knie beidseitig angeordnet.',therapy:'Paracetamol 500mg bei Bedarf'},
-  {patient:'Anna Weber',date:'2025-04-10',type:'Erstgespräch',diag:'M81.9 – Erstdiagnose Osteoporose', notes:'Postmenopausale Osteoporose. Knochendichtemessung durchgeführt.',therapy:'Vitamin D3, Calcium'},
-  {patient:'Anna Weber',date:'2024-11-30',type:'Kontrolle',   diag:'Vorsorge / Gesundenuntersuchung', notes:'Jährliche Vorsorgeuntersuchung. Achtung: Aspirin/NSAR-Allergie dokumentiert.',therapy:''},
-];
+const VISITS = [];
 
 function renderYearPills(){
   const patientName=document.getElementById('kartei-name')?.textContent;
@@ -3933,11 +3859,11 @@ function uwFmtDate(str){ if(!str)return''; const d=new Date(str); return d.toLoc
 
 function getUwData(){
   return {
-    pName:   document.getElementById('uw-patient-name')?.textContent||'Thomas Müller',
-    pMeta:   document.getElementById('uw-patient-meta')?.textContent||'ÖGK · SV 1234 010185',
+    pName:   document.getElementById('uw-patient-name')?.textContent||'',
+    pMeta:   document.getElementById('uw-patient-meta')?.textContent||'',
     pAdresse:document.getElementById('uw-patient-adresse')?.textContent||'',
-    pNachname:(document.getElementById('uw-patient-name')?.textContent||'Müller Thomas').split(' ')[0]||'Müller',
-    pVorname: (document.getElementById('uw-patient-name')?.textContent||'Thomas Müller').split(' ').slice(1).join(' ')||'Thomas',
+    pNachname:(document.getElementById('uw-patient-name')?.textContent||'').split(' ')[0]||'',
+    pVorname: (document.getElementById('uw-patient-name')?.textContent||'').split(' ').slice(1).join(' ')||'',
     pSVNR:   (document.getElementById('uw-patient-meta')?.textContent||'').match(/SV[\s]*([\d\s]+)/)?.[1]?.trim()||'',
     kt:      uwVal('uwKT')||'ÖGK',
     status:  uwVal('uwStatus')||'1',
@@ -4388,16 +4314,7 @@ function addLabor(){
 }
 
 // ══ SUCHE FUNCTIONS ══
-const DEMO_PATIENTS=[
-  {name:'Thomas Müller',svnr:'1234 010185',dob:'1985-01-01',versicherung:'ÖGK',tel:'+43 660 123 4567',adresse:'Mozartstr. 12, Linz',sprache:'Deutsch',blutgruppe:'A+',diagnosen:'Hypertonie, Diabetes T2',allergie:'Penicillin-Allergie beachten!',dsgvoDatum:'15.01.2026',
-    impfungen:[{name:'FSME',dosis:'2. Dosis',datum:'2024-03-15',next:'2027-03-15',charge:'B98765'},{name:'COVID-19',dosis:'Auffrischung',datum:'2023-11-10',next:'2024-11-10',charge:'XY1234'}]},
-  {name:'Maria Schreiber',svnr:'5678 150390',dob:'1990-03-15',versicherung:'BVAEB',tel:'+43 699 234 5678',adresse:'Hauptstraße 45, Wien',sprache:'Deutsch',blutgruppe:'0+',diagnosen:'Migräne',allergie:null,dsgvoDatum:'20.02.2026',
-    impfungen:[{name:'Tetanus',dosis:'Auffrischung',datum:'2022-06-01',next:'2032-06-01',charge:'T5521'}]},
-  {name:'Hans Bauer',svnr:'9012 220775',dob:'1975-07-22',versicherung:'SVS',tel:'+43 676 345 6789',adresse:'Bahnhofstraße 8, Salzburg',sprache:'Deutsch',blutgruppe:'B+',diagnosen:'Kreuzschmerzen, Bluthochdruck',allergie:null,dsgvoDatum:'10.03.2026',
-    impfungen:[{name:'Influenza',dosis:'Einmaldosis',datum:'2025-10-20',next:'2026-10-20',charge:'FLU2025'},{name:'Pneumokokken',dosis:'Einmaldosis',datum:'2021-09-12',next:'',charge:''}]},
-  {name:'Anna Weber',svnr:'3456 080268',dob:'1968-02-08',versicherung:'ÖGK',tel:'+43 664 456 7890',adresse:'Ringstraße 3, Graz',sprache:'Deutsch',blutgruppe:'AB+',diagnosen:'Arthrose, Osteoporose',allergie:'Aspirin/NSAR-Allergie beachten!',dsgvoDatum:'05.01.2026',
-    impfungen:[]},
-];
+const DEMO_PATIENTS=[];
 
 // ══ CLOUD-DATENMIGRATION (one-time, per device) ══
 // Real patient accounts/termine/chat still live only in this browser's
@@ -4607,10 +4524,9 @@ function openKarteiForPatient(name,svnr,versicherung,dob){
   const kav=document.getElementById('kartei-avatar');
   const knm=document.getElementById('kartei-name');
   const kmt=document.getElementById('kartei-meta');
-  const colors={'Thomas Müller':'#0d9488','Maria Schreiber':'#8b5cf6','Hans Bauer':'#f59e0b','Anna Weber':'#ec4899'};
   const age=dob?new Date().getFullYear()-new Date(dob).getFullYear():'—';
   karteiPatientLoaded=true;
-  if(kav){kav.textContent=name[0];kav.style.background=colors[name]||'#1e40af';}
+  if(kav){kav.textContent=name[0];kav.style.background=colorForName(name);}
   if(knm) knm.textContent=name;
   if(kmt) kmt.textContent=(versicherung||'—')+' · SV '+(svnr||'—')+' · '+age+' J.';
   showToast('Kartei geöffnet: '+name);
@@ -5276,6 +5192,11 @@ function sendAddressChangeBroadcast(){
 
 
 function showCall(){
+  const name=document.getElementById('chat-name')?.textContent||'—';
+  document.getElementById('call-name').textContent=name;
+  document.getElementById('call-avatar').textContent=name&&name!=='Kein Patient ausgewählt'?name[0]:'';
+  document.getElementById('call-avatar').style.background=document.getElementById('chat-avatar')?.style.background||'#94a3b8';
+  document.getElementById('call-sub').textContent=document.getElementById('chat-insurance')?.textContent||'—';
   document.getElementById('callOverlay').classList.add('show');
   const s=document.getElementById('callStatus');s.textContent='Verbinde...';
   let secs=0;
