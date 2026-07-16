@@ -15,6 +15,7 @@
 <script src="vendor/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
+<script src="vendor/patient-data.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -2717,18 +2718,13 @@ function syncWindowsModeState(){
 window.addEventListener('resize',syncWindowsModeState);
 document.addEventListener('DOMContentLoaded',syncWindowsModeState);
 
-// Plain localStorage has no live sync between tabs -- a Termin the
-// secretary confirms/moves/cancels, or a chat message she sends, only ever
-// showed up here after a manual reload of this tab. The 'storage' event
-// fires automatically in every OTHER same-origin tab whenever another tab
-// writes to localStorage, so use it to keep the Dashboard/Tagesliste and
-// Praxis chat list live without needing a real backend for this.
+// Termine now live in Supabase (see vendor/patient-data.js) and use a
+// Realtime subscription for live sync instead -- see subscribeTermineRealtime()
+// near the bottom of this file. Patient accounts/messages are still plain
+// localStorage for now (a later migration PR), so the 'storage' event (which
+// only ever fires cross-TAB same-browser, never cross-device) is still what
+// keeps those live for the time being.
 window.addEventListener('storage',function(e){
-  if(e.key==='smartordi_termine'){
-    renderDashTermine();
-    const allModal=document.getElementById('allTermineModal');
-    if(allModal && allModal.classList.contains('show')) renderAlleTermine();
-  }
   if(e.key==='smartordi_patient_accounts'){
     renderPatientList();
     updateChatUnreadBadge();
@@ -2831,8 +2827,8 @@ function appendMessageToThread(name,msg){
   }
 }
 
-// ── TERMINE (real appointment data, shared with secretary.html via localStorage) ──
-const TERMINE_KEY='smartordi_termine';
+// ── TERMINE (real appointment data, shared with secretary.html via Supabase --
+// see vendor/patient-data.js for loadTermine()/insertTermin()/updateTermin()) ──
 const AVATAR_COLORS=['#1e40af','#7c3aed','#f59e0b','#ec4899','#0d9488','#16a34a','#dc2626','#0891b2'];
 function colorForName(name){
   let h=0;
@@ -2840,37 +2836,6 @@ function colorForName(name){
   return AVATAR_COLORS[h%AVATAR_COLORS.length];
 }
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
-function addDays(days){ return new Date(Date.now()+days*86400000).toISOString().split('T')[0]; }
-function genTerminId(){ return 't_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
-function saveTermine(list){ localStorage.setItem(TERMINE_KEY, JSON.stringify(list)); }
-// Seeds the same default demo appointments as secretary.html so doctor.html shows
-// a sensible Tagesliste even if opened standalone, before any secretary session ever ran.
-function loadTermine(){
-  let list;
-  try{ list=JSON.parse(localStorage.getItem(TERMINE_KEY)); }catch(e){ list=null; }
-  if(!Array.isArray(list)){
-    const today=todayStr();
-    list=[
-      {id:genTerminId(),patient:'Thomas Müller',art:'Kontrolle',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:today,time:'09:00',endTime:'09:30',status:'neu'},
-      {id:genTerminId(),patient:'Maria Schreiber',art:'Ordination',versicherung:'BVAEB',tel:'+43 699 456 789',svnr:'5678 150390',dob:'1990-03-15',date:today,time:'10:00',endTime:'10:30',status:'bestaetigt'},
-      {id:genTerminId(),patient:'Hans Bauer',art:'Erstgespräch',versicherung:'SVS',tel:'',svnr:'9012 220775',dob:'1975-07-22',date:today,time:'11:00',endTime:'11:45',status:'neu'},
-      {id:genTerminId(),patient:'Anna Weber',art:'Kontrolle',versicherung:'ÖGK',tel:'',svnr:'3456 080268',dob:'1968-02-08',date:addDays(3),time:'09:30',endTime:'10:00',status:'bestaetigt'},
-      {id:genTerminId(),patient:'Thomas Müller',art:'Folgetermin',versicherung:'ÖGK',tel:'+43 660 123 456',svnr:'1234 010185',dob:'1985-01-01',date:addDays(4),time:'14:00',endTime:'14:20',status:'bestaetigt'},
-    ];
-    saveTermine(list);
-  }
-  // Backfill fields for appointments saved before they existed: endTime, and
-  // arztUsername (see the multi-doctor Team feature) -- older termine
-  // predate per-doctor assignment, so they're attributed to the original
-  // single demo doctor account.
-  let migrated=false;
-  list.forEach(t=>{
-    if(!t.endTime){ t.endTime=addMinutesToTime(t.time,30); migrated=true; }
-    if(!t.arztUsername){ t.arztUsername='dr.ahmed'; migrated=true; }
-  });
-  if(migrated) saveTermine(list);
-  return list;
-}
 function arztDisplayName(username){
   const accounts=loadStaffAccounts();
   return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
@@ -5346,7 +5311,7 @@ function selectTransferDoctor(el,username){
   transferSelectedDoctor=username;
 }
 
-function confirmTransfer(){
+async function confirmTransfer(){
   if(!transferPatientForModal||!transferSelectedDoctor){ showToast('Bitte einen Arzt/eine Ärztin auswählen','error'); return; }
   const patientName=transferPatientForModal;
   const toDoctorName=arztDisplayName(transferSelectedDoctor);
@@ -5355,15 +5320,7 @@ function confirmTransfer(){
 
   // Reassign this patient's own upcoming appointments with the current
   // doctor -- past/cancelled ones stay as history, they're already done.
-  const list=loadTermine();
-  let reassigned=0;
-  list.forEach(function(t){
-    if(t.patient===patientName && t.arztUsername===me && t.status!=='abgesagt' && t.date>=todayStr()){
-      t.arztUsername=transferSelectedDoctor;
-      reassigned++;
-    }
-  });
-  if(reassigned) saveTermine(list);
+  await bulkReassignTermine(patientName, me, transferSelectedDoctor, todayStr());
 
   const text='↪ Sie wurden an '+toDoctorName+' weitergeleitet.'+(note?' Notiz: '+note:'');
   const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime()+' ✓'});
@@ -5382,11 +5339,21 @@ function confirmTransfer(){
 
 renderImpfWarnungen();
 // Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
-// Termine lists) lives in Supabase now -- wait for the fetch kicked off by
-// vendor/staff-accounts.js before the first render that depends on it.
-staffRosterReady.then(()=>{
+// Termine lists) and Termine themselves both live in Supabase now -- wait
+// for the fetches kicked off by vendor/staff-accounts.js/vendor/patient-data.js
+// before the first render that depends on either.
+Promise.all([staffRosterReady, termineReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
+});
+// Realtime replaces the old same-browser-only 'storage' event for Termine --
+// this fires in every tab/device, including the one that made the write, so
+// re-rendering here on top of each mutation's own direct render call is a
+// harmless extra (cheap, idempotent full re-draw), same as the old listener.
+subscribeTermineRealtime(()=>{
+  renderDashTermine();
+  const allModal=document.getElementById('allTermineModal');
+  if(allModal && allModal.classList.contains('show')) renderAlleTermine();
 });
 </script>
 
