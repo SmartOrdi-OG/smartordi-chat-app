@@ -2776,7 +2776,7 @@ const MESSAGES={
   ]},
 };
 // Real QR-onboarded/imported patients may have a saved conversation on their
-// account (see appendMessageToThread) even though they're not in MESSAGES
+// account (see appendRealMessage) even though they're not in MESSAGES
 // yet this page load -- pull it in on first access instead of showing blank.
 function getOrHydrateThread(name){
   if(MESSAGES[name]) return MESSAGES[name];
@@ -2814,19 +2814,6 @@ function renderMessages(name,color){
   msgs.innerHTML=html;
   msgs.scrollTop=msgs.scrollHeight;
 }
-function appendMessageToThread(name,msg){
-  if(!MESSAGES[name]) MESSAGES[name]={date:'',items:[]};
-  MESSAGES[name].items.push(msg);
-  // Demo patients' new messages are session-only (same as their Impfung/
-  // Verlauf edits); QR/imported patients get theirs persisted so the
-  // conversation survives a reload, same as their other Kartei data.
-  const found=findPatientAccountByFullName(name);
-  if(found){
-    found.accounts[found.username].messages=MESSAGES[name].items;
-    localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
-  }
-}
-
 // ── TERMINE (real appointment data, shared with secretary.html via Supabase --
 // see vendor/patient-data.js for loadTermine()/insertTermin()/updateTermin()) ──
 const AVATAR_COLORS=['#1e40af','#7c3aed','#f59e0b','#ec4899','#0d9488','#16a34a','#dc2626','#0891b2'];
@@ -3124,19 +3111,9 @@ function sendClinicMsg(){
   row.innerHTML=`<div><div class="msg-bubble">${txt}</div><span class="msg-time">${outTime}</span></div>`;
   msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';
   if(name){
-    appendMessageToThread(name,{dir:'out',type:'text',text:txt,time:outTime});
+    appendRealMessage(name,{dir:'out',type:'text',text:txt,time:outTime});
     renderPatientList(); // refresh the sidebar preview text to the new message
   }
-  setTimeout(()=>{
-    const inTime=getTime();
-    const r=document.createElement('div');r.className='msg-row in';
-    r.innerHTML=`<div class="avatar" style="background:${document.getElementById('chat-avatar').style.background};width:30px;height:30px;font-size:12px;flex-shrink:0;">${document.getElementById('chat-avatar').textContent}</div><div><div class="msg-bubble">Danke, verstanden! </div><span class="msg-time">${inTime}</span></div>`;
-    msgs.appendChild(r);msgs.scrollTop=msgs.scrollHeight;
-    if(name){
-      appendMessageToThread(name,{dir:'in',type:'text',text:'Danke, verstanden!',time:inTime});
-      renderPatientList();
-    }
-  },1500);
 }
 
 
@@ -5132,17 +5109,29 @@ function setVertretungMode(mode){
   document.getElementById('vertExternalSection').style.display=mode==='external'?'block':'none';
   if(mode==='internal') renderVertInternalList();
 }
-// Same "find the real account and append, without clobbering a thread that
-// was never hydrated into the in-memory MESSAGES cache this session" fix
-// used for sendTerminConfirmationMessage-style features elsewhere.
+// Finds the real account and appends, without clobbering a thread that was
+// never hydrated into the in-memory MESSAGES cache this session -- the one
+// function every chat-send/broadcast feature uses to persist a message
+// (consolidated from two near-identical copies that used to exist here).
 function appendRealMessage(name,msg){
+  // Always reflect it in the in-memory MESSAGES cache -- for the actively
+  // open chat this is what makes the message actually appear, and for a
+  // broadcast recipient not currently being viewed it's a harmless stub
+  // that getOrHydrateThread() would have built anyway on next access.
+  if(!MESSAGES[name]) MESSAGES[name]={date:'',items:[]};
+  MESSAGES[name].items.push(msg);
   const found=findPatientAccountByFullName(name);
-  if(!found) return false;
+  if(!found) return false; // demo patient or unknown name -- session-only, no real account to persist to
   const acc=found.accounts[found.username];
   if(!acc.messages) acc.messages=[];
   acc.messages.push(msg);
   localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
-  if(MESSAGES[name]) MESSAGES[name].items.push(msg);
+  // Best-effort mirror into Supabase too (only once this patient has a real
+  // identity row there) -- see the note on sendMessageToPatient() in
+  // vendor/patient-data.js for why chat reading doesn't switch over yet.
+  if(acc.id){
+    sendMessageToPatient(acc.id,msg).catch(function(err){ console.error('sendMessageToPatient failed',err); });
+  }
   return true;
 }
 function readVertretungForm(){
