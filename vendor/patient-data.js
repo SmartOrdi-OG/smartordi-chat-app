@@ -199,14 +199,12 @@ async function upsertPatientIdentity(username,fields){
 }
 
 // ── CHAT (patient_messages) ──
-// Additive for now: staff-sent messages get mirrored here (best-effort,
-// only when the patient already has a Supabase identity row) so they sync
-// across staff devices/browsers in real time, without changing how the
-// chat UI itself reads/displays messages yet -- that still reads the local
-// smartordi_patient_accounts copy, since patient.html (where a patient's
-// own incoming messages are written) isn't migrated until a later PR, and
-// a safe merged read needs to wait until both sides write to the same
-// table to avoid duplicate/out-of-order messages.
+// Staff-sent messages get mirrored here (best-effort, only when the
+// patient already has a Supabase identity row) so they sync across staff
+// devices/browsers in real time. Since patient.html now also sends a real
+// patient's own messages straight here (a later migration step), reading a
+// real patient's full thread now pulls from this table too -- see
+// hydrateRealThreadFromSupabase() in doctor.html/secretary.html.
 async function sendMessageToPatient(patientId,msg){
   const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null};
   const {data,error}=await sb.from('patient_messages').insert(row).select().single();
@@ -217,4 +215,15 @@ async function getMessagesForPatient(patientId){
   const {data,error}=await sb.from('patient_messages').select('*').eq('patient_id',patientId).order('created_at');
   if(error){ console.error('getMessagesForPatient failed',error); return []; }
   return data||[];
+}
+// Replaces the old same-browser-only 'storage' event for chat -- a real
+// patient's own message (sent from their own device via patient.html) can
+// only ever reach a staff device through this, since it never touches
+// localStorage at all.
+function subscribeMessagesRealtime(onChange){
+  sb.channel('patient-messages-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'patient_messages'},function(){
+      if(onChange) onChange();
+    })
+    .subscribe();
 }
