@@ -3042,8 +3042,7 @@ function renderImpfWarnungen(){
 
 function patientListEntries(){
   const entries=DEMO_CHAT_LIST.map(p=>Object.assign({},p,{dynamic:false}));
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatients();
   Object.keys(accounts).forEach(u=>{
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
@@ -3459,6 +3458,10 @@ renderPlanSettings();
 applyTrialStatus();
 renderPatientList();
 renderMessages('Thomas Müller','#0d9488');
+// Real patient identity now lives in Supabase -- re-render once the fetch
+// kicked off by vendor/patient-data.js resolves, in case it hadn't finished
+// yet on the very first render above.
+patientsReady.then(renderPatientList);
 
 const VISITS = [
   {patient:'Thomas Müller',date:'2026-06-03',type:'Kontrolle',   diag:'I10 – Arterielle Hypertonie',       notes:'Blutdruck 145/90 mmHg. Medikation angepasst. Nächste Kontrolle in 4 Wochen.',therapy:'Ramipril 5mg 1×tägl.'},
@@ -4193,12 +4196,16 @@ function clearAdvSearch(){
 
 // Patient accounts created via secretary.html's QR flow are stored keyed by
 // username, but Kartei only knows the patient's display name -- look them up
-// by the fullName recorded at account-creation time.
+// by the fullName recorded at account-creation time. Delegates to
+// vendor/patient-data.js's merged Supabase+local cache so a patient shows
+// up (and can be messaged/annotated) here even if this device never
+// created them locally -- e.g. onboarded on a colleague's device. Callers
+// that write a field back still persist through this device's own
+// localStorage (clinical fields/messages aren't migrated yet), which is
+// harmless: it just mirrors that patient's already-authoritative Supabase
+// identity into local storage too, alongside the new local-only field.
 function findPatientAccountByFullName(name){
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
-  const username=Object.keys(accounts).find(u=>accounts[u]&&accounts[u].fullName===name);
-  return username?{username,accounts}:null;
+  return findPatientByFullName(name);
 }
 
 function saveAnamnese(){
@@ -4549,8 +4556,7 @@ async function uploadLocalDataToCloud(){
 // localStorage (no real backend yet) -- surfaced here so a doctor can find
 // and open Kartei for a patient who registered on their own device too.
 function loadQrPatientAccounts(){
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatients();
   return Object.keys(accounts)
     .map(u=>accounts[u])
     .filter(a=>a && a.fullName && a.role!=='guardian' && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
@@ -5243,8 +5249,7 @@ function sendAddressChangeBroadcast(){
   const now=new Date();
   const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+' ✓';
   const sentTo=[];
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
+  const accounts=loadPatients();
   Object.keys(accounts).forEach(function(u){
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||a.joinStatus==='pending'||a.joinStatus==='rejected') return;
