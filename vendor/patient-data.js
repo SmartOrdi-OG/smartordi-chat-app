@@ -1,20 +1,29 @@
-// Shared cache-then-sync-getter access to the Termine (appointments) table
-// added in supabase/phase1_patients_termine_messages.sql -- same pattern as
+// Shared cache-then-sync-getter access to the Termine (appointments) and
+// patients (identity/contact) tables added in
+// supabase/phase1_patients_termine_messages.sql -- same pattern as
 // vendor/staff-accounts.js's _staffRoster/refreshStaffRoster/loadStaffAccounts/
-// staffRosterReady, just for termine. Loaded by doctor.html/secretary.html
-// (staff mode: direct table access, RLS already grants authenticated staff
-// full access) right after vendor/staff-accounts.js.
+// staffRosterReady. Loaded by doctor.html/secretary.html (staff mode: direct
+// table access, RLS already grants authenticated staff full access) right
+// after vendor/staff-accounts.js.
 //
-// Patient identity (patients table) and chat (patient_messages table) are
-// migrated in later PRs -- this file only covers termine for now, so
-// termine rows keep a plain patient_name string alongside the (possibly
-// null, until a matching patients row exists) patient_id FK.
+// Chat (patient_messages table) and patient login are migrated in later
+// PRs. Clinical fields (diagnosen/allergie/blutgruppe/impfungen/anamnese)
+// and messages still live in localStorage's smartordi_patient_accounts for
+// now too -- loadPatients() below merges Supabase's identity/contact
+// columns (now authoritative, fixes real patients differing across
+// devices) with whatever clinical/local-only fields already exist for that
+// username on THIS device, so every existing render/search/export function
+// that reads an account object keeps working unchanged. Only the functions
+// that create a patient or need "which real patients exist" need to switch
+// to the new accessor -- clinical-field writes (saveAnamnese, addImpfung)
+// and chat (messages) intentionally keep reading/writing the raw
+// localStorage object directly until their own migration PRs land.
 //
-// Every row coming back from Supabase is remapped into the same camelCase
-// shape (patient/endTime/arztUsername/reasonNote) the app's existing
-// render functions already expect, so dashboards/lists/print functions
-// don't need to change at all -- only the functions that create/update a
-// Termin do.
+// Every Termin row coming back from Supabase is remapped into the same
+// camelCase shape (patient/endTime/arztUsername/reasonNote) the app's
+// existing render functions already expect, so dashboards/lists/print
+// functions don't need to change at all -- only the functions that
+// create/update a Termin do.
 function terminRowToJs(row){
   return {
     id: row.id,
@@ -126,4 +135,64 @@ function subscribeTermineRealtime(onChange){
       if(onChange) onChange();
     })
     .subscribe();
+}
+
+// ── PATIENTS (identity/contact) ──
+// Merges the Supabase patients row (now authoritative for identity/contact)
+// with whatever this device's own localStorage already has for that
+// username -- clinical fields, messages, guardian/child links, and the
+// local pw/firstLogin bookkeeping patient-login.html still depends on
+// (until it's migrated in a later PR) all pass through untouched.
+function localPatientAccountsRaw(){
+  try{ return JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ return {}; }
+}
+let _patients={};
+async function refreshPatients(){
+  const {data,error}=await sb.from('patients').select('*');
+  if(error){ console.error('refreshPatients failed',error); return; }
+  const localAccounts=localPatientAccountsRaw();
+  const merged={};
+  (data||[]).forEach(function(row){
+    const local=localAccounts[row.username]||{};
+    merged[row.username]=Object.assign({},local,{
+      username: row.username,
+      name: row.name,
+      fullName: row.full_name,
+      fach: row.fach||local.fach,
+      dob: row.dob||local.dob,
+      adresse: row.adresse||local.adresse,
+      tel: row.tel||local.tel,
+      email: row.email||local.email,
+      versicherung: row.versicherung||local.versicherung,
+      svnr: row.svnr||local.svnr,
+      joinStatus: row.join_status,
+      joinNote: row.join_note,
+    });
+  });
+  // Accounts that only exist locally so far (not yet uploaded/created in
+  // Supabase -- e.g. a guardian/child account, deferred to a later phase)
+  // still need to show up exactly as they did before this migration.
+  Object.keys(localAccounts).forEach(function(u){
+    if(!merged[u]) merged[u]=localAccounts[u];
+  });
+  _patients=merged;
+}
+function loadPatients(){
+  return _patients;
+}
+const patientsReady=refreshPatients();
+function findPatientByFullName(name){
+  const username=Object.keys(_patients).find(function(u){ return _patients[u]&&_patients[u].fullName===name; });
+  return username?{username,accounts:_patients}:null;
+}
+// Staff-side identity create/update -- inserts or updates just the
+// identity/contact columns; never touches temp_password/pw_hash unless
+// explicitly asked to (same "never clobber a real password on update" rule
+// as the one-time upload migration).
+async function upsertPatientIdentity(username,fields){
+  const row=Object.assign({username},fields);
+  const {data,error}=await sb.from('patients').upsert(row,{onConflict:'username'}).select().single();
+  if(error){ console.error('upsertPatientIdentity failed',error); throw error; }
+  await refreshPatients();
+  return data;
 }
