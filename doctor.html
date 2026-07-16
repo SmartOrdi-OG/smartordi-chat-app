@@ -2268,6 +2268,16 @@ body.windows-mode .kartei-header{display:none;}
       </div>
     </div>
 
+    <!-- Cloud-Datenmigration -->
+    <div class="dash-card" style="margin-bottom:20px;">
+      <div class="dash-card-header">☁️ Cloud-Datenmigration <span style="font-size:11px;color:#64748b;font-weight:400;">— damit echte Patient/innen auf jedem Gerät sichtbar sind</span></div>
+      <div class="dash-card-body">
+        <div id="cloudMigrateNote" style="font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.6;"></div>
+        <button type="button" id="cloudMigrateBtn" onclick="uploadLocalDataToCloud()" style="padding:9px 16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;font-family:inherit;font-size:12px;font-weight:700;color:#1e40af;cursor:pointer;">☁️ Lokale Daten in die Cloud übertragen</button>
+        <button type="button" id="cloudMigrateRerunBtn" onclick="resetCloudMigrationFlag()" style="display:none;padding:9px 16px;background:#f1f5f9;border:none;border-radius:9px;font-family:inherit;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;margin-left:8px;">Erneut ausführen</button>
+      </div>
+    </div>
+
     <!-- Save button -->
     <button onclick="saveSettings()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">
       ✓ Einstellungen speichern
@@ -4418,6 +4428,158 @@ const DEMO_PATIENTS=[
     impfungen:[]},
 ];
 
+// ══ CLOUD-DATENMIGRATION (one-time, per device) ══
+// Real patient accounts/termine/chat still live only in this browser's
+// localStorage today (see PR1's Supabase schema) -- this uploads whatever
+// real (non-demo) data already exists on THIS device into the shared
+// Supabase tables, once, so it isn't silently lost/left behind once the
+// app starts reading from the cloud instead of localStorage.
+const CLOUD_MIGRATION_KEY='smartordi_cloud_migration_done';
+function renderCloudMigrationCard(){
+  const done=localStorage.getItem(CLOUD_MIGRATION_KEY);
+  const btn=document.getElementById('cloudMigrateBtn');
+  const rerunBtn=document.getElementById('cloudMigrateRerunBtn');
+  const note=document.getElementById('cloudMigrateNote');
+  if(!btn||!note) return;
+  if(done){
+    btn.style.display='none';
+    rerunBtn.style.display='inline-block';
+    note.textContent='✓ Zuletzt hochgeladen am '+new Date(done).toLocaleString('de-AT')+'. Bitte nur auf Ihrem vollständigsten Gerät erneut ausführen.';
+  } else {
+    btn.style.display='inline-block';
+    rerunBtn.style.display='none';
+    note.textContent='Lädt Ihre echten Patient/innen, Termine und Chat-Verläufe (nicht die Demo-Patienten) einmalig in die Cloud, damit sie auf jedem Gerät sichtbar sind.';
+  }
+}
+function resetCloudMigrationFlag(){
+  localStorage.removeItem(CLOUD_MIGRATION_KEY);
+  renderCloudMigrationCard();
+}
+async function uploadLocalDataToCloud(){
+  const btn=document.getElementById('cloudMigrateBtn');
+  const note=document.getElementById('cloudMigrateNote');
+  if(btn) btn.disabled=true;
+  if(note) note.textContent='Wird hochgeladen...';
+  try{
+    const demoNames=DEMO_PATIENTS.map(p=>p.name);
+    let localAccounts, localTermine;
+    try{ localAccounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ localAccounts={}; }
+    try{ localTermine=JSON.parse(localStorage.getItem('smartordi_termine'))||[]; }catch(e){ localTermine=[]; }
+
+    // Guardian/child accounts stay localStorage-only for now (deferred to a
+    // later phase per the migration plan), same as demo patients.
+    const realUsernames=Object.keys(localAccounts).filter(function(u){
+      const a=localAccounts[u];
+      return a && a.fullName && !demoNames.includes(a.fullName) && a.role!=='guardian' && !a.isChild;
+    });
+
+    const {data:existingPatients,error:fetchErr}=await sb.from('patients').select('id,username');
+    if(fetchErr) throw fetchErr;
+    const existingByUsername={};
+    (existingPatients||[]).forEach(function(p){ existingByUsername[p.username]=p; });
+
+    const usernameToId={};
+    let uploadedPatients=0, skippedPasswords=0;
+    for(const username of realUsernames){
+      const a=localAccounts[username];
+      const row={
+        username: username,
+        name: a.name||a.fullName,
+        full_name: a.fullName,
+        fach: a.fach||null,
+        dob: a.dob||null,
+        adresse: a.adresse||null,
+        tel: a.tel||null,
+        email: a.email||null,
+        versicherung: a.versicherung||null,
+        svnr: a.svnr||null,
+        join_status: a.joinStatus||'approved',
+        join_note: a.joinNote||null,
+      };
+      if(existingByUsername[username]){
+        // Never touch temp_password/pw_hash on an update -- a patient may
+        // have already changed their real password server-side since an
+        // earlier upload; re-running this must not clobber it.
+        const {error}=await sb.from('patients').update(row).eq('username',username);
+        if(error) throw error;
+        usernameToId[username]=existingByUsername[username].id;
+      } else {
+        // An empty local pw ('' -- e.g. an account created via
+        // approveJoinRequest before this migration existed) must never be
+        // sent as temp_password: crypt('', ...) hashes to a valid password
+        // and would let anyone log in with a blank field.
+        if(a.pw){ row.temp_password=a.pw; row.first_login=a.firstLogin!==false; }
+        else { skippedPasswords++; row.first_login=true; }
+        const {data,error}=await sb.from('patients').insert(row).select('id').single();
+        if(error) throw error;
+        usernameToId[username]=data.id;
+      }
+      uploadedPatients++;
+    }
+
+    // Chat history: only bulk-insert if this patient currently has zero
+    // messages remotely, so re-running (or a second device) never duplicates.
+    for(const username of realUsernames){
+      const pid=usernameToId[username];
+      if(!pid) continue;
+      const msgs=localAccounts[username].messages||[];
+      if(!msgs.length) continue;
+      const {count,error:countErr}=await sb.from('patient_messages').select('id',{count:'exact',head:true}).eq('patient_id',pid);
+      if(countErr) throw countErr;
+      if(count>0) continue;
+      const rows=msgs.map(function(m){ return {patient_id:pid, dir:m.dir, type:m.type||'text', text:m.text||null}; });
+      const {error}=await sb.from('patient_messages').insert(rows);
+      if(error) throw error;
+    }
+
+    // Termine: upsert on legacy_id so re-running the same device is a no-op.
+    // Legacy arztUsername values that aren't a real staff_profiles.id (the
+    // pre-multi-doctor 'dr.ahmed' fallback string) get remapped to the
+    // practice's current admin doctor, mirroring arztDisplayName()'s own
+    // fallback -- otherwise the arzt_id foreign key would reject the row.
+    const staffAccounts=loadStaffAccounts();
+    const me=currentDoctorUsername();
+    function resolveArztId(arztUsername){
+      if(arztUsername && staffAccounts[arztUsername]) return arztUsername;
+      const admin=Object.keys(staffAccounts).find(function(u){ return staffAccounts[u].isAdmin; });
+      return admin||me||null;
+    }
+    let uploadedTermine=0;
+    for(const t of localTermine){
+      if(demoNames.includes(t.patient)) continue;
+      const patientUsername=Object.keys(localAccounts).find(function(u){ return localAccounts[u].fullName===t.patient; });
+      const row={
+        legacy_id: t.id,
+        patient_id: usernameToId[patientUsername]||null,
+        patient_name: t.patient,
+        art: t.art||null,
+        date: t.date,
+        time: t.time,
+        end_time: t.endTime||null,
+        status: t.status||'neu',
+        arzt_id: resolveArztId(t.arztUsername),
+        versicherung: t.versicherung||null,
+        tel: t.tel||null,
+        svnr: t.svnr||null,
+        dob: t.dob||null,
+        reason: t.reason||null,
+        reason_note: t.reasonNote||null,
+      };
+      const {error}=await sb.from('termine').upsert(row,{onConflict:'legacy_id'});
+      if(error) throw error;
+      uploadedTermine++;
+    }
+
+    localStorage.setItem(CLOUD_MIGRATION_KEY, new Date().toISOString());
+    renderCloudMigrationCard();
+    showToast('✓ Hochgeladen: '+uploadedPatients+' Patient/in(nen), '+uploadedTermine+' Termin(e)'+(skippedPasswords?' ('+skippedPasswords+' ohne Passwort -- bitte neu einladen)':''),'success');
+  }catch(err){
+    console.error('Cloud migration failed',err);
+    showToast('✗ Fehler beim Hochladen: '+(err&&err.message?err.message:err),'error');
+    if(btn) btn.disabled=false;
+  }
+}
+
 // Patients onboarded via QR (secretary.html) live only in this browser's
 // localStorage (no real backend yet) -- surfaced here so a doctor can find
 // and open Kartei for a patient who registered on their own device too.
@@ -4912,7 +5074,7 @@ function showToastSettings(msg){showToast(msg,'success');}
 
 // Init canvas when settings view opens; refresh Kartei content when it opens
 document.addEventListener('smartordi-view-change', function(e){
-  if(e.detail === 'settings') setTimeout(initSigCanvas, 100);
+  if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); renderCloudMigrationCard(); }
   if(e.detail === 'kartei'){
     switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
     setKarteiDate();
