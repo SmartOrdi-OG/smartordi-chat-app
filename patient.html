@@ -216,6 +216,14 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
 .msg-row{display:flex;gap:8px;align-items:flex-end;}
 .msg-row.out{flex-direction:row-reverse;}
+/* max-width lives here, not on .msg-bubble itself -- .msg-bubble's parent
+   div has no explicit width (it wraps the bubble + time stamp), so a
+   percentage max-width on the bubble resolves against that indefinite
+   ancestor and Chromium falls back to clamping it against the bubble's
+   own shrink-to-fit width, clipping short single-word messages (e.g.
+   "danke") by ~25%. This row's own width is definite, so anchoring the
+   75% cap here instead gives a correct percentage base. */
+.msg-row > div:last-child{max-width:75%;}
 
 .msg-avatar-sm{
   width:28px;height:28px;border-radius:50%;
@@ -225,7 +233,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 }
 
 .msg-bubble{
-  max-width:75%;padding:10px 13px;
+  padding:10px 13px;
   border-radius:16px;font-size:14px;line-height:1.45;
   color:var(--text);background:white;
   box-shadow:0 1px 3px rgba(0,0,0,0.06);
