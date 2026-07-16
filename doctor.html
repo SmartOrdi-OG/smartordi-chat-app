@@ -1966,60 +1966,36 @@ body.windows-mode .kartei-header{display:none;}
     <div class="compliance-bar">
       <span style="font-size:13px;font-weight:700;color:#0f172a;">DSGVO</span>
       <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">Verschlüsselung</span><span class="compliance-value" style="color:#16a34a;">Aktiv</span></div>
-      <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">Einwilligungen</span><span class="compliance-value" style="color:#16a34a;">34/34</span></div>
       <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">EU-Server</span><span class="compliance-value" style="color:#16a34a;">Wien</span></div>
-      <div class="compliance-item"><div class="compliance-dot" style="background:#f59e0b;"></div><span class="compliance-label">Vertretung</span><span class="compliance-value" style="color:#d97706;">03.07</span></div>
+      <div class="compliance-item" id="dashVertretungItem" style="display:none;"><div class="compliance-dot" style="background:#f59e0b;"></div><span class="compliance-label">Vertretung</span><span class="compliance-value" id="dashVertretungValue" style="color:#d97706;"></span></div>
     </div>
 
     <!-- Stats Grid -->
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon" style="background:#eff6ff;"></div>
-        <div class="stat-value">127</div>
-        <div class="stat-label">Nachrichten heute</div>
-        <span class="stat-change up">↑ 18% diese Woche</span>
+        <div class="stat-value" id="statDashMessages">0</div>
+        <div class="stat-label">Nachrichten gesamt</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#fefce8;"></div>
-        <div class="stat-value">34</div>
+        <div class="stat-value" id="statDashPatients">0</div>
         <div class="stat-label">Aktive Patienten</div>
-        <span class="stat-change up">↑ 5 neue diesen Monat</span>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#f5f3ff;"></div>
-        <div class="stat-value">28</div>
-        <div class="stat-label">Weitergeleitet</div>
-        <span class="stat-change" style="color:#64748b;background:#f1f5f9;">Vertretung Juli</span>
+        <div class="stat-value" id="statDashTermineHeute">0</div>
+        <div class="stat-label">Termine heute</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="background:#f0fdf4;"></div>
-        <div class="stat-value">5</div>
-        <div class="stat-label">Netzwerk-Ärzte</div>
-        <span class="stat-change" style="color:#64748b;background:#f1f5f9;">Wien & Linz</span>
+        <div class="stat-value" id="statDashImpfFaellig">0</div>
+        <div class="stat-label">Impfungen fällig</div>
       </div>
     </div>
 
     <!-- Dash Grid -->
     <div class="dash-grid">
-
-      <!-- Chart Card -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Nachrichten diese Woche
-          <span style="font-size:12px;color:#1e40af;font-weight:600;">612 gesamt</span>
-        </div>
-        <div class="dash-card-body">
-          <div class="chart-bars">
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:55%;"></div><div class="chart-label">Mo.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:70%;"></div><div class="chart-label">Di.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:45%;"></div><div class="chart-label">Mi.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:85%;"></div><div class="chart-label">Do.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:60%;"></div><div class="chart-label">Fr.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar" style="height:40%;"></div><div class="chart-label">Sa.</div></div>
-            <div class="chart-bar-wrap"><div class="chart-bar today" style="height:75%;"></div><div class="chart-label" style="color:#1e40af;font-weight:700;">Heute</div></div>
-          </div>
-        </div>
-      </div>
 
       <!-- Activity Card -->
       <div class="dash-card">
@@ -2048,31 +2024,6 @@ body.windows-mode .kartei-header{display:none;}
           <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
         </div>
         <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
-      </div>
-
-      <!-- Network Card -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Ärztenetzwerk
-          <span style="font-size:11px;color:#94a3b8;">5 Ärzte</span>
-        </div>
-        <div class="dash-card-body" style="padding:8px 16px;">
-          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f8fafc;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#16a34a;">W</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;">Dr. Weber</div><div style="font-size:11px;color:#64748b;">Kardiologie · Wien</div></div>
-            <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-weight:700;">● Verfügbar</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f8fafc;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1e40af;">S</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;">Dr. Schmidt</div><div style="font-size:11px;color:#64748b;">Neurologie · Linz</div></div>
-            <span style="font-size:10px;background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:10px;font-weight:700;">● Verfügbar</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;padding:9px 0;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#dc2626;">M</div>
-            <div style="flex:1;"><div style="font-size:13px;font-weight:700;">Dr. Müller</div><div style="font-size:11px;color:#64748b;">Orthopädie · Wien</div></div>
-            <span style="font-size:10px;background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:10px;font-weight:700;">Beschäftigt</span>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -2859,6 +2810,45 @@ function renderDashTermine(){
     ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
 }
+// The Dashboard's top stat cards used to be permanently hardcoded numbers
+// (127 Nachrichten heute, 34 Aktive Patienten, 28 Weitergeleitet, 5
+// Netzwerk-Ärzte) that never reflected anything real -- stood out clearly
+// once patient data was actually cleared out and they still showed those
+// same fake numbers. Wired to real, already-established computations
+// instead (same data patientListEntries()/renderDashTermine()/
+// renderImpfWarnungen() already use), and dropped "Weitergeleitet"/
+// "Netzwerk-Ärzte" entirely since there's no real per-patient "currently
+// transferred" flag or cross-practice network feature to honestly count.
+function updateDashboardStats(){
+  const patients=patientListEntries();
+  const msgEl=document.getElementById('statDashMessages');
+  const patEl=document.getElementById('statDashPatients');
+  const terEl=document.getElementById('statDashTermineHeute');
+  const impfEl=document.getElementById('statDashImpfFaellig');
+  if(patEl) patEl.textContent=patients.length;
+  if(msgEl){
+    const accounts=loadPatients();
+    const total=Object.values(accounts).reduce((sum,a)=>sum+((a&&a.messages)?a.messages.length:0),0);
+    msgEl.textContent=total;
+  }
+  if(terEl){
+    const today=todayStr();
+    terEl.textContent=filterToMyTermine(loadTermine()).filter(t=>t.date===today&&t.status!=='abgesagt').length;
+  }
+  if(impfEl) impfEl.textContent=allDueVaccinations().length;
+
+  const vertItem=document.getElementById('dashVertretungItem');
+  const vertVal=document.getElementById('dashVertretungValue');
+  if(vertItem&&vertVal){
+    const v=loadVertretung();
+    if(v&&v.bis){
+      vertVal.textContent=new Date(v.bis+'T00:00:00').toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'});
+      vertItem.style.display='';
+    } else {
+      vertItem.style.display='none';
+    }
+  }
+}
 function allTerminRowHtml(t,dueSet){
   return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;">
     <div style="width:38px;height:38px;border-radius:50%;background:#eff6ff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${t.patient[0]}</div>
@@ -3101,6 +3091,7 @@ function sendClinicMsg(){
   if(name){
     appendRealMessage(name,{dir:'out',type:'text',text:txt,time:outTime});
     renderPatientList(); // refresh the sidebar preview text to the new message
+    updateDashboardStats();
   }
 }
 
@@ -3425,7 +3416,7 @@ renderPatientList();
 // Real patient identity now lives in Supabase -- re-render once the fetch
 // kicked off by vendor/patient-data.js resolves, in case it hadn't finished
 // yet on the very first render above.
-patientsReady.then(renderPatientList);
+patientsReady.then(()=>{ renderPatientList(); updateDashboardStats(); });
 
 const VISITS = [];
 
@@ -5134,6 +5125,7 @@ function saveVertretung(){
   all[me]=Object.assign({},existing,form);
   saveVertretungAll(all);
   renderVertretungView();
+  updateDashboardStats();
   showToast('✓ Vertretung gespeichert','success');
 }
 function sendVertretungBroadcast(){
@@ -5282,6 +5274,7 @@ renderImpfWarnungen();
 Promise.all([staffRosterReady, termineReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
+  updateDashboardStats();
 });
 // Realtime replaces the old same-browser-only 'storage' event for Termine --
 // this fires in every tab/device, including the one that made the write, so
@@ -5289,6 +5282,7 @@ Promise.all([staffRosterReady, termineReady]).then(()=>{
 // harmless extra (cheap, idempotent full re-draw), same as the old listener.
 subscribeTermineRealtime(()=>{
   renderDashTermine();
+  updateDashboardStats();
   const allModal=document.getElementById('allTermineModal');
   if(allModal && allModal.classList.contains('show')) renderAlleTermine();
 });
@@ -5304,6 +5298,7 @@ subscribeMessagesRealtime(()=>{
     });
   }
   renderPatientList();
+  updateDashboardStats();
 });
 </script>
 
