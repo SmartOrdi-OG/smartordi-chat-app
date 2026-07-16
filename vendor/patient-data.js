@@ -155,6 +155,7 @@ async function refreshPatients(){
   (data||[]).forEach(function(row){
     const local=localAccounts[row.username]||{};
     merged[row.username]=Object.assign({},local,{
+      id: row.id,
       username: row.username,
       name: row.name,
       fullName: row.full_name,
@@ -195,4 +196,25 @@ async function upsertPatientIdentity(username,fields){
   if(error){ console.error('upsertPatientIdentity failed',error); throw error; }
   await refreshPatients();
   return data;
+}
+
+// ── CHAT (patient_messages) ──
+// Additive for now: staff-sent messages get mirrored here (best-effort,
+// only when the patient already has a Supabase identity row) so they sync
+// across staff devices/browsers in real time, without changing how the
+// chat UI itself reads/displays messages yet -- that still reads the local
+// smartordi_patient_accounts copy, since patient.html (where a patient's
+// own incoming messages are written) isn't migrated until a later PR, and
+// a safe merged read needs to wait until both sides write to the same
+// table to avoid duplicate/out-of-order messages.
+async function sendMessageToPatient(patientId,msg){
+  const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null};
+  const {data,error}=await sb.from('patient_messages').insert(row).select().single();
+  if(error){ console.error('sendMessageToPatient failed',error); throw error; }
+  return data;
+}
+async function getMessagesForPatient(patientId){
+  const {data,error}=await sb.from('patient_messages').select('*').eq('patient_id',patientId).order('created_at');
+  if(error){ console.error('getMessagesForPatient failed',error); return []; }
+  return data||[];
 }
