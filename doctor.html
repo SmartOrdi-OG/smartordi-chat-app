@@ -1300,7 +1300,7 @@ body.windows-mode .kartei-header{display:none;}
       <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
       <button class="kartei-tab" id="ktab-btn-rezept" onclick="switchKarteiTab('rezept',this)">Rezept</button>
       <button class="kartei-tab" id="ktab-btn-impfung" onclick="switchKarteiTab('impfung',this)">Impfung</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('mkp',this)">MKP</button>
+      <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
       <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
       <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
       <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
@@ -5330,7 +5330,23 @@ function openKarteiForPatient(name,svnr,versicherung,dob){
   if(knm) knm.textContent=name;
   if(kmt) kmt.textContent=(versicherung||'—')+' · SV '+(svnr||'—')+' · '+age+' J.';
   showToast('Kartei geöffnet: '+name);
+  updateMkpTabVisibility(dob);
   switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
+}
+// MKP (Mutter-Kind-Pass) is a pediatric-only record -- hide the tab
+// entirely for a patient old enough that none of it applies (last exam is
+// at 58-62 months, ~5 years; 10 years leaves plenty of slack for a late
+// checkup rather than hiding it right at the edge). Unknown DOB defaults
+// to showing it rather than hiding a feature over missing data.
+function updateMkpTabVisibility(dob){
+  const btn=document.getElementById('ktab-btn-mkp');
+  if(!btn) return;
+  const ageYears=dob?((new Date()-new Date(dob+'T00:00:00'))/86400000/365.25):null;
+  const isPediatric=ageYears==null||ageYears<10;
+  btn.style.display=isPediatric?'':'none';
+  if(!isPediatric&&btn.classList.contains('active')){
+    switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
+  }
 }
 
 // Used by "Alle Termine": opens the Kartei window itself (unlike
