@@ -739,6 +739,11 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <div class="info-row"><span class="info-label" data-i18n="profil.email">E-Mail</span><span class="info-value" id="profilEmail">—</span></div>
       </div>
 
+      <div class="info-card" id="profilImpfungenCard" style="display:none;">
+        <div class="info-card-header" data-i18n="impfungen.title">Impfungen</div>
+        <div id="profilImpfungenRows"></div>
+      </div>
+
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.versicherung">Versicherung</div>
         <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">—</span></div>
@@ -1092,6 +1097,7 @@ let _remoteProfile=null;
 let _remoteMessages=null;
 let _remoteTermine=null;
 let _remoteDocuments=null;
+let _remoteImpfungen=null;
 async function refreshRemoteProfile(){
   if(!getPatientToken()){ _remoteProfile=null; return; }
   _remoteProfile=await patientGetProfile();
@@ -1107,6 +1113,99 @@ async function refreshRemoteTermine(){
 async function refreshRemoteDocuments(){
   if(!getPatientToken()){ _remoteDocuments=null; return; }
   _remoteDocuments=await patientGetDocuments();
+}
+// Unlike Dokumente/Termine, this one has no demo/local-only fallback at
+// all -- vaccination records only ever existed as a doctor.html Kartei
+// entry, so a patient with no session token (the built-in demo login,
+// guardian/child accounts not yet migrated) simply has nothing to show.
+async function refreshRemoteImpfungen(){
+  if(!getPatientToken()){ _remoteImpfungen=null; return; }
+  _remoteImpfungen=await patientGetImpfungen();
+}
+// Same Österreichischer Impfplan data as doctor.html/secretary.html's
+// VACCINE_SCHEDULE (see doctor.html's own comment for the full sourcing
+// rationale) -- duplicated per this codebase's established pattern for
+// shared-but-standalone data logic across pages. Parents explicitly want
+// to see this themselves (daycare/school proof), unlike MKP.
+const VACCINE_SCHEDULE=[
+  {key:'sechsfach',name:'6-fach (Diphtherie-Tetanus-Pertussis-Hib-Polio-Hepatitis B)',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:150},{label:'D3',minDay:330},
+    {label:'A1',minDay:2190},{label:'A2',minDay:5110},
+  ]},
+  {key:'pneumokokken',name:'Pneumokokken',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:146},{label:'D3',minDay:360},
+  ]},
+  {key:'rotavirus',name:'Rotavirus',doses:[
+    {label:'D1',minDay:42},{label:'D2',minDay:70},
+  ]},
+  {key:'mmr',name:'MMR (Masern-Mumps-Röteln)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:455},
+  ]},
+  {key:'varizellen',name:'Varizellen (Windpocken)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:407},
+  ]},
+  {key:'meningokokken_b',name:'Meningokokken B',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:150},{label:'D3',minDay:390},
+  ]},
+  {key:'meningokokken_acwy',name:'Meningokokken ACWY',doses:[
+    {label:'D1',minDay:4015},
+  ]},
+  {key:'hpv',name:'HPV',doses:[
+    {label:'D1',minDay:3285},{label:'D2',minDay:3465},
+  ]},
+  {key:'influenza',name:'Influenza',doses:[
+    {label:'D1',minDay:183},{label:'D2',minDay:211},
+  ],recurringDays:365},
+  {key:'fsme',name:'FSME (Zecken-Impfung)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:410},{label:'D3',minDay:680},{label:'A1',minDay:2505},
+  ],recurringDays:1095},
+];
+function ageInDaysFromDob(dob){
+  if(!dob) return null;
+  return Math.floor((new Date()-new Date(dob+'T00:00:00'))/86400000);
+}
+// One status per vaccine (not per dose) -- 'complete' once every fixed dose
+// is given (a recurring booster staying 'complete' until the next one falls
+// due), otherwise whatever the next outstanding dose's own status is.
+function vaccineStatusFor(v,ageDays,given){
+  if(given.length>=v.doses.length){
+    if(!v.recurringDays) return {state:'complete'};
+    const last=given.slice().sort((a,b)=>b.datum.localeCompare(a.datum))[0];
+    if(!last) return {state:'complete'};
+    const sinceDays=Math.round((new Date()-new Date(last.datum+'T00:00:00'))/86400000);
+    if(sinceDays>=v.recurringDays) return {state:'overdue'};
+    return {state:'complete'};
+  }
+  const nextDose=v.doses[given.length];
+  if(ageDays==null) return {state:'upcoming',label:nextDose.label};
+  if(ageDays<nextDose.minDay) return {state:'upcoming',label:nextDose.label};
+  return {state:(ageDays-nextDose.minDay)>30?'overdue':'due',label:nextDose.label};
+}
+function impfungenStatusBadge(state){
+  const map={
+    complete:{bg:'#dcfce7',fg:'#16a34a',key:'impfungen.complete'},
+    due:{bg:'#fef9c3',fg:'#854d0e',key:'impfungen.due'},
+    overdue:{bg:'#fee2e2',fg:'#dc2626',key:'impfungen.overdue'},
+    upcoming:{bg:'#f1f5f9',fg:'#64748b',key:'impfungen.upcoming'},
+  };
+  const s=map[state]||map.upcoming;
+  return `<span style="background:${s.bg};color:${s.fg};font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;flex-shrink:0;">${tr(s.key)}</span>`;
+}
+function renderProfilImpfungen(){
+  const card=document.getElementById('profilImpfungenCard');
+  const root=document.getElementById('profilImpfungenRows');
+  if(!card||!root) return;
+  if(!_remoteImpfungen){ card.style.display='none'; return; }
+  card.style.display='';
+  const account=getCurrentAccount();
+  const ageDays=ageInDaysFromDob(account?account.dob:null);
+  const given=_remoteImpfungen||[];
+  root.innerHTML=VACCINE_SCHEDULE.map(function(v){
+    const givenForV=given.filter(function(i){ return i.vaccineKey===v.key; });
+    const status=vaccineStatusFor(v,ageDays,givenForV);
+    const dosesStr=givenForV.length+'/'+v.doses.length+' '+tr('impfungen.doses');
+    return `<div class="info-row"><span class="info-label">${v.name}</span><span class="info-value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end;"><span style="color:#94a3b8;font-weight:400;">${dosesStr}</span>${impfungenStatusBadge(status.state)}</span></div>`;
+  }).join('');
 }
 function getCurrentAccount(){
   if(!currentUsername) return null;
@@ -1216,6 +1315,7 @@ async function initPatientData(){
     await refreshRemoteMessages();
     await refreshRemoteTermine();
     await refreshRemoteDocuments();
+    await refreshRemoteImpfungen();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1257,6 +1357,7 @@ async function initPatientData(){
   renderProfilArztRows();
   updatePracticeIdentityUI();
   renderDokumente();
+  renderProfilImpfungen();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
   staffRosterReady.then(renderPatientTermine);
@@ -1645,11 +1746,13 @@ async function pollPatientData(){
   await refreshRemoteMessages();
   await refreshRemoteTermine();
   await refreshRemoteDocuments();
+  await refreshRemoteImpfungen();
   renderPatientMessages();
   renderPatientTermine();
   renderCalendar();
   renderTimeSlots();
   renderDokumente();
+  renderProfilImpfungen();
 }
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') pollPatientData(); });
 window.addEventListener('focus',pollPatientData);
@@ -1662,6 +1765,7 @@ function onPatientLanguageChanged(){
   renderTimeSlots();
   renderPatientTermine();
   renderProfilArztRows();
+  renderProfilImpfungen();
   if(document.getElementById('symptomModal').classList.contains('show')){
     document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
     renderSymptomRegions();

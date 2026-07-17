@@ -1694,17 +1694,17 @@ body.windows-mode .kartei-header{display:none;}
             <div>
               <div class="k-form-label">Impfstoff</div>
               <select class="k-form-input" id="impf-name" onchange="toggleSonstigeImpf(this)">
-                <option>FSME</option>
-                <option>COVID-19</option>
-                <option>Influenza</option>
-                <option>Tetanus</option>
-                <option>Hepatitis B</option>
-                <option>MMR (Masern-Mumps-Röteln)</option>
-                <option>Varizellen (Windpocken)</option>
-                <option>Meningokokken</option>
-                <option>HPV</option>
+                <option>6-fach (Diphtherie-Tetanus-Pertussis-Hib-Polio-Hepatitis B)</option>
                 <option>Pneumokokken</option>
                 <option>Rotavirus</option>
+                <option>MMR (Masern-Mumps-Röteln)</option>
+                <option>Varizellen (Windpocken)</option>
+                <option>Meningokokken B</option>
+                <option>Meningokokken ACWY</option>
+                <option>HPV</option>
+                <option>Influenza</option>
+                <option>FSME (Zecken-Impfung)</option>
+                <option>COVID-19</option>
                 <option>Sonstige</option>
               </select>
               <input class="k-form-input" id="impf-name-custom" placeholder="Impfstoffname eingeben..." style="display:none;margin-top:6px;">
@@ -3082,50 +3082,107 @@ function renderAlleTermine(){
   document.getElementById('tageslisteSummary').textContent=`${allToday.length} heute · ${bestaetigt} bestätigt · ${neu} neu`;
 }
 
-// ── IMPFKALENDER (simplified Austrian vaccination schedule, demo scope) ──
-// Two tracks feed the due-list: (1) infant primary-series milestones inferred
-// purely from age, so a child never manually flagged by the doctor still
-// surfaces; (2) any vaccine with an explicit "next" date already recorded on
-// an entry (covers adult boosters like Tetanus/FSME/Influenza), which wins
-// over the age-based guess for that same vaccine if both would apply.
-const CHILD_VACCINE_SCHEDULE=[
-  {name:'Hepatitis B',months:[3,5,12]},
-  {name:'Tetanus',months:[3,5,12]},
-  {name:'Pneumokokken',months:[3,5,12]},
-  {name:'Rotavirus',months:[3,5]},
-  {name:'MMR (Masern-Mumps-Röteln)',months:[12,18]},
-  {name:'Varizellen (Windpocken)',months:[12]},
-  {name:'Meningokokken',months:[12]},
+// ── IMPFKALENDER (Österreichischer Impfplan, offizielles Schema v2.1.0,
+// 29/10/2025 -- transcribed from the ministry's official 33-page reference
+// PDF, one on-time/default variant per vaccine; brand/late-start/"Indikation"
+// risk-group variants are deliberately left out, same pragmatic scope cut
+// MKP made). Every dose's minDay is days-since-birth on the standard on-time
+// schedule -- exact intervals come straight from the document; a start age
+// for the very first dose of a series isn't stated in the source itself
+// (it only gives intervals since the *previous* dose), so those anchor on
+// Austria's well-established conventional start ages for the free
+// Kinderimpfprogramm (completed 3rd month for the primary infant series,
+// 6th week for Rotavirus specifically -- it has a much earlier/stricter
+// safety cutoff than the others, matching how this patient's own daughter
+// got hers "at one month"). 1 Monat/Woche/Jahr approximated as 30/7/365
+// days, consistent with mkpAgeDays' plain day-count convention.
+//
+// Two tracks feed the due-list, same as before: (1) schedule-driven doses
+// inferred purely from age, so a child never manually flagged by the
+// doctor still surfaces; (2) any entry with an explicit "next" date
+// (adult-style boosters: Tetanus-component alone, FSME, Influenza), which
+// wins over the schedule guess for that vaccine if both would apply.
+const VACCINE_SCHEDULE=[
+  {key:'sechsfach',name:'6-fach (Diphtherie-Tetanus-Pertussis-Hib-Polio-Hepatitis B)',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:150},{label:'D3',minDay:330},
+    {label:'A1',minDay:2190},{label:'A2',minDay:5110},
+  ]},
+  {key:'pneumokokken',name:'Pneumokokken',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:146},{label:'D3',minDay:360},
+  ]},
+  {key:'rotavirus',name:'Rotavirus',doses:[
+    {label:'D1',minDay:42},{label:'D2',minDay:70},
+  ]},
+  {key:'mmr',name:'MMR (Masern-Mumps-Röteln)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:455},
+  ]},
+  {key:'varizellen',name:'Varizellen (Windpocken)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:407},
+  ]},
+  {key:'meningokokken_b',name:'Meningokokken B',doses:[
+    {label:'D1',minDay:90},{label:'D2',minDay:150},{label:'D3',minDay:390},
+  ]},
+  {key:'meningokokken_acwy',name:'Meningokokken ACWY',doses:[
+    {label:'D1',minDay:4015},
+  ]},
+  {key:'hpv',name:'HPV',doses:[
+    {label:'D1',minDay:3285},{label:'D2',minDay:3465},
+  ]},
+  {key:'influenza',name:'Influenza',doses:[
+    {label:'D1',minDay:183},{label:'D2',minDay:211},
+  ],recurringDays:365},
+  {key:'fsme',name:'FSME (Zecken-Impfung)',doses:[
+    {label:'D1',minDay:365},{label:'D2',minDay:410},{label:'D3',minDay:680},{label:'A1',minDay:2505},
+  ],recurringDays:1095},
 ];
-function ageInMonths(dob){
+// This practice's tracked schedule only reaches into adolescence (the
+// oldest milestone, HPV D1, starts at 9 years) -- past 18 years there's no
+// programmed milestone left to infer, so stop guessing rather than flag a
+// grown patient as "overdue" from birth for a vaccine they may well have
+// already completed elsewhere/before this record started.
+const VACCINE_SCHEDULE_MAX_AGE_DAYS=6570;
+function ageInDays(dob){
   if(!dob) return null;
-  const d=new Date(dob+'T00:00:00'), now=new Date();
-  return (now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth())+(now.getDate()>=d.getDate()?0:-1);
+  return Math.floor((new Date()-new Date(dob+'T00:00:00'))/86400000);
 }
 function daysUntil(dateStr){
   return Math.round((new Date(dateStr+'T00:00:00')-new Date(todayStr()+'T00:00:00'))/86400000);
 }
+function daysSince(dateStr){
+  return Math.round((new Date(todayStr()+'T00:00:00')-new Date(dateStr+'T00:00:00'))/86400000);
+}
 function dueVaccinationsForPatient(name,dob,impfungen){
   const due=[];
-  const explicitVaccineNames=new Set();
-  (impfungen||[]).forEach(i=>{
-    if(!i.next) return;
-    const d=daysUntil(i.next);
+  const list=impfungen||[];
+  const explicitKeys=new Set();
+  list.forEach(i=>{
+    if(!i.nextDue) return;
+    const d=daysUntil(i.nextDue);
     if(d<=30){
-      explicitVaccineNames.add(i.name);
-      due.push({patient:name,vaccine:i.name,status:d<0?'ueberfaellig':'faellig',detail:d<0?`seit ${Math.abs(d)} Tag(en) überfällig`:(d===0?'heute fällig':`in ${d} Tag(en) fällig`)});
+      explicitKeys.add(i.vaccineKey||i.vaccineName);
+      due.push({patient:name,vaccine:i.vaccineName,status:d<0?'ueberfaellig':'faellig',detail:d<0?`seit ${Math.abs(d)} Tag(en) überfällig`:(d===0?'heute fällig':`in ${d} Tag(en) fällig`)});
     }
   });
-  const ageM=ageInMonths(dob);
-  if(ageM!==null && ageM<=30){
-    CHILD_VACCINE_SCHEDULE.forEach(v=>{
-      if(explicitVaccineNames.has(v.name)) return;
-      const givenCount=(impfungen||[]).filter(i=>i.name===v.name).length;
-      const expectedCount=v.months.filter(m=>ageM>=m).length;
-      if(expectedCount>givenCount){
-        const targetMonth=v.months[givenCount];
-        const overdueMonths=ageM-targetMonth;
-        due.push({patient:name,vaccine:v.name,status:overdueMonths>=1?'ueberfaellig':'faellig',detail:overdueMonths>=1?`seit ${overdueMonths} Monat(en) fällig`:'diesen Monat fällig'});
+  const ageD=ageInDays(dob);
+  if(ageD!==null && ageD<=VACCINE_SCHEDULE_MAX_AGE_DAYS){
+    VACCINE_SCHEDULE.forEach(v=>{
+      if(explicitKeys.has(v.key)) return;
+      const given=list.filter(i=>i.vaccineKey===v.key);
+      if(given.length<v.doses.length){
+        const nextDose=v.doses[given.length];
+        if(ageD>=nextDose.minDay){
+          const overdueDays=ageD-nextDose.minDay;
+          due.push({patient:name,vaccine:`${v.name} (${nextDose.label})`,status:overdueDays>30?'ueberfaellig':'faellig',detail:overdueDays>30?`seit ${overdueDays} Tag(en) fällig`:'fällig'});
+        }
+      }else if(v.recurringDays){
+        const lastGiven=given.slice().sort((a,b)=>b.datum.localeCompare(a.datum))[0];
+        if(lastGiven){
+          const sinceDays=daysSince(lastGiven.datum);
+          if(sinceDays>=v.recurringDays-30){
+            const overdueDays=sinceDays-v.recurringDays;
+            due.push({patient:name,vaccine:`${v.name} (Auffrischung)`,status:overdueDays>30?'ueberfaellig':'faellig',detail:overdueDays>30?`seit ${overdueDays} Tag(en) fällig`:'fällig'});
+          }
+        }
       }
     });
   }
@@ -3133,12 +3190,9 @@ function dueVaccinationsForPatient(name,dob,impfungen){
 }
 function allDueVaccinations(){
   const results=[];
-  DEMO_PATIENTS.forEach(p=>{ results.push(...dueVaccinationsForPatient(p.name,p.dob,p.impfungen)); });
-  let accounts;
-  try{ accounts=JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ accounts={}; }
-  Object.values(accounts).forEach(a=>{
-    if(!a||!a.fullName||a.role==='guardian'||DEMO_PATIENTS.some(p=>p.name===a.fullName)) return;
-    results.push(...dueVaccinationsForPatient(a.fullName,a.dob,a.impfungen));
+  Object.values(loadPatients()).forEach(a=>{
+    if(!a||!a.fullName||a.role==='guardian'||!a.id) return;
+    results.push(...dueVaccinationsForPatient(a.fullName,a.dob,loadImpfungenFor(a.id).map(impfRowToJs)));
   });
   return results.sort((a,b)=>(a.status===b.status)?0:(a.status==='ueberfaellig'?-1:1));
 }
@@ -3764,7 +3818,7 @@ function findPatientRecord(name){
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
 }
 
 // The chat view's "Patientendaten" side panel (Name/Geburtsdatum/Telefon/
@@ -3820,15 +3874,17 @@ function csvEscape(val){
   const s=(val===null||val===undefined)?'':String(val);
   return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
-function exportPatientCsv(){
+async function exportPatientCsv(){
   const name=document.getElementById('kartei-name')?.textContent;
   if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
   const rec=findPatientRecord(name);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+  await impfungenReady;
+  const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
   const nameParts=name.trim().split(/\s+/);
   const vorname=nameParts[0]||'';
   const nachname=nameParts.slice(1).join(' ')||'';
-  const impfungenStr=(rec.impfungen||[]).map(i=>i.name+':'+i.datum).join('; ');
+  const impfungenStr=impfungen.map(i=>i.vaccineName+':'+i.datum).join('; ');
   const visitsStr=VISITS.filter(v=>v.patient===name).map(v=>v.date+'|'+v.type+'|'+v.diag).join('; ');
   const krankengeschichte=rec.legacyHistory||visitsStr||'';
   const headers=['Vorname','Nachname','Geburtsdatum','SVNr','Versicherung','Telefon','Adresse','Diagnosen','Allergien','Blutgruppe','Impfungen','Krankengeschichte'];
@@ -3850,12 +3906,14 @@ function exportPatientCsv(){
 // record to another doctor to read/print/file, rather than importing it into
 // another system (see the same "PATIENTENBERICHT" structure other Kartei PDFs
 // like Überweisung/Rezept already use for a consistent look).
-function exportPatientPdf(){
+async function exportPatientPdf(){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
   const name=document.getElementById('kartei-name')?.textContent;
   if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
   const rec=findPatientRecord(name);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+  await impfungenReady;
+  const impfungenList=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -3904,12 +3962,11 @@ function exportPatientPdf(){
   }
 
   T('Impfungen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
-  const impfungen=rec.impfungen||[];
-  if(!impfungen.length){ T('Keine erfasst',13,y,9);y+=8; }
+  if(!impfungenList.length){ T('Keine erfasst',13,y,9);y+=8; }
   else{
-    impfungen.forEach(imp=>{
+    impfungenList.forEach(imp=>{
       const datumFmt=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
-      T('• '+imp.name+(imp.dosis?' ('+imp.dosis+')':'')+' — '+datumFmt,13,y,9);y+=6;
+      T('• '+imp.vaccineName+(imp.doseLabel?' ('+imp.doseLabel+')':'')+' — '+datumFmt,13,y,9);y+=6;
     });
     y+=2;
   }
@@ -4382,9 +4439,9 @@ function toggleSonstigeImpf(sel){
 // ══ IMPFUNG FUNCTIONS ══
 function renderImpfEintrag(imp){
   const df=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
-  const nextStr=imp.next?new Date(imp.next).toLocaleDateString('de-AT'):'—';
-  const isExpired=imp.next&&new Date(imp.next)<new Date();
-  const badge=imp.next
+  const nextStr=imp.nextDue?new Date(imp.nextDue).toLocaleDateString('de-AT'):'—';
+  const isExpired=imp.nextDue&&new Date(imp.nextDue)<new Date();
+  const badge=imp.nextDue
     ?(isExpired
       ?'<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">Fällig</span>'
       :'<span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Aktuell</span>')
@@ -4392,21 +4449,23 @@ function renderImpfEintrag(imp){
   return `<div class="impf-eintrag" style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
     <div style="width:40px;height:40px;background:#dcfce7;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;"></div>
     <div style="flex:1;">
-      <div style="font-size:13px;font-weight:700;color:#0f172a;">${imp.name}${imp.dosis?' — '+imp.dosis:''}</div>
-      <div style="font-size:11px;color:#64748b;">${df}${imp.charge?' · Charge: '+imp.charge:''}${imp.next?' · Nächste: '+nextStr:''}</div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${imp.vaccineName}${imp.doseLabel?' — '+imp.doseLabel:''}</div>
+      <div style="font-size:11px;color:#64748b;">${df}${imp.charge?' · Charge: '+imp.charge:''}${imp.nextDue?' · Nächste: '+nextStr:''}</div>
     </div>
     ${badge}
   </div>`;
 }
 // Renders the currently-loaded patient's own vaccination history (from
-// DEMO_PATIENTS or an imported/QR account) instead of leaving whichever
-// patient's entries happened to be in the DOM last -- vaccination records
-// are exactly the kind of data that must never bleed between patients.
-function populateKarteiImpfung(name){
+// Supabase's patient_impfungen, keyed by that patient's real id) instead of
+// leaving whichever patient's entries happened to be in the DOM last --
+// vaccination records are exactly the kind of data that must never bleed
+// between patients.
+async function populateKarteiImpfung(name){
   const list=document.getElementById('impfpass-liste');
   if(!list) return;
   const rec=findPatientRecord(name);
-  const impfungen=rec?.impfungen||[];
+  await impfungenReady;
+  const impfungen=rec?.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : [];
   list.innerHTML=impfungen.length
     ? impfungen.map(renderImpfEintrag).join('')
     : '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">Keine Impfungen erfasst</div>';
@@ -4424,7 +4483,7 @@ function populateKarteiImpfung(name){
     </div>` : '';
   }
 }
-function addImpfung(){
+async function addImpfung(){
   let name=document.getElementById('impf-name').value;
   if(name==='Sonstige'){
     name=document.getElementById('impf-name-custom').value.trim();
@@ -4437,20 +4496,13 @@ function addImpfung(){
   if(!datum){alert('Bitte Datum eingeben.');return;}
   const currentName=document.getElementById('kartei-name')?.textContent;
   if(!currentName||currentName==='Kein Patient ausgewählt'){alert('Bitte zuerst einen Patienten auswählen.');return;}
-  const entry={name,dosis,datum,next,charge};
-  const demo=DEMO_PATIENTS.find(p=>p.name===currentName);
-  if(demo){
-    if(!demo.impfungen) demo.impfungen=[];
-    demo.impfungen.unshift(entry);
-  }else{
-    const found=findPatientAccountByFullName(currentName);
-    if(found){
-      const acc=found.accounts[found.username];
-      if(!acc.impfungen) acc.impfungen=[];
-      acc.impfungen.unshift(entry);
-      localStorage.setItem('smartordi_patient_accounts',JSON.stringify(found.accounts));
-    }
-  }
+  const rec=findPatientRecord(currentName);
+  if(!rec?.id){alert('Dieser Patient hat noch kein Cloud-Konto -- Impfungen können nur für Patienten mit Konto gespeichert werden.');return;}
+  const vaccine=VACCINE_SCHEDULE.find(v=>v.name===name);
+  const session=currentStaffSession();
+  try{
+    await addImpfungEntry(rec.id,{vaccineKey:vaccine?vaccine.key:null,vaccineName:name,doseLabel:dosis,datum,nextDue:next,charge},session?session.username:null);
+  }catch(e){ showToast('✗ Speichern fehlgeschlagen','error'); return; }
   populateKarteiImpfung(currentName);
   document.getElementById('impf-charge').value='';
   document.getElementById('impf-next').value='';
@@ -6098,17 +6150,19 @@ async function confirmTransfer(){
   showToast(messaged?'✓ Weitergeleitet an '+toDoctorName+' · Patient per Chat informiert':'✓ Weitergeleitet an '+toDoctorName,'success');
 }
 
-renderImpfWarnungen();
 renderTagesuhr();
 // Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
-// Termine lists) and Termine themselves both live in Supabase now -- wait
-// for the fetches kicked off by vendor/staff-accounts.js/vendor/patient-data.js
-// before the first render that depends on either.
-Promise.all([staffRosterReady, termineReady]).then(()=>{
+// Termine lists), Termine, patient identities and vaccination records all
+// live in Supabase now -- wait for the fetches kicked off by
+// vendor/staff-accounts.js/vendor/patient-data.js before the first render
+// that depends on any of them (allDueVaccinations needs both patients and
+// impfungen loaded to scan every patient at once).
+Promise.all([staffRosterReady, termineReady, patientsReady, impfungenReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
   updateDashboardStats();
   renderTagesuhr();
+  renderImpfWarnungen();
 });
 // Realtime replaces the old same-browser-only 'storage' event for Termine --
 // this fires in every tab/device, including the one that made the write, so
@@ -6145,6 +6199,14 @@ subscribeMessagesRealtime(()=>{
   }
   renderPatientList();
   updateDashboardStats();
+});
+// Keeps the Dashboard/Kartei "fällige Impfungen" view in sync when a
+// vaccination is logged from another staff device/tab.
+subscribeImpfungenRealtime(()=>{
+  updateDashboardStats();
+  renderImpfWarnungen();
+  const currentName=document.getElementById('kartei-name')?.textContent;
+  if(currentName && currentName!=='Kein Patient ausgewählt') populateKarteiImpfung(currentName);
 });
 </script>
 

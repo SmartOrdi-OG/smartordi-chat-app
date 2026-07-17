@@ -288,3 +288,58 @@ async function saveMkpExam(patientId,examKey,fieldData,uploadedBy){
   if(error){ console.error('saveMkpExam failed',error); throw error; }
   return data;
 }
+
+// ── IMPFUNGEN (Impfkalender), supabase/phase5_impfungen.sql ──
+// Replaces the old local-only `impfungen` array (see the comment at the top
+// of this file -- vaccination records were deliberately left local back in
+// phase1, alongside anamnese/diagnosen). Unlike MKP, patients DO get to see
+// this (parents want proof for daycare/school), via patient_get_impfungen
+// in vendor/patient-portal-data.js -- so this needs the same "fetch every
+// row once, cache by patient_id" shape doctor.html/secretary.html's
+// due-vaccination sweep (allDueVaccinations) needs to scan every patient at
+// once, not just the one currently open in Kartei.
+let _impfungen={};
+async function refreshImpfungen(){
+  const {data,error}=await sb.from('patient_impfungen').select('*').order('datum',{ascending:false});
+  if(error){ console.error('refreshImpfungen failed',error); return; }
+  const byPatient={};
+  (data||[]).forEach(function(row){
+    (byPatient[row.patient_id]=byPatient[row.patient_id]||[]).push(row);
+  });
+  _impfungen=byPatient;
+}
+function loadImpfungenFor(patientId){
+  return _impfungen[patientId]||[];
+}
+// Same camelCase remap idea as terminRowToJs -- keeps every render/due-check
+// function working against vaccineKey/vaccineName/nextDue regardless of the
+// underlying column names.
+function impfRowToJs(row){
+  return {id:row.id, vaccineKey:row.vaccine_key, vaccineName:row.vaccine_name,
+    doseLabel:row.dose_label, datum:row.datum, nextDue:row.next_due, charge:row.charge, createdAt:row.created_at};
+}
+const impfungenReady=refreshImpfungen();
+async function addImpfungEntry(patientId,entry,uploadedBy){
+  const row={
+    patient_id: patientId,
+    vaccine_key: entry.vaccineKey||null,
+    vaccine_name: entry.vaccineName,
+    dose_label: entry.doseLabel,
+    datum: entry.datum,
+    next_due: entry.nextDue||null,
+    charge: entry.charge||null,
+    uploaded_by: uploadedBy||null,
+  };
+  const {data,error}=await sb.from('patient_impfungen').insert(row).select().single();
+  if(error){ console.error('addImpfungEntry failed',error); throw error; }
+  (_impfungen[patientId]=_impfungen[patientId]||[]).unshift(data);
+  return data;
+}
+function subscribeImpfungenRealtime(onChange){
+  sb.channel('patient-impfungen-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'patient_impfungen'},async function(){
+      await refreshImpfungen();
+      if(onChange) onChange();
+    })
+    .subscribe();
+}
