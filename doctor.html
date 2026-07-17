@@ -290,7 +290,18 @@
 .app-wrapper.active .view.active{height:calc(100vh - 116px);}
 #appNavBar{position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
 #tuHome{display:none;}
-@media(max-width:768px){.app-wrapper.active #appNavBar{display:none!important;}.app-wrapper.active{padding-top:48px;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
+@media(max-width:768px){
+  .app-wrapper.active #appNavBar{display:none!important;}
+  .app-wrapper.active{padding-top:48px;}
+  .app-wrapper.active .view.active{height:calc(100vh - 110px);}
+  /* Mobile reaches the same Tagesuhr calendar as desktop's home canvas,
+     but through an explicit "Kalender" bottom-nav tab instead of an
+     always-visible backdrop -- mobile has no equivalent "empty space next
+     to a sidebar" for it to fill by default. mobileShowKalender() hides
+     every real .view and toggles this body class instead of relying on
+     switchView() (which only knows about .view elements). */
+  body.mobile-tuhome-active #tuHome{display:flex;position:static;padding:16px;height:calc(100vh - 110px);overflow-y:auto;}
+}
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;padding-top:48px;padding-left:84px;}
   .vertretung-main{padding-left:32px !important;}
@@ -1118,6 +1129,10 @@ body.windows-mode .kartei-header{display:none;}
     <button class="mobile-nav-item" id="mnav-dashboard" onclick="openWindow('dashboard',null);mnavActive('mnav-dashboard')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <span>Dashboard</span>
+    </button>
+    <button class="mobile-nav-item" id="mnav-kalender" onclick="mobileShowKalender();mnavActive('mnav-kalender')">
+      <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+      <span>Kalender</span>
     </button>
     <button class="mobile-nav-item" id="mnav-settings" onclick="openWindow('settings',null);mnavActive('mnav-settings')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
@@ -2633,6 +2648,10 @@ function syncWindowsModeState(){
   const desktop=isDesktopWidth();
   document.body.classList.toggle('windows-mode',desktop);
   if(desktop){
+    // Guards against a stale mobile-tuhome-active class from surviving a
+    // resize-up (the mobile Kalender tab is unreachable at this width, so
+    // it could otherwise linger and outrank #tuHome's desktop CSS).
+    document.body.classList.remove('mobile-tuhome-active');
     ensureWindowChrome();
     const activeView=document.querySelector('.view.active');
     if(activeView){
@@ -3202,6 +3221,21 @@ function mnavActive(id){
   document.querySelectorAll('.mobile-nav-item').forEach(function(el){el.classList.remove('active');});
   var el = document.getElementById(id);
   if(el) el.classList.add('active');
+  // Every other mobile nav button ends up here as its last step -- ride
+  // that to close the Kalender overlay whenever any real tab is opened,
+  // instead of patching each individual nav function.
+  if(id!=='mnav-kalender') document.body.classList.remove('mobile-tuhome-active');
+}
+
+// Mobile-only entry point for the Tagesuhr calendar (desktop reaches the
+// same #tuHome as an always-visible backdrop instead, see its CSS). Hides
+// every real .view directly rather than going through switchView(), since
+// #tuHome isn't a .view itself (no titlebar/window-mode participation).
+function mobileShowKalender(){
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  if(typeof karteiOpen!=='undefined' && karteiOpen) toggleKartei();
+  document.body.classList.add('mobile-tuhome-active');
+  renderTagesuhr();
 }
 
 function mobileOpenChat(name){
