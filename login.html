@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1e40af">
+<meta name="theme-color" content="#0E5E56">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Smartordi – Login</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,28 +15,27 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
-  --teal:#1e40af;--teal-dark:#1e3a8a;
-  --slate:#0f172a;--white:#fff;
-  --muted:#64748b;--border:#e2e8f0;--red:#ef4444;
+  --teal:#0E5E56;--teal-dark:#0A4A44;
+  --slate:#16211F;--white:#fff;
+  --muted:#5B6B66;--border:#E4DFD3;--red:#B23A34;
 }
 body{
   font-family:'Segoe UI',system-ui,sans-serif;
   min-height:100vh;display:flex;align-items:center;justify-content:center;
-  background:#f1f5f9;padding:24px;
+  background:radial-gradient(120% 100% at 50% 0%, #DCEAE6 0%, #F6F3EE 55%);
+  padding:24px;
 }
 
-/* ── Form card ── */
+/* -- Form, no card shape at all -- */
 .right{
   width:100%;max-width:420px;
-  background:white;
+  background:transparent;
   display:flex;flex-direction:column;justify-content:center;
   padding:40px 36px;
-  border-radius:16px;
-  box-shadow:0 4px 28px rgba(15,23,42,0.08);
 }
 @media(max-width:480px){
   body{padding:0;}
-  .right{max-width:100%;min-height:100vh;padding:32px 24px;border-radius:0;box-shadow:none;justify-content:flex-start;padding-top:48px;}
+  .right{max-width:100%;min-height:100vh;padding:32px 24px;justify-content:flex-start;padding-top:48px;}
 }
 
 /* Logo */
@@ -54,14 +53,14 @@ body{
 .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;color:#0f172a;}
 .form-input{
   width:100%;padding:13px 14px 13px 42px;
-  background:#EEF4FF;border:1.5px solid var(--border);
-  border-radius:12px;color:#0f172a;font-family:inherit;font-size:14px;outline:none;
+  background:#F6F3EE;border:1.5px solid var(--border);
+  border-radius:12px;color:#16211F;font-family:inherit;font-size:14px;outline:none;
   transition:all 0.2s;-webkit-appearance:none;
 }
-.form-input::placeholder{color:#94a3b8;}
-.form-input:focus{border-color:var(--teal);background:white;box-shadow:0 0 0 3px rgba(30,64,175,0.15);}
+.form-input::placeholder{color:#8A9691;}
+.form-input:focus{border-color:var(--teal);background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.14);}
 .toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:color 0.15s;}
-.toggle-pw:hover{color:#1e40af;}
+.toggle-pw:hover{color:#0E5E56;}
 .toggle-pw svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 
 .error-msg{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:600;color:#dc2626;margin-bottom:14px;display:none;align-items:center;gap:7px;}
@@ -72,9 +71,9 @@ body{
   background:linear-gradient(135deg,var(--teal),var(--teal-dark));
   color:white;font-family:inherit;font-size:15px;font-weight:700;
   cursor:pointer;margin-top:4px;transition:all 0.2s;
-  box-shadow:0 4px 16px rgba(30,64,175,0.3);
+  box-shadow:0 4px 16px rgba(14,94,86,0.28);
 }
-.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(30,64,175,0.35);}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(14,94,86,0.32);}
 .btn-login.loading{opacity:0.7;cursor:not-allowed;transform:none;}
 .spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -87,15 +86,15 @@ body{
   background:white;color:#0f172a;font-family:inherit;font-size:14px;font-weight:600;
   cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;
 }
-.patient-btn:hover{border-color:var(--teal);color:var(--teal);background:#eff6ff;}
+.patient-btn:hover{border-color:var(--teal);color:var(--teal);background:#EAF4F1;}
 
 .footer-note{margin-top:28px;text-align:center;font-size:11px;color:#0f172a;line-height:1.6;}
 .footer-note a{color:var(--teal);text-decoration:none;font-weight:600;}
 
 /* Dark mode — keep panel white with black text */
 @media(prefers-color-scheme:dark){
-  body{background:#0f172a;}
-  .right{background:white;box-shadow:0 4px 28px rgba(0,0,0,0.4);}
+  body{background:radial-gradient(120% 100% at 50% 0%, #1A2F2A 0%, #12201D 55%);}
+  .right{background:transparent;}
 }
 </style>
 </head>
@@ -111,13 +110,9 @@ body{
   </div>
 
   <div id="normalLoginForm">
-  <div class="form-title">Willkommen zurück</div>
-  <div class="form-sub">Melden Sie sich in Ihrer Ordination an</div>
-
   <div class="error-msg" id="errorMsg"><span>!</span><span id="errorText">Falscher Benutzername oder Passwort.</span></div>
 
   <div class="form-group">
-    <label class="form-label">E-Mail</label>
     <div class="input-wrap">
       <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
       <input type="email" class="form-input" id="email" placeholder="arzt@ordination.at" autocomplete="email"
@@ -126,7 +121,6 @@ body{
   </div>
 
   <div class="form-group">
-    <label class="form-label">Passwort</label>
     <div class="input-wrap">
       <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
       <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password"
@@ -148,9 +142,8 @@ body{
     Als Patient/in anmelden
   </button>
 
-  <div style="margin-top:16px;text-align:center;font-size:13px;color:#64748b;">
-    Noch keine Ordination registriert?
-    <a href="register.html" style="color:#1e40af;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
+  <div style="margin-top:16px;text-align:center;font-size:13px;">
+    <a href="register.html" style="color:#0E5E56;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
   </div>
   </div>
 
@@ -188,8 +181,7 @@ body{
   </div>
 
   <div class="footer-note">
-    Ende-zu-Ende verschlüsselt · EU-Server Wien<br>
-    <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <a href="impressum.html" target="_blank">Impressum</a> · Smartordi.eu
+    <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <a href="impressum.html" target="_blank">Impressum</a>
   </div>
 </div>
 
