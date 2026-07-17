@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1e40af">
+<meta name="theme-color" content="#0E5E56">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registrierung – Smartordi.chat</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,14 +19,14 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
 /* NAV */
 .nav{background:white;border-bottom:1px solid #e2e8f0;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,0.06);}
 .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
-.nav-logo-icon{width:56px;height:56px;background:linear-gradient(135deg,#1e40af,#1d4ed8);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.nav-logo-icon{width:56px;height:56px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .nav-logo-text{font-size:17px;font-weight:800;color:#0f172a;}
-.nav-logo-text span{color:#1e40af;}
+.nav-logo-text span{color:#0E5E56;}
 .nav-login{background:#f1f5f9;border:none;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:600;color:#475569;cursor:pointer;font-family:inherit;text-decoration:none;}
 .nav-login:hover{background:#e2e8f0;}
 
 /* HERO */
-.hero{background:linear-gradient(135deg,#1e40af,#1d4ed8);padding:48px 24px 80px;text-align:center;position:relative;overflow:hidden;}
+.hero{background:linear-gradient(135deg,#0E5E56,#12746A);padding:48px 24px 80px;text-align:center;position:relative;overflow:hidden;}
 .hero::before{content:'';position:absolute;top:-60px;right:-60px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,0.05);}
 .hero::after{content:'';position:absolute;bottom:-40px;left:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.04);}
 .hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;color:white;margin-bottom:16px;}
@@ -41,11 +41,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
 .section-title{font-size:14px;font-weight:700;color:#0f172a;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
 .plans{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 .plan{border:2px solid #e2e8f0;border-radius:14px;padding:14px;cursor:pointer;transition:all 0.2s;position:relative;}
-.plan:hover{border-color:#1e40af;}
-.plan.selected{border-color:#1e40af;background:#eff6ff;}
-.plan.popular::before{content:'⭐ Beliebt';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#1e40af;color:white;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;}
+.plan:hover{border-color:#0E5E56;}
+.plan.selected{border-color:#0E5E56;background:#EAF4F1;}
+.plan.popular::before{content:'⭐ Beliebt';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#0E5E56;color:white;font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap;}
 .plan-name{font-size:13px;font-weight:700;color:#0f172a;margin-bottom:4px;}
-.plan-price{font-size:20px;font-weight:800;color:#1e40af;}
+.plan-price{font-size:20px;font-weight:800;color:#0E5E56;}
 .plan-price span{font-size:11px;font-weight:500;color:#64748b;}
 .plan-features{margin-top:8px;}
 .plan-feature{font-size:11px;color:#475569;margin-bottom:2px;}
@@ -56,20 +56,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
 .form-group{display:flex;flex-direction:column;gap:5px;}
 .form-group.full{grid-column:1/-1;}
 .form-label{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;}
-.form-input{padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-family:inherit;font-size:14px;color:#0f172a;outline:none;transition:all 0.2s;background:#EEF4FF;}
-.form-input:focus{border-color:#1e40af;background:white;box-shadow:0 0 0 3px rgba(30,64,175,0.15);}
+.form-input{padding:11px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-family:inherit;font-size:14px;color:#0f172a;outline:none;transition:all 0.2s;background:#EAF4F1;}
+.form-input:focus{border-color:#0E5E56;background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.15);}
 .form-input::placeholder{color:#94a3b8;}
 select.form-input{cursor:pointer;}
 
 /* CHECKBOX */
 .checkbox-group{display:flex;align-items:flex-start;gap:10px;padding:14px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;}
-.checkbox-group input[type=checkbox]{width:18px;height:18px;accent-color:#1e40af;flex-shrink:0;margin-top:1px;}
+.checkbox-group input[type=checkbox]{width:18px;height:18px;accent-color:#0E5E56;flex-shrink:0;margin-top:1px;}
 .checkbox-label{font-size:12px;color:#475569;line-height:1.5;}
-.checkbox-label a{color:#1e40af;font-weight:600;}
+.checkbox-label a{color:#0E5E56;font-weight:600;}
 
 /* SUBMIT */
-.btn-submit{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(30,64,175,0.3);margin-top:4px;}
-.btn-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(30,64,175,0.35);}
+.btn-submit{width:100%;padding:15px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(14,94,86,0.3);margin-top:4px;}
+.btn-submit:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(14,94,86,0.35);}
 .btn-submit.loading{opacity:0.7;cursor:not-allowed;transform:none;}
 .spinner{display:none;width:20px;height:20px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -83,12 +83,12 @@ select.form-input{cursor:pointer;}
 .error-msg.show{display:flex;}
 
 /* SUCCESS */
-.success-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#eff6ff 0%,#ffffff 55%,#f0fdf4 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity 0.5s ease;padding:24px;text-align:center;}
+.success-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#EAF4F1 0%,#ffffff 55%,#f0fdf4 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity 0.5s ease;padding:24px;text-align:center;}
 .success-overlay.show{opacity:1;pointer-events:all;}
 .success-logo-wrap{position:relative;margin-bottom:20px;}
-.success-logo-ring{position:absolute;inset:-14px;border-radius:36px;background:linear-gradient(135deg,rgba(30,64,175,0.15),rgba(99,102,241,0.1));animation:sRingPulse 2s ease-out infinite;}
+.success-logo-ring{position:absolute;inset:-14px;border-radius:36px;background:linear-gradient(135deg,rgba(14,94,86,0.15),rgba(99,102,241,0.1));animation:sRingPulse 2s ease-out infinite;}
 @keyframes sRingPulse{0%{transform:scale(1);opacity:0.8;}60%{transform:scale(1.18);opacity:0;}100%{transform:scale(1);opacity:0;}}
-.success-logo{width:100px;height:100px;object-fit:contain;border-radius:24px;display:block;position:relative;z-index:1;box-shadow:0 8px 32px rgba(30,64,175,0.18);animation:sLogoBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both;}
+.success-logo{width:100px;height:100px;object-fit:contain;border-radius:24px;display:block;position:relative;z-index:1;box-shadow:0 8px 32px rgba(14,94,86,0.18);animation:sLogoBounce 0.6s cubic-bezier(0.34,1.56,0.64,1) both;}
 @keyframes sLogoBounce{from{transform:scale(0) rotate(-15deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;}}
 .success-check{position:absolute;bottom:-8px;right:-8px;width:32px;height:32px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid white;z-index:2;box-shadow:0 3px 10px rgba(34,197,94,0.45);animation:sLogoBounce 0.5s 0.35s cubic-bezier(0.34,1.56,0.64,1) both;}
 .success-check svg{width:15px;height:15px;}
@@ -98,11 +98,11 @@ select.form-input{cursor:pointer;}
 .success-sub{font-size:14px;color:#64748b;line-height:1.6;max-width:380px;margin:0 auto;animation:sSlideUp 0.5s 0.32s ease both;}
 @keyframes sSlideUp{from{transform:translateY(18px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 .success-steps{margin-top:24px;text-align:left;max-width:360px;width:100%;animation:sSlideUp 0.5s 0.44s ease both;}
-.success-step{display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:12px;margin-bottom:8px;border-left:4px solid #1e40af;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
-.success-step-num{width:28px;height:28px;background:linear-gradient(135deg,#1e40af,#6366f1);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(30,64,175,0.3);}
+.success-step{display:flex;align-items:center;gap:12px;padding:12px;background:#f8fafc;border-radius:12px;margin-bottom:8px;border-left:4px solid #0E5E56;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.success-step-num{width:28px;height:28px;background:linear-gradient(135deg,#0E5E56,#6366f1);color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(14,94,86,0.3);}
 .success-step-text{font-size:13px;color:#475569;}
-.success-btn{margin-top:20px;padding:13px 32px;background:linear-gradient(135deg,#1e40af,#6366f1);color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(30,64,175,0.3);transition:all 0.2s;animation:sSlideUp 0.5s 0.56s ease both;}
-.success-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(30,64,175,0.35);}
+.success-btn{margin-top:20px;padding:13px 32px;background:linear-gradient(135deg,#0E5E56,#6366f1);color:white;border:none;border-radius:12px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(14,94,86,0.3);transition:all 0.2s;animation:sSlideUp 0.5s 0.56s ease both;}
+.success-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(14,94,86,0.35);}
 
 @media(max-width:600px){
   .plans{grid-template-columns:1fr;}
@@ -127,7 +127,7 @@ select.form-input{cursor:pointer;}
 <div class="hero">
   <div class="hero-badge">Österreich · DSGVO-konform · 30 Tage kostenlos</div>
   <div class="hero-title">Ihre Ordination digital.<br>In 5 Minuten live.</div>
-  <div class="hero-sub">Sichere Kommunikation zwischen Arzt und Patient. Ende-zu-Ende verschlüsselt. Österreichische Server.</div>
+  <div class="hero-sub">Sichere Kommunikation zwischen Arzt und Patient. Ende-zu-Ende verschlüsselt. EU-Server in Frankfurt.</div>
 </div>
 
 <!-- MAIN -->
@@ -281,16 +281,16 @@ select.form-input{cursor:pointer;}
 
   <div class="trust-bar">
     <div class="trust-item">Ende-zu-Ende verschlüsselt</div>
-    <div class="trust-item">Server in Österreich</div>
+    <div class="trust-item">EU-Server (Frankfurt)</div>
     <div class="trust-item">✓ Keine Kreditkarte nötig</div>
     <div class="trust-item">DSGVO-konform</div>
   </div>
 
   <div style="text-align:center;margin-top:16px;font-size:11px;color:#94a3b8;line-height:1.8;">
-    <a href="datenschutz.html" target="_blank" style="color:#1e40af;font-weight:600;text-decoration:none;">Datenschutz</a> ·
-    <a href="agb.html" target="_blank" style="color:#1e40af;font-weight:600;text-decoration:none;">AGB</a> ·
-    <a href="SmartOrdi AVV Standard.docx" target="_blank" style="color:#1e40af;font-weight:600;text-decoration:none;">AVV</a> ·
-    <a href="impressum.html" target="_blank" style="color:#1e40af;font-weight:600;text-decoration:none;">Impressum</a> · Smartordi.eu
+    <a href="datenschutz.html" target="_blank" style="color:#0E5E56;font-weight:600;text-decoration:none;">Datenschutz</a> ·
+    <a href="agb.html" target="_blank" style="color:#0E5E56;font-weight:600;text-decoration:none;">AGB</a> ·
+    <a href="SmartOrdi AVV Standard.docx" target="_blank" style="color:#0E5E56;font-weight:600;text-decoration:none;">AVV</a> ·
+    <a href="impressum.html" target="_blank" style="color:#0E5E56;font-weight:600;text-decoration:none;">Impressum</a> · Smartordi.eu
   </div>
 
 </div>
