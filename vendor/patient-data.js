@@ -228,28 +228,32 @@ function subscribeMessagesRealtime(onChange){
     .subscribe();
 }
 
-// ── DOCUMENTS (patient_documents, supabase/phase2_patient_documents.sql) ──
-// Lets staff attach a PDF (lab results, referral letters...) a patient can
-// then see/download from their own account. file_data is a base64 string
-// the caller has already produced (e.g. via FileReader), not a raw File --
-// this module has no DOM/File-API dependency of its own.
+// ── DOCUMENTS (patient_documents, supabase/phase2_patient_documents.sql,
+// supabase/phase3_patient_documents_quick_notes.sql) ──
+// Lets staff attach either a PDF (file_data, a base64 string the caller has
+// already produced -- e.g. via FileReader, not a raw File; this module has
+// no DOM/File-API dependency of its own) or a short free-text note
+// (bodyText, for point-of-care results with no report to upload, e.g. an
+// in-office urine dipstick test) a patient can then see from their own
+// account. Pass exactly one of doc.base64Data / doc.bodyText.
 async function uploadPatientDocument(patientId,doc,uploadedBy){
   const row={
     patient_id: patientId,
     category: doc.category||'sonstiges',
     title: doc.title,
-    filename: doc.filename,
-    mime_type: doc.mimeType||'application/pdf',
-    size_bytes: doc.sizeBytes,
-    file_data: doc.base64Data,
+    filename: doc.filename||null,
+    mime_type: doc.base64Data?(doc.mimeType||'application/pdf'):null,
+    size_bytes: doc.sizeBytes||null,
+    file_data: doc.base64Data||null,
+    body_text: doc.bodyText||null,
     uploaded_by: uploadedBy||null,
   };
-  const {data,error}=await sb.from('patient_documents').insert(row).select('id,category,title,filename,mime_type,size_bytes,created_at').single();
+  const {data,error}=await sb.from('patient_documents').insert(row).select('id,category,title,filename,mime_type,size_bytes,body_text,created_at').single();
   if(error){ console.error('uploadPatientDocument failed',error); throw error; }
   return data;
 }
 async function getDocumentsForPatient(patientId){
-  const {data,error}=await sb.from('patient_documents').select('id,category,title,filename,mime_type,size_bytes,created_at').eq('patient_id',patientId).order('created_at',{ascending:false});
+  const {data,error}=await sb.from('patient_documents').select('id,category,title,filename,mime_type,size_bytes,body_text,created_at').eq('patient_id',patientId).order('created_at',{ascending:false});
   if(error){ console.error('getDocumentsForPatient failed',error); return []; }
   return data||[];
 }
