@@ -227,3 +227,42 @@ function subscribeMessagesRealtime(onChange){
     })
     .subscribe();
 }
+
+// ── DOCUMENTS (patient_documents, supabase/phase2_patient_documents.sql) ──
+// Lets staff attach a PDF (lab results, referral letters...) a patient can
+// then see/download from their own account. file_data is a base64 string
+// the caller has already produced (e.g. via FileReader), not a raw File --
+// this module has no DOM/File-API dependency of its own.
+async function uploadPatientDocument(patientId,doc,uploadedBy){
+  const row={
+    patient_id: patientId,
+    category: doc.category||'sonstiges',
+    title: doc.title,
+    filename: doc.filename,
+    mime_type: doc.mimeType||'application/pdf',
+    size_bytes: doc.sizeBytes,
+    file_data: doc.base64Data,
+    uploaded_by: uploadedBy||null,
+  };
+  const {data,error}=await sb.from('patient_documents').insert(row).select('id,category,title,filename,mime_type,size_bytes,created_at').single();
+  if(error){ console.error('uploadPatientDocument failed',error); throw error; }
+  return data;
+}
+async function getDocumentsForPatient(patientId){
+  const {data,error}=await sb.from('patient_documents').select('id,category,title,filename,mime_type,size_bytes,created_at').eq('patient_id',patientId).order('created_at',{ascending:false});
+  if(error){ console.error('getDocumentsForPatient failed',error); return []; }
+  return data||[];
+}
+// Fetches one document's base64 body -- kept separate from
+// getDocumentsForPatient so opening the list doesn't pull every file's
+// full content over the wire, same split as the patient-facing RPCs.
+async function getPatientDocumentFile(docId){
+  const {data,error}=await sb.from('patient_documents').select('filename,mime_type,file_data').eq('id',docId).maybeSingle();
+  if(error){ console.error('getPatientDocumentFile failed',error); return null; }
+  if(!data) return null;
+  return {filename:data.filename, mimeType:data.mime_type, base64:data.file_data};
+}
+async function deletePatientDocument(docId){
+  const {error}=await sb.from('patient_documents').delete().eq('id',docId);
+  if(error){ console.error('deletePatientDocument failed',error); throw error; }
+}

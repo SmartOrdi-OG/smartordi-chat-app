@@ -1274,6 +1274,7 @@ body.windows-mode .kartei-header{display:none;}
       <button class="kartei-tab" id="ktab-btn-rezept" onclick="switchKarteiTab('rezept',this)">Rezept</button>
       <button class="kartei-tab" id="ktab-btn-impfung" onclick="switchKarteiTab('impfung',this)">Impfung</button>
       <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
       <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
     </div>
 
@@ -1812,6 +1813,47 @@ body.windows-mode .kartei-header{display:none;}
             <div style="font-size:12px;color:#475569;line-height:1.5;">HbA1c 7.2% (erhöht) · Nüchternblutzucker 128 mg/dl</div>
             <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Synlab Austria</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ DOKUMENTE TAB ══ -->
+      <div id="ktab-dokumente" style="display:none;padding:16px;">
+        <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:14px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:800;color:white;">Dokumente hochladen</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">Laborbefunde, Überweisungen, Rezepte als PDF — sichtbar für den Patienten</div>
+        </div>
+
+        <div id="kDokNoPatient" style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:13px;">Bitte zuerst einen Patienten öffnen.</div>
+
+        <div id="kDokContent" style="display:none;">
+          <!-- Upload Form -->
+          <div style="background:white;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Neues Dokument</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+              <div>
+                <div class="k-form-label">Kategorie</div>
+                <select class="k-form-input" id="kDokKategorie">
+                  <option value="befund">Befund</option>
+                  <option value="ueberweisung">Überweisung</option>
+                  <option value="rezept">Rezept</option>
+                  <option value="sonstiges">Sonstiges</option>
+                </select>
+              </div>
+              <div>
+                <div class="k-form-label">Titel</div>
+                <input class="k-form-input" id="kDokTitel" placeholder="z.B. Blutbild Juni 2026">
+              </div>
+            </div>
+            <div class="k-form-label">PDF-Datei (max. 8 MB)</div>
+            <input type="file" id="kDokFile" accept="application/pdf" style="margin-bottom:10px;">
+            <button class="k-form-save" id="kDokUploadBtn" style="background:linear-gradient(135deg,#0E5E56,#12746A);" onclick="uploadKarteiDocument()">
+              ⬆ Hochladen
+            </button>
+          </div>
+
+          <!-- Documents List -->
+          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Hochgeladene Dokumente</div>
+          <div id="kDokListe"><div style="color:#94a3b8;font-size:12px;">Lädt...</div></div>
         </div>
       </div>
 
@@ -3898,7 +3940,7 @@ function switchKarteiTab(tab,btn){
     showToast('🔒 Rezept & Impfpass sind erst ab dem Pro-Paket enthalten.');
     return;
   }
-  ['verlauf','stamm','anamnese','neu','ueberweisung','rezept','impfung','labor','suche'].forEach(t=>{
+  ['verlauf','stamm','anamnese','neu','ueberweisung','rezept','impfung','labor','dokumente','suche'].forEach(t=>{
     const el=document.getElementById('ktab-'+t);
     if(el)el.style.display=t===tab?'block':'none';
   });
@@ -3946,6 +3988,9 @@ function switchKarteiTab(tab,btn){
   }
   if(tab==='labor'){
     document.getElementById('labor-datum').value=new Date().toISOString().split('T')[0];
+  }
+  if(tab==='dokumente'){
+    renderKarteiDocuments();
   }
   if(tab==='ueberweisung'){
     const n=document.getElementById('kartei-name')?.textContent||'';
@@ -4437,6 +4482,112 @@ function addLabor(){
   document.getElementById('labor-ergebnis').value='';
   document.getElementById('labor-institut').value='';
   showToast(' Befund gespeichert!');
+}
+
+// ══ KARTEI DOKUMENTE (real, Supabase-backed patient_documents -- unlike
+// Labor/Impfpass above, this is genuinely shared: what's uploaded here is
+// what the patient sees in their own Dokumente tab) ══
+const DOK_KATEGORIE_LABEL={befund:'Befund',ueberweisung:'Überweisung',rezept:'Rezept',sonstiges:'Sonstiges'};
+function fileToBase64(file){
+  return new Promise(function(resolve,reject){
+    const reader=new FileReader();
+    reader.onload=function(){ resolve(reader.result.split(',')[1]); };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+function formatFileSize(bytes){
+  if(bytes<1024) return bytes+' B';
+  if(bytes<1024*1024) return Math.round(bytes/1024)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+async function renderKarteiDocuments(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  const noPatientEl=document.getElementById('kDokNoPatient');
+  const contentEl=document.getElementById('kDokContent');
+  if(!name||name==='Kein Patient ausgewählt'){
+    if(noPatientEl)noPatientEl.style.display='block';
+    if(contentEl)contentEl.style.display='none';
+    return;
+  }
+  if(noPatientEl)noPatientEl.style.display='none';
+  if(contentEl)contentEl.style.display='block';
+  const listEl=document.getElementById('kDokListe');
+  listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Lädt...</div>';
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){
+    listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Dieser Patient hat noch kein Cloud-Konto — Dokumente können erst hochgeladen werden, sobald ein echtes Patientenkonto besteht.</div>';
+    return;
+  }
+  listEl.dataset.patientId=patientId;
+  const docs=await getDocumentsForPatient(patientId);
+  if(!docs.length){
+    listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Noch keine Dokumente hochgeladen.</div>';
+    return;
+  }
+  listEl.innerHTML=docs.map(function(d){
+    const df=new Date(d.created_at).toLocaleDateString('de-AT');
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#EAF4F1;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+        <div style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df} · ${formatFileSize(d.size_bytes)}</div>
+      </div>
+      <button onclick="downloadKarteiDocument('${d.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
+      <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+    </div>`;
+  }).join('');
+}
+async function uploadKarteiDocument(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt') return;
+  const fileInput=document.getElementById('kDokFile');
+  const file=fileInput.files[0];
+  if(!file){ showToast('Bitte zuerst eine PDF-Datei auswählen.','error'); return; }
+  if(file.type!=='application/pdf'){ showToast('Nur PDF-Dateien sind erlaubt.','error'); return; }
+  if(file.size>8*1024*1024){ showToast('Datei ist zu groß (max. 8 MB).','error'); return; }
+  const title=document.getElementById('kDokTitel').value.trim();
+  if(!title){ showToast('Bitte einen Titel eingeben.','error'); return; }
+  const category=document.getElementById('kDokKategorie').value;
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){ showToast('Dieser Patient hat noch kein Cloud-Konto.','error'); return; }
+  const btn=document.getElementById('kDokUploadBtn');
+  const originalLabel=btn.innerHTML;
+  btn.disabled=true; btn.textContent='Wird hochgeladen...';
+  try{
+    const base64Data=await fileToBase64(file);
+    const session=currentStaffSession();
+    await uploadPatientDocument(patientId,{
+      category:category, title:title, filename:file.name, mimeType:file.type, sizeBytes:file.size, base64Data:base64Data,
+    },session?session.username:null);
+    document.getElementById('kDokTitel').value='';
+    fileInput.value='';
+    showToast('✓ Dokument hochgeladen');
+    renderKarteiDocuments();
+  }catch(e){
+    showToast('✗ Hochladen fehlgeschlagen','error');
+  }finally{
+    btn.disabled=false; btn.innerHTML=originalLabel;
+  }
+}
+async function downloadKarteiDocument(docId){
+  const file=await getPatientDocumentFile(docId);
+  if(!file){ showToast('✗ Datei konnte nicht geladen werden','error'); return; }
+  const blob=await (await fetch('data:'+file.mimeType+';base64,'+file.base64)).blob();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=file.filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+}
+async function deleteKarteiDocument(docId){
+  if(!confirm('Dieses Dokument wirklich löschen?')) return;
+  try{
+    await deletePatientDocument(docId);
+    renderKarteiDocuments();
+  }catch(e){
+    showToast('✗ Löschen fehlgeschlagen','error');
+  }
 }
 
 // ══ SUCHE FUNCTIONS ══
