@@ -2664,6 +2664,13 @@ function updateChatUnreadBadge(){
   });
 }
 
+// On desktop, nothing was ever set .active by default (that's only ever
+// added by a nav click, or on mobile), so with no view active and no
+// window open, the sidebar sat next to a big empty canvas until the user
+// clicked a tab. Auto-open the primary tab once on first load only -- a
+// user who deliberately closes every window later shouldn't have one
+// reopened just because they resized the browser.
+let _defaultWindowOpened=false;
 function syncWindowsModeState(){
   const desktop=isDesktopWidth();
   document.body.classList.toggle('windows-mode',desktop);
@@ -2675,7 +2682,10 @@ function syncWindowsModeState(){
       if(!activeView.classList.contains('win-open') && !activeView.classList.contains('win-minimized')){
         openWindow(id);
       }
+    } else if(!_defaultWindowOpened && !document.querySelector('.view.win-open')){
+      openWindow('clinic');
     }
+    _defaultWindowOpened=true;
   }
   updateChatUnreadBadge();
 }
