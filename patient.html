@@ -709,50 +709,12 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       <div class="view-sub" data-i18n="dokumente.sub">Befunde · Überweisungen · Rezepte</div>
     </div>
 
-    <div class="dokumente-content">
-
-      <div class="section-title" data-i18n="dokumente.sect.ueberweisungen">Überweisungen</div>
-
-      <div class="doc-card" onclick="showToast(' Überweisung_Müller_13-06-2026.pdf wird heruntergeladen...')">
-        <div class="doc-icon-box" style="background:#faf5ff;"></div>
-        <div class="doc-info">
-          <div class="doc-title">Überweisung – Kardiologie</div>
-          <div class="doc-meta">Dr. Sarah Ahmed · 13.06.2026 · Normal</div>
-        </div>
-        <button class="doc-download">⬇ PDF</button>
+    <div class="dokumente-content" id="dokumenteContent">
+      <div class="empty-state">
+        <div class="empty-icon">📄</div>
+        <div class="empty-text" data-i18n="dokumente.empty.title">Noch keine Dokumente</div>
+        <div class="empty-sub" data-i18n="dokumente.empty.sub">Befunde, Überweisungen und Rezepte Ihrer Ordination erscheinen hier, sobald sie verfügbar sind.</div>
       </div>
-
-      <div class="section-title" style="margin-top:14px;" data-i18n="dokumente.sect.befunde">Befunde</div>
-
-      <div class="doc-card" onclick="showToast(' Befundbericht_2026.pdf wird heruntergeladen...')">
-        <div class="doc-icon-box" style="background:#f0fdfa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-        <div class="doc-info">
-          <div class="doc-title">Befundbericht Juni 2026</div>
-          <div class="doc-meta">Blutbild · 03.06.2026 · 245 KB</div>
-        </div>
-        <button class="doc-download">⬇ PDF</button>
-      </div>
-
-      <div class="doc-card" onclick="showToast(' Befund_März_2026.pdf wird heruntergeladen...')">
-        <div class="doc-icon-box" style="background:#f0fdfa;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-        <div class="doc-info">
-          <div class="doc-title">Befundbericht März 2026</div>
-          <div class="doc-meta">Allgemein · 15.03.2026 · 189 KB</div>
-        </div>
-        <button class="doc-download">⬇ PDF</button>
-      </div>
-
-      <div class="section-title" style="margin-top:14px;" data-i18n="dokumente.sect.rezepte">Rezepte</div>
-
-      <div class="doc-card" onclick="showToast('Rezept_Ramipril.pdf wird heruntergeladen...')">
-        <div class="doc-icon-box" style="background:#fef9c3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
-        <div class="doc-info">
-          <div class="doc-title">Rezept – Ramipril 5mg</div>
-          <div class="doc-meta">Dr. Sarah Ahmed · 03.06.2026</div>
-        </div>
-        <button class="doc-download">⬇ PDF</button>
-      </div>
-
     </div>
   </div>
 
