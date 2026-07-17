@@ -1738,81 +1738,27 @@ body.windows-mode .kartei-header{display:none;}
       <div id="ktab-labor" style="display:none;padding:16px;">
         <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:14px;padding:16px;margin-bottom:16px;">
           <div style="font-size:13px;font-weight:800;color:white;">Laborbefunde / Testergebnisse</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">Blut, Urin, Abstrich und mehr</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">PDF vom Labor hochladen — der Patient sieht es sofort</div>
         </div>
 
-        <!-- Neuer Befund -->
-        <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
-          <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Neuer Befund</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-            <div>
-              <div class="k-form-label">Art der Untersuchung</div>
-              <select class="k-form-input" id="labor-art">
-                <option>Blutbild</option>
-                <option>Urinanalyse</option>
-                <option>Blutzucker / HbA1c</option>
-                <option>Cholesterin</option>
-                <option>Schilddrüse (TSH)</option>
-                <option>Leberwerte</option>
-                <option>Nierenwerte</option>
-                <option>Abstrich</option>
-                <option>EKG</option>
-                <option>Röntgen</option>
-                <option>Ultraschall</option>
-                <option>Sonstige</option>
-              </select>
-            </div>
-            <div>
-              <div class="k-form-label">Datum</div>
-              <input class="k-form-input" id="labor-datum" type="date">
-            </div>
-          </div>
-          <div class="k-form-label">Ergebnis / Befund</div>
-          <textarea class="k-form-input" id="labor-ergebnis" rows="3" placeholder="z.B. Hb 13.2 g/dl, Leukozyten 7.800/μl, Thrombozyten 230.000/μl..." style="resize:none;margin-bottom:10px;"></textarea>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-            <div>
-              <div class="k-form-label">Bewertung</div>
-              <select class="k-form-input" id="labor-status">
-                <option value="normal"> Normal / Unauffällig</option>
-                <option value="auffaellig">Auffällig</option>
-                <option value="kritisch">Kritisch</option>
-              </select>
-            </div>
-            <div>
-              <div class="k-form-label">Labor / Institut</div>
-              <input class="k-form-input" id="labor-institut" placeholder="z.B. Labor Wien">
-            </div>
-          </div>
-          <button class="k-form-save" style="background:linear-gradient(135deg,#dc2626,#b91c1c);" onclick="addLabor()">
-            ✓ Befund speichern
-          </button>
-        </div>
+        <div id="kLaborNoPatient" style="text-align:center;padding:24px 12px;color:#94a3b8;font-size:13px;">Bitte zuerst einen Patienten öffnen.</div>
 
-        <!-- Befunde Liste -->
-        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Bisherige Befunde</div>
-        <div id="labor-liste">
-          <div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-size:13px;font-weight:700;color:#0f172a;">Blutbild</div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;"> Normal</span>
-                <span style="font-size:11px;color:#94a3b8;">12.05.2024</span>
-              </div>
-            </div>
-            <div style="font-size:12px;color:#475569;line-height:1.5;">Hb 13.2 g/dl · Leukozyten 7.800/μl · Thrombozyten 230.000/μl</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Labor Wien GmbH</div>
+        <div id="kLaborContent" style="display:none;">
+          <!-- Neuer Befund: PDF-Upload, keine manuelle Eingabe -->
+          <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Neuer Befund</div>
+            <div class="k-form-label">Titel</div>
+            <input class="k-form-input" id="kLaborTitel" placeholder="z.B. Blutbild Juni 2026" style="margin-bottom:10px;">
+            <div class="k-form-label">PDF-Datei vom Labor (max. 8 MB)</div>
+            <input type="file" id="kLaborFile" accept="application/pdf" style="margin-bottom:10px;">
+            <button class="k-form-save" id="kLaborUploadBtn" style="background:linear-gradient(135deg,#dc2626,#b91c1c);" onclick="uploadKarteiLaborDoc()">
+              ⬆ Hochladen
+            </button>
           </div>
-          <div style="background:white;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:8px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <div style="font-size:13px;font-weight:700;color:#0f172a;">Blutzucker / HbA1c</div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">Auffällig</span>
-                <span style="font-size:11px;color:#94a3b8;">03.04.2024</span>
-              </div>
-            </div>
-            <div style="font-size:12px;color:#475569;line-height:1.5;">HbA1c 7.2% (erhöht) · Nüchternblutzucker 128 mg/dl</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">Synlab Austria</div>
-          </div>
+
+          <!-- Befunde Liste -->
+          <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Bisherige Befunde</div>
+          <div id="labor-liste"><div style="color:#94a3b8;font-size:12px;">Lädt...</div></div>
         </div>
       </div>
 
@@ -3987,7 +3933,7 @@ function switchKarteiTab(tab,btn){
     if(currentName && currentName!=='Kein Patient ausgewählt') populateKarteiImpfung(currentName);
   }
   if(tab==='labor'){
-    document.getElementById('labor-datum').value=new Date().toISOString().split('T')[0];
+    renderKarteiLabor();
   }
   if(tab==='dokumente'){
     renderKarteiDocuments();
@@ -4460,28 +4406,78 @@ function printImpfpass(){
 }
 
 // ══ LABOR FUNCTIONS ══
-function addLabor(){
-  const art=document.getElementById('labor-art').value;
-  const datum=document.getElementById('labor-datum').value;
-  const ergebnis=document.getElementById('labor-ergebnis').value;
-  const status=document.getElementById('labor-status').value;
-  const institut=document.getElementById('labor-institut').value;
-  if(!ergebnis){alert('Bitte Ergebnis eingeben.');return;}
-  const df=new Date(datum).toLocaleDateString('de-AT');
-  const badges={normal:'<span style="background:#dcfce7;color:#16a34a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;"> Normal</span>',auffaellig:'<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">Auffällig</span>',kritisch:'<span style="background:#7f1d1d;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;">Kritisch</span>'};
-  const borderColor=status==='normal'?'#e2e8f0':status==='auffaellig'?'#fecaca':'#7f1d1d';
-  const html=`<div style="background:white;border:1px solid ${borderColor};border-radius:10px;padding:12px;margin-bottom:8px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <div style="font-size:13px;font-weight:700;color:#0f172a;"> ${art}</div>
-      <div style="display:flex;align-items:center;gap:8px;">${badges[status]}<span style="font-size:11px;color:#94a3b8;">${df}</span></div>
-    </div>
-    <div style="font-size:12px;color:#475569;line-height:1.5;">${ergebnis}</div>
-    ${institut?`<div style="font-size:11px;color:#94a3b8;margin-top:4px;">${institut}</div>`:''}
-  </div>`;
-  document.getElementById('labor-liste').insertAdjacentHTML('afterbegin',html);
-  document.getElementById('labor-ergebnis').value='';
-  document.getElementById('labor-institut').value='';
-  showToast(' Befund gespeichert!');
+// Labor is a category-filtered lens over the same real patient_documents
+// table as the Dokumente tab (category='befund') -- a lab PDF uploaded
+// here shows up in the patient's Dokumente tab under Befunde too, and vice
+// versa. Replaces what used to be a manual, localStorage-only text-entry
+// form (art/ergebnis/status/institut) that was never actually shared with
+// the patient.
+async function renderKarteiLabor(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  const noPatientEl=document.getElementById('kLaborNoPatient');
+  const contentEl=document.getElementById('kLaborContent');
+  if(!name||name==='Kein Patient ausgewählt'){
+    if(noPatientEl)noPatientEl.style.display='block';
+    if(contentEl)contentEl.style.display='none';
+    return;
+  }
+  if(noPatientEl)noPatientEl.style.display='none';
+  if(contentEl)contentEl.style.display='block';
+  const listEl=document.getElementById('labor-liste');
+  listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Lädt...</div>';
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){
+    listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Dieser Patient hat noch kein Cloud-Konto — Befunde können erst hochgeladen werden, sobald ein echtes Patientenkonto besteht.</div>';
+    return;
+  }
+  const docs=(await getDocumentsForPatient(patientId)).filter(function(d){ return d.category==='befund'; });
+  if(!docs.length){
+    listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Noch keine Befunde hochgeladen.</div>';
+    return;
+  }
+  listEl.innerHTML=docs.map(function(d){
+    const df=new Date(d.created_at).toLocaleDateString('de-AT');
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+      <div style="width:36px;height:36px;background:#fef2f2;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+        <div style="font-size:11px;color:#94a3b8;">${df} · ${formatFileSize(d.size_bytes)}</div>
+      </div>
+      <button onclick="downloadKarteiDocument('${d.id}')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
+      <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+    </div>`;
+  }).join('');
+}
+async function uploadKarteiLaborDoc(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt') return;
+  const fileInput=document.getElementById('kLaborFile');
+  const file=fileInput.files[0];
+  if(!file){ showToast('Bitte zuerst eine PDF-Datei auswählen.','error'); return; }
+  if(file.type!=='application/pdf'){ showToast('Nur PDF-Dateien sind erlaubt.','error'); return; }
+  if(file.size>8*1024*1024){ showToast('Datei ist zu groß (max. 8 MB).','error'); return; }
+  const title=document.getElementById('kLaborTitel').value.trim();
+  if(!title){ showToast('Bitte einen Titel eingeben.','error'); return; }
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){ showToast('Dieser Patient hat noch kein Cloud-Konto.','error'); return; }
+  const btn=document.getElementById('kLaborUploadBtn');
+  const originalLabel=btn.innerHTML;
+  btn.disabled=true; btn.textContent='Wird hochgeladen...';
+  try{
+    const base64Data=await fileToBase64(file);
+    const session=currentStaffSession();
+    await uploadPatientDocument(patientId,{
+      category:'befund', title:title, filename:file.name, mimeType:file.type, sizeBytes:file.size, base64Data:base64Data,
+    },session?session.username:null);
+    document.getElementById('kLaborTitel').value='';
+    fileInput.value='';
+    showToast('✓ Befund hochgeladen');
+    renderKarteiLabor();
+  }catch(e){
+    showToast('✗ Hochladen fehlgeschlagen','error');
+  }finally{
+    btn.disabled=false; btn.innerHTML=originalLabel;
+  }
 }
 
 // ══ KARTEI DOKUMENTE (real, Supabase-backed patient_documents -- unlike
