@@ -270,3 +270,21 @@ async function deletePatientDocument(docId){
   const {error}=await sb.from('patient_documents').delete().eq('id',docId);
   if(error){ console.error('deletePatientDocument failed',error); throw error; }
 }
+
+// ── MKP (Mutter-Kind-Pass) UNTERSUCHUNGEN -- staff-only,
+// supabase/phase4_mkp_untersuchungen.sql. Never read by patient.html: the
+// parents already carry the official physical booklet, this is just the
+// doctor's own digital copy. One row per (patient, exam type) -- saving
+// again overwrites/completes that same exam via upsert, it never creates
+// duplicates.
+async function getMkpExamsForPatient(patientId){
+  const {data,error}=await sb.from('mkp_untersuchungen').select('*').eq('patient_id',patientId);
+  if(error){ console.error('getMkpExamsForPatient failed',error); return []; }
+  return data||[];
+}
+async function saveMkpExam(patientId,examKey,fieldData,uploadedBy){
+  const row={patient_id:patientId, exam_key:examKey, data:fieldData, completed_at:new Date().toISOString(), uploaded_by:uploadedBy||null};
+  const {data,error}=await sb.from('mkp_untersuchungen').upsert(row,{onConflict:'patient_id,exam_key'}).select().single();
+  if(error){ console.error('saveMkpExam failed',error); throw error; }
+  return data;
+}
