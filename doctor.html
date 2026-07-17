@@ -5332,7 +5332,13 @@ function saveVertretungAll(all){ localStorage.setItem(VERTRETUNG_KEY, JSON.strin
 function patientsForCurrentDoctor(){
   const me=currentDoctorUsername()||'dr.ahmed';
   const names=new Set(loadTermine().filter(t=>t.arztUsername===me).map(t=>t.patient));
-  return [...names];
+  // Termine are never cleaned up when a patient's account is deleted
+  // (e.g. removed directly in the Supabase table editor), so a name from
+  // an old appointment would otherwise keep counting as an existing
+  // patient forever -- cross-check against the live patients cache and
+  // drop anyone who no longer has a real account.
+  const existingNames=new Set(Object.values(loadPatients()).map(p=>p.fullName).filter(Boolean));
+  return [...names].filter(name=>existingNames.has(name));
 }
 
 // Vertretung can point to a real colleague at this practice (their contact
