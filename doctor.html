@@ -3258,6 +3258,7 @@ function selectPatient(el,name,color,insurance){
   if(kav){kav.textContent=name[0];kav.style.background=color;}
   if(knm) knm.textContent=name;
   if(kmt) kmt.textContent=insurance+' · –';
+  updateMkpTabVisibility(rec?rec.dob:'');
 }
 
 function getTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
