@@ -91,3 +91,23 @@ async function patientSetSymptoms(terminId,reason,reasonNote){
   if(error){ console.error('patientSetSymptoms failed',error); return false; }
   return !!data;
 }
+// supabase/phase2_patient_documents.sql -- documents a staff member uploaded
+// for this patient (lab results, referrals...). patientGetDocuments() only
+// returns metadata; the base64 file body is fetched separately per document
+// via patientGetDocumentFile() so opening the list doesn't pull every file
+// over the wire.
+async function patientGetDocuments(){
+  const {data,error}=await sb.rpc('patient_get_documents',{p_token:getPatientToken()});
+  if(error){ console.error('patientGetDocuments failed',error); return []; }
+  return (data||[]).map(function(row){
+    return {id:row.id, category:row.category, title:row.title, filename:row.filename,
+      mimeType:row.mime_type, sizeBytes:row.size_bytes, createdAt:row.created_at};
+  });
+}
+async function patientGetDocumentFile(docId){
+  const {data,error}=await sb.rpc('patient_get_document_file',{p_token:getPatientToken(),p_doc_id:docId});
+  if(error){ console.error('patientGetDocumentFile failed',error); return null; }
+  const row=data&&data[0];
+  if(!row) return null;
+  return {filename:row.filename, mimeType:row.mime_type, base64:row.file_data};
+}

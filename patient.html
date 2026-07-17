@@ -1025,6 +1025,51 @@ function renderPatientMessages(){
   msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
   msgs.scrollTop=msgs.scrollHeight;
 }
+// Real (Supabase-backed) documents a staff member uploaded for this patient
+// (supabase/phase2_patient_documents.sql) -- _remoteDocuments is refreshed
+// alongside profile/messages/termine in initPatientData()/pollPatientData().
+// null/empty (demo login, no session token, nothing uploaded yet) all fall
+// through to the same honest empty state.
+const DOK_CATEGORY_LABEL_DE={ueberweisung:'Überweisungen',befund:'Befunde',rezept:'Rezepte',sonstiges:'Sonstiges'};
+const DOK_CATEGORY_ORDER=['ueberweisung','befund','rezept','sonstiges'];
+function docCardHtml(d){
+  const df=new Date(d.createdAt).toLocaleDateString('de-AT');
+  const nameEsc=(d.filename||'').replace(/'/g,"\\'");
+  return `<div class="doc-card" onclick="downloadPatientDocument('${d.id}','${nameEsc}')">
+    <div class="doc-icon-box" style="background:#EAF4F1;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E5E56" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+    <div class="doc-info">
+      <div class="doc-title">${d.title}</div>
+      <div class="doc-meta">${df}</div>
+    </div>
+    <button class="doc-download">⬇ PDF</button>
+  </div>`;
+}
+function renderDokumente(){
+  const root=document.getElementById('dokumenteContent');
+  if(!root) return;
+  const docs=_remoteDocuments||[];
+  if(!docs.length){
+    root.innerHTML='<div class="empty-state"><div class="empty-icon">📄</div><div class="empty-text" data-i18n="dokumente.empty.title">Noch keine Dokumente</div><div class="empty-sub" data-i18n="dokumente.empty.sub">Befunde, Überweisungen und Rezepte Ihrer Ordination erscheinen hier, sobald sie verfügbar sind.</div></div>';
+    return;
+  }
+  let html='';
+  DOK_CATEGORY_ORDER.forEach(function(cat){
+    const items=docs.filter(function(d){ return d.category===cat; });
+    if(!items.length) return;
+    html+='<div class="section-title">'+DOK_CATEGORY_LABEL_DE[cat]+'</div>'+items.map(docCardHtml).join('');
+  });
+  root.innerHTML=html;
+}
+async function downloadPatientDocument(docId,filename){
+  const file=await patientGetDocumentFile(docId);
+  if(!file){ showToast('✗ Datei konnte nicht geladen werden','error'); return; }
+  const blob=await (await fetch('data:'+file.mimeType+';base64,'+file.base64)).blob();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=file.filename||filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+}
 // Real (Supabase-backed) patient identity/messages/termine, refreshed via
 // vendor/patient-portal-data.js's RPCs whenever a session token exists
 // (set at login by patient-login.html's doLogin()) -- null for the
@@ -1033,6 +1078,7 @@ function renderPatientMessages(){
 let _remoteProfile=null;
 let _remoteMessages=null;
 let _remoteTermine=null;
+let _remoteDocuments=null;
 async function refreshRemoteProfile(){
   if(!getPatientToken()){ _remoteProfile=null; return; }
   _remoteProfile=await patientGetProfile();
@@ -1044,6 +1090,10 @@ async function refreshRemoteMessages(){
 async function refreshRemoteTermine(){
   if(!getPatientToken()){ _remoteTermine=null; return; }
   _remoteTermine=await patientGetTermine();
+}
+async function refreshRemoteDocuments(){
+  if(!getPatientToken()){ _remoteDocuments=null; return; }
+  _remoteDocuments=await patientGetDocuments();
 }
 function getCurrentAccount(){
   if(!currentUsername) return null;
@@ -1152,6 +1202,7 @@ async function initPatientData(){
     await refreshRemoteProfile();
     await refreshRemoteMessages();
     await refreshRemoteTermine();
+    await refreshRemoteDocuments();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1192,6 +1243,7 @@ async function initPatientData(){
   renderPatientTermine();
   renderProfilArztRows();
   updatePracticeIdentityUI();
+  renderDokumente();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
   staffRosterReady.then(renderPatientTermine);
@@ -1579,10 +1631,12 @@ async function pollPatientData(){
   await refreshRemoteProfile();
   await refreshRemoteMessages();
   await refreshRemoteTermine();
+  await refreshRemoteDocuments();
   renderPatientMessages();
   renderPatientTermine();
   renderCalendar();
   renderTimeSlots();
+  renderDokumente();
 }
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') pollPatientData(); });
 window.addEventListener('focus',pollPatientData);
