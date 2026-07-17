@@ -111,3 +111,14 @@ async function patientGetDocumentFile(docId){
   if(!row) return null;
   return {filename:row.filename, mimeType:row.mime_type, base64:row.file_data};
 }
+// supabase/phase5_impfungen.sql -- unlike patient_documents/mkp_untersuchungen,
+// this one exists specifically so a parent can see their child's own
+// vaccination status (daycare/school proof), not just staff.
+async function patientGetImpfungen(){
+  const {data,error}=await sb.rpc('patient_get_impfungen',{p_token:getPatientToken()});
+  if(error){ console.error('patientGetImpfungen failed',error); return []; }
+  return (data||[]).map(function(row){
+    return {id:row.id, vaccineKey:row.vaccine_key, vaccineName:row.vaccine_name,
+      doseLabel:row.dose_label, datum:row.datum, nextDue:row.next_due, createdAt:row.created_at};
+  });
+}
