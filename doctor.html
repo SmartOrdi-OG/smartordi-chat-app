@@ -2853,7 +2853,18 @@ function tuTimeToDecimal(hhmm){
   return h+(m||0)/60;
 }
 let tuSelectedDate=null;
-function tuSelectDate(dateStr){ tuSelectedDate=dateStr; renderTagesuhr(); }
+// Whether the dial should keep following "today" -- true until the doctor
+// deliberately picks a different day in the strip. Needed because
+// tuSelectedDate is a plain string set once: without this, a browser tab
+// left open across midnight would keep showing yesterday's date/count
+// forever (until a manual click or full page reload), since nothing else
+// re-evaluates what "today" currently is.
+let tuFollowingToday=true;
+function tuSelectDate(dateStr){
+  tuSelectedDate=dateStr;
+  tuFollowingToday=(dateStr===todayStr());
+  renderTagesuhr();
+}
 function renderTuDial(dayAppts){
   const svg=document.getElementById('tuDialSvg');
   if(!svg) return;
@@ -2915,7 +2926,7 @@ const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','Augu
 function renderTagesuhr(){
   const root=document.getElementById('tuHome');
   if(!root) return;
-  if(!tuSelectedDate) tuSelectedDate=todayStr();
+  if(!tuSelectedDate||tuFollowingToday) tuSelectedDate=todayStr();
   const nameEl=document.getElementById('tuPracticeName');
   if(nameEl) nameEl.textContent='Praxis '+arztDisplayName(currentDoctorUsername());
   const subEl=document.getElementById('tuPracticeSub');
@@ -5664,6 +5675,17 @@ subscribeTermineRealtime(()=>{
   const allModal=document.getElementById('allTermineModal');
   if(allModal && allModal.classList.contains('show')) renderAlleTermine();
 });
+// Catches a browser tab left open across midnight -- without this,
+// tuSelectedDate/the Termine-heute stat would keep showing yesterday's
+// date and count until something else happened to trigger a re-render
+// (a click, a Realtime event, a reload). A plain calendar-day check every
+// minute is cheap and self-heals within at most a minute of midnight.
+setInterval(function(){
+  if(tuFollowingToday && tuSelectedDate!==todayStr()){
+    renderTagesuhr();
+    updateDashboardStats();
+  }
+},60000);
 // A real patient's own messages (sent from their own device via
 // patient.html) never touch this device's localStorage at all, so the
 // only way this device learns about them live is Realtime.
