@@ -571,7 +571,6 @@
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
-      <span style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.55);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:0.5px;">DEMO</span>
       <div id="doctorAvatarDisplay" style="width:30px;height:30px;background:#0E5E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;flex-shrink:0;">S</div>
       <span id="doctorNameDisplay" style="color:rgba(255,255,255,0.9);font-size:13px;font-weight:600;">Dr. Sarah Ahmed</span>
       <button onclick="doctorLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:5px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;" title="Abmelden">Abmelden</button>
@@ -1965,7 +1964,7 @@ body.windows-mode .kartei-header{display:none;}
     <div class="compliance-bar">
       <span style="font-size:13px;font-weight:700;color:#0f172a;">DSGVO</span>
       <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">Verschlüsselung</span><span class="compliance-value" style="color:#16a34a;">Aktiv</span></div>
-      <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">EU-Server</span><span class="compliance-value" style="color:#16a34a;">Wien</span></div>
+      <div class="compliance-item"><div class="compliance-dot" style="background:#22c55e;"></div><span class="compliance-label">EU-Server</span><span class="compliance-value" style="color:#16a34a;">Frankfurt</span></div>
       <div class="compliance-item" id="dashVertretungItem" style="display:none;"><div class="compliance-dot" style="background:#f59e0b;"></div><span class="compliance-label">Vertretung</span><span class="compliance-value" id="dashVertretungValue" style="color:#d97706;"></span></div>
     </div>
 
@@ -2852,7 +2851,10 @@ function renderTuDial(dayAppts){
     return 'M '+p1[0]+' '+p1[1]+' A '+r2+' '+r2+' 0 '+large+' 1 '+p2[0]+' '+p2[1]
       +' L '+p3[0]+' '+p3[1]+' A '+r1+' '+r1+' 0 '+large+' 0 '+p4[0]+' '+p4[1]+' Z';
   }
-  let html='<path d="'+arcPath(rInner,rOuter,startAngle,endAngle)+'" fill="'+trackColor+'"></path>';
+  let html='<path fill-rule="evenodd" d="'
+    +'M '+(cx+rOuter)+' '+cy+' A '+rOuter+' '+rOuter+' 0 1 0 '+(cx-rOuter)+' '+cy+' A '+rOuter+' '+rOuter+' 0 1 0 '+(cx+rOuter)+' '+cy+' Z '
+    +'M '+(cx+rInner)+' '+cy+' A '+rInner+' '+rInner+' 0 1 1 '+(cx-rInner)+' '+cy+' A '+rInner+' '+rInner+' 0 1 1 '+(cx+rInner)+' '+cy+' Z'
+    +'" fill="'+trackColor+'"></path>';
   for(let h=startHour;h<=endHour;h+=2){
     const a=angleForHour(h);
     const t1=polar(rInner-4,a), t2=polar(rInner-12,a);
