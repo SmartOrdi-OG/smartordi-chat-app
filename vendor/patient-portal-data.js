@@ -101,7 +101,7 @@ async function patientGetDocuments(){
   if(error){ console.error('patientGetDocuments failed',error); return []; }
   return (data||[]).map(function(row){
     return {id:row.id, category:row.category, title:row.title, filename:row.filename,
-      mimeType:row.mime_type, sizeBytes:row.size_bytes, createdAt:row.created_at};
+      mimeType:row.mime_type, sizeBytes:row.size_bytes, bodyText:row.body_text, createdAt:row.created_at};
   });
 }
 async function patientGetDocumentFile(docId){

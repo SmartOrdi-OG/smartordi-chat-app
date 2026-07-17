@@ -1756,6 +1756,19 @@ body.windows-mode .kartei-header{display:none;}
             </button>
           </div>
 
+          <!-- Schnellnotiz: für Tests direkt in der Ordination (z.B. Urin-Streifentest),
+               wo es keinen Laborbericht zum Hochladen gibt -->
+          <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Schnellnotiz (Test vor Ort, z.B. Urin-Streifentest)</div>
+            <div class="k-form-label">Titel</div>
+            <input class="k-form-input" id="kLaborNoteTitel" placeholder="z.B. Urin-Streifentest" style="margin-bottom:10px;">
+            <div class="k-form-label">Ergebnis</div>
+            <textarea class="k-form-input" id="kLaborNoteText" rows="2" placeholder="z.B. Protein: negativ, Glukose: negativ, pH: 6.0" style="resize:none;margin-bottom:10px;"></textarea>
+            <button class="k-form-save" id="kLaborNoteBtn" style="background:linear-gradient(135deg,#dc2626,#b91c1c);" onclick="saveKarteiLaborNote()">
+              ✓ Notiz speichern
+            </button>
+          </div>
+
           <!-- Befunde Liste -->
           <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Bisherige Befunde</div>
           <div id="labor-liste"><div style="color:#94a3b8;font-size:12px;">Lädt...</div></div>
@@ -4435,18 +4448,61 @@ async function renderKarteiLabor(){
     listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Noch keine Befunde hochgeladen.</div>';
     return;
   }
-  listEl.innerHTML=docs.map(function(d){
-    const df=new Date(d.created_at).toLocaleDateString('de-AT');
-    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;background:#fef2f2;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
-      <div style="flex:1;min-width:0;">
+  listEl.innerHTML=docs.map(function(d){ return karteiLaborRowHtml(d); }).join('');
+}
+// A row is either a real uploaded PDF (file_data, downloadable) or a quick
+// free-text note jotted down for an in-office test with no report to
+// upload (body_text, shown inline instead of a download button).
+function karteiLaborRowHtml(d){
+  const df=new Date(d.created_at).toLocaleDateString('de-AT');
+  if(d.body_text){
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
-        <div style="font-size:11px;color:#94a3b8;">${df} · ${formatFileSize(d.size_bytes)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:#94a3b8;">${df}</span>
+          <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+        </div>
       </div>
-      <button onclick="downloadKarteiDocument('${d.id}')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
-      <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${d.body_text}</div>
     </div>`;
-  }).join('');
+  }
+  return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+    <div style="width:36px;height:36px;background:#fef2f2;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+      <div style="font-size:11px;color:#94a3b8;">${df} · ${formatFileSize(d.size_bytes)}</div>
+    </div>
+    <button onclick="downloadKarteiDocument('${d.id}')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
+    <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+  </div>`;
+}
+async function saveKarteiLaborNote(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt') return;
+  const title=document.getElementById('kLaborNoteTitel').value.trim();
+  if(!title){ showToast('Bitte einen Titel eingeben.','error'); return; }
+  const text=document.getElementById('kLaborNoteText').value.trim();
+  if(!text){ showToast('Bitte ein Ergebnis eingeben.','error'); return; }
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){ showToast('Dieser Patient hat noch kein Cloud-Konto.','error'); return; }
+  const btn=document.getElementById('kLaborNoteBtn');
+  const originalLabel=btn.innerHTML;
+  btn.disabled=true; btn.textContent='Wird gespeichert...';
+  try{
+    const session=currentStaffSession();
+    await uploadPatientDocument(patientId,{
+      category:'befund', title:title, bodyText:text,
+    },session?session.username:null);
+    document.getElementById('kLaborNoteTitel').value='';
+    document.getElementById('kLaborNoteText').value='';
+    showToast('✓ Notiz gespeichert');
+    renderKarteiLabor();
+  }catch(e){
+    showToast('✗ Speichern fehlgeschlagen','error');
+  }finally{
+    btn.disabled=false; btn.innerHTML=originalLabel;
+  }
 }
 async function uploadKarteiLaborDoc(){
   const name=document.getElementById('kartei-name')?.textContent;
@@ -4521,18 +4577,32 @@ async function renderKarteiDocuments(){
     listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Noch keine Dokumente hochgeladen.</div>';
     return;
   }
-  listEl.innerHTML=docs.map(function(d){
-    const df=new Date(d.created_at).toLocaleDateString('de-AT');
-    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
-      <div style="width:36px;height:36px;background:#EAF4F1;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
-      <div style="flex:1;min-width:0;">
+  listEl.innerHTML=docs.map(function(d){ return karteiDokRowHtml(d); }).join('');
+}
+// Same real/text split as karteiLaborRowHtml, teal-themed to match this tab.
+function karteiDokRowHtml(d){
+  const df=new Date(d.created_at).toLocaleDateString('de-AT');
+  if(d.body_text){
+    return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
-        <div style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df} · ${formatFileSize(d.size_bytes)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df}</span>
+          <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+        </div>
       </div>
-      <button onclick="downloadKarteiDocument('${d.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
-      <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${d.body_text}</div>
     </div>`;
-  }).join('');
+  }
+  return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
+    <div style="width:36px;height:36px;background:#EAF4F1;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+      <div style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df} · ${formatFileSize(d.size_bytes)}</div>
+    </div>
+    <button onclick="downloadKarteiDocument('${d.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
+    <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
+  </div>`;
 }
 async function uploadKarteiDocument(){
   const name=document.getElementById('kartei-name')?.textContent;
