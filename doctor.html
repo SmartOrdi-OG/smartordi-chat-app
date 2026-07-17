@@ -289,6 +289,7 @@
 .app-wrapper.active .gdpr-banner { display: none !important; }
 .app-wrapper.active .view.active{height:calc(100vh - 116px);}
 #appNavBar{position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+#tuHome{display:none;}
 @media(max-width:768px){.app-wrapper.active #appNavBar{display:none!important;}.app-wrapper.active{padding-top:48px;}.app-wrapper.active .view.active{height:calc(100vh - 110px);}}
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;padding-top:48px;padding-left:84px;}
@@ -307,7 +308,57 @@
      is on, so an auto/flow height would collapse to ~0. */
   #appNavBar{top:48px;left:0;right:auto;bottom:0;width:84px;height:auto;flex-direction:column;border-bottom:none;border-right:1px solid #e2e8f0;padding:14px 8px;gap:6px;overflow-y:auto;}
   body.windows-mode #appMain{position:fixed;top:48px;left:84px;right:0;bottom:0;}
+  /* Home canvas: sits behind every real window (z-index 1, vs. 500+ for
+     .view once opened -- see winZ/win-fullscreen) so it's only ever
+     visible when nothing else is open, filling what would otherwise be
+     empty space with today's schedule instead. */
+  #tuHome{display:flex;position:absolute;inset:0;z-index:1;overflow-y:auto;background:var(--bg,#f8fafc);padding:36px 40px;}
 }
+.tu-widget{width:100%;max-width:820px;margin:0 auto;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:28px 32px 26px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.12);}
+.tu-widget-head{margin-bottom:20px;}
+.tu-widget-title{font-size:19px;font-weight:800;color:var(--text-1,#0f172a);}
+.tu-widget-sub{font-size:13px;color:var(--text-2,#64748b);margin-top:2px;}
+.tu-day-strip{display:flex;gap:6px;margin-bottom:26px;}
+.tu-day-pill{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:all .15s;}
+.tu-day-pill .dow{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;}
+.tu-day-pill .dom{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
+.tu-day-pill.active{background:#1e40af;border-color:#1e40af;}
+.tu-day-pill.active .dow,.tu-day-pill.active .dom{color:#fff;}
+.tu-day-pill .dot{width:4px;height:4px;border-radius:50%;background:#1e40af;margin-top:1px;}
+.tu-day-pill.active .dot{background:rgba(255,255,255,.75);}
+.tu-day-pill:not(.active):hover{background:#eff6ff;}
+.tu-dial-row{display:flex;gap:36px;align-items:center;flex-wrap:wrap;}
+.tu-dial-wrap{position:relative;flex-shrink:0;width:260px;height:260px;}
+.tu-dial-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
+.tu-dial-center .num{font-family:'Inter',sans-serif;font-size:40px;font-weight:800;line-height:1;color:var(--text-1,#0f172a);}
+.tu-dial-center .mon{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-top:4px;}
+.tu-dial-center .cnt{margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:#1e40af;background:#eff6ff;padding:3px 10px;border-radius:20px;font-variant-numeric:tabular-nums;}
+.tu-legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px;}
+.tu-legend-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;}
+.tu-appt-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .15s;}
+.tu-appt-row:hover{background:#eff6ff;}
+.tu-appt-time{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;width:42px;flex-shrink:0;}
+.tu-appt-bar{width:3px;height:24px;border-radius:2px;flex-shrink:0;background:#1e40af;}
+.tu-appt-bar.pending{background:#d97706;}
+.tu-appt-bar.cancelled{background:#94a3b8;}
+.tu-appt-info{flex:1;min-width:0;}
+.tu-appt-name{font-size:13.5px;font-weight:700;color:var(--text-1,#0f172a);}
+.tu-appt-name.strike{text-decoration:line-through;color:#94a3b8;}
+.tu-appt-type{font-size:11.5px;color:#64748b;margin-top:1px;}
+.tu-appt-chip{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;color:#1e40af;background:#eff6ff;}
+.tu-appt-chip.pending{color:#d97706;background:#fef3c7;}
+.tu-appt-chip.cancelled{color:#94a3b8;background:#f1f5f9;}
+.tu-empty{padding:20px 0;text-align:center;color:#94a3b8;font-size:13px;}
+[data-theme="dark"] #tuHome{background:#0f172a;}
+[data-theme="dark"] .tu-widget{background:#1e293b;border-color:#334155;}
+[data-theme="dark"] .tu-widget-title{color:#e2e8f0;}
+[data-theme="dark"] .tu-day-pill .dom{color:#cbd5e1;}
+[data-theme="dark"] .tu-day-pill:not(.active):hover{background:#1e3a5f;}
+[data-theme="dark"] .tu-dial-center .num{color:#e2e8f0;}
+[data-theme="dark"] .tu-dial-center .cnt{color:#93c5fd;background:#1e3a5f;}
+[data-theme="dark"] .tu-appt-row:hover{background:#1e3a5f;}
+[data-theme="dark"] .tu-appt-name{color:#e2e8f0;}
+[data-theme="dark"] .tu-appt-chip{color:#93c5fd;background:#1e3a5f;}
 .landing-page.hidden { display: none; }
 
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
@@ -550,6 +601,35 @@
     </button>
   </div>
   <div id="appMain">
+  <!-- Home canvas: fills the empty space behind whichever real window is
+       open (or all of it, when none is) -- not a .view/window itself (no
+       titlebar, not in WIN_TITLES), just a permanent backdrop rendered at
+       a low z-index so any opened window naturally covers it. -->
+  <div id="tuHome">
+    <div class="tu-widget">
+      <div class="tu-widget-head">
+        <div>
+          <div class="tu-widget-title" id="tuPracticeName">Praxis</div>
+          <div class="tu-widget-sub" id="tuPracticeSub">—</div>
+        </div>
+      </div>
+      <div class="tu-day-strip" id="tuDayStrip"></div>
+      <div class="tu-dial-row">
+        <div class="tu-dial-wrap">
+          <svg viewBox="0 0 280 280" width="280" height="280" id="tuDialSvg"></svg>
+          <div class="tu-dial-center">
+            <div class="num" id="tuDateNum">–</div>
+            <div class="mon" id="tuDateMon">–</div>
+            <div class="cnt" id="tuCount">0 Termine</div>
+          </div>
+        </div>
+        <div class="tu-legend">
+          <div class="tu-legend-title">Termine an diesem Tag</div>
+          <div id="tuLegendList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div>
 <!DOCTYPE html>
 <html lang="de" dir="ltr">
@@ -2664,13 +2744,9 @@ function updateChatUnreadBadge(){
   });
 }
 
-// On desktop, nothing was ever set .active by default (that's only ever
-// added by a nav click, or on mobile), so with no view active and no
-// window open, the sidebar sat next to a big empty canvas until the user
-// clicked a tab. Auto-open the primary tab once on first load only -- a
-// user who deliberately closes every window later shouldn't have one
-// reopened just because they resized the browser.
-let _defaultWindowOpened=false;
+// #tuHome (the home canvas, see its CSS/markup) now fills the empty space
+// behind whichever window is open -- or all of it, when none is -- so
+// there's no need to force a default tab open anymore.
 function syncWindowsModeState(){
   const desktop=isDesktopWidth();
   document.body.classList.toggle('windows-mode',desktop);
@@ -2682,10 +2758,7 @@ function syncWindowsModeState(){
       if(!activeView.classList.contains('win-open') && !activeView.classList.contains('win-minimized')){
         openWindow(id);
       }
-    } else if(!_defaultWindowOpened && !document.querySelector('.view.win-open')){
-      openWindow('clinic');
     }
-    _defaultWindowOpened=true;
   }
   updateChatUnreadBadge();
 }
@@ -2842,6 +2915,122 @@ function renderDashTermine(){
   root.innerHTML = heute.length
     ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+}
+
+// ══ TAGESUHR (home-canvas calendar, #tuHome) ══
+// Monday-start week of dates (YYYY-MM-DD strings) containing dateStr.
+function tuWeekDates(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const mondayOffset=(d.getDay()+6)%7; // getDay(): 0=Sun..6=Sat -> 0=Mon..6=Sun
+  const monday=new Date(d); monday.setDate(d.getDate()-mondayOffset);
+  const out=[];
+  for(let i=0;i<7;i++){
+    const dd=new Date(monday); dd.setDate(monday.getDate()+i);
+    out.push(dd.toISOString().split('T')[0]);
+  }
+  return out;
+}
+function tuTimeToDecimal(hhmm){
+  const [h,m]=(hhmm||'0:0').split(':').map(Number);
+  return h+(m||0)/60;
+}
+function tuIsDark(){ return document.documentElement.getAttribute('data-theme')==='dark'; }
+let tuSelectedDate=null;
+function tuSelectDate(dateStr){ tuSelectedDate=dateStr; renderTagesuhr(); }
+function renderTuDial(dayAppts){
+  const svg=document.getElementById('tuDialSvg');
+  if(!svg) return;
+  const dark=tuIsDark();
+  const cx=140,cy=140,rOuter=132,rInner=108,rLabel=80;
+  const startAngle=-225,endAngle=45,startHour=7,endHour=19;
+  const trackColor=dark?'#1e3a5f':'#eff6ff';
+  const tickColor=dark?'#475569':'#94a3b8';
+  function angleForHour(h){ return startAngle+((h-startHour)/(endHour-startHour))*(endAngle-startAngle); }
+  function polar(r,deg){ const rad=(deg-90)*Math.PI/180; return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)]; }
+  function arcPath(r1,r2,a1,a2){
+    const p1=polar(r2,a1),p2=polar(r2,a2),p3=polar(r1,a2),p4=polar(r1,a1);
+    const large=(a2-a1)>180?1:0;
+    return 'M '+p1[0]+' '+p1[1]+' A '+r2+' '+r2+' 0 '+large+' 1 '+p2[0]+' '+p2[1]
+      +' L '+p3[0]+' '+p3[1]+' A '+r1+' '+r1+' 0 '+large+' 0 '+p4[0]+' '+p4[1]+' Z';
+  }
+  let html='<path d="'+arcPath(rInner,rOuter,startAngle,endAngle)+'" fill="'+trackColor+'"></path>';
+  for(let h=startHour;h<=endHour;h+=2){
+    const a=angleForHour(h);
+    const t1=polar(rInner-4,a), t2=polar(rInner-12,a);
+    html+='<line x1="'+t1[0]+'" y1="'+t1[1]+'" x2="'+t2[0]+'" y2="'+t2[1]+'" stroke="'+tickColor+'" stroke-width="1.5" stroke-linecap="round"></line>';
+    const lp=polar(rLabel,a);
+    html+='<text x="'+lp[0]+'" y="'+(lp[1]+3)+'" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" font-weight="500" fill="'+tickColor+'">'+h+'</text>';
+  }
+  dayAppts.forEach(function(t){
+    if(!t.time) return;
+    const s=tuTimeToDecimal(t.time);
+    if(s<startHour||s>endHour) return;
+    const e=t.endTime?tuTimeToDecimal(t.endTime):Math.min(s+0.33,endHour);
+    const a1=angleForHour(s), a2=angleForHour(Math.max(e,s+0.08));
+    const color=t.status==='abgesagt'?tickColor:(t.status==='bestaetigt'?'#1e40af':'#d97706');
+    html+='<path d="'+arcPath(rInner+3,rOuter-3,a1,a2)+'" fill="'+color+'" opacity="'+(t.status==='abgesagt'?0.5:1)+'"></path>';
+  });
+  if(tuSelectedDate===todayStr()){
+    const now=new Date(), nowDec=now.getHours()+now.getMinutes()/60;
+    if(nowDec>=startHour&&nowDec<=endHour){
+      const a=angleForHour(nowDec);
+      const n1=polar(rInner-16,a), n2=polar(rOuter+10,a);
+      html+='<line x1="'+n1[0]+'" y1="'+n1[1]+'" x2="'+n2[0]+'" y2="'+n2[1]+'" stroke="#dc2626" stroke-width="2" stroke-linecap="round"></line>';
+      html+='<circle cx="'+n2[0]+'" cy="'+n2[1]+'" r="3.5" fill="#dc2626"></circle>';
+    }
+  }
+  svg.innerHTML=html;
+}
+function tuApptRowHtml(t){
+  const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
+  const chipLabel=t.status==='abgesagt'?'Abgesagt':(t.status==='bestaetigt'?'Bestätigt':'Neu');
+  const nameEsc=t.patient.replace(/'/g,"\\'");
+  return `<div class="tu-appt-row" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${t.versicherung||''}')">
+    <div class="tu-appt-time">${t.time||''}</div>
+    <div class="tu-appt-bar ${statusClass}"></div>
+    <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${t.patient}</div><div class="tu-appt-type">${t.art||''}</div></div>
+    <div class="tu-appt-chip ${statusClass}">${chipLabel}</div>
+  </div>`;
+}
+const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+function renderTagesuhr(){
+  const root=document.getElementById('tuHome');
+  if(!root) return;
+  if(!tuSelectedDate) tuSelectedDate=todayStr();
+  const nameEl=document.getElementById('tuPracticeName');
+  if(nameEl) nameEl.textContent='Praxis '+arztDisplayName(currentDoctorUsername());
+  const subEl=document.getElementById('tuPracticeSub');
+  if(subEl) subEl.textContent=dayBoxLabel(tuSelectedDate)===dayBoxLabel(todayStr())?'Heute':longDateDE(tuSelectedDate);
+
+  const mine=filterToMyTermine(loadTermine());
+  const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
+  const week=tuWeekDates(tuSelectedDate);
+  const stripEl=document.getElementById('tuDayStrip');
+  if(stripEl){
+    stripEl.innerHTML=week.map(function(ds){
+      const d=new Date(ds+'T00:00:00');
+      const dow=['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
+      const active=ds===tuSelectedDate;
+      return '<div class="tu-day-pill'+(active?' active':'')+'" onclick="tuSelectDate(\''+ds+'\')">'
+        +'<span class="dow">'+dow+'</span><span class="dom">'+d.getDate()+'</span>'
+        +(activeDateSet.has(ds)?'<span class="dot"></span>':'')
+        +'</div>';
+    }).join('');
+  }
+
+  const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const d=new Date(tuSelectedDate+'T00:00:00');
+  const numEl=document.getElementById('tuDateNum'); if(numEl) numEl.textContent=d.getDate();
+  const monEl=document.getElementById('tuDateMon'); if(monEl) monEl.textContent=TU_MONTHS_DE[d.getMonth()];
+  const cntEl=document.getElementById('tuCount'); if(cntEl) cntEl.textContent=dayAppts.length+(dayAppts.length===1?' Termin':' Termine');
+
+  const legendEl=document.getElementById('tuLegendList');
+  if(legendEl){
+    legendEl.innerHTML = dayAppts.length
+      ? dayAppts.map(tuApptRowHtml).join('')
+      : '<div class="tu-empty">Keine Termine an diesem Tag</div>';
+  }
+  renderTuDial(dayAppts);
 }
 // The Dashboard's top stat cards used to be permanently hardcoded numbers
 // (127 Nachrichten heute, 34 Aktive Patienten, 28 Weitergeleitet, 5
@@ -5297,6 +5486,7 @@ async function confirmTransfer(){
 }
 
 renderImpfWarnungen();
+renderTagesuhr();
 // Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
 // Termine lists) and Termine themselves both live in Supabase now -- wait
 // for the fetches kicked off by vendor/staff-accounts.js/vendor/patient-data.js
@@ -5305,6 +5495,7 @@ Promise.all([staffRosterReady, termineReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
   updateDashboardStats();
+  renderTagesuhr();
 });
 // Realtime replaces the old same-browser-only 'storage' event for Termine --
 // this fires in every tab/device, including the one that made the write, so
@@ -5313,6 +5504,7 @@ Promise.all([staffRosterReady, termineReady]).then(()=>{
 subscribeTermineRealtime(()=>{
   renderDashTermine();
   updateDashboardStats();
+  renderTagesuhr();
   const allModal=document.getElementById('allTermineModal');
   if(allModal && allModal.classList.contains('show')) renderAlleTermine();
 });
@@ -5339,6 +5531,9 @@ function toggleDark(){
   localStorage.setItem('smartordi_theme', isDark ? 'light' : 'dark');
   const btn = document.getElementById('darkToggle');
   if(btn) btn.textContent = isDark ? '◑' : '◐';
+  // Tagesuhr's dial is inline SVG with colors picked in JS at render time,
+  // not driven by CSS -- redraw so it picks up the new theme's palette.
+  renderTagesuhr();
 }
 (function(){
   const t = localStorage.getItem('smartordi_theme');
