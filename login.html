@@ -21,49 +21,26 @@
 }
 body{
   font-family:'Segoe UI',system-ui,sans-serif;
-  min-height:100vh;display:flex;background:#f1f5f9;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:#f1f5f9;padding:24px;
 }
 
-/* ── LEFT (image) ── */
-.left{
-  flex:1;position:relative;overflow:hidden;
-  display:none;
-}
-@media(min-width:768px){.left{display:block;}}
-
-.left img{
-  width:100%;height:100%;object-fit:cover;
-}
-.left-overlay{
-  position:absolute;inset:0;
-  background:linear-gradient(160deg,rgba(30,64,175,0.6) 0%,rgba(14,165,233,0.45) 100%);
-  display:flex;flex-direction:column;padding:36px;
-}
-.left-logo{display:flex;align-items:center;gap:10px;}
-.left-logo-icon{width:64px;height:64px;background:white;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;}
-.left-logo-text{font-size:20px;font-weight:800;color:white;letter-spacing:-0.3px;}
-.left-logo-text span{opacity:0.8;}
-.left-tagline{font-size:28px;font-weight:800;color:white;line-height:1.3;margin-bottom:12px;}
-.left-sub{font-size:14px;color:rgba(255,255,255,0.8);line-height:1.6;margin-bottom:24px;}
-.left-badges{display:flex;gap:8px;flex-wrap:wrap;}
-.left-badge{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;color:white;}
-
-/* ── RIGHT (form) ── */
+/* ── Form card ── */
 .right{
-  width:100%;max-width:480px;
+  width:100%;max-width:420px;
   background:white;
   display:flex;flex-direction:column;justify-content:center;
   padding:40px 36px;
-  box-shadow:-4px 0 40px rgba(0,0,0,0.08);
+  border-radius:16px;
+  box-shadow:0 4px 28px rgba(15,23,42,0.08);
 }
-@media(max-width:767px){
-  .right{max-width:100%;padding:32px 24px;box-shadow:none;}
-  body{background:white;}
+@media(max-width:480px){
+  body{padding:0;}
+  .right{max-width:100%;min-height:100vh;padding:32px 24px;border-radius:0;box-shadow:none;justify-content:flex-start;padding-top:48px;}
 }
 
-/* Mobile logo */
+/* Logo */
 .mobile-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
-@media(min-width:768px){.mobile-logo{display:none;}}
 .mobile-logo-icon{width:56px;height:56px;background:var(--teal);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .mobile-logo-text{font-size:18px;font-weight:800;color:var(--slate);}
 .mobile-logo-text span{color:var(--teal);}
@@ -118,34 +95,13 @@ body{
 /* Dark mode — keep panel white with black text */
 @media(prefers-color-scheme:dark){
   body{background:#0f172a;}
-  .left{background:#0f172a;}
-  .right{background:white;box-shadow:none;}
+  .right{background:white;box-shadow:0 4px 28px rgba(0,0,0,0.4);}
 }
 </style>
 </head>
 <body>
 
-<!-- LEFT: Image -->
-<div class="left">
-  <img src="https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=800&q=80" alt="Medical">
-  <div class="left-overlay">
-    <div class="left-logo">
-      <div class="left-logo-icon"><img src="logo..jpeg" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:10px;"></div>
-      <div class="left-logo-text">Smartordi<span>.chat</span></div>
-    </div>
-    <div style="margin-top:auto;">
-      <div class="left-tagline">Professionelle Kommunikation —<br>sicher, einfach, DSGVO-konform.</div>
-      <div class="left-sub">Der sichere Kommunikationskanal zwischen Arzt und Patient. Österreichisch. Verschlüsselt. In 5 Minuten live.</div>
-      <div class="left-badges">
-        <span class="left-badge">AT Österreich</span>
-        <span class="left-badge">DSGVO</span>
-        <span class="left-badge">5 Min. Setup</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- RIGHT: Form -->
+<!-- Form -->
 <div class="right">
 
   <!-- Mobile logo -->
