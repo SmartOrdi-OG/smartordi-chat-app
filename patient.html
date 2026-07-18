@@ -565,11 +565,11 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <span id="chatHeaderAvatar">S</span>
       </div>
       <div class="chat-header-info">
-        <div class="chat-doctor-name" id="chatDoctorName">Dr. Sarah Ahmed</div>
+        <div class="chat-doctor-name" id="chatDoctorName">—</div>
         <div class="chat-doctor-sub" id="chatDoctorSub">Allgemeinmedizin · Linz</div>
       </div>
       <div class="chat-header-actions">
-        <button class="chat-action info" onclick="showToast('ℹ Ordination: '+(window.__practiceOrdinationAddress||'Steingasse 6A, 4020 Linz'))">ℹ</button>
+        <button class="chat-action info" onclick="showToast('ℹ Ordination: '+(window.__practiceOrdinationAddress||'—'))">ℹ</button>
         <button class="chat-action call" onclick="showToast('Anruf wird gestartet...')" title="Anrufen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
       </div>
     </div>
@@ -592,7 +592,12 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   <div class="view" id="view-termine">
     <div class="view-header">
       <div class="view-title" data-i18n="termine.title">Meine Termine</div>
-      <div class="view-sub" id="termineSub" data-i18n="termine.sub">Ordination Dr. Sarah Ahmed · Linz</div>
+      <!-- No data-i18n here on purpose -- this is always overwritten with
+           the real practice's own doctor name by updatePracticeIdentityUI(),
+           never a translated static string (that used to bake a fake
+           "Dr. Sarah Ahmed" placeholder into every language, which would
+           reappear every time the patient switched language). -->
+      <div class="view-sub" id="termineSub">—</div>
     </div>
 
     <div class="termine-content">
@@ -754,8 +759,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.ordination">Meine Ordination</div>
         <div id="profilArztRows"></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value">Steingasse 6A, 4020 Linz</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value">+43 677 62439293</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="profilOrdAdresse">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilOrdTel">—</span></div>
       </div>
 
       <button class="logout-btn" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
@@ -1368,26 +1373,34 @@ async function initPatientData(){
 // which real practice/doctor the patient actually belongs to -- fill them
 // in from the real admin doctor + practice_settings, same lookup already
 // used by secretary.html's practiceAdminName() and patient-login.html's
-// join-request notice.
+// join-request notice. Every fallback below is a neutral "—", never a
+// specific fake name/address -- this runs on a real patient's device, so a
+// fallback that looks like real data is genuinely misleading, not just a
+// missing-data placeholder.
 async function updatePracticeIdentityUI(){
   await staffRosterReady;
   await practiceSettingsReady;
   const accounts=loadStaffAccounts();
   const admin=Object.values(accounts).find(a=>a.role==='arzt'&&a.isAdmin);
   const practiceInfo=getPracticeSettings();
-  const adminName=admin?admin.fullName:'Dr. Sarah Ahmed';
-  const adminFach=(admin&&admin.fach)||'Allgemeinmedizin';
-  const adresse=(practiceInfo&&practiceInfo.adresse)||'Steingasse 6A, 4020 Linz';
+  const adminName=admin?admin.fullName:'—';
+  const adminFach=(admin&&admin.fach)||'—';
+  const adresse=(practiceInfo&&practiceInfo.adresse)||'—';
+  const tel=(practiceInfo&&practiceInfo.tel)||'—';
 
   const avatarEl=document.getElementById('chatHeaderAvatar');
   if(avatarEl) avatarEl.textContent=(adminName.replace(/^dr\.?\s*/i,'')[0]||adminName[0]||'?').toUpperCase();
   const nameEl=document.getElementById('chatDoctorName');
   if(nameEl) nameEl.textContent=adminName;
   const subEl=document.getElementById('chatDoctorSub');
-  if(subEl) subEl.textContent=adminFach+' · Linz';
+  if(subEl) subEl.textContent=adminFach+(adresse!=='—'?' · '+adresse.split(',').pop().trim():'');
   const termineSubEl=document.getElementById('termineSub');
-  if(termineSubEl) termineSubEl.textContent='Ordination '+adminName+' · Linz';
-  window.__practiceOrdinationAddress=adresse;
+  if(termineSubEl) termineSubEl.textContent=(admin?'Ordination '+adminName:'—')+(adresse!=='—'?' · '+adresse.split(',').pop().trim():'');
+  const ordAdresseEl=document.getElementById('profilOrdAdresse');
+  if(ordAdresseEl) ordAdresseEl.textContent=adresse;
+  const ordTelEl=document.getElementById('profilOrdTel');
+  if(ordTelEl) ordTelEl.textContent=tel;
+  window.__practiceOrdinationAddress=adresse!=='—'?adresse:null;
 }
 
 async function renderProfilArztRows(){
@@ -1448,7 +1461,7 @@ function arztAccounts(){
 }
 function arztDisplayName(username){
   const accounts=loadStaffAccounts();
-  return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
+  return (accounts[username]&&accounts[username].fullName)||'—';
 }
 async function populateArztSelect(){
   await staffRosterReady;
@@ -1766,6 +1779,10 @@ function onPatientLanguageChanged(){
   renderPatientTermine();
   renderProfilArztRows();
   renderProfilImpfungen();
+  // termineSub has no data-i18n anymore (see the HTML comment there), but
+  // re-running this defensively costs nothing and guards against any
+  // future data-i18n reintroduction silently overwriting it again.
+  updatePracticeIdentityUI();
   if(document.getElementById('symptomModal').classList.contains('show')){
     document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
     renderSymptomRegions();
