@@ -363,7 +363,7 @@
 .tu-legend{display:flex;flex-direction:column;gap:6px;}
 #tuLegendList{max-height:420px;overflow-y:auto;padding-right:4px;}
 .tu-legend-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;}
-.tu-appt-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .15s;}
+.tu-appt-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .25s,opacity .25s,box-shadow .25s;}
 .tu-appt-row:hover{background:#EAF4F1;}
 .tu-appt-time{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;width:42px;flex-shrink:0;}
 .tu-appt-bar{width:3px;height:24px;border-radius:2px;flex-shrink:0;background:#0E5E56;}
@@ -376,6 +376,17 @@
 .tu-appt-chip{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;color:#0E5E56;background:#EAF4F1;}
 .tu-appt-chip.pending{color:#d97706;background:#fef3c7;}
 .tu-appt-chip.cancelled{color:#94a3b8;background:#f1f5f9;}
+.tu-appt-row.past{opacity:.5;}
+.tu-appt-row.now{background:#fef2f2;box-shadow:0 2px 12px -5px rgba(220,38,38,.4);}
+.tu-appt-row.now:hover{background:#fde8e8;}
+.tu-appt-row.next{background:#fff7ed;}
+.tu-appt-row.next:hover{background:#fef0dc;}
+.tu-appt-row.now .tu-appt-bar{background:#dc2626;animation:tuNowPulse 1.8s ease-in-out infinite;}
+@keyframes tuNowPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.45);}50%{box-shadow:0 0 0 5px rgba(220,38,38,0);}}
+@media(prefers-reduced-motion:reduce){.tu-appt-row.now .tu-appt-bar{animation:none;}}
+.tu-time-chip{font-size:10px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:20px;flex-shrink:0;}
+.tu-time-chip.now{background:#dc2626;color:#fff;}
+.tu-time-chip.next{background:#d97706;color:#fff;}
 .tu-empty{padding:20px 0;text-align:center;color:#94a3b8;font-size:13px;}
 .landing-page.hidden { display: none; }
 
@@ -2898,15 +2909,37 @@ function tuShiftMonth(delta){
   targetMonthFirst.setDate(Math.min(day,daysInTargetMonth));
   tuSelectDate(tuDateStr(targetMonthFirst));
 }
-function tuApptRowHtml(t){
+// Marks each of today's non-cancelled appointments as 'now' (current time
+// falls inside its [time,endTime) span), 'next' (the first one still ahead
+// of now), or 'past' (already ended) -- only meaningful for today, so this
+// returns an empty map for any other selected date.
+function tuClassifyAppts(dayAppts){
+  const map={};
+  if(tuSelectedDate!==todayStr()) return map;
+  const nowDec=(new Date()).getHours()+(new Date()).getMinutes()/60;
+  let nextAssigned=false;
+  dayAppts.forEach(function(t){
+    if(t.status==='abgesagt'||!t.time) return;
+    const s=tuTimeToDecimal(t.time);
+    const e=t.endTime?tuTimeToDecimal(t.endTime):s+0.33;
+    if(nowDec>=s&&nowDec<e) map[t.id]='now';
+    else if(nowDec<s&&!nextAssigned){ map[t.id]='next'; nextAssigned=true; }
+    else if(nowDec>=e) map[t.id]='past';
+  });
+  return map;
+}
+function tuApptRowHtml(t,timeClass){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
-  const chipLabel=t.status==='abgesagt'?'Abgesagt':(t.status==='bestaetigt'?'Bestätigt':'Neu');
   const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  return `<div class="tu-appt-row" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
+  const rowClass='tu-appt-row'+(timeClass?' '+timeClass:'');
+  const rightBadge=timeClass==='now'?'<span class="tu-time-chip now">JETZT</span>'
+    :timeClass==='next'?'<span class="tu-time-chip next">NÄCHSTER</span>'
+    :`<span class="tu-appt-chip ${statusClass}">${t.status==='abgesagt'?'Abgesagt':(t.status==='bestaetigt'?'Bestätigt':'Neu')}</span>`;
+  return `<div class="${rowClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
     <div class="tu-appt-time">${t.time||''}</div>
     <div class="tu-appt-bar ${statusClass}"></div>
     <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div><div class="tu-appt-type">${escapeHtml(t.art||'')}</div></div>
-    <div class="tu-appt-chip ${statusClass}">${chipLabel}</div>
+    ${rightBadge}
   </div>`;
 }
 // Replaces the old circular clock-face dial: doctors need to scan "how
@@ -2980,11 +3013,12 @@ function renderTagesuhr(){
   renderTuMonthGrid(mine);
 
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const timeClassMap=tuClassifyAppts(dayAppts);
 
   const legendEl=document.getElementById('tuLegendList');
   if(legendEl){
     legendEl.innerHTML = dayAppts.length
-      ? dayAppts.map(tuApptRowHtml).join('')
+      ? dayAppts.map(t=>tuApptRowHtml(t,timeClassMap[t.id])).join('')
       : '<div class="tu-empty">Keine Termine an diesem Tag</div>';
   }
   renderTuSummary(dayAppts);
