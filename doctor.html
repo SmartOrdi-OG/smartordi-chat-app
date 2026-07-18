@@ -5977,7 +5977,7 @@ function renderVertInternalList(){
   listRoot.innerHTML=colleagues.map(function(a){
     const sel=a.username===vertInternalSelected;
     return `<div class="clinic-option${sel?' selected':''}" onclick="selectVertInternalDoctor(this,'${a.username}')">
-      <span class="clinic-option-icon"></span>
+      <span class="clinic-option-icon" style="width:36px;height:36px;border-radius:50%;background:${colorForName(a.fullName)};color:white;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${a.fullName[0]}</span>
       <div class="clinic-option-info">
         <div class="clinic-option-name">${a.fullName}</div>
         <div class="clinic-option-detail">${a.fach||'Allgemeinmedizin'}</div>
@@ -6192,7 +6192,7 @@ function showTransferModal(){
   const listRoot=document.getElementById('transferDoctorList');
   listRoot.innerHTML=colleagues.length
     ? colleagues.map((a,i)=>`<div class="clinic-option${i===0?' selected':''}" onclick="selectTransferDoctor(this,'${a.username}')">
-        <span class="clinic-option-icon"></span>
+        <span class="clinic-option-icon" style="width:36px;height:36px;border-radius:50%;background:${colorForName(a.fullName)};color:white;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${a.fullName[0]}</span>
         <div class="clinic-option-info">
           <div class="clinic-option-name">${a.fullName}</div>
           <div class="clinic-option-detail">${a.fach||'Allgemeinmedizin'}</div>
