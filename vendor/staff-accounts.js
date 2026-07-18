@@ -19,6 +19,16 @@ const SUPABASE_URL='https://ewilgwndhpxibkogxqbk.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3aWxnd25kaHB4aWJrb2d4cWJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjEyMjUsImV4cCI6MjA5OTUzNzIyNX0.hZeILrp_GmOzZUImEtWhdbURLqDcvr5kB8KbhLPZvVM';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
+// Shared XSS-safety helper -- every page renders user-controlled text
+// (chat messages, patient/staff names, filenames, free-text form answers)
+// via innerHTML template literals rather than textContent, so any such
+// value must be passed through this before interpolation.
+const HTML_ESCAPE_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function escapeHtml(str){
+  if(str===null||str===undefined) return '';
+  return String(str).replace(/[&<>"']/g, c=>HTML_ESCAPE_MAP[c]);
+}
+
 // In-memory cache of every staff_profiles row, keyed by uuid -- refreshed
 // once (awaited) during each page's init so the many existing synchronous
 // call sites (arztAccounts, arztDisplayName, renderTeamCard...) don't all

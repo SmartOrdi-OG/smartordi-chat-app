@@ -2780,11 +2780,11 @@ function msgRowHtml(m,color,initial){
   const av=m.dir==='in'?avatarSmallHtml(color,initial):'';
   let bubble;
   if(m.type==='voice'){
-    bubble=`<div class="msg-bubble voice-msg"><button class="play-btn">▶</button><div class="voice-wave"></div><span class="voice-duration">${m.duration}</span></div>`;
+    bubble=`<div class="msg-bubble voice-msg"><button class="play-btn">▶</button><div class="voice-wave"></div><span class="voice-duration">${escapeHtml(m.duration)}</span></div>`;
   }else if(m.type==='doc'){
-    bubble=`<div class="msg-bubble"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">${m.filename}</div><div class="doc-size">${m.size} · PDF</div></div></div></div>`;
+    bubble=`<div class="msg-bubble"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">${escapeHtml(m.filename)}</div><div class="doc-size">${escapeHtml(m.size)} · PDF</div></div></div></div>`;
   }else{
-    bubble=`<div class="msg-bubble">${m.text}</div>`;
+    bubble=`<div class="msg-bubble">${escapeHtml(m.text)}</div>`;
   }
   return `<div class="msg-row ${m.dir}">${av}<div>${bubble}<span class="msg-time">${m.time}</span></div></div>`;
 }
@@ -3324,7 +3324,7 @@ function sendClinicMsg(){
   if(msgs.children.length===1 && msgs.firstElementChild.style.textAlign==='center') msgs.innerHTML='';
   const outTime=getTime()+' ✓';
   const row=document.createElement('div');row.className='msg-row out';
-  row.innerHTML=`<div><div class="msg-bubble">${txt}</div><span class="msg-time">${outTime}</span></div>`;
+  row.innerHTML=`<div><div class="msg-bubble">${escapeHtml(txt)}</div><span class="msg-time">${outTime}</span></div>`;
   msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';
   if(name){
     appendRealMessage(name,{dir:'out',type:'text',text:txt,time:outTime});
@@ -4634,19 +4634,19 @@ function karteiLaborRowHtml(d){
   if(d.body_text){
     return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.title)}</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:11px;color:#94a3b8;">${df}</span>
           <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
         </div>
       </div>
-      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${d.body_text}</div>
+      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${escapeHtml(d.body_text)}</div>
     </div>`;
   }
   return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
     <div style="width:36px;height:36px;background:#fef2f2;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.title)}</div>
       <div style="font-size:11px;color:#94a3b8;">${df} · ${formatFileSize(d.size_bytes)}</div>
     </div>
     <button onclick="downloadKarteiDocument('${d.id}')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
@@ -4761,20 +4761,20 @@ function karteiDokRowHtml(d){
   if(d.body_text){
     return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.title)}</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df}</span>
+          <span style="font-size:11px;color:#94a3b8;">${escapeHtml(DOK_KATEGORIE_LABEL[d.category]||d.category)} · ${df}</span>
           <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
         </div>
       </div>
-      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${d.body_text}</div>
+      <div style="font-size:12px;color:#475569;line-height:1.5;white-space:pre-wrap;">${escapeHtml(d.body_text)}</div>
     </div>`;
   }
   return `<div style="background:white;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;">
     <div style="width:36px;height:36px;background:#EAF4F1;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">📄</div>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:13px;font-weight:700;color:#0f172a;">${d.title}</div>
-      <div style="font-size:11px;color:#94a3b8;">${DOK_KATEGORIE_LABEL[d.category]||d.category} · ${df} · ${formatFileSize(d.size_bytes)}</div>
+      <div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.title)}</div>
+      <div style="font-size:11px;color:#94a3b8;">${escapeHtml(DOK_KATEGORIE_LABEL[d.category]||d.category)} · ${df} · ${formatFileSize(d.size_bytes)}</div>
     </div>
     <button onclick="downloadKarteiDocument('${d.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
     <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
