@@ -955,7 +955,7 @@ body.windows-mode .kartei-header{display:none;}
 .k-form-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;color:var(--text-1);outline:none;transition:all 0.15s;background:#f1f5f9;}
 .k-form-input:focus{border-color:#0E5E56;background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.12);}
 .k-form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.k-form-save{width:100%;padding:10px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;margin-top:4px;box-shadow:0 2px 8px rgba(14,94,86,0.35);}
+.k-form-save{display:block;width:auto;min-width:200px;margin:4px auto 0;padding:10px 26px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(14,94,86,0.35);}
 .mkp-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:12px;}
 .mkp-toggle-row .mkp-toggle-label{color:#334155;font-weight:600;flex:1;}
 .mkp-toggle-row label{display:inline-flex;align-items:center;gap:4px;color:#64748b;font-weight:600;white-space:nowrap;cursor:pointer;}
@@ -2288,7 +2288,7 @@ body.windows-mode .kartei-header{display:none;}
     </div>
 
     <!-- Save button -->
-    <button onclick="saveSettings()" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">
+    <button onclick="saveSettings()" style="display:block;width:auto;min-width:240px;max-width:320px;margin:0 auto 8px;padding:13px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">
       ✓ Einstellungen speichern
     </button>
     <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:4px;">Alle Daten werden lokal gespeichert · DSGVO-konform</div>
@@ -2416,7 +2416,7 @@ body.windows-mode .kartei-header{display:none;}
     <div style="font-size:40px;margin-bottom:12px;">⏰</div>
     <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:8px;">Ihre Testphase ist abgelaufen</div>
     <div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Ihre kostenlose 30-Tage-Testphase ist beendet. Bitte wählen Sie ein Paket und hinterlegen Sie eine Zahlungsmethode, um Smartordi.chat weiter zu nutzen.</div>
-    <button onclick="openTrialPaymentModal()" style="width:100%;padding:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">Paket wählen & fortsetzen</button>
+    <button onclick="openTrialPaymentModal()" style="display:block;width:auto;min-width:200px;margin:0 auto 10px;padding:11px 24px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Paket wählen & fortsetzen</button>
     <button onclick="doctorLogout()" style="width:100%;padding:10px;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;">Abmelden</button>
   </div>
 </div>
