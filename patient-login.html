@@ -345,6 +345,9 @@ async function doLogin(){
     // (e.g. logging out of a real account and into the demo/a guardian
     // one) -- otherwise a stale token would make patient.html think this
     // new, local-only session is still the old Supabase-backed patient.
+    // Revoke it server-side too (not just locally) in case that previous
+    // session was ended by closing the tab rather than the Abmelden button.
+    await patientLogout();
     setPatientToken(null);
 
     // Real patient credentials are validated server-side (hashed password,

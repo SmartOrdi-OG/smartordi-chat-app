@@ -43,6 +43,16 @@ async function patientChangePassword(newPassword){
   if(error){ console.error('patientChangePassword failed',error); return false; }
   return !!data;
 }
+// Revokes the session token server-side (supabase/phase6_patient_logout.sql)
+// -- without this, "logging out" only ever cleared the token from this
+// device's sessionStorage while the token itself stayed valid (and usable
+// from anywhere) for its full ~30-day expiry.
+async function patientLogout(){
+  const token=getPatientToken();
+  if(!token) return;
+  const {error}=await sb.rpc('patient_logout',{p_token:token});
+  if(error) console.error('patientLogout failed',error);
+}
 async function patientGetProfile(){
   const {data,error}=await sb.rpc('patient_get_profile',{p_token:getPatientToken()});
   if(error){ console.error('patientGetProfile failed',error); return null; }
