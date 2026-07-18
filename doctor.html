@@ -912,8 +912,7 @@ body.windows-mode .kartei-header{display:none;}
 .kartei-tab.active{color:white!important;background:linear-gradient(135deg,#0891b2,#0e7490);font-weight:700;box-shadow:0 2px 6px rgba(8,145,178,0.3);}
 .kartei-tab.kartei-tab-locked{opacity:0.55;}
 .kartei-tab:hover:not(.active){color:#0891b2!important;background:#ecfeff;}
-.kartei-mehr-wrap{position:relative;flex-shrink:0;}
-.kartei-mehr-menu{position:absolute;top:calc(100% + 4px);left:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:20;min-width:150px;}
+.kartei-mehr-menu{position:fixed;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:200;min-width:150px;}
 .kartei-mehr-menu .kartei-tab{width:100%;justify-content:flex-start;}
 .kartei-body{flex:1;overflow-y:auto;padding:0;}
 
@@ -1300,16 +1299,19 @@ body.windows-mode .kartei-header{display:none;}
       <button class="kartei-tab" onclick="switchKarteiTab('anamnese',this)">Anamnese</button>
       <button class="kartei-tab" id="ktab-btn-rezept" onclick="switchKarteiTab('rezept',this)">Rezept</button>
       <button class="kartei-tab" id="ktab-btn-impfung" onclick="switchKarteiTab('impfung',this)">Impfung</button>
-      <div class="kartei-mehr-wrap">
-        <button class="kartei-tab" id="ktab-btn-mehr" onclick="toggleKarteiMehrMenu(event)">Mehr ▾</button>
-        <div id="karteiMehrMenu" class="kartei-mehr-menu" style="display:none;">
-          <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
-          <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
-          <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
-          <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
-          <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
-        </div>
-      </div>
+      <button class="kartei-tab" id="ktab-btn-mehr" onclick="toggleKarteiMehrMenu(event)">Mehr ▾</button>
+    </div>
+    <!-- Positioned outside .kartei-tabs on purpose -- that container has
+         overflow-y:hidden for its own horizontal tab scroller, which would
+         clip almost this entire dropdown (it's taller than the tab bar
+         itself). Placed/sized via toggleKarteiMehrMenu() at open time
+         instead of static CSS coordinates. -->
+    <div id="karteiMehrMenu" class="kartei-mehr-menu" style="display:none;">
+      <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
+      <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
     </div>
 
     <div class="kartei-body" id="karteiBody">
@@ -4130,15 +4132,25 @@ function switchKarteiTab(tab,btn){
 function toggleKarteiMehrMenu(e){
   if(e)e.stopPropagation();
   const menu=document.getElementById('karteiMehrMenu');
-  if(!menu)return;
-  menu.style.display=menu.style.display==='none'?'flex':'none';
+  const btn=document.getElementById('ktab-btn-mehr');
+  if(!menu||!btn)return;
+  const opening=menu.style.display==='none';
+  if(opening){
+    // Fixed positioning (see the CSS comment) needs coordinates computed
+    // fresh each time -- the button can be anywhere along the tab bar's
+    // horizontal scroll position when this opens.
+    const rect=btn.getBoundingClientRect();
+    menu.style.top=(rect.bottom+4)+'px';
+    menu.style.left=rect.left+'px';
+  }
+  menu.style.display=opening?'flex':'none';
 }
 // Closes the Mehr dropdown on any click outside it, same convention as
 // other click-away-to-close menus in this app.
 document.addEventListener('click',e=>{
   const menu=document.getElementById('karteiMehrMenu');
   if(!menu||menu.style.display==='none')return;
-  if(!e.target.closest('.kartei-mehr-wrap'))menu.style.display='none';
+  if(!e.target.closest('#karteiMehrMenu')&&e.target.id!=='ktab-btn-mehr')menu.style.display='none';
 });
 // Anamnese (background history, rarely touched after the first fill-in)
 // collapses to a summary bar by default within the merged Anamnese/Neu
