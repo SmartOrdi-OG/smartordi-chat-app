@@ -343,7 +343,10 @@
 .tu-widget-head{margin-bottom:20px;}
 .tu-widget-title{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:var(--text-1,#0f172a);}
 .tu-widget-sub{font-size:13px;color:var(--text-2,#64748b);margin-top:2px;}
-.tu-day-strip{display:flex;gap:6px;margin-bottom:26px;}
+.tu-week-nav{display:flex;align-items:center;gap:8px;margin-bottom:26px;}
+.tu-week-arrow{flex-shrink:0;width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
+.tu-week-arrow:hover{background:#EAF4F1;color:#0E5E56;}
+.tu-day-strip{display:flex;gap:6px;flex:1;}
 .tu-day-pill{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:all .15s;}
 .tu-day-pill .dow{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;}
 .tu-day-pill .dom{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
@@ -624,7 +627,11 @@
           <div class="tu-widget-sub" id="tuPracticeSub">—</div>
         </div>
       </div>
-      <div class="tu-day-strip" id="tuDayStrip"></div>
+      <div class="tu-week-nav">
+        <button class="tu-week-arrow" onclick="tuShiftWeek(-7)" title="Vorige Woche">‹</button>
+        <div class="tu-day-strip" id="tuDayStrip"></div>
+        <button class="tu-week-arrow" onclick="tuShiftWeek(7)" title="Nächste Woche">›</button>
+      </div>
       <div class="tu-summary" id="tuSummary"></div>
       <div class="tu-legend">
         <div class="tu-legend-title">Termine an diesem Tag</div>
@@ -2881,6 +2888,16 @@ function tuSelectDate(dateStr){
   tuSelectedDate=dateStr;
   tuFollowingToday=(dateStr===todayStr());
   renderTagesuhr();
+}
+// The day-strip only ever showed the single Mon-Sun week containing
+// tuSelectedDate -- since every pill in that strip belongs to that same
+// week, clicking any of them just re-selects a day *within* it and can
+// never reach an adjacent week. Moving the selected date itself by a full
+// week (keeping the same weekday) is what actually lets the strip advance.
+function tuShiftWeek(deltaDays){
+  const d=new Date(tuSelectedDate+'T00:00:00');
+  d.setDate(d.getDate()+deltaDays);
+  tuSelectDate(d.toISOString().split('T')[0]);
 }
 function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
