@@ -1976,9 +1976,9 @@ body.windows-mode .kartei-header{display:none;}
         </div>
         <div style="margin-bottom:16px;">
           <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:8px;">Vertretungsarzt/-ärztin:</div>
-          <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <button type="button" class="btn-secondary" id="vertModeInternalBtn" onclick="setVertretungMode('internal')" style="flex:1;">Aus dieser Ordination</button>
-            <button type="button" class="btn-secondary" id="vertModeExternalBtn" onclick="setVertretungMode('external')" style="flex:1;">Von außerhalb</button>
+          <div style="display:inline-flex;background:#f1f5f9;border-radius:10px;padding:3px;gap:2px;margin-bottom:12px;">
+            <button type="button" id="vertModeInternalBtn" onclick="setVertretungMode('internal')" style="padding:7px 14px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Aus dieser Ordination</button>
+            <button type="button" id="vertModeExternalBtn" onclick="setVertretungMode('external')" style="padding:7px 14px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;">Von außerhalb</button>
           </div>
           <div id="vertInternalSection">
             <div id="vertInternalList"></div>
@@ -6001,10 +6001,10 @@ function setVertretungMode(mode){
   vertretungMode=mode;
   const internalBtn=document.getElementById('vertModeInternalBtn');
   const externalBtn=document.getElementById('vertModeExternalBtn');
-  internalBtn.style.background=mode==='internal'?'#0E5E56':'#f1f5f9';
-  internalBtn.style.color=mode==='internal'?'white':'#334155';
-  externalBtn.style.background=mode==='external'?'#0E5E56':'#f1f5f9';
-  externalBtn.style.color=mode==='external'?'white':'#334155';
+  internalBtn.style.background=mode==='internal'?'#0E5E56':'transparent';
+  internalBtn.style.color=mode==='internal'?'white':'#64748b';
+  externalBtn.style.background=mode==='external'?'#0E5E56':'transparent';
+  externalBtn.style.color=mode==='external'?'white':'#64748b';
   document.getElementById('vertInternalSection').style.display=mode==='internal'?'block':'none';
   document.getElementById('vertExternalSection').style.display=mode==='external'?'block':'none';
   if(mode==='internal') renderVertInternalList();
