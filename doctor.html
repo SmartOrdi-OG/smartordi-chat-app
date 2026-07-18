@@ -343,18 +343,20 @@
 .tu-widget-head{margin-bottom:20px;}
 .tu-widget-title{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:var(--text-1,#0f172a);}
 .tu-widget-sub{font-size:13px;color:var(--text-2,#64748b);margin-top:2px;}
-.tu-week-nav{display:flex;align-items:center;gap:8px;margin-bottom:26px;}
+.tu-month-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;}
 .tu-week-arrow{flex-shrink:0;width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
 .tu-week-arrow:hover{background:#EAF4F1;color:#0E5E56;}
-.tu-day-strip{display:flex;gap:6px;flex:1;}
-.tu-day-pill{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:all .15s;}
-.tu-day-pill .dow{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;}
-.tu-day-pill .dom{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
-.tu-day-pill.active{background:#0E5E56;border-color:#0E5E56;}
-.tu-day-pill.active .dow,.tu-day-pill.active .dom{color:#fff;}
-.tu-day-pill .dot{width:4px;height:4px;border-radius:50%;background:#0E5E56;margin-top:1px;}
-.tu-day-pill.active .dot{background:rgba(255,255,255,.75);}
-.tu-day-pill:not(.active):hover{background:#EAF4F1;}
+.tu-month-label{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--text-1,#0f172a);}
+.tu-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px;}
+.tu-month-dow{text-align:center;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;padding-bottom:4px;}
+.tu-month-cell{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text-1,#0f172a);transition:background .15s;}
+.tu-month-cell.outside{color:#cbd5e1;}
+.tu-month-cell:not(.selected):hover{background:#EAF4F1;}
+.tu-month-cell.today{color:#0E5E56;font-weight:800;}
+.tu-month-cell.selected{background:#0E5E56;color:#fff;}
+.tu-month-cell.selected.today{color:#fff;}
+.tu-month-cell .dot{width:4px;height:4px;border-radius:50%;background:#0E5E56;position:absolute;bottom:6px;}
+.tu-month-cell.selected .dot{background:rgba(255,255,255,.8);}
 .tu-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#EAF4F1;border-radius:14px;margin-bottom:20px;font-size:13px;color:#0E5E56;font-weight:700;}
 .tu-summary .tu-summary-icon{font-size:16px;}
 .tu-summary .tu-summary-next{color:#475569;font-weight:500;}
@@ -627,11 +629,12 @@
           <div class="tu-widget-sub" id="tuPracticeSub">—</div>
         </div>
       </div>
-      <div class="tu-week-nav">
-        <button class="tu-week-arrow" onclick="tuShiftWeek(-7)" title="Vorige Woche">‹</button>
-        <div class="tu-day-strip" id="tuDayStrip"></div>
-        <button class="tu-week-arrow" onclick="tuShiftWeek(7)" title="Nächste Woche">›</button>
+      <div class="tu-month-nav">
+        <button class="tu-week-arrow" onclick="tuShiftMonth(-1)" title="Voriger Monat">‹</button>
+        <div class="tu-month-label" id="tuMonthLabel">–</div>
+        <button class="tu-week-arrow" onclick="tuShiftMonth(1)" title="Nächster Monat">›</button>
       </div>
+      <div class="tu-month-grid" id="tuMonthGrid"></div>
       <div class="tu-summary" id="tuSummary"></div>
       <div class="tu-legend">
         <div class="tu-legend-title">Termine an diesem Tag</div>
@@ -2860,17 +2863,12 @@ function renderDashTermine(){
 }
 
 // ══ TAGESUHR (home-canvas calendar, #tuHome) ══
-// Monday-start week of dates (YYYY-MM-DD strings) containing dateStr.
-function tuWeekDates(dateStr){
-  const d=new Date(dateStr+'T00:00:00');
-  const mondayOffset=(d.getDay()+6)%7; // getDay(): 0=Sun..6=Sat -> 0=Mon..6=Sun
-  const monday=new Date(d); monday.setDate(d.getDate()-mondayOffset);
-  const out=[];
-  for(let i=0;i<7;i++){
-    const dd=new Date(monday); dd.setDate(monday.getDate()+i);
-    out.push(dd.toISOString().split('T')[0]);
-  }
-  return out;
+// Local YYYY-MM-DD, deliberately not toISOString() -- that converts to UTC,
+// which silently rolls a local midnight Date back to the *previous* day for
+// any positive UTC offset (all of Austria, CET/CEST included). Every date
+// built for this grid goes through this helper for that reason.
+function tuDateStr(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function tuTimeToDecimal(hhmm){
   const [h,m]=(hhmm||'0:0').split(':').map(Number);
@@ -2889,15 +2887,16 @@ function tuSelectDate(dateStr){
   tuFollowingToday=(dateStr===todayStr());
   renderTagesuhr();
 }
-// The day-strip only ever showed the single Mon-Sun week containing
-// tuSelectedDate -- since every pill in that strip belongs to that same
-// week, clicking any of them just re-selects a day *within* it and can
-// never reach an adjacent week. Moving the selected date itself by a full
-// week (keeping the same weekday) is what actually lets the strip advance.
-function tuShiftWeek(deltaDays){
+// Shifts by whole calendar months (not +/-30 days), clamped to the target
+// month's real length (e.g. Jan 31 -> Feb 28/29) instead of silently
+// rolling over into the month after via Date's own +30-day arithmetic.
+function tuShiftMonth(delta){
   const d=new Date(tuSelectedDate+'T00:00:00');
-  d.setDate(d.getDate()+deltaDays);
-  tuSelectDate(d.toISOString().split('T')[0]);
+  const day=d.getDate();
+  const targetMonthFirst=new Date(d.getFullYear(),d.getMonth()+delta,1);
+  const daysInTargetMonth=new Date(targetMonthFirst.getFullYear(),targetMonthFirst.getMonth()+1,0).getDate();
+  targetMonthFirst.setDate(Math.min(day,daysInTargetMonth));
+  tuSelectDate(tuDateStr(targetMonthFirst));
 }
 function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
@@ -2931,6 +2930,43 @@ function renderTuSummary(dayAppts){
   }
   el.innerHTML=html;
 }
+const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+// Full month grid (not just a one-week strip) -- lets a doctor see at a
+// glance which days this month have appointments (the dot) and jump to
+// any of them directly, distinct from the Dashboard's "Alle sehen" modal
+// (today + upcoming only, no browsing to an arbitrary date).
+function renderTuMonthGrid(mine){
+  const gridEl=document.getElementById('tuMonthGrid');
+  const labelEl=document.getElementById('tuMonthLabel');
+  if(!gridEl) return;
+  const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
+  const sel=new Date(tuSelectedDate+'T00:00:00');
+  const year=sel.getFullYear(), month=sel.getMonth();
+  if(labelEl) labelEl.textContent=TU_MONTHS_DE[month]+' '+year;
+
+  const firstOfMonth=new Date(year,month,1);
+  const startOffset=(firstOfMonth.getDay()+6)%7; // getDay(): 0=Sun..6=Sat -> Monday-start offset
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
+  const today=todayStr();
+
+  let html=['Mo','Di','Mi','Do','Fr','Sa','So'].map(dw=>`<div class="tu-month-dow">${dw}</div>`).join('');
+  for(let i=0;i<totalCells;i++){
+    const dayNum=i-startOffset+1;
+    const cellDate=new Date(year,month,dayNum);
+    const ds=tuDateStr(cellDate);
+    const outside=dayNum<1||dayNum>daysInMonth;
+    const cls=['tu-month-cell'];
+    if(outside) cls.push('outside');
+    if(ds===today) cls.push('today');
+    if(ds===tuSelectedDate) cls.push('selected');
+    html+=`<div class="${cls.join(' ')}" onclick="tuSelectDate('${ds}')">`
+      +`<span>${cellDate.getDate()}</span>`
+      +(activeDateSet.has(ds)?'<span class="dot"></span>':'')
+      +`</div>`;
+  }
+  gridEl.innerHTML=html;
+}
 function renderTagesuhr(){
   const root=document.getElementById('tuHome');
   if(!root) return;
@@ -2941,20 +2977,7 @@ function renderTagesuhr(){
   if(subEl) subEl.textContent=dayBoxLabel(tuSelectedDate)===dayBoxLabel(todayStr())?'Heute':longDateDE(tuSelectedDate);
 
   const mine=filterToMyTermine(loadTermine());
-  const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
-  const week=tuWeekDates(tuSelectedDate);
-  const stripEl=document.getElementById('tuDayStrip');
-  if(stripEl){
-    stripEl.innerHTML=week.map(function(ds){
-      const d=new Date(ds+'T00:00:00');
-      const dow=['So','Mo','Di','Mi','Do','Fr','Sa'][d.getDay()];
-      const active=ds===tuSelectedDate;
-      return '<div class="tu-day-pill'+(active?' active':'')+'" onclick="tuSelectDate(\''+ds+'\')">'
-        +'<span class="dow">'+dow+'</span><span class="dom">'+d.getDate()+'</span>'
-        +(activeDateSet.has(ds)?'<span class="dot"></span>':'')
-        +'</div>';
-    }).join('');
-  }
+  renderTuMonthGrid(mine);
 
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
 
