@@ -216,13 +216,39 @@ async function getMessagesForPatient(patientId){
   if(error){ console.error('getMessagesForPatient failed',error); return []; }
   return data||[];
 }
+// Bulk cache (all patients at once, one query) for anything that needs to
+// scan every patient's messages together -- e.g. secretary.html/doctor.html's
+// "Nachrichten" preview list, which used to read only the local, dual-written
+// copy of messages (acc.messages) and so never showed a real patient's own
+// messages at all: those are sent straight from patient.html to this table
+// since PR6 and never touch a staff device's localStorage. Same
+// cache-then-sync-getter shape as _termine/_impfungen.
+let _allMessagesByPatient={};
+async function refreshAllMessages(){
+  const {data,error}=await sb.from('patient_messages').select('*').order('created_at');
+  if(error){ console.error('refreshAllMessages failed',error); return; }
+  const byPatient={};
+  (data||[]).forEach(function(row){
+    (byPatient[row.patient_id]=byPatient[row.patient_id]||[]).push(row);
+  });
+  _allMessagesByPatient=byPatient;
+}
+// Remapped to the same {dir,type,text,time} shape acc.messages entries
+// already use, so callers can treat a cached row exactly like a local one.
+function loadMessagesForPatientCached(patientId){
+  return (_allMessagesByPatient[patientId]||[]).map(function(row){
+    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16)};
+  });
+}
+const allMessagesReady=refreshAllMessages();
 // Replaces the old same-browser-only 'storage' event for chat -- a real
 // patient's own message (sent from their own device via patient.html) can
 // only ever reach a staff device through this, since it never touches
 // localStorage at all.
 function subscribeMessagesRealtime(onChange){
   sb.channel('patient-messages-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'patient_messages'},function(){
+    .on('postgres_changes',{event:'*',schema:'public',table:'patient_messages'},async function(){
+      await refreshAllMessages();
       if(onChange) onChange();
     })
     .subscribe();
