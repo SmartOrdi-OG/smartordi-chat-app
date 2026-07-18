@@ -912,6 +912,9 @@ body.windows-mode .kartei-header{display:none;}
 .kartei-tab.active{color:white!important;background:linear-gradient(135deg,#0891b2,#0e7490);font-weight:700;box-shadow:0 2px 6px rgba(8,145,178,0.3);}
 .kartei-tab.kartei-tab-locked{opacity:0.55;}
 .kartei-tab:hover:not(.active){color:#0891b2!important;background:#ecfeff;}
+.kartei-mehr-wrap{position:relative;flex-shrink:0;}
+.kartei-mehr-menu{position:absolute;top:calc(100% + 4px);left:0;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:20;min-width:150px;}
+.kartei-mehr-menu .kartei-tab{width:100%;justify-content:flex-start;}
 .kartei-body{flex:1;overflow-y:auto;padding:0;}
 
 /* Filter Bar */
@@ -1294,21 +1297,50 @@ body.windows-mode .kartei-header{display:none;}
 
     <div class="kartei-tabs">
       <button class="kartei-tab active" onclick="switchKarteiTab('verlauf',this)">Verlauf</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('stamm',this)">Stamm</button>
       <button class="kartei-tab" onclick="switchKarteiTab('anamnese',this)">Anamnese</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('neu',this)">+ Neu</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
       <button class="kartei-tab" id="ktab-btn-rezept" onclick="switchKarteiTab('rezept',this)">Rezept</button>
       <button class="kartei-tab" id="ktab-btn-impfung" onclick="switchKarteiTab('impfung',this)">Impfung</button>
-      <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
-      <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
+      <div class="kartei-mehr-wrap">
+        <button class="kartei-tab" id="ktab-btn-mehr" onclick="toggleKarteiMehrMenu(event)">Mehr ▾</button>
+        <div id="karteiMehrMenu" class="kartei-mehr-menu" style="display:none;">
+          <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
+          <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
+          <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
+          <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
+          <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
+        </div>
+      </div>
     </div>
 
     <div class="kartei-body" id="karteiBody">
-      <!-- Verlauf Tab (default) -->
+      <!-- Verlauf Tab (default) -- merged with the former standalone Stamm
+           tab: Stammdaten now sits as a fixed header card, with the visit
+           history/filter/list below it, same page -- one "patient overview"
+           tab instead of two separate ones for what's really just header
+           info + a timeline. -->
       <div id="ktab-verlauf">
+        <div id="ktab-stamm">
+          <div class="k-section">
+            <div class="k-section-title">Stammdaten — vom Patienten ausgefüllt ✓</div>
+            <div class="k-row"><span class="k-label">Name</span><span class="k-value" id="k-stamm-name">—</span></div>
+            <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value" id="k-stamm-dob">—</span></div>
+            <div class="k-row"><span class="k-label">Telefon</span><span class="k-value" id="k-stamm-tel">—</span></div>
+            <div class="k-row"><span class="k-label">Adresse</span><span class="k-value" id="k-stamm-adresse">—</span></div>
+            <div class="k-row"><span class="k-label">Sprache</span><span class="k-value" id="k-stamm-sprache">—</span></div>
+          </div>
+          <div class="k-section">
+            <div class="k-section-title">Versicherung</div>
+            <div class="k-row"><span class="k-label">Träger</span><span class="k-value" id="k-stamm-versicherung">ÖGK</span></div>
+            <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">1234 010185</span></div>
+            <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" id="k-stamm-dsgvo" style="color:#16a34a;">✓ Einwilligung 15.01.2026</span></div>
+          </div>
+          <div class="k-section">
+            <div class="k-section-title">Medizinische Hinweise</div>
+            <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value" id="k-stamm-blutgruppe">A+</span></div>
+            <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">Hypertonie, Diabetes T2</span></div>
+            <div class="k-alert" id="k-stamm-allergie">Penicillin-Allergie beachten!</div>
+          </div>
+        </div>
 
         <!-- Übernommene Krankengeschichte (Altsystem) -- only shown for
              patients imported with unstructured legacy history text -->
@@ -1331,61 +1363,39 @@ body.windows-mode .kartei-header{display:none;}
         <div id="kVisitList"></div>
       </div>
 
-      <!-- Stamm Tab -->
-      <div id="ktab-stamm" style="display:none;">
-        <div class="k-section">
-          <div class="k-section-title">Stammdaten — vom Patienten ausgefüllt ✓</div>
-          <div class="k-row"><span class="k-label">Name</span><span class="k-value" id="k-stamm-name">—</span></div>
-          <div class="k-row"><span class="k-label">Geburtsdatum</span><span class="k-value" id="k-stamm-dob">—</span></div>
-          <div class="k-row"><span class="k-label">Telefon</span><span class="k-value" id="k-stamm-tel">—</span></div>
-          <div class="k-row"><span class="k-label">Adresse</span><span class="k-value" id="k-stamm-adresse">—</span></div>
-          <div class="k-row"><span class="k-label">Sprache</span><span class="k-value" id="k-stamm-sprache">—</span></div>
-        </div>
-        <div class="k-section">
-          <div class="k-section-title">Versicherung</div>
-          <div class="k-row"><span class="k-label">Träger</span><span class="k-value" id="k-stamm-versicherung">ÖGK</span></div>
-          <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">1234 010185</span></div>
-          <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" id="k-stamm-dsgvo" style="color:#16a34a;">✓ Einwilligung 15.01.2026</span></div>
-        </div>
-        <div class="k-section">
-          <div class="k-section-title">Medizinische Hinweise</div>
-          <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value" id="k-stamm-blutgruppe">A+</span></div>
-          <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">Hypertonie, Diabetes T2</span></div>
-          <div class="k-alert" id="k-stamm-allergie">Penicillin-Allergie beachten!</div>
-        </div>
-      </div>
-
-      <!-- Anamnese Tab -->
+      <!-- Anamnese Tab -- merged with the former standalone "+ Neu" tab:
+           the Anamnese questionnaire (background history, rarely touched
+           after the first fill-in) collapses to a summary bar by default,
+           so the actual day-to-day action here -- logging today's visit --
+           is immediately visible without scrolling past it every time. -->
       <div id="ktab-anamnese" style="display:none;padding:16px;">
 
-        <!-- Header -->
-        <div style="background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:800;color:white;">Anamnese</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;" id="anamnese-fach-label">Medizinische Vorgeschichte</div>
+        <div id="anamnese-collapse-wrap" style="margin-bottom:16px;">
+          <div id="anamneseToggleBar" onclick="toggleAnamneseSection()" style="cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:white;">📋 Anamnese</div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;" id="anamnese-fach-label">Medizinische Vorgeschichte</div>
+            </div>
+            <span id="anamnese-toggle-arrow" style="color:white;font-size:14px;transition:transform 0.15s;">▾</span>
+          </div>
+
+          <div id="anamnese-collapse-body" style="display:none;padding-top:12px;">
+            <!-- Common Section (rendered from vendor/anamnese-shared.js so this
+                 matches the patient's fill-in form field-for-field) -->
+            <div id="anamnese-common-section"></div>
+
+            <!-- Specialty-specific section -->
+            <div id="anamnese-specialty-section"></div>
+
+            <button class="k-form-save" style="background:linear-gradient(135deg,#0891b2,#0e7490);" onclick="saveAnamnese()">
+              ✓ Anamnese speichern
+            </button>
+            <div class="k-dsgvo-note">DSGVO-konform · Nur für behandelnden Arzt sichtbar</div>
+          </div>
         </div>
 
-        <!-- Common Section (rendered from vendor/anamnese-shared.js so this
-             matches the patient's fill-in form field-for-field) -->
-        <div id="anamnese-common-section"></div>
-
-        <!-- Specialty-specific section -->
-        <div id="anamnese-specialty-section"></div>
-
-        <button class="k-form-save" style="background:linear-gradient(135deg,#0891b2,#0e7490);" onclick="saveAnamnese()">
-          ✓ Anamnese speichern
-        </button>
-        <div class="k-dsgvo-note">DSGVO-konform · Nur für behandelnden Arzt sichtbar</div>
-      </div>
-
-      <!-- Neu Tab -->
-      <div id="ktab-neu" style="display:none;">
-        <div class="k-form">
-
-          <!-- Anamnese Hinweis -->
-          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-            <div style="font-size:12px;color:#15803d;font-weight:600;">Anamnese vorhanden</div>
-            <button onclick="switchKarteiTab('anamnese',null)" style="background:none;border:1px solid #16a34a;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;color:#16a34a;cursor:pointer;">Anzeigen →</button>
-          </div>
+        <div id="ktab-neu">
+          <div class="k-form">
 
           <div class="k-form-row">
             <div class="k-form-group">
@@ -1454,6 +1464,7 @@ body.windows-mode .kartei-header{display:none;}
           </div>
           <button class="k-form-save" onclick="saveKarteiVisit()">✓ Besuch speichern</button>
           <div class="k-dsgvo-note">DSGVO-konform · Ende-zu-Ende verschlüsselt</div>
+        </div>
         </div>
       </div>
 
@@ -3805,7 +3816,10 @@ function updateKarteiChromeVisibility(){
   // be opened to reveal another patient's info under "Kein Patient ausgewählt".
   const hasActivePatient=document.getElementById('kartei-name')?.textContent!=='Kein Patient ausgewählt';
   document.querySelectorAll('.kartei-tab').forEach(t=>{
-    const isSuche=(t.getAttribute('onclick')||'').includes("'suche'");
+    // The Mehr button itself must stay clickable even with no active
+    // patient, since Suche (always allowed, see below) now lives inside
+    // its dropdown -- disabling the button would make Suche unreachable.
+    const isSuche=(t.getAttribute('onclick')||'').includes("'suche'")||t.id==='ktab-btn-mehr';
     const disable=!isSuche&&!hasActivePatient;
     t.disabled=disable;
     t.style.opacity=disable?'0.4':'';
@@ -4019,18 +4033,33 @@ function populateKarteiStamm(name){
   }
 }
 
+// Groups the old 11 tabs down to 5 visible slots: Verlauf now carries the
+// former standalone Stamm tab (nested inside it, see the HTML comment
+// there), Anamnese carries the former standalone Neu tab the same way --
+// so 'stamm'/'neu' are no longer switchable tab keys of their own, just
+// content that always shows alongside 'verlauf'/'anamnese' respectively.
+// Überweisung/MKP/Labor/Dokumente/Suche move into the "Mehr" dropdown but
+// keep their own tab keys unchanged.
 function switchKarteiTab(tab,btn){
   if((tab==='rezept'||tab==='impfung') && !planHasFeature('rezeptImpfung')){
     showToast('🔒 Rezept & Impfpass sind erst ab dem Pro-Paket enthalten.');
     return;
   }
-  ['verlauf','stamm','anamnese','neu','ueberweisung','rezept','impfung','mkp','labor','dokumente','suche'].forEach(t=>{
+  ['verlauf','anamnese','ueberweisung','rezept','impfung','mkp','labor','dokumente','suche'].forEach(t=>{
     const el=document.getElementById('ktab-'+t);
     if(el)el.style.display=t===tab?'block':'none';
   });
   document.querySelectorAll('.kartei-tab').forEach(t=>t.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  if(tab==='neu')setKarteiDate();
+  const mehrMenu=document.getElementById('karteiMehrMenu');
+  if(mehrMenu)mehrMenu.style.display='none';
+  const mehrBtn=document.getElementById('ktab-btn-mehr');
+  if(mehrBtn){
+    const mehrLabels={ueberweisung:'Überweisung',mkp:'MKP',labor:'Labor',dokumente:'Dokumente',suche:'Suche'};
+    const inMehrGroup=tab in mehrLabels;
+    mehrBtn.classList.toggle('active',inMehrGroup);
+    mehrBtn.textContent=inMehrGroup?('Mehr: '+mehrLabels[tab]+' ▾'):'Mehr ▾';
+  }
   if(tab==='verlauf'){
     renderYearPills();filterVisits();
     const currentName=document.getElementById('kartei-name')?.textContent;
@@ -4040,12 +4069,10 @@ function switchKarteiTab(tab,btn){
       legacyEl.style.display=legacy?'block':'none';
       if(legacy) document.getElementById('kLegacyHistoryText').textContent=legacy;
     }
-  }
-  if(tab==='stamm'){
-    const currentName=document.getElementById('kartei-name')?.textContent;
     if(currentName) populateKarteiStamm(currentName);
   }
   if(tab==='anamnese'){
+    setKarteiDate();
     const currentName=document.getElementById('kartei-name')?.textContent;
     if(currentName && currentName!=='Kein Patient ausgewählt') loadAnamneseForPatient(currentName);
   }
@@ -4099,6 +4126,31 @@ function switchKarteiTab(tab,btn){
   // above just cleared the patient bar to neutral) rather than stale data
   // from before this switch.
   updateKarteiChromeVisibility();
+}
+function toggleKarteiMehrMenu(e){
+  if(e)e.stopPropagation();
+  const menu=document.getElementById('karteiMehrMenu');
+  if(!menu)return;
+  menu.style.display=menu.style.display==='none'?'flex':'none';
+}
+// Closes the Mehr dropdown on any click outside it, same convention as
+// other click-away-to-close menus in this app.
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('karteiMehrMenu');
+  if(!menu||menu.style.display==='none')return;
+  if(!e.target.closest('.kartei-mehr-wrap'))menu.style.display='none';
+});
+// Anamnese (background history, rarely touched after the first fill-in)
+// collapses to a summary bar by default within the merged Anamnese/Neu
+// tab, so logging today's visit (the actual day-to-day action here)
+// doesn't require scrolling past the whole questionnaire every time.
+function toggleAnamneseSection(forceOpen){
+  const body=document.getElementById('anamnese-collapse-body');
+  const arrow=document.getElementById('anamnese-toggle-arrow');
+  if(!body)return;
+  const open=forceOpen===true||body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(arrow)arrow.textContent=open?'▴':'▾';
 }
 
 function openUwPreview(){
@@ -4392,7 +4444,10 @@ function findPatientAccountByFullName(name){
 }
 
 function saveAnamnese(){
-  const root=document.getElementById('ktab-anamnese');
+  // Scoped to the questionnaire itself (see loadAnamneseForPatient's own
+  // note) -- #ktab-anamnese now also nests the unrelated "Neu" visit-entry
+  // form, whose fields must never end up saved as anamnese answers.
+  const root=document.getElementById('anamnese-collapse-body');
   const data=collectAnamneseData(root);
   const currentName=document.getElementById('kartei-name')?.textContent;
   if(currentName && currentName!=='Kein Patient ausgewählt'){
@@ -4414,7 +4469,11 @@ function loadAnamneseForPatient(name){
   const account=found?found.accounts[found.username]:null;
   const fach=account?.fach||localStorage.getItem('fachrichtung')||'Allgemeinmedizin';
   updateAnamneseByFach(fach);
-  const root=document.getElementById('ktab-anamnese');
+  // Scoped to the questionnaire itself, not the whole (now merged) Anamnese
+  // tab -- that container also nests the unrelated "Neu" visit-entry form,
+  // whose fields (date/type/complaint/...) must survive a patient switch
+  // untouched instead of being blanked out as a side effect of this reset.
+  const root=document.getElementById('anamnese-collapse-body');
   root.querySelectorAll('input,select,textarea').forEach(el=>{
     if(el.type==='checkbox') el.checked=false; else el.value='';
   });
