@@ -136,6 +136,10 @@ body{
     <div class="spinner" id="spinner"></div>
   </button>
 
+  <div style="margin-top:14px;text-align:center;">
+    <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:var(--muted);font-weight:600;text-decoration:none;">Passwort vergessen?</a>
+  </div>
+
   <div class="divider">oder</div>
 
   <button class="patient-btn" onclick="window.location.href='patient-login.html'">
@@ -145,6 +149,47 @@ body{
   <div style="margin-top:16px;text-align:center;font-size:13px;">
     <a href="register.html" style="color:#0E5E56;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
   </div>
+  </div>
+
+  <!-- Passwort vergessen: E-Mail anfordern -->
+  <div id="forgotPwForm" style="display:none;">
+    <div class="form-title">Passwort vergessen?</div>
+    <div class="form-sub" id="forgotPwSub">Geben Sie Ihre E-Mail-Adresse ein, wir senden Ihnen einen Link zum Zurücksetzen.</div>
+    <div class="error-msg" id="forgotPwErrorMsg"><span>!</span><span id="forgotPwErrorText"></span></div>
+    <div id="forgotPwFields">
+      <div class="form-group">
+        <div class="input-wrap">
+          <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+          <input type="email" class="form-input" id="forgotPwEmail" placeholder="arzt@ordination.at" autocomplete="email" onkeydown="if(event.key==='Enter')sendPasswordResetLink()">
+        </div>
+      </div>
+      <button class="btn-login" id="forgotPwBtn" onclick="sendPasswordResetLink()">Link senden</button>
+    </div>
+    <div style="margin-top:16px;text-align:center;font-size:13px;">
+      <a href="#" onclick="backToLoginFromForgot();return false;" style="color:#0E5E56;font-weight:700;text-decoration:none;">← Zurück zur Anmeldung</a>
+    </div>
+  </div>
+
+  <!-- Passwort vergessen: neues Passwort setzen (Rücksprung vom E-Mail-Link) -->
+  <div id="recoveryForm" style="display:none;">
+    <div class="form-title">Neues Passwort wählen</div>
+    <div class="form-sub">Bitte wählen Sie ein neues Passwort für Ihr Konto.</div>
+    <div class="error-msg" id="recoveryErrorMsg"><span>!</span><span id="recoveryErrorText"></span></div>
+    <div class="form-group">
+      <label class="form-label">Neues Passwort</label>
+      <div class="input-wrap">
+        <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+        <input type="password" class="form-input" id="recoveryPw" placeholder="Mindestens 6 Zeichen" autocomplete="new-password" onkeydown="if(event.key==='Enter')document.getElementById('recoveryPwConfirm').focus()">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Passwort bestätigen</label>
+      <div class="input-wrap">
+        <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+        <input type="password" class="form-input" id="recoveryPwConfirm" placeholder="Passwort wiederholen" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitRecoveryPassword()">
+      </div>
+    </div>
+    <button class="btn-login" id="recoveryBtn" onclick="submitRecoveryPassword()">✓ Passwort speichern & anmelden</button>
   </div>
 
   <!-- Team-Einladung (?invite=<token> in der URL) -->
@@ -232,6 +277,97 @@ function resetLoginUI(){
   document.getElementById('btnText').style.display='block';
   document.getElementById('spinner').style.display='none';
   document.getElementById('errorMsg').classList.remove('show');
+}
+
+// ── Passwort vergessen (Supabase Auth's built-in reset-by-email flow --
+// staff already authenticate via real Supabase Auth, so this needed no new
+// backend, just wiring up sb.auth.resetPasswordForEmail()/updateUser()) ──
+function showForgotPassword(){
+  document.getElementById('normalLoginForm').style.display='none';
+  document.getElementById('forgotPwForm').style.display='block';
+  document.getElementById('forgotPwEmail').value=document.getElementById('email').value;
+  document.getElementById('forgotPwEmail').focus();
+}
+function backToLoginFromForgot(){
+  document.getElementById('forgotPwForm').style.display='none';
+  document.getElementById('forgotPwFields').style.display='block';
+  document.getElementById('forgotPwErrorMsg').classList.remove('show');
+  document.getElementById('normalLoginForm').style.display='block';
+}
+async function sendPasswordResetLink(){
+  const email=document.getElementById('forgotPwEmail').value.trim();
+  const errorEl=document.getElementById('forgotPwErrorMsg');
+  const errorText=document.getElementById('forgotPwErrorText');
+  errorEl.classList.remove('show');
+  if(!email||!email.includes('@')){
+    errorText.textContent='Bitte eine gültige E-Mail-Adresse eingeben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const btn=document.getElementById('forgotPwBtn');
+  btn.disabled=true; btn.textContent='Wird gesendet...';
+  // redirectTo strips any existing query/hash so the recovery link always
+  // lands back on a clean login.html -- Supabase appends its own
+  // #access_token=...&type=recovery fragment on top of this.
+  const redirectTo=window.location.origin+window.location.pathname;
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo});
+  btn.disabled=false; btn.textContent='Link senden';
+  // Never reveal whether the email actually matches an account -- same
+  // confirmation either way, so this can't be used to probe which staff
+  // emails exist in the system.
+  document.getElementById('forgotPwFields').style.display='none';
+  document.getElementById('forgotPwSub').textContent='Falls ein Konto mit dieser E-Mail existiert, wurde ein Link zum Zurücksetzen des Passworts gesendet. Bitte prüfen Sie Ihr Postfach.';
+  if(error) console.error('resetPasswordForEmail failed',error);
+}
+// Supabase redirects back here after the email link is clicked, with a
+// recovery session already established (#access_token=...&type=recovery in
+// the URL) -- onAuthStateChange fires PASSWORD_RECOVERY once it's parsed.
+sb.auth.onAuthStateChange((event)=>{
+  if(event==='PASSWORD_RECOVERY'){
+    document.getElementById('normalLoginForm').style.display='none';
+    document.getElementById('forgotPwForm').style.display='none';
+    document.getElementById('inviteForm').style.display='none';
+    document.getElementById('recoveryForm').style.display='block';
+    document.getElementById('recoveryPw').focus();
+  }
+});
+async function submitRecoveryPassword(){
+  const pw=document.getElementById('recoveryPw').value;
+  const confirmPw=document.getElementById('recoveryPwConfirm').value;
+  const errorEl=document.getElementById('recoveryErrorMsg');
+  const errorText=document.getElementById('recoveryErrorText');
+  errorEl.classList.remove('show');
+  if(pw.length<6){
+    errorText.textContent='Das Passwort muss mindestens 6 Zeichen haben.';
+    errorEl.classList.add('show');
+    return;
+  }
+  if(pw!==confirmPw){
+    errorText.textContent='Die Passwörter stimmen nicht überein.';
+    errorEl.classList.add('show');
+    return;
+  }
+  const btn=document.getElementById('recoveryBtn');
+  btn.disabled=true; btn.textContent='Wird gespeichert...';
+  const {data:updateData,error:updateError}=await sb.auth.updateUser({password:pw});
+  if(updateError||!updateData.user){
+    btn.disabled=false; btn.textContent='✓ Passwort speichern & anmelden';
+    errorText.textContent='Passwort konnte nicht gespeichert werden. Bitte fordern Sie einen neuen Link an.';
+    errorEl.classList.add('show');
+    return;
+  }
+  // The recovery session already authenticates this user -- same lookup as
+  // the tail of doLogin(), so a successful reset drops them straight into
+  // their own dashboard instead of making them log in again right after.
+  const {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',updateData.user.id).single();
+  if(profileError||!profile){
+    btn.disabled=false; btn.textContent='✓ Passwort speichern & anmelden';
+    errorText.textContent='Kein Praxisprofil für dieses Konto gefunden.';
+    errorEl.classList.add('show');
+    return;
+  }
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:updateData.user.id,isAdmin:!!profile.is_admin}));
+  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
 }
 
 // ── Team-Einladung: ?invite=<token> in der URL statt normalem Login ──
