@@ -352,13 +352,10 @@
 .tu-day-pill .dot{width:4px;height:4px;border-radius:50%;background:#0E5E56;margin-top:1px;}
 .tu-day-pill.active .dot{background:rgba(255,255,255,.75);}
 .tu-day-pill:not(.active):hover{background:#EAF4F1;}
-.tu-dial-row{display:flex;gap:36px;align-items:center;flex-wrap:wrap;}
-.tu-dial-wrap{position:relative;flex-shrink:0;width:260px;height:260px;}
-.tu-dial-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
-.tu-dial-center .num{font-family:'Inter',sans-serif;font-size:40px;font-weight:800;line-height:1;color:var(--text-1,#0f172a);}
-.tu-dial-center .mon{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-top:4px;}
-.tu-dial-center .cnt{margin-top:9px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;color:#0E5E56;background:#EAF4F1;padding:3px 10px;border-radius:20px;font-variant-numeric:tabular-nums;}
-.tu-legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:6px;align-self:flex-start;}
+.tu-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#EAF4F1;border-radius:14px;margin-bottom:20px;font-size:13px;color:#0E5E56;font-weight:700;}
+.tu-summary .tu-summary-icon{font-size:16px;}
+.tu-summary .tu-summary-next{color:#475569;font-weight:500;}
+.tu-legend{display:flex;flex-direction:column;gap:6px;}
 #tuLegendList{max-height:420px;overflow-y:auto;padding-right:4px;}
 .tu-legend-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:6px;}
 .tu-appt-row{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:10px;cursor:pointer;transition:background .15s;}
@@ -628,19 +625,10 @@
         </div>
       </div>
       <div class="tu-day-strip" id="tuDayStrip"></div>
-      <div class="tu-dial-row">
-        <div class="tu-dial-wrap">
-          <svg viewBox="0 0 280 280" width="280" height="280" id="tuDialSvg"></svg>
-          <div class="tu-dial-center">
-            <div class="num" id="tuDateNum">–</div>
-            <div class="mon" id="tuDateMon">–</div>
-            <div class="cnt" id="tuCount">0 Termine</div>
-          </div>
-        </div>
-        <div class="tu-legend">
-          <div class="tu-legend-title">Termine an diesem Tag</div>
-          <div id="tuLegendList"></div>
-        </div>
+      <div class="tu-summary" id="tuSummary"></div>
+      <div class="tu-legend">
+        <div class="tu-legend-title">Termine an diesem Tag</div>
+        <div id="tuLegendList"></div>
       </div>
     </div>
   </div>
@@ -2894,64 +2882,38 @@ function tuSelectDate(dateStr){
   tuFollowingToday=(dateStr===todayStr());
   renderTagesuhr();
 }
-function renderTuDial(dayAppts){
-  const svg=document.getElementById('tuDialSvg');
-  if(!svg) return;
-  const cx=140,cy=140,rOuter=132,rInner=108,rLabel=80;
-  const startAngle=-225,endAngle=45,startHour=7,endHour=19;
-  const trackColor='#EAF4F1';
-  const tickColor='#94a3b8';
-  function angleForHour(h){ return startAngle+((h-startHour)/(endHour-startHour))*(endAngle-startAngle); }
-  function polar(r,deg){ const rad=(deg-90)*Math.PI/180; return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)]; }
-  function arcPath(r1,r2,a1,a2){
-    const p1=polar(r2,a1),p2=polar(r2,a2),p3=polar(r1,a2),p4=polar(r1,a1);
-    const large=(a2-a1)>180?1:0;
-    return 'M '+p1[0]+' '+p1[1]+' A '+r2+' '+r2+' 0 '+large+' 1 '+p2[0]+' '+p2[1]
-      +' L '+p3[0]+' '+p3[1]+' A '+r1+' '+r1+' 0 '+large+' 0 '+p4[0]+' '+p4[1]+' Z';
-  }
-  let html='<path fill-rule="evenodd" d="'
-    +'M '+(cx+rOuter)+' '+cy+' A '+rOuter+' '+rOuter+' 0 1 0 '+(cx-rOuter)+' '+cy+' A '+rOuter+' '+rOuter+' 0 1 0 '+(cx+rOuter)+' '+cy+' Z '
-    +'M '+(cx+rInner)+' '+cy+' A '+rInner+' '+rInner+' 0 1 1 '+(cx-rInner)+' '+cy+' A '+rInner+' '+rInner+' 0 1 1 '+(cx+rInner)+' '+cy+' Z'
-    +'" fill="'+trackColor+'"></path>';
-  for(let h=startHour;h<=endHour;h+=2){
-    const a=angleForHour(h);
-    const t1=polar(rInner-4,a), t2=polar(rInner-12,a);
-    html+='<line x1="'+t1[0]+'" y1="'+t1[1]+'" x2="'+t2[0]+'" y2="'+t2[1]+'" stroke="'+tickColor+'" stroke-width="1.5" stroke-linecap="round"></line>';
-    const lp=polar(rLabel,a);
-    html+='<text x="'+lp[0]+'" y="'+(lp[1]+3)+'" text-anchor="middle" font-family="IBM Plex Mono" font-size="9.5" font-weight="500" fill="'+tickColor+'">'+h+'</text>';
-  }
-  dayAppts.forEach(function(t){
-    if(!t.time) return;
-    const s=tuTimeToDecimal(t.time);
-    if(s<startHour||s>endHour) return;
-    const e=t.endTime?tuTimeToDecimal(t.endTime):Math.min(s+0.33,endHour);
-    const a1=angleForHour(s), a2=angleForHour(Math.max(e,s+0.08));
-    const color=t.status==='abgesagt'?tickColor:(t.status==='bestaetigt'?'#0E5E56':'#d97706');
-    html+='<path d="'+arcPath(rInner+3,rOuter-3,a1,a2)+'" fill="'+color+'" opacity="'+(t.status==='abgesagt'?0.5:1)+'"></path>';
-  });
-  if(tuSelectedDate===todayStr()){
-    const now=new Date(), nowDec=now.getHours()+now.getMinutes()/60;
-    if(nowDec>=startHour&&nowDec<=endHour){
-      const a=angleForHour(nowDec);
-      const n1=polar(rInner-16,a), n2=polar(rOuter+10,a);
-      html+='<line x1="'+n1[0]+'" y1="'+n1[1]+'" x2="'+n2[0]+'" y2="'+n2[1]+'" stroke="#dc2626" stroke-width="2" stroke-linecap="round"></line>';
-      html+='<circle cx="'+n2[0]+'" cy="'+n2[1]+'" r="3.5" fill="#dc2626"></circle>';
-    }
-  }
-  svg.innerHTML=html;
-}
 function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
   const chipLabel=t.status==='abgesagt'?'Abgesagt':(t.status==='bestaetigt'?'Bestätigt':'Neu');
-  const nameEsc=t.patient.replace(/'/g,"\\'");
-  return `<div class="tu-appt-row" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${t.versicherung||''}')">
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  return `<div class="tu-appt-row" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
     <div class="tu-appt-time">${t.time||''}</div>
     <div class="tu-appt-bar ${statusClass}"></div>
-    <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${t.patient}</div><div class="tu-appt-type">${t.art||''}</div></div>
+    <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div><div class="tu-appt-type">${escapeHtml(t.art||'')}</div></div>
     <div class="tu-appt-chip ${statusClass}">${chipLabel}</div>
   </div>`;
 }
-const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+// Replaces the old circular clock-face dial: doctors need to scan "how
+// many appointments, what's next" in one glance rather than read an
+// analog dial, so this is just a one-line summary above the plain
+// chronological list (tu-appt-row) that was already the real information.
+function renderTuSummary(dayAppts){
+  const el=document.getElementById('tuSummary');
+  if(!el) return;
+  const active=dayAppts.filter(t=>t.status!=='abgesagt');
+  if(!active.length){
+    el.innerHTML='<span class="tu-summary-icon">📅</span><span>Keine Termine an diesem Tag</span>';
+    return;
+  }
+  const label=active.length===1?'Termin':'Termine';
+  let html=`<span class="tu-summary-icon">📅</span><span>${active.length} ${label} an diesem Tag</span>`;
+  if(tuSelectedDate===todayStr()){
+    const nowDec=(new Date()).getHours()+(new Date()).getMinutes()/60;
+    const next=active.find(t=>t.time&&tuTimeToDecimal(t.time)>=nowDec);
+    if(next) html+=`<span class="tu-summary-next">· Nächster: ${next.time} Uhr – ${escapeHtml(next.patient)}</span>`;
+  }
+  el.innerHTML=html;
+}
 function renderTagesuhr(){
   const root=document.getElementById('tuHome');
   if(!root) return;
@@ -2978,10 +2940,6 @@ function renderTagesuhr(){
   }
 
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  const d=new Date(tuSelectedDate+'T00:00:00');
-  const numEl=document.getElementById('tuDateNum'); if(numEl) numEl.textContent=d.getDate();
-  const monEl=document.getElementById('tuDateMon'); if(monEl) monEl.textContent=TU_MONTHS_DE[d.getMonth()];
-  const cntEl=document.getElementById('tuCount'); if(cntEl) cntEl.textContent=dayAppts.length+(dayAppts.length===1?' Termin':' Termine');
 
   const legendEl=document.getElementById('tuLegendList');
   if(legendEl){
@@ -2989,7 +2947,7 @@ function renderTagesuhr(){
       ? dayAppts.map(tuApptRowHtml).join('')
       : '<div class="tu-empty">Keine Termine an diesem Tag</div>';
   }
-  renderTuDial(dayAppts);
+  renderTuSummary(dayAppts);
 }
 // The Dashboard's top stat cards used to be permanently hardcoded numbers
 // (127 Nachrichten heute, 34 Aktive Patienten, 28 Weitergeleitet, 5
