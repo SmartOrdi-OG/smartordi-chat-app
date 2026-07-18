@@ -152,8 +152,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     </div>
     <div class="notice" style="display:block;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" data-i18n="request.clinic.label">Ordination</div>
-      <div style="font-size:13px;font-weight:700;color:var(--slate);" id="reqClinicName">Ordination Dr. Sarah Ahmed</div>
-      <div style="font-size:11px;color:var(--muted);" id="reqClinicSub">Allgemeinmedizin · Steingasse 6A, 4020 Linz</div>
+      <div style="font-size:13px;font-weight:700;color:var(--slate);" id="reqClinicName">—</div>
+      <div style="font-size:11px;color:var(--muted);" id="reqClinicSub">—</div>
     </div>
     <div class="form-group">
       <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--slate);cursor:pointer;">
@@ -656,8 +656,8 @@ window.addEventListener('load',async ()=>{
   const practiceInfo=getPracticeSettings();
   const nameEl=document.getElementById('reqClinicName');
   const subEl=document.getElementById('reqClinicSub');
-  if(nameEl) nameEl.textContent='Ordination '+(admin?admin.fullName:'Dr. Sarah Ahmed');
-  if(subEl) subEl.textContent=(admin&&admin.fach||'Allgemeinmedizin')+' · '+((practiceInfo&&practiceInfo.adresse)||'Steingasse 6A, 4020 Linz');
+  if(nameEl) nameEl.textContent=admin?('Ordination '+admin.fullName):'—';
+  if(subEl) subEl.textContent=(admin&&admin.fach||'—')+((practiceInfo&&practiceInfo.adresse)?(' · '+practiceInfo.adresse):'');
 });
 // Coming back via the browser's back/forward cache (e.g. after logging out
 // and navigating back) restores the exact DOM as it was frozen mid-submit --
