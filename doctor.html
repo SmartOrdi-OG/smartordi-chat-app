@@ -3014,7 +3014,11 @@ function updateDashboardStats(){
   if(patEl) patEl.textContent=patients.length;
   if(msgEl){
     const accounts=loadPatients();
-    const total=Object.values(accounts).reduce((sum,a)=>sum+((a&&a.messages)?a.messages.length:0),0);
+    const total=Object.values(accounts).reduce((sum,a)=>{
+      if(!a) return sum;
+      const msgs=a.id?loadMessagesForPatientCached(a.id):(a.messages||[]);
+      return sum+msgs.length;
+    },0);
     msgEl.textContent=total;
   }
   if(terEl){
@@ -3247,7 +3251,8 @@ function patientListEntries(){
   Object.keys(accounts).forEach(u=>{
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||DEMO_CHAT_LIST.some(p=>p.name===a.fullName)) return;
-    const thread=a.messages&&a.messages.length?{items:a.messages}:null;
+    const msgs=a.id?loadMessagesForPatientCached(a.id):(a.messages||[]);
+    const thread=msgs.length?{items:msgs}:null;
     const last=thread?thread.items[thread.items.length-1]:null;
     entries.push({
       name:a.fullName,color:'#0E5E56',
@@ -3669,7 +3674,7 @@ renderPatientList();
 // Real patient identity now lives in Supabase -- re-render once the fetch
 // kicked off by vendor/patient-data.js resolves, in case it hadn't finished
 // yet on the very first render above.
-patientsReady.then(()=>{ renderPatientList(); updateDashboardStats(); });
+Promise.all([patientsReady, allMessagesReady]).then(()=>{ renderPatientList(); updateDashboardStats(); });
 
 const VISITS = [];
 
@@ -6157,12 +6162,13 @@ renderTagesuhr();
 // vendor/staff-accounts.js/vendor/patient-data.js before the first render
 // that depends on any of them (allDueVaccinations needs both patients and
 // impfungen loaded to scan every patient at once).
-Promise.all([staffRosterReady, termineReady, patientsReady, impfungenReady]).then(()=>{
+Promise.all([staffRosterReady, termineReady, patientsReady, impfungenReady, allMessagesReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
   updateDashboardStats();
   renderTagesuhr();
   renderImpfWarnungen();
+  renderPatientList();
 });
 // Realtime replaces the old same-browser-only 'storage' event for Termine --
 // this fires in every tab/device, including the one that made the write, so
