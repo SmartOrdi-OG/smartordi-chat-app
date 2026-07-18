@@ -1685,9 +1685,11 @@ body.windows-mode .kartei-header{display:none;}
           <label for="rz-befreit" style="font-size:13px;font-weight:600;color:#15803d;cursor:pointer;">Rezeptgebührenbefreit</label>
         </div>
 
-        <button class="k-form-save" style="background:linear-gradient(135deg,#0E5E56,#12746A);margin-bottom:10px;" onclick="generateRezeptPDF()">
-           Rezept drucken / PDF
-        </button>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(14,94,86,0.3);" onclick="generateRezeptPDF()">
+            🖨 Rezept drucken / PDF
+          </button>
+        </div>
         <div class="k-dsgvo-note">DSGVO-konform · Österreichisches Kassenrezept</div>
       </div>
 
@@ -1772,9 +1774,11 @@ body.windows-mode .kartei-header{display:none;}
           </div>
         </div>
 
-        <button onclick="printImpfpass()" style="width:100%;padding:11px;border:1.5px solid #16a34a;border-radius:10px;background:white;color:#16a34a;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;">
-           Impfpass drucken
-        </button>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+          <button onclick="printImpfpass()" style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #16a34a;background:white;color:#16a34a;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+            🖨 Impfpass drucken
+          </button>
+        </div>
       </div>
 
       <!-- ══ MKP TAB (Mutter-Kind-Pass -- staff-only digital record of the
