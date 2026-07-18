@@ -707,6 +707,31 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     </div>
   </div>
 
+  <!-- ── PASSWORT ÄNDERN ── -->
+  <div class="modal-overlay" id="changePwModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="changepw2.title">Passwort ändern</div>
+        <button class="modal-close" onclick="closeChangePasswordModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="changepw2.hint">Die Ordination hat keinen Zugriff auf Ihr Passwort.</div>
+        <div id="changePwError" style="display:none;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="changepw.newPw.label">Neues Passwort</label>
+          <input type="password" id="changePwNew" placeholder="Mindestens 6 Zeichen" data-i18n-ph="changepw.newPw.placeholder" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="changepw.confirmPw.label">Passwort bestätigen</label>
+          <input type="password" id="changePwConfirm" placeholder="Passwort wiederholen" data-i18n-ph="changepw.confirmPw.placeholder" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')submitChangePassword()">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm" onclick="submitChangePassword()" data-i18n="changepw2.save">✓ Passwort speichern</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── DOKUMENTE ── -->
   <div class="view" id="view-dokumente">
     <div class="view-header">
@@ -763,6 +788,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilOrdTel">—</span></div>
       </div>
 
+      <button class="logout-btn" style="background:#EAF4F1;color:#0E5E56;" onclick="openChangePasswordModal()" data-i18n="changepw2.button">🔒 Passwort ändern</button>
       <button class="logout-btn" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
 
     </div>
@@ -1741,6 +1767,56 @@ function logout(){
     setPatientToken(null);
     window.location.href='login.html';
   }
+}
+
+// Lets a patient change their own password any time from Profil, instead
+// of only once at the mandatory first-login step (patient-login.html's
+// saveNewPw()) -- same validation/branching logic (real Supabase account
+// vs. a not-yet-migrated local-only guardian account), just without the
+// first-login redirect into the Anamnese screen afterward.
+function openChangePasswordModal(){
+  document.getElementById('changePwNew').value='';
+  document.getElementById('changePwConfirm').value='';
+  document.getElementById('changePwError').style.display='none';
+  document.getElementById('changePwModal').classList.add('show');
+}
+function closeChangePasswordModal(){
+  document.getElementById('changePwModal').classList.remove('show');
+}
+function showChangePwError(key){
+  const el=document.getElementById('changePwError');
+  el.textContent=tr(key);
+  el.style.display='block';
+}
+async function submitChangePassword(){
+  const newPw=document.getElementById('changePwNew').value;
+  const confirmPw=document.getElementById('changePwConfirm').value;
+  document.getElementById('changePwError').style.display='none';
+  if(newPw.length<6){ showChangePwError('changepw.err.tooShort'); return; }
+  if(newPw!==confirmPw){ showChangePwError('changepw.err.mismatch'); return; }
+
+  const accounts=loadPatientAccounts();
+  const local=accounts[currentUsername];
+  const isLocalOnly=(local&&local.role==='guardian')||!getPatientToken();
+
+  if(isLocalOnly){
+    if(local&&newPw===local.pw){ showChangePwError('changepw.err.sameAsOld'); return; }
+    if(!accounts[currentUsername]) accounts[currentUsername]={name:local?.name,fullName:local?.fullName};
+    accounts[currentUsername].pw=newPw;
+    savePatientAccounts(accounts);
+  }else{
+    const ok=await patientChangePassword(newPw);
+    if(!ok){ showChangePwError('changepw.err.saveFailed'); return; }
+    // Clear any stale local shadow password left over from the QR
+    // auto-provision step, same reasoning as saveNewPw() -- the real
+    // password only lives in Supabase from here on.
+    if(accounts[currentUsername]){
+      delete accounts[currentUsername].pw;
+      savePatientAccounts(accounts);
+    }
+  }
+  closeChangePasswordModal();
+  showToast('✓ '+tr('changepw2.save').replace('✓ ',''));
 }
 
 // Init
