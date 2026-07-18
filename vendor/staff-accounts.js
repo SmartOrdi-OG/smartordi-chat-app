@@ -77,7 +77,13 @@ async function savePracticeSettings(fields){
 const practiceSettingsReady=refreshPracticeSettings();
 
 function genStaffInviteToken(){
-  return 'inv_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  // crypto.getRandomValues instead of Math.random() -- this token grants
+  // account creation to whoever holds the link, so it needs to be
+  // unguessable, not just unique. 16 bytes -> 128 bits of entropy.
+  const bytes=new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const hex=Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+  return 'inv_'+hex;
 }
 // Public lookup of a single invite by token, via a security-definer RPC so
 // an anonymous visitor (not logged in yet) can validate their link without

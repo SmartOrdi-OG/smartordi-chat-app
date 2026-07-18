@@ -1767,8 +1767,9 @@ function showToast(msg,type=''){
 }
 
 // ── Logout ──
-function logout(){
+async function logout(){
   if(confirm('Wirklich abmelden?')){
+    await patientLogout();
     sessionStorage.removeItem('smartordi_user');
     setPatientToken(null);
     window.location.href='login.html';
