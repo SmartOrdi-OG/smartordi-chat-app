@@ -240,19 +240,19 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
   border-bottom-left-radius:4px;
 }
 .msg-row.out .msg-bubble{
-  background:linear-gradient(135deg,#0E5E56,#12746A);
-  color:white;border-bottom-left-radius:16px;border-bottom-right-radius:4px;
+  background:#DCEAE6;
+  color:#0E5E56;border-bottom-left-radius:16px;border-bottom-right-radius:4px;
 }
-.msg-time{font-size:10px;color:rgba(255,255,255,0.65);margin-top:4px;text-align:right;display:block;}
-.msg-row:not(.out) .msg-time{color:var(--text-muted);}
+.msg-time{font-size:10px;color:var(--text-muted);margin-top:4px;text-align:right;display:block;}
+.msg-row.out .msg-time{color:rgba(14,94,86,0.65);}
 
 /* UW message in chat */
 .uw-bubble{
-  background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);
+  background:#f8fafc;border:1px solid var(--border);
   border-radius:10px;padding:8px 10px;margin-top:4px;
   display:flex;align-items:center;gap:8px;cursor:pointer;
 }
-.uw-bubble:hover{background:rgba(255,255,255,0.25);}
+.uw-bubble:hover{background:#EAF4F1;}
 .uw-icon{font-size:20px;flex-shrink:0;}
 .uw-info-name{font-size:12px;font-weight:700;}
 .uw-info-sub{font-size:10px;opacity:0.8;}
