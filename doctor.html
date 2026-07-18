@@ -2835,7 +2835,7 @@ function colorForName(name){
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function arztDisplayName(username){
   const accounts=loadStaffAccounts();
-  return (accounts[username]&&accounts[username].fullName)||'Dr. Sarah Ahmed';
+  return (accounts[username]&&accounts[username].fullName)||'—';
 }
 // Doctors filter their own schedule to their own patients (colleagues at the
 // same practice may treat different specialties); no session (direct
@@ -3947,9 +3947,9 @@ async function exportPatientPdf(){
   };
   const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
   const R=(x,y,w,h,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h);};
-  const arztName=document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed';
-  const arztFach=document.getElementById('setFach')?.value||'Allgemeinmedizin';
-  const arztAdresse=document.getElementById('setAdresse')?.value||'Steingasse 6A, 4020 Linz';
+  const arztName=document.getElementById('setArztName')?.value||'—';
+  const arztFach=document.getElementById('setFach')?.value||'—';
+  const arztAdresse=document.getElementById('setAdresse')?.value||'—';
   const today=new Date().toLocaleDateString('de-AT');
   const age=rec.dob?new Date().getFullYear()-new Date(rec.dob).getFullYear():null;
   const dobFmt=rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):'—';
@@ -4193,7 +4193,7 @@ function getUwData(){
     pSVNR:   (document.getElementById('uw-patient-meta')?.textContent||'').match(/SV[\s]*([\d\s]+)/)?.[1]?.trim()||'',
     kt:      uwVal('uwKT')||'ÖGK',
     status:  uwVal('uwStatus')||'1',
-    von:     uwVal('uwVon')||'Dr. Sarah Ahmed – Allgemeinmedizin',
+    von:     uwVal('uwVon')||'—',
     an:      uwVal('uwAn')||'–',
     fach:    uwVal('uwFach')||'Kardiologie',
     dring:   uwVal('uwDring')||'Normal',
@@ -5514,11 +5514,17 @@ function openChatForPatient(name,color,insurance){
 
 function generateRezeptPDF(){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+  const currentName=document.getElementById('kartei-name')?.textContent;
+  if(!currentName||currentName==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
 
-  // Get patient data
-  const p = currentPatient || {};
+  // Get patient data -- this used to reference a "currentPatient" variable
+  // that was never defined anywhere in this file, so every single call
+  // threw a ReferenceError before generating anything: the Rezept tab's
+  // only action was completely non-functional.
+  const rec=findPatientRecord(currentName)||{};
+  const p = {name:rec.name||currentName, svnr:rec.svnr, dob:rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):null};
   const med1 = document.getElementById('rz-med1').value || '';
   const med2 = document.getElementById('rz-med2').value || '';
   const pack1 = document.getElementById('rz-pack1').value || '1';
@@ -5546,8 +5552,8 @@ function generateRezeptPDF(){
   // Arzt Info
   R(10,y,90,22);
   T('Ausstellende Ärztin:',13,y+6,8,'normal',[120,120,120]);
-  T(document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed',13,y+12,11,'bold');
-  T((document.getElementById('setFach')?.value||'Allgemeinmedizin')+' · '+(document.getElementById('setAdresse')?.value||'Steingasse 6A, 4020 Linz'),13,y+18,8);
+  T(document.getElementById('setArztName')?.value||'—',13,y+12,11,'bold');
+  T((document.getElementById('setFach')?.value||'—')+' · '+(document.getElementById('setAdresse')?.value||'—'),13,y+18,8);
 
   // Patient Info
   R(105,y,95,22);
@@ -5611,8 +5617,9 @@ function generateRezeptPDF(){
   if(stempelImg){try{doc.addImage(stempelImg,'PNG',10,y,35,18);}catch(e){}}
   if(sigData){try{doc.addImage(sigData,'PNG',60,y,50,18);}catch(e){}}
   T('Stempel & Unterschrift',10,y+24,8,'normal',[150,150,150]);
-  T(document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed',60,y+24,9,'bold');
-  T((document.getElementById('setFach')?.value||'Allgemeinmedizin')+' · Linz',60,y+28,7,'normal',[120,120,120]);
+  T(document.getElementById('setArztName')?.value||'—',60,y+24,9,'bold');
+  const stempelAdresse=document.getElementById('setAdresse')?.value||'';
+  T((document.getElementById('setFach')?.value||'—')+(stempelAdresse?' · '+stempelAdresse.split(',').pop().trim():''),60,y+28,7,'normal',[120,120,120]);
 
   // Footer
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
@@ -5889,7 +5896,7 @@ function deleteStempel(){
 
 function saveSettings(){
   // Update doctor name in nav
-  const name = document.getElementById('setArztName')?.value||'Dr. Sarah Ahmed';
+  const name = document.getElementById('setArztName')?.value||'—';
   const nameEl = document.getElementById('doctorNameDisplay');
   if(nameEl) nameEl.textContent = name;
   // Update uwVon field
