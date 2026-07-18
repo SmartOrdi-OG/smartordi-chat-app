@@ -470,12 +470,12 @@
     <div class="lp-section-tag">Funktionen</div>
     <h2 class="lp-section-title">Alles was Ihre Praxis braucht</h2>
     <div class="lp-grid">
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#6366f115"></div><h3 class="lp-feature-title">Sichere Nachrichten</h3><p class="lp-feature-desc">Textnachrichten mit Lesebestätigung und Dateifreigabe — direkt zwischen Arzt und Patient.</p></div>
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#0ea5e915"></div><h3 class="lp-feature-title">Sprachnachrichten</h3><p class="lp-feature-desc">Sprachnachrichten aufnehmen und sofort senden. Schneller als tippen, persönlicher als Text.</p></div>
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#10b98115"></div><h3 class="lp-feature-title">Verschlüsselte Anrufe</h3><p class="lp-feature-desc">Ende-zu-Ende verschlüsselte Sprachanrufe. HIPAA und DSGVO-konform.</p></div>
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#f59e0b15"></div><h3 class="lp-feature-title">Vertretung</h3><p class="lp-feature-desc">Patienten nahtlos an eine Vertretungspraxis weiterleiten — mit vollständiger Gesprächshistorie.</p></div>
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#ec489915"></div><h3 class="lp-feature-title">DSGVO by Design</h3><p class="lp-feature-desc">Einwilligung, Audit-Log, Löschrecht — alles automatisch und rechtssicher.</p></div>
-      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#8b5cf615"></div><h3 class="lp-feature-title">In 5 Minuten live</h3><p class="lp-feature-desc">Keine IT-Kenntnisse nötig. Anmelden, Praxis einrichten, Patienten einladen — fertig.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#6366f115">💬</div><h3 class="lp-feature-title">Sichere Nachrichten</h3><p class="lp-feature-desc">Textnachrichten mit Lesebestätigung und Dateifreigabe — direkt zwischen Arzt und Patient.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#0ea5e915">🎙️</div><h3 class="lp-feature-title">Sprachnachrichten</h3><p class="lp-feature-desc">Sprachnachrichten aufnehmen und sofort senden. Schneller als tippen, persönlicher als Text.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#10b98115">📞</div><h3 class="lp-feature-title">Verschlüsselte Anrufe</h3><p class="lp-feature-desc">Ende-zu-Ende verschlüsselte Sprachanrufe. HIPAA und DSGVO-konform.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#f59e0b15">🔄</div><h3 class="lp-feature-title">Vertretung</h3><p class="lp-feature-desc">Patienten nahtlos an eine Vertretungspraxis weiterleiten — mit vollständiger Gesprächshistorie.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#ec489915">🛡️</div><h3 class="lp-feature-title">DSGVO by Design</h3><p class="lp-feature-desc">Einwilligung, Audit-Log, Löschrecht — alles automatisch und rechtssicher.</p></div>
+      <div class="lp-feature-card"><div class="lp-feature-icon" style="background:#8b5cf615">⚡</div><h3 class="lp-feature-title">In 5 Minuten live</h3><p class="lp-feature-desc">Keine IT-Kenntnisse nötig. Anmelden, Praxis einrichten, Patienten einladen — fertig.</p></div>
     </div>
   </section>
 
@@ -677,11 +677,6 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 
 /* ══ TOP NAV ══ */
 .top-nav{background:white;padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border);box-shadow:0 1px 8px rgba(0,0,0,0.05);}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-icon{width:34px;height:34px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-.logo-text{font-size:16px;font-weight:800;color:var(--text-1);letter-spacing:-0.5px;}
-.logo-text span{color:#0E5E56;}
-
 /* ══ NAV TABS ══ */
 .nav-tabs{display:flex;gap:4px;background:transparent;padding:4px;border-radius:10px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
 .nav-tabs::-webkit-scrollbar{display:none;}
@@ -880,17 +875,6 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .tp-status.pending{background:#fef3c7;color:#d97706;}
 .tp-status.accepted{background:#DCEAE6;color:#12746A;}
 .network-map{background:white;border-radius:20px;border:1px solid var(--border);padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);}
-.network-title{font-size:14px;font-weight:800;color:var(--text-1);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.network-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-.clinic-node{background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;}
-.clinic-node:hover{border-color:#0E5E56;background:#EAF4F1;transform:translateY(-2px);}
-.clinic-node.current{border-color:#0E5E56;background:#EAF4F1;border-width:2px;}
-.clinic-node.partner{border-color:#bfdbfe;}
-.clinic-node-icon{font-size:24px;margin-bottom:6px;}
-.clinic-node-name{font-size:12px;font-weight:700;color:var(--text-1);}
-.clinic-node-detail{font-size:10px;color:var(--text-2);margin-top:2px;}
-.clinic-node-badge{position:absolute;top:-6px;right:-6px;background:#0E5E56;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
-
 /* ══ KARTEI PANEL ══ */
 .kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
 body.windows-mode .kartei-header{display:none;}
@@ -1063,13 +1047,11 @@ body.windows-mode .kartei-header{display:none;}
   .dash-title span{font-size:18px;}
   .vertretung-main{padding:16px;}
   .transfer-stats{grid-template-columns:repeat(3,1fr);}
-  .network-grid{grid-template-columns:repeat(2,1fr);}
 }
 @media(max-width:480px){
   .stats-grid{grid-template-columns:1fr 1fr;}
   .stat-value{font-size:22px;}
   .transfer-stats{grid-template-columns:repeat(3,1fr);}
-  .network-grid{grid-template-columns:1fr 1fr;}
   .vacation-dates{flex-direction:column;gap:8px;}
   .date-arrow{transform:rotate(90deg);}
   .lp-pricing-grid{flex-direction:column;align-items:center;}
@@ -1998,7 +1980,7 @@ body.windows-mode .kartei-header{display:none;}
           <div class="transfer-stat"><div class="transfer-stat-value" style="color:#22c55e;" id="vertSentCount">0</div><div class="transfer-stat-label">Benachrichtigt</div></div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn-secondary" onclick="saveVertretung()">💾 Speichern</button>
+          <button class="btn-secondary" onclick="saveVertretung()">✓ Speichern</button>
           <button class="btn-primary" onclick="sendVertretungBroadcast()">✓ Alle Patient/innen benachrichtigen</button>
         </div>
         <div id="vertLastSentNote" style="font-size:12px;color:#64748b;margin-top:10px;"></div>
@@ -2040,22 +2022,22 @@ body.windows-mode .kartei-header{display:none;}
     <!-- Stats Grid -->
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-icon" style="background:#EAF4F1;"></div>
+        <div class="stat-icon" style="background:#EAF4F1;">💬</div>
         <div class="stat-value" id="statDashMessages">0</div>
         <div class="stat-label">Nachrichten gesamt</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon" style="background:#fefce8;"></div>
+        <div class="stat-icon" style="background:#fefce8;">👥</div>
         <div class="stat-value" id="statDashPatients">0</div>
         <div class="stat-label">Aktive Patienten</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon" style="background:#f5f3ff;"></div>
+        <div class="stat-icon" style="background:#f5f3ff;">📅</div>
         <div class="stat-value" id="statDashTermineHeute">0</div>
         <div class="stat-label">Termine heute</div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon" style="background:#f0fdf4;"></div>
+        <div class="stat-icon" style="background:#f0fdf4;">💉</div>
         <div class="stat-value" id="statDashImpfFaellig">0</div>
         <div class="stat-label">Impfungen fällig</div>
       </div>
@@ -2191,7 +2173,7 @@ body.windows-mode .kartei-header{display:none;}
             <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;background:white;min-height:120px;display:flex;align-items:center;justify-content:center;position:relative;">
               <img id="stempelPreview" src="" alt="Stempel-Vorschau" style="max-width:100%;max-height:100px;display:none;object-fit:contain;">
               <div id="stempelEmpty" style="text-align:center;color:#94a3b8;">
-                <div style="font-size:24px;"></div>
+                <div style="font-size:24px;">🔖</div>
                 <div style="font-size:12px;margin-top:4px;">Kein Stempel hochgeladen</div>
               </div>
               <button id="stempelDelete" onclick="deleteStempel()" style="display:none;position:absolute;top:6px;right:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:3px 8px;font-size:11px;color:#dc2626;cursor:pointer;">✕ Löschen</button>
@@ -3736,7 +3718,7 @@ function renderVisitList(list){
   const cnt=document.getElementById('kVisitCount');
   if(!c)return;
   if(cnt) cnt.textContent=`${list.length} Einträge${activeYear!=='all'?' · '+activeYear:''}`;
-  if(!list.length){c.innerHTML=`<div class="k-empty-state"><div class="k-empty-icon"></div>Keine Einträge gefunden</div>`;return;}
+  if(!list.length){c.innerHTML=`<div class="k-empty-state"><div class="k-empty-icon">📋</div>Keine Einträge gefunden</div>`;return;}
   c.innerHTML=list.map(v=>{
     const fmt=new Date(v.date).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
     const ts=TYPE_STYLE[v.type]||TYPE_STYLE['Ordination'];
