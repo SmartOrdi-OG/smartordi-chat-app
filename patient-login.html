@@ -41,10 +41,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 .toggle-pw svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .error-msg{background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:600;color:#DC2626;margin-bottom:14px;display:none;align-items:center;gap:7px;}
 .error-msg.show{display:flex;}
-.btn-main{display:block;width:auto;min-width:220px;margin:4px auto 0;padding:13px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(30,64,175,0.3);}
-.btn-main:hover{opacity:0.92;}
+.btn-main{display:block;width:auto;min-width:220px;margin:4px auto 0;padding:13px 28px;border:1px solid #bfdbfe;border-radius:12px;background:#EFF6FF;color:#1e40af;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;}
+.btn-main:hover{background:#dbeafe;}
 .btn-main.loading{opacity:0.7;cursor:not-allowed;}
-.spinner{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
+.spinner{display:none;width:18px;height:18px;border:2px solid rgba(30,64,175,0.25);border-top-color:#1e40af;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* Change password screen */

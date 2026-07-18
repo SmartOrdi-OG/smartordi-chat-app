@@ -955,7 +955,7 @@ body.windows-mode .kartei-header{display:none;}
 .k-form-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;font-size:12px;color:var(--text-1);outline:none;transition:all 0.15s;background:#f1f5f9;}
 .k-form-input:focus{border-color:#0E5E56;background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.12);}
 .k-form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.k-form-save{display:block;width:auto;min-width:200px;margin:4px auto 0;padding:10px 26px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(14,94,86,0.35);}
+.k-form-save{display:block;width:auto;min-width:200px;margin:4px auto 0;padding:10px 26px;border:1px solid #bfdbfe;border-radius:12px;background:#EAF4F1;color:#0E5E56;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;}
 .mkp-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:12px;}
 .mkp-toggle-row .mkp-toggle-label{color:#334155;font-weight:600;flex:1;}
 .mkp-toggle-row label{display:inline-flex;align-items:center;gap:4px;color:#64748b;font-weight:600;white-space:nowrap;cursor:pointer;}
@@ -968,7 +968,7 @@ body.windows-mode .kartei-header{display:none;}
 .mkp-status-done{background:#dcfce7;color:#16a34a;}
 .mkp-status-due{background:#fef9c3;color:#854d0e;}
 .mkp-status-upcoming{background:#f1f5f9;color:#94a3b8;}
-.k-form-save:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(14,94,86,0.45);}
+.k-form-save:hover{background:#dcecea;}
 .k-dsgvo-note{font-size:10px;color:var(--text-3);text-align:center;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:4px;}
 
 /* ══ DASHBOARD ══ */
@@ -1389,7 +1389,7 @@ body.windows-mode .kartei-header{display:none;}
             <!-- Specialty-specific section -->
             <div id="anamnese-specialty-section"></div>
 
-            <button class="k-form-save" style="background:linear-gradient(135deg,#0891b2,#0e7490);" onclick="saveAnamnese()">
+            <button class="k-form-save" style="background:#ecfeff;border-color:#a5f3fc;color:#0891b2;" onclick="saveAnamnese()">
               ✓ Anamnese speichern
             </button>
             <div class="k-dsgvo-note">DSGVO-konform · Nur für behandelnden Arzt sichtbar</div>
@@ -1747,7 +1747,7 @@ body.windows-mode .kartei-header{display:none;}
           </div>
           <div class="k-form-label">Chargennummer (optional)</div>
           <input class="k-form-input" id="impf-charge" placeholder="z.B. A12345B" style="margin-bottom:10px;">
-          <button class="k-form-save" style="background:linear-gradient(135deg,#16a34a,#15803d);" onclick="addImpfung()">
+          <button class="k-form-save" style="background:#dcfce7;border-color:#bbf7d0;color:#16a34a;" onclick="addImpfung()">
             ✓ Impfung speichern & in Impfpass eintragen
           </button>
         </div>
@@ -1798,7 +1798,7 @@ body.windows-mode .kartei-header{display:none;}
           <button onclick="mkpBackToList()" style="background:none;border:none;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0 0 12px;">← Zurück zur Liste</button>
           <div id="kMkpFormTitle" style="font-size:13px;font-weight:800;color:#0f172a;margin-bottom:12px;"></div>
           <div id="kMkpFormFields"></div>
-          <button class="k-form-save" style="background:linear-gradient(135deg,#0E5E56,#12746A);" onclick="mkpSaveCurrentExam()">✓ Untersuchung speichern</button>
+          <button class="k-form-save" onclick="mkpSaveCurrentExam()">✓ Untersuchung speichern</button>
         </div>
       </div>
 
@@ -1819,7 +1819,7 @@ body.windows-mode .kartei-header{display:none;}
             <input class="k-form-input" id="kLaborTitel" placeholder="z.B. Blutbild Juni 2026" style="margin-bottom:10px;">
             <div class="k-form-label">PDF-Datei vom Labor (max. 8 MB)</div>
             <input type="file" id="kLaborFile" accept="application/pdf" style="margin-bottom:10px;">
-            <button class="k-form-save" id="kLaborUploadBtn" style="background:linear-gradient(135deg,#dc2626,#b91c1c);" onclick="uploadKarteiLaborDoc()">
+            <button class="k-form-save" id="kLaborUploadBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="uploadKarteiLaborDoc()">
               ⬆ Hochladen
             </button>
           </div>
@@ -1832,7 +1832,7 @@ body.windows-mode .kartei-header{display:none;}
             <input class="k-form-input" id="kLaborNoteTitel" placeholder="z.B. Urin-Streifentest" style="margin-bottom:10px;">
             <div class="k-form-label">Ergebnis</div>
             <textarea class="k-form-input" id="kLaborNoteText" rows="2" placeholder="z.B. Protein: negativ, Glukose: negativ, pH: 6.0" style="resize:none;margin-bottom:10px;"></textarea>
-            <button class="k-form-save" id="kLaborNoteBtn" style="background:linear-gradient(135deg,#dc2626,#b91c1c);" onclick="saveKarteiLaborNote()">
+            <button class="k-form-save" id="kLaborNoteBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="saveKarteiLaborNote()">
               ✓ Notiz speichern
             </button>
           </div>
@@ -1873,7 +1873,7 @@ body.windows-mode .kartei-header{display:none;}
             </div>
             <div class="k-form-label">PDF-Datei (max. 8 MB)</div>
             <input type="file" id="kDokFile" accept="application/pdf" style="margin-bottom:10px;">
-            <button class="k-form-save" id="kDokUploadBtn" style="background:linear-gradient(135deg,#0E5E56,#12746A);" onclick="uploadKarteiDocument()">
+            <button class="k-form-save" id="kDokUploadBtn" onclick="uploadKarteiDocument()">
               ⬆ Hochladen
             </button>
           </div>
@@ -2288,7 +2288,7 @@ body.windows-mode .kartei-header{display:none;}
     </div>
 
     <!-- Save button -->
-    <button onclick="saveSettings()" style="display:block;width:auto;min-width:240px;max-width:320px;margin:0 auto 8px;padding:13px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">
+    <button onclick="saveSettings()" style="display:block;width:auto;min-width:240px;max-width:320px;margin:0 auto 8px;padding:13px 28px;border:1px solid #bfdbfe;border-radius:12px;background:#EAF4F1;color:#0E5E56;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;">
       ✓ Einstellungen speichern
     </button>
     <div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:4px;">Alle Daten werden lokal gespeichert · DSGVO-konform</div>
@@ -2416,7 +2416,7 @@ body.windows-mode .kartei-header{display:none;}
     <div style="font-size:40px;margin-bottom:12px;">⏰</div>
     <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:8px;">Ihre Testphase ist abgelaufen</div>
     <div style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Ihre kostenlose 30-Tage-Testphase ist beendet. Bitte wählen Sie ein Paket und hinterlegen Sie eine Zahlungsmethode, um Smartordi.chat weiter zu nutzen.</div>
-    <button onclick="openTrialPaymentModal()" style="display:block;width:auto;min-width:200px;margin:0 auto 10px;padding:11px 24px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Paket wählen & fortsetzen</button>
+    <button onclick="openTrialPaymentModal()" style="display:block;width:auto;min-width:200px;margin:0 auto 10px;padding:11px 24px;background:#EAF4F1;color:#0E5E56;border:1px solid #bfdbfe;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Paket wählen & fortsetzen</button>
     <button onclick="doctorLogout()" style="width:100%;padding:10px;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;">Abmelden</button>
   </div>
 </div>
