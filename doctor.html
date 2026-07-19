@@ -4696,6 +4696,19 @@ async function addImpfung(){
   showToast('✓ Impfung eingetragen!');
 }
 
+// Opens a jsPDF blob URL in a new tab, brings it to the front (window.open
+// alone doesn't guarantee focus), and closes that tab automatically once the
+// print dialog is dismissed (afterprint fires on cancel too) -- otherwise the
+// tab was appearing behind the app and hanging around forever after printing.
+// Mirrors the window.onafterprint pattern secretary.html already uses for its
+// document.write()-based print windows.
+function openPdfAndPrint(blobUrl){
+  const w=window.open(blobUrl);
+  if(!w) return;
+  w.focus();
+  w.addEventListener('afterprint',()=>w.close());
+  w.print();
+}
 function printImpfpass(){
   if(typeof window.jspdf==='undefined'){alert('jsPDF lädt...');return;}
   const {jsPDF}=window.jspdf;
@@ -4720,7 +4733,7 @@ function printImpfpass(){
   doc.setFontSize(8);doc.setTextColor(150,150,150);
   doc.text('Erstellt via Smartordi.chat · DSGVO-konform',10,285);
   const url=doc.output('bloburl');
-  const w=window.open(url);if(w)w.print();
+  openPdfAndPrint(url);
 }
 
 // ══ LABOR FUNCTIONS ══
@@ -5735,8 +5748,7 @@ function generateRezeptPDF(){
 
   // Print
   const pdfUrl = doc.output('bloburl');
-  const w = window.open(pdfUrl);
-  if(w) w.print();
+  openPdfAndPrint(pdfUrl);
 }
 
 function downloadUwPDF(){
