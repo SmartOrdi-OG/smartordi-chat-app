@@ -31,6 +31,13 @@ create table if not exists public.practices (
   plan text,
   created_at timestamptz not null default now()
 );
+-- RLS enabled with no policy yet (nothing reads/writes this table via the
+-- anon/authenticated REST API yet -- it's only used internally by this
+-- migration's own SQL below). Enabling it now still matters: without RLS,
+-- Supabase's default grants would let anyone holding the public anon key
+-- read/write this table directly. The actual staff-facing policy is added
+-- in phase12_multi_tenant_rls.sql, once current_practice_id() exists.
+alter table public.practices enable row level security;
 
 -- Migrates today's one-and-only practice_settings row (the fixed id=true
 -- singleton) into a real practices row, so every table below has something
