@@ -397,9 +397,15 @@ async function doRegister(){
   // supabase/phase15_staff_practice_rls.sql -- registering here is the
   // moment a brand-new practice comes into existence, so there's no
   // existing practice_id to inherit; create its practices row first and
-  // attach this new admin doctor to it explicitly.
+  // attach this new admin doctor to it explicitly. Every practice-wide
+  // field goes directly onto this row now (supabase/phase18_practices_
+  // consolidation.sql) instead of a separate savePracticeSettings() call
+  // afterward -- that used to write into a single shared practice_settings
+  // row (id=true) that every registering practice clobbered together, and
+  // it silently ignored the practice name the user actually typed
+  // (f-ordination) in favor of a generic "Ordination <fullName>" fallback.
   const {data:practiceRow,error:practiceError}=await sb.from('practices').insert({
-    name:'Ordination '+fullName,
+    name:ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString(),
   }).select().single();
   if(practiceError){
     btn.classList.remove('loading');
@@ -422,13 +428,6 @@ async function doRegister(){
   }
 
   if(fach) localStorage.setItem('fachrichtung', fach);
-
-  // Practice-wide plan/trial/practice-info now lives in Supabase (shared by
-  // the whole team) instead of this browser's localStorage -- the first
-  // admin's registration creates the one practice_settings row.
-  await savePracticeSettings({
-    ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString(),
-  });
 
   sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username:userId, isAdmin:true}));
 

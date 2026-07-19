@@ -89,11 +89,21 @@ function loadStaffAccounts(){
 const staffRosterReady=refreshStaffRoster();
 
 // Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
-// shared by the whole team via Supabase instead of living per-device in
-// localStorage, same cache-then-read-sync pattern as the staff roster above.
+// lives on the practice's own row in `practices` (supabase/phase18_practices_
+// consolidation.sql), scoped by the "view own practice"/"update own
+// practice" RLS policies from phase15 (id = current_practice_id()). Used
+// to live on a separate practice_settings table with a hardcoded single
+// row (id=true) -- that was fine back when there was only ever one
+// practice in the whole database, but became an active bug once more than
+// one practice could register: every practice's plan/trial/contact info
+// upserted into that same one row, clobbering every other practice's data.
 let _practiceSettings=null;
 async function refreshPracticeSettings(){
-  const {data,error}=await sb.from('practice_settings').select('*').eq('id',true).maybeSingle();
+  // No .eq('id', ...) filter needed -- RLS already restricts a staff
+  // member to seeing only their own practice's row, so this always
+  // resolves to "my practice" without the client needing to know its id
+  // up front (same transparent-RLS-filtering pattern as patients/termine).
+  const {data,error}=await sb.from('practices').select('*').limit(1).maybeSingle();
   if(error){ console.error('refreshPracticeSettings failed',error); return; }
   _practiceSettings=data||null;
 }
@@ -101,9 +111,8 @@ function getPracticeSettings(){
   return _practiceSettings;
 }
 async function savePracticeSettings(fields){
-  const existing=_practiceSettings;
-  const row=Object.assign({id:true},existing,fields);
-  const {data,error}=await sb.from('practice_settings').upsert(row).select().single();
+  if(!_practiceSettings||!_practiceSettings.id){ console.error('savePracticeSettings called before practice settings loaded'); return false; }
+  const {data,error}=await sb.from('practices').update(fields).eq('id',_practiceSettings.id).select().single();
   if(error){ console.error('savePracticeSettings failed',error); return false; }
   _practiceSettings=data;
   return true;
