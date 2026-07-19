@@ -187,6 +187,7 @@ async function refreshPatients(){
       email: row.email||local.email,
       versicherung: row.versicherung||local.versicherung,
       svnr: row.svnr||local.svnr,
+      anamnese: row.anamnese||local.anamnese,
       joinStatus: row.join_status,
       joinNote: row.join_note,
     });

@@ -358,9 +358,13 @@ async function doLogin(){
     const result=await patientLogin(u,p);
     if(result&&result.token){
       setPatientToken(result.token);
-      const localAnamnese=(PATIENTS[u]&&PATIENTS[u].anamnese)||null;
+      // Real (server-side) answer to "has this patient already filled in
+      // their Anamnese" -- supabase/phase8_anamnese.sql. Previously this
+      // checked a browser-local record instead, which wrongly re-prompted
+      // an already-answered patient the moment they logged in from any
+      // other device (or after clearing this one's storage).
       acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
-           joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:localAnamnese};
+           joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:result.anamnese};
     }
     if(!acc){
       const local=PATIENTS[u];
@@ -625,17 +629,22 @@ function showAnamneseScreen(){
   document.getElementById('screen-anamnese').classList.add('active');
 }
 
-function submitAnamnese(){
+async function submitAnamnese(){
   const root=document.getElementById('anamneseForm');
   const data=collectAnamneseData(root);
-  // Anamnese (clinical data) is still local-only -- a real patient logging
-  // in for the first time on this device may have no local record at all
-  // yet, so create a minimal one instead of assuming it already exists.
-  if(!PATIENTS[currentUser.username]){
-    PATIENTS[currentUser.username]={ name:currentUser.name, fullName:currentUser.fullName||currentUser.name, fach:currentUser.fach||'Allgemeinmedizin', messages:[] };
+  if(getPatientToken()){
+    // Real (Supabase-backed) patient -- save server-side (phase8_anamnese.sql)
+    // so it's visible from any device they log in from, not just this one.
+    await patientSetAnamnese(data);
+  } else {
+    // Guardian/demo accounts have no Supabase patients row at all yet --
+    // same local-only fallback as before for them.
+    if(!PATIENTS[currentUser.username]){
+      PATIENTS[currentUser.username]={ name:currentUser.name, fullName:currentUser.fullName||currentUser.name, fach:currentUser.fach||'Allgemeinmedizin', messages:[] };
+    }
+    PATIENTS[currentUser.username].anamnese = data;
+    savePatients();
   }
-  PATIENTS[currentUser.username].anamnese = data;
-  savePatients();
 
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
   window.location.href='patient.html';

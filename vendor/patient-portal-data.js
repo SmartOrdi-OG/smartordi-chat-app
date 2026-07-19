@@ -36,12 +36,21 @@ async function patientLogin(username,password){
     firstLogin: row.first_login,
     joinStatus: row.join_status,
     joinNote: row.join_note,
+    anamnese: row.anamnese,
   };
 }
 async function patientChangePassword(newPassword){
   const {data,error}=await sb.rpc('patient_change_password',{p_token:getPatientToken(),p_new_password:newPassword});
   if(error){ console.error('patientChangePassword failed',error); return false; }
   return !!data;
+}
+// supabase/phase8_anamnese.sql -- saves the mandatory first-login Anamnese
+// questionnaire server-side instead of a browser-local record, so it's
+// visible from any device the patient logs in from afterward.
+async function patientSetAnamnese(data){
+  const {data:ok,error}=await sb.rpc('patient_set_anamnese',{p_token:getPatientToken(),p_data:data});
+  if(error){ console.error('patientSetAnamnese failed',error); return false; }
+  return !!ok;
 }
 // Revokes the session token server-side (supabase/phase6_patient_logout.sql)
 // -- without this, "logging out" only ever cleared the token from this

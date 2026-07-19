@@ -4811,7 +4811,11 @@ function findPatientAccountByFullName(name){
   return findPatientByFullName(name);
 }
 
-function saveAnamnese(){
+// supabase/phase8_anamnese.sql -- Anamnese now lives on the real patients
+// row (upsertPatientIdentity), not just this device's localStorage, so it's
+// the same data the patient sees (and can no longer be wrongly re-prompted
+// for) from any device.
+async function saveAnamnese(){
   // Scoped to the questionnaire itself (see loadAnamneseForPatient's own
   // note) -- #ktab-anamnese now also nests the unrelated "Neu" visit-entry
   // form, whose fields must never end up saved as anamnese answers.
@@ -4821,8 +4825,12 @@ function saveAnamnese(){
   if(currentName && currentName!=='Kein Patient ausgewählt'){
     const found=findPatientAccountByFullName(currentName);
     if(found){
-      found.accounts[found.username].anamnese=data;
-      localStorage.setItem('smartordi_patient_accounts', JSON.stringify(found.accounts));
+      try{
+        await upsertPatientIdentity(found.username,{anamnese:data});
+      }catch(e){
+        showToast('✗ Speichern fehlgeschlagen','error');
+        return;
+      }
     }
   }
   showToast('✓ Anamnese gespeichert!');
