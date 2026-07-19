@@ -188,6 +188,14 @@ async function refreshPatients(){
       versicherung: row.versicherung||local.versicherung,
       svnr: row.svnr||local.svnr,
       anamnese: row.anamnese||local.anamnese,
+      // supabase/phase10_clinical_fields.sql -- these used to be local-only
+      // (set once at account creation/CSV import and never synced), so a
+      // diagnosis entered/imported on one device was invisible on any other
+      // staff device viewing the same patient's Kartei.
+      diagnosen: row.diagnosen||local.diagnosen,
+      allergie: row.allergie||local.allergie,
+      blutgruppe: row.blutgruppe||local.blutgruppe,
+      legacyHistory: row.legacy_history||local.legacyHistory,
       joinStatus: row.join_status,
       joinNote: row.join_note,
     });
