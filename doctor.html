@@ -6639,7 +6639,14 @@ async function confirmTransfer(){
 
   // Reassign this patient's own upcoming appointments with the current
   // doctor -- past/cancelled ones stay as history, they're already done.
-  await bulkReassignTermine(patientName, me, transferSelectedDoctor, todayStr());
+  // A real DB error here must stop the flow -- proceeding to tell the
+  // patient "you were transferred" when the reassignment actually failed
+  // would notify them of something that never happened.
+  const {count,error}=await bulkReassignTermine(patientName, me, transferSelectedDoctor, todayStr());
+  if(error){
+    showToast('✗ Weiterleiten fehlgeschlagen — bitte erneut versuchen','error');
+    return;
+  }
 
   const text='↪ Sie wurden an '+toDoctorName+' weitergeleitet.'+(note?' Notiz: '+note:'');
   const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime()+' ✓'});
@@ -6653,7 +6660,15 @@ async function confirmTransfer(){
   }
   renderPatientList();
   renderDashTermine();
-  showToast(messaged?'✓ Weitergeleitet an '+toDoctorName+' · Patient per Chat informiert':'✓ Weitergeleitet an '+toDoctorName,'success');
+  // The toast must never just claim a generic "success" -- it has to say
+  // whether any appointment was actually moved, since a doctor forwarding
+  // a patient with no upcoming Termin at all is a real, common case, not
+  // an error, and silently implying "done" either way previously hid that
+  // distinction (the documented false-success report).
+  const terminPart=count>0
+    ? (count===1?'1 Termin übertragen':count+' Termine übertragen')
+    : 'keine anstehenden Termine zum Übertragen gefunden';
+  showToast('✓ Weitergeleitet an '+toDoctorName+' · '+terminPart+(messaged?' · Patient per Chat informiert':''),'success');
 }
 
 renderTagesuhr();

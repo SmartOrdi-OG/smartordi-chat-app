@@ -131,18 +131,22 @@ async function updateTermin(id,patch){
 
 // Weiterleiten (patient transfer): reassign this patient's own upcoming,
 // non-cancelled appointments with the current doctor to a colleague --
-// past/cancelled ones stay as history.
+// past/cancelled ones stay as history. Returns {count,error} rather than a
+// bare number -- confirmTransfer() needs to tell "a real DB error
+// happened" apart from "the update legitimately matched zero rows" (e.g.
+// the patient simply had no upcoming appointment with this doctor), which
+// a plain 0 can't distinguish.
 async function bulkReassignTermine(patientName,fromArzt,toArzt,fromDate){
   const {data,error}=await sb.from('termine').update({arzt_id:toArzt})
     .eq('patient_name',patientName).eq('arzt_id',fromArzt).neq('status','abgesagt').gte('date',fromDate)
     .select();
-  if(error){ console.error('bulkReassignTermine failed',error); return 0; }
+  if(error){ console.error('bulkReassignTermine failed',error); return {count:0,error}; }
   (data||[]).forEach(function(row){
     const js=terminRowToJs(row);
     const idx=_termine.findIndex(function(t){ return t.id===row.id; });
     if(idx>=0) _termine[idx]=js; else _termine.push(js);
   });
-  return data?data.length:0;
+  return {count:data?data.length:0,error:null};
 }
 
 // Replaces the old same-browser-only 'storage' event listener for the
