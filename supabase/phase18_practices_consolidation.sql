@@ -37,7 +37,7 @@
 -- Run this in the Supabase SQL editor, after phase15_staff_practice_rls.sql.
 
 alter table public.practices add column if not exists trial_start timestamptz;
-alter table public.practices add column if not exists payment_method text;
+alter table public.practices add column if not exists payment_method jsonb;
 
 do $$
 declare v_practice_id uuid;
