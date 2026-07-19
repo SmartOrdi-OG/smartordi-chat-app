@@ -79,6 +79,14 @@ begin
 end;
 $$;
 
+-- ── practices ── (RLS was enabled with no policy in phase11; add the real
+-- one now that current_practice_id() exists -- a staff member can only see/
+-- edit their OWN practice's row, never another practice's.)
+drop policy if exists "staff access scoped to own practice" on public.practices;
+create policy "staff access scoped to own practice" on public.practices
+  for all to authenticated using (id = public.current_practice_id())
+  with check (id = public.current_practice_id());
+
 -- ── patients ──
 drop trigger if exists trg_set_practice_id on public.patients;
 create trigger trg_set_practice_id before insert on public.patients
