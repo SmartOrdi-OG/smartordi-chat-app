@@ -228,7 +228,8 @@ async function upsertPatientIdentity(username,fields){
 // real patient's full thread now pulls from this table too -- see
 // hydrateRealThreadFromSupabase() in doctor.html/secretary.html.
 async function sendMessageToPatient(patientId,msg){
-  const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null};
+  const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null,
+    doc_id:msg.docId||null, filename:msg.filename||null, doc_sub:msg.sub||null};
   const {data,error}=await sb.from('patient_messages').insert(row).select().single();
   if(error){ console.error('sendMessageToPatient failed',error); throw error; }
   return data;

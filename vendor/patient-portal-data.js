@@ -77,7 +77,8 @@ async function patientGetMessages(){
   const {data,error}=await sb.rpc('patient_get_messages',{p_token:getPatientToken()});
   if(error){ console.error('patientGetMessages failed',error); return []; }
   return (data||[]).map(function(row){
-    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16)};
+    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16),
+      docId:row.doc_id, filename:row.filename, sub:row.doc_sub};
   });
 }
 async function patientSendMessage(text){
