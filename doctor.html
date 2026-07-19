@@ -742,7 +742,7 @@
     </div>
   </div>
   <div id="tuRowMenu" class="kartei-mehr-menu" style="display:none;">
-    <button class="kartei-tab" onclick="tuRowMenuOpenKartei()">🗂 Kartei öffnen</button>
+    <button class="tu-row-menu-item" onclick="tuRowMenuOpenKartei()">🗂 Kartei öffnen</button>
   </div>
   <div>
 <!DOCTYPE html>
@@ -994,6 +994,14 @@ body.windows-mode .kartei-header{display:none;}
 .kartei-tab:hover:not(.active){color:#0891b2!important;background:#ecfeff;}
 .kartei-mehr-menu{position:fixed;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:200;min-width:150px;}
 .kartei-mehr-menu .kartei-tab{width:100%;justify-content:flex-start;}
+/* Deliberately its own class, not .kartei-tab -- updateKarteiChromeVisibility()
+   disables every .kartei-tab whenever no patient is loaded in the real Kartei
+   tab bar, but this button (the Kalender's "⋮ → Kartei öffnen" shortcut) is
+   meant to work in exactly that situation, since its whole point is opening
+   Kartei for a patient from outside it. Reusing .kartei-tab here made it get
+   swept up and disabled by that unrelated logic. */
+.tu-row-menu-item{flex-shrink:0;width:100%;padding:7px 14px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-2);border-radius:8px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:4px;justify-content:flex-start;}
+.tu-row-menu-item:hover{color:#0891b2;background:#ecfeff;}
 .kartei-body{flex:1;overflow-y:auto;padding:0;}
 
 /* Filter Bar */
