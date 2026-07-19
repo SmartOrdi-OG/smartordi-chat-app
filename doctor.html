@@ -340,6 +340,13 @@
   #tuHome{display:flex;position:absolute;inset:0;z-index:1;overflow-y:auto;background:var(--bg,#f8fafc);padding:36px 40px;}
 }
 .tu-widget{width:100%;max-width:820px;margin:0 auto;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:28px 32px 26px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.12);}
+.tu-widget-wide{max-width:1160px;}
+.tu-desktop-view{display:block;}
+.tu-mobile-view{display:none;}
+@media(max-width:900px){
+  .tu-desktop-view{display:none;}
+  .tu-mobile-view{display:block;}
+}
 .tu-widget-head{margin-bottom:20px;}
 .tu-widget-title{font-family:'Fraunces',serif;font-size:19px;font-weight:700;color:var(--text-1,#0f172a);}
 .tu-widget-sub{font-size:13px;color:var(--text-2,#64748b);margin-top:2px;}
@@ -347,16 +354,44 @@
 .tu-week-arrow{flex-shrink:0;width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
 .tu-week-arrow:hover{background:#EAF4F1;color:#0E5E56;}
 .tu-month-label{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--text-1,#0f172a);}
-.tu-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:20px;}
-.tu-month-dow{text-align:center;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;padding-bottom:4px;}
-.tu-month-cell{position:relative;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text-1,#0f172a);transition:background .15s;}
-.tu-month-cell.outside{color:#cbd5e1;}
-.tu-month-cell:not(.selected):hover{background:#EAF4F1;}
-.tu-month-cell.today{color:#0E5E56;font-weight:800;}
-.tu-month-cell.selected{background:#0E5E56;color:#fff;}
-.tu-month-cell.selected.today{color:#fff;}
-.tu-month-cell .dot{width:4px;height:4px;border-radius:50%;background:#0E5E56;position:absolute;bottom:6px;}
-.tu-month-cell.selected .dot{background:rgba(255,255,255,.8);}
+/* Work-week columns (desktop) -- each column IS that day's patient list,
+   not a bare date cell; weekends are never rendered at all (practice
+   closed), not just muted. */
+.tu-cols{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;align-items:start;}
+.tu-col{background:#f8fafc;border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:10px;min-height:120px;}
+.tu-col.today{background:#EAF4F1;border-color:#bfdbfe;}
+.tu-col-head{display:flex;align-items:baseline;gap:6px;padding:2px 4px 10px;border-bottom:1px solid var(--border,#e2e8f0);margin-bottom:8px;}
+.tu-col-head .dow{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;}
+.tu-col.today .tu-col-head .dow{color:#0E5E56;}
+.tu-col-head .dom{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--text-1,#0f172a);}
+.tu-col-body{display:flex;flex-direction:column;gap:6px;}
+.tu-col-empty{text-align:center;font-size:11.5px;color:#cbd5e1;padding:14px 0;}
+.tu-col-card{background:#fff;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:7px 9px;cursor:pointer;transition:background .2s,opacity .2s,box-shadow .2s;}
+.tu-col-card:hover{background:#EAF4F1;}
+.tu-col-card.cancelled{opacity:.5;}
+.tu-col-card.past{opacity:.55;}
+.tu-col-time{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
+.tu-col-name{font-size:12.5px;font-weight:700;color:var(--text-1,#0f172a);margin-top:1px;}
+.tu-col-name.strike{text-decoration:line-through;color:#94a3b8;}
+.tu-col-badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 7px;border-radius:20px;}
+.tu-col-badge.now{background:#dc2626;color:#fff;}
+.tu-col-badge.next{background:#d97706;color:#fff;}
+.tu-col-card.now{background:#fef2f2;border-color:#fecaca;box-shadow:0 2px 10px -5px rgba(220,38,38,.4);}
+.tu-col-card.next{background:#fff7ed;border-color:#fde68a;}
+.tu-col-card.now .tu-col-time{animation:tuNowPulse 1.8s ease-in-out infinite;}
+@media(prefers-reduced-motion:reduce){.tu-col-card.now .tu-col-time{animation:none;}}
+
+/* Mobile: compact day-strip, the rest of the screen is the patient list */
+.tu-mobile-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.tu-day-strip{display:flex;gap:6px;flex:1;}
+.tu-day-pill{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 10px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:all .15s;}
+.tu-day-pill .dow{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#94a3b8;}
+.tu-day-pill .dom{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
+.tu-day-pill.active{background:#0E5E56;border-color:#0E5E56;}
+.tu-day-pill.active .dow,.tu-day-pill.active .dom{color:#fff;}
+.tu-day-pill .dot{width:4px;height:4px;border-radius:50%;background:#0E5E56;margin-top:1px;}
+.tu-day-pill.active .dot{background:rgba(255,255,255,.75);}
+.tu-day-pill:not(.active):hover{background:#EAF4F1;}
 .tu-summary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:#EAF4F1;border-radius:14px;margin-bottom:20px;font-size:13px;color:#0E5E56;font-weight:700;}
 .tu-summary .tu-summary-icon{font-size:16px;}
 .tu-summary .tu-summary-next{color:#475569;font-weight:500;}
@@ -633,23 +668,39 @@
        titlebar, not in WIN_TITLES), just a permanent backdrop rendered at
        a low z-index so any opened window naturally covers it. -->
   <div id="tuHome">
-    <div class="tu-widget">
+    <div class="tu-widget tu-widget-wide">
       <div class="tu-widget-head">
         <div>
           <div class="tu-widget-title" id="tuPracticeName">Praxis</div>
           <div class="tu-widget-sub" id="tuPracticeSub">—</div>
         </div>
       </div>
-      <div class="tu-month-nav">
-        <button class="tu-week-arrow" onclick="tuShiftMonth(-1)" title="Voriger Monat">‹</button>
-        <div class="tu-month-label" id="tuMonthLabel">–</div>
-        <button class="tu-week-arrow" onclick="tuShiftMonth(1)" title="Nächster Monat">›</button>
+
+      <!-- Desktop: full work-week (Mo-Fr) as columns, each filled with that
+           day's patient cards -- practice is closed weekends, so Sa/So are
+           never shown at all, not just muted. -->
+      <div class="tu-desktop-view">
+        <div class="tu-month-nav">
+          <button class="tu-week-arrow" onclick="tuShiftWeek(-7)" title="Vorige Woche">‹</button>
+          <div class="tu-month-label" id="tuWeekLabel">–</div>
+          <button class="tu-week-arrow" onclick="tuShiftWeek(7)" title="Nächste Woche">›</button>
+        </div>
+        <div class="tu-cols" id="tuCols"></div>
       </div>
-      <div class="tu-month-grid" id="tuMonthGrid"></div>
-      <div class="tu-summary" id="tuSummary"></div>
-      <div class="tu-legend">
-        <div class="tu-legend-title">Termine an diesem Tag</div>
-        <div id="tuLegendList"></div>
+
+      <!-- Mobile: one compact horizontal day-strip up top, everything else
+           on screen is the selected day's patient list. -->
+      <div class="tu-mobile-view">
+        <div class="tu-mobile-nav">
+          <button class="tu-week-arrow" onclick="tuShiftWeek(-7)" title="Vorige Woche">‹</button>
+          <div class="tu-day-strip" id="tuDayStrip"></div>
+          <button class="tu-week-arrow" onclick="tuShiftWeek(7)" title="Nächste Woche">›</button>
+        </div>
+        <div class="tu-summary" id="tuSummary"></div>
+        <div class="tu-legend">
+          <div class="tu-legend-title">Termine an diesem Tag</div>
+          <div id="tuLegendList"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -2898,16 +2949,23 @@ function tuSelectDate(dateStr){
   tuFollowingToday=(dateStr===todayStr());
   renderTagesuhr();
 }
-// Shifts by whole calendar months (not +/-30 days), clamped to the target
-// month's real length (e.g. Jan 31 -> Feb 28/29) instead of silently
-// rolling over into the month after via Date's own +30-day arithmetic.
-function tuShiftMonth(delta){
+function tuShiftWeek(deltaDays){
   const d=new Date(tuSelectedDate+'T00:00:00');
-  const day=d.getDate();
-  const targetMonthFirst=new Date(d.getFullYear(),d.getMonth()+delta,1);
-  const daysInTargetMonth=new Date(targetMonthFirst.getFullYear(),targetMonthFirst.getMonth()+1,0).getDate();
-  targetMonthFirst.setDate(Math.min(day,daysInTargetMonth));
-  tuSelectDate(tuDateStr(targetMonthFirst));
+  d.setDate(d.getDate()+deltaDays);
+  tuSelectDate(tuDateStr(d));
+}
+// Monday-Friday only (5 dates) -- the practice is closed weekends, so
+// Saturday/Sunday are never part of the work week shown here at all.
+function tuWorkWeekDates(dateStr){
+  const d=new Date(dateStr+'T00:00:00');
+  const mondayOffset=(d.getDay()+6)%7;
+  const monday=new Date(d); monday.setDate(d.getDate()-mondayOffset);
+  const out=[];
+  for(let i=0;i<5;i++){
+    const dd=new Date(monday); dd.setDate(monday.getDate()+i);
+    out.push(tuDateStr(dd));
+  }
+  return out;
 }
 // Marks each of today's non-cancelled appointments as 'now' (current time
 // falls inside its [time,endTime) span), 'next' (the first one still ahead
@@ -2964,53 +3022,87 @@ function renderTuSummary(dayAppts){
   el.innerHTML=html;
 }
 const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-// Full month grid (not just a one-week strip) -- lets a doctor see at a
-// glance which days this month have appointments (the dot) and jump to
-// any of them directly, distinct from the Dashboard's "Alle sehen" modal
-// (today + upcoming only, no browsing to an arbitrary date).
-function renderTuMonthGrid(mine){
-  const gridEl=document.getElementById('tuMonthGrid');
-  const labelEl=document.getElementById('tuMonthLabel');
-  if(!gridEl) return;
-  const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
-  const sel=new Date(tuSelectedDate+'T00:00:00');
-  const year=sel.getFullYear(), month=sel.getMonth();
-  if(labelEl) labelEl.textContent=TU_MONTHS_DE[month]+' '+year;
-
-  const firstOfMonth=new Date(year,month,1);
-  const startOffset=(firstOfMonth.getDay()+6)%7; // getDay(): 0=Sun..6=Sat -> Monday-start offset
-  const daysInMonth=new Date(year,month+1,0).getDate();
-  const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
-  const today=todayStr();
-
-  let html=['Mo','Di','Mi','Do','Fr','Sa','So'].map(dw=>`<div class="tu-month-dow">${dw}</div>`).join('');
-  for(let i=0;i<totalCells;i++){
-    const dayNum=i-startOffset+1;
-    const cellDate=new Date(year,month,dayNum);
-    const ds=tuDateStr(cellDate);
-    const outside=dayNum<1||dayNum>daysInMonth;
-    const cls=['tu-month-cell'];
-    if(outside) cls.push('outside');
-    if(ds===today) cls.push('today');
-    if(ds===tuSelectedDate) cls.push('selected');
-    html+=`<div class="${cls.join(' ')}" onclick="tuSelectDate('${ds}')">`
-      +`<span>${cellDate.getDate()}</span>`
-      +(activeDateSet.has(ds)?'<span class="dot"></span>':'')
-      +`</div>`;
+const TU_DOW_DE=['So','Mo','Di','Mi','Do','Fr','Sa'];
+function tuColCardHtml(t,timeClass){
+  const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  const cls=['tu-col-card'];
+  if(timeClass) cls.push(timeClass);
+  if(t.status==='abgesagt') cls.push('cancelled');
+  const badge=timeClass==='now'?'<span class="tu-col-badge now">JETZT</span>'
+    :timeClass==='next'?'<span class="tu-col-badge next">NÄCHSTER</span>':'';
+  return `<div class="${cls.join(' ')}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
+    <div class="tu-col-time">${t.time||''}</div>
+    <div class="tu-col-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+    ${badge}
+  </div>`;
+}
+function tuDayColumnHtml(ds,dayAppts){
+  const d=new Date(ds+'T00:00:00');
+  const isToday=ds===todayStr();
+  const timeClassMap=isToday?tuClassifyAppts(dayAppts):{};
+  const cardsHtml=dayAppts.length
+    ? dayAppts.map(t=>tuColCardHtml(t,timeClassMap[t.id])).join('')
+    : '<div class="tu-col-empty">Frei</div>';
+  return `<div class="tu-col${isToday?' today':''}">
+    <div class="tu-col-head"><span class="dow">${TU_DOW_DE[d.getDay()]}</span><span class="dom">${d.getDate()}.</span></div>
+    <div class="tu-col-body">${cardsHtml}</div>
+  </div>`;
+}
+// Full Monday-Friday work week as columns -- each column already IS that
+// day's patient list (name + time directly visible), not a bare date box
+// you have to click before seeing anything. Distinct from the Dashboard's
+// "Alle sehen" modal (today + upcoming only, no browsing other weeks).
+function renderTuWeekColumns(mine){
+  const colsEl=document.getElementById('tuCols');
+  const labelEl=document.getElementById('tuWeekLabel');
+  if(!colsEl) return;
+  const week=tuWorkWeekDates(tuSelectedDate);
+  if(labelEl){
+    const first=new Date(week[0]+'T00:00:00'), last=new Date(week[week.length-1]+'T00:00:00');
+    labelEl.textContent = first.getMonth()===last.getMonth()
+      ? `${first.getDate()}.–${last.getDate()}. ${TU_MONTHS_DE[first.getMonth()]} ${first.getFullYear()}`
+      : `${first.getDate()}. ${TU_MONTHS_DE[first.getMonth()]} – ${last.getDate()}. ${TU_MONTHS_DE[last.getMonth()]} ${last.getFullYear()}`;
   }
-  gridEl.innerHTML=html;
+  colsEl.innerHTML=week.map(function(ds){
+    const dayAppts=mine.filter(t=>t.date===ds).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    return tuDayColumnHtml(ds,dayAppts);
+  }).join('');
 }
 function renderTagesuhr(){
   const root=document.getElementById('tuHome');
   if(!root) return;
-  if(!tuSelectedDate||tuFollowingToday) tuSelectedDate=todayStr();
+  // Auto-following "today" (default until the doctor picks another date)
+  // clamps forward to Monday whenever today itself is Sat/Sun -- the
+  // practice is closed weekends, so there's no work-week column/pill to
+  // land on otherwise, and the view would open with nothing highlighted.
+  if(!tuSelectedDate||tuFollowingToday){
+    const now=new Date();
+    if(now.getDay()===0) now.setDate(now.getDate()+1);
+    else if(now.getDay()===6) now.setDate(now.getDate()+2);
+    tuSelectedDate=tuDateStr(now);
+  }
   const nameEl=document.getElementById('tuPracticeName');
   if(nameEl) nameEl.textContent='Praxis '+arztDisplayName(currentDoctorUsername());
   const subEl=document.getElementById('tuPracticeSub');
   if(subEl) subEl.textContent=dayBoxLabel(tuSelectedDate)===dayBoxLabel(todayStr())?'Heute':longDateDE(tuSelectedDate);
 
   const mine=filterToMyTermine(loadTermine());
-  renderTuMonthGrid(mine);
+  renderTuWeekColumns(mine);
+
+  const week=tuWorkWeekDates(tuSelectedDate);
+  const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
+  const stripEl=document.getElementById('tuDayStrip');
+  if(stripEl){
+    stripEl.innerHTML=week.map(function(ds){
+      const d=new Date(ds+'T00:00:00');
+      const active=ds===tuSelectedDate;
+      return '<div class="tu-day-pill'+(active?' active':'')+'" onclick="tuSelectDate(\''+ds+'\')">'
+        +'<span class="dow">'+TU_DOW_DE[d.getDay()]+'</span><span class="dom">'+d.getDate()+'</span>'
+        +(activeDateSet.has(ds)?'<span class="dot"></span>':'')
+        +'</div>';
+    }).join('');
+  }
 
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
   const timeClassMap=tuClassifyAppts(dayAppts);
