@@ -42,6 +42,8 @@ function terminRowToJs(row){
     dob: row.dob,
     reason: row.reason,
     reasonNote: row.reason_note,
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
   };
 }
 
@@ -53,6 +55,25 @@ async function refreshTermine(){
 }
 function loadTermine(){
   return _termine;
+}
+// Explicit, doctor-driven visit progress (supabase/phase7_termin_visit_state.sql)
+// -- replaces guessing "now/next/past" from the clock, which breaks the
+// moment the day runs behind schedule or patients are seen out of order.
+async function startTerminVisit(id){
+  const now=new Date().toISOString();
+  const {error}=await sb.from('termine').update({started_at:now}).eq('id',id);
+  if(error){ console.error('startTerminVisit failed',error); return false; }
+  const t=_termine.find(x=>x.id===id);
+  if(t) t.startedAt=now;
+  return true;
+}
+async function completeTerminVisit(id){
+  const now=new Date().toISOString();
+  const {error}=await sb.from('termine').update({completed_at:now}).eq('id',id);
+  if(error){ console.error('completeTerminVisit failed',error); return false; }
+  const t=_termine.find(x=>x.id===id);
+  if(t) t.completedAt=now;
+  return true;
 }
 const termineReady=refreshTermine();
 
