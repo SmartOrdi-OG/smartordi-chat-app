@@ -394,8 +394,23 @@ async function doRegister(){
     return;
   }
   const userId=signUpData.user.id;
+  // supabase/phase15_staff_practice_rls.sql -- registering here is the
+  // moment a brand-new practice comes into existence, so there's no
+  // existing practice_id to inherit; create its practices row first and
+  // attach this new admin doctor to it explicitly.
+  const {data:practiceRow,error:practiceError}=await sb.from('practices').insert({
+    name:'Ordination '+fullName,
+  }).select().single();
+  if(practiceError){
+    btn.classList.remove('loading');
+    document.getElementById('btnText').style.display = 'block';
+    document.getElementById('spinner').style.display = 'none';
+    errorText.textContent = 'Konto wurde erstellt, aber die Praxis konnte nicht angelegt werden: '+practiceError.message;
+    errorEl.classList.add('show');
+    return;
+  }
   const {error:profileError}=await sb.from('staff_profiles').insert({
-    id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email,
+    id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email, practice_id:practiceRow.id,
   });
   if(profileError){
     btn.classList.remove('loading');
