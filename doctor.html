@@ -371,8 +371,11 @@
 .tu-col-card.cancelled{opacity:.5;}
 .tu-col-card.done{opacity:.55;}
 .tu-col-time{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
-.tu-col-name{font-size:12.5px;font-weight:700;color:var(--text-1,#0f172a);margin-top:1px;}
+.tu-col-name-row{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:1px;}
+.tu-col-name{font-size:12.5px;font-weight:700;color:var(--text-1,#0f172a);}
 .tu-col-name.strike{text-decoration:line-through;color:#94a3b8;}
+.tu-row-menu-btn{background:transparent;border:none;color:#94a3b8;font-size:15px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:6px;flex-shrink:0;font-family:inherit;}
+.tu-row-menu-btn:hover{background:#e2e8f0;color:#0f172a;}
 .tu-col-badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 7px;border-radius:20px;background:#f1f5f9;color:#64748b;}
 .tu-col-btn{display:inline-block;margin-top:4px;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;background:#EAF4F1;color:#0E5E56;}
 .tu-col-btn:hover{background:#dcecea;}
@@ -406,6 +409,7 @@
 .tu-appt-bar.pending{background:#d97706;}
 .tu-appt-bar.cancelled{background:#94a3b8;}
 .tu-appt-info{flex:1;min-width:0;}
+.tu-appt-name-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .tu-appt-name{font-size:13.5px;font-weight:700;color:var(--text-1,#0f172a);}
 .tu-appt-name.strike{text-decoration:line-through;color:#94a3b8;}
 .tu-appt-type{font-size:11.5px;color:#64748b;margin-top:1px;}
@@ -704,6 +708,9 @@
         </div>
       </div>
     </div>
+  </div>
+  <div id="tuRowMenu" class="kartei-mehr-menu" style="display:none;">
+    <button class="kartei-tab" onclick="tuRowMenuOpenKartei()">🗂 Kartei öffnen</button>
   </div>
   <div>
 <!DOCTYPE html>
@@ -3000,15 +3007,56 @@ function tuVisitControlHtml(t,size){
   if(state==='now') return `<button class="${btnCls} done" onclick="event.stopPropagation();tuMarkDone('${t.id}')">✓ Fertig</button>`;
   return `<button class="${btnCls}" onclick="event.stopPropagation();tuMarkStarted('${t.id}')">▶ Start</button>`;
 }
+// The "⋮" next to a Kalender row/card's name jumps straight to that
+// patient's Kartei (openKarteiForPatientAndShow already opens Kartei as its
+// own window on top of #tuHome without leaving the Kalender behind it --
+// closing Kartei returns to exactly the same Kalender view) instead of the
+// row's own click, which opens the Praxis chat.
+function tuToggleRowMenu(e,name,svnr,versicherung,dob){
+  e.stopPropagation();
+  const menu=document.getElementById('tuRowMenu');
+  if(!menu) return;
+  const opening=menu.style.display==='none';
+  if(opening){
+    const rect=e.currentTarget.getBoundingClientRect();
+    menu.style.top=(rect.bottom+4)+'px';
+    menu.style.left=Math.min(rect.left,window.innerWidth-170)+'px';
+    menu.dataset.name=name;
+    menu.dataset.svnr=svnr||'';
+    menu.dataset.versicherung=versicherung||'';
+    menu.dataset.dob=dob||'';
+  }
+  menu.style.display=opening?'flex':'none';
+}
+function tuRowMenuOpenKartei(){
+  const menu=document.getElementById('tuRowMenu');
+  if(!menu) return;
+  menu.style.display='none';
+  openKarteiForPatientAndShow(menu.dataset.name,menu.dataset.svnr,menu.dataset.versicherung,menu.dataset.dob);
+}
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('tuRowMenu');
+  if(!menu||menu.style.display==='none')return;
+  if(!e.target.closest('#tuRowMenu')&&!e.target.closest('.tu-row-menu-btn'))menu.style.display='none';
+});
 function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
   const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  const versEsc=escapeHtml(t.versicherung||'');
+  const svnrEsc=escapeHtml(t.svnr||'');
+  const dobEsc=escapeHtml(t.dob||'');
   const visitState=tuVisitState(t);
   const rowClass='tu-appt-row'+(visitState?' '+visitState:'');
-  return `<div class="${rowClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
+  return `<div class="${rowClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
     <div class="tu-appt-time">${t.time||''}</div>
     <div class="tu-appt-bar ${statusClass}"></div>
-    <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div><div class="tu-appt-type">${escapeHtml(t.art||'')}</div></div>
+    <div class="tu-appt-info">
+      <div class="tu-appt-name-row">
+        <div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+        <button class="tu-row-menu-btn" onclick="tuToggleRowMenu(event,'${nameEsc}','${svnrEsc}','${versEsc}','${dobEsc}')" title="Weitere Optionen">⋮</button>
+      </div>
+      <div class="tu-appt-type">${escapeHtml(t.art||'')}</div>
+    </div>
     ${tuVisitControlHtml(t,'row')}
   </div>`;
 }
@@ -3038,9 +3086,15 @@ function tuColCardHtml(t){
   if(visitState) cls.push(visitState);
   if(t.status==='abgesagt') cls.push('cancelled');
   const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  return `<div class="${cls.join(' ')}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
+  const versEsc=escapeHtml(t.versicherung||'');
+  const svnrEsc=escapeHtml(t.svnr||'');
+  const dobEsc=escapeHtml(t.dob||'');
+  return `<div class="${cls.join(' ')}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
     <div class="tu-col-time">${t.time||''}</div>
-    <div class="tu-col-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+    <div class="tu-col-name-row">
+      <div class="tu-col-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+      <button class="tu-row-menu-btn" onclick="tuToggleRowMenu(event,'${nameEsc}','${svnrEsc}','${versEsc}','${dobEsc}')" title="Weitere Optionen">⋮</button>
+    </div>
     ${tuVisitControlHtml(t,'col')}
   </div>`;
 }
