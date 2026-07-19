@@ -1468,7 +1468,9 @@ async function sendMsg(){
 
 // ── Termine (real appointment data, shared with secretary.html/doctor.html) ──
 const TERMINE_KEY='smartordi_termine';
-const TIME_SLOTS=['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','14:00','14:30','15:00','15:30','16:00'];
+// 15-minute steps, shared with secretary.html's own booking forms -- see
+// PRACTICE_TIME_SLOTS in vendor/staff-accounts.js.
+const TIME_SLOTS=PRACTICE_TIME_SLOTS;
 function loadTermine(){
   try{ const list=JSON.parse(localStorage.getItem(TERMINE_KEY)); return Array.isArray(list)?list:[]; }catch(e){ return []; }
 }

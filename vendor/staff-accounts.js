@@ -29,6 +29,40 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c=>HTML_ESCAPE_MAP[c]);
 }
 
+// Shared bookable-appointment-slot grid (08:00-11:30, 14:00-16:00, 15-minute
+// steps) -- both the patient-facing self-booking picker (patient.html) and
+// staff's own booking forms (secretary.html) generate their slot list from
+// this single source instead of three separately hand-typed option lists,
+// which had drifted inconsistent with each other (different intervals,
+// missing slots) before this existed.
+function buildTimeSlots(fromH,fromM,toH,toM,fromH2,fromM2,toH2,toM2){
+  const slots=[];
+  const push=(fromH,fromM,toH,toM)=>{
+    let h=fromH,m=fromM;
+    while(h<toH||(h===toH&&m<=toM)){
+      slots.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'));
+      m+=15; if(m>=60){m=0;h++;}
+    }
+  };
+  push(fromH,fromM,toH,toM);
+  push(fromH2,fromM2,toH2,toM2);
+  return slots;
+}
+const PRACTICE_TIME_SLOTS=buildTimeSlots(8,0,11,30, 14,0,16,0);
+// "Bis" (end-time) selects need to offer something *after* the last bookable
+// start of each block -- otherwise picking that last start (11:30 or 16:00)
+// leaves no valid end option nearby, and syncEndTimeAfterStart's "first
+// option greater than start" search jumps all the way to the next block
+// (e.g. a 11:30 start defaulting its end to 14:00, spanning the whole lunch
+// break) instead of a sensible ~15-30 minutes later.
+const PRACTICE_TIME_SLOTS_END=buildTimeSlots(8,0,12,0, 14,0,16,30);
+function timeSlotOptionsHtml(){
+  return PRACTICE_TIME_SLOTS.map(s=>`<option>${s}</option>`).join('');
+}
+function timeSlotEndOptionsHtml(){
+  return PRACTICE_TIME_SLOTS_END.map(s=>`<option>${s}</option>`).join('');
+}
+
 // In-memory cache of every staff_profiles row, keyed by uuid -- refreshed
 // once (awaited) during each page's init so the many existing synchronous
 // call sites (arztAccounts, arztDisplayName, renderTeamCard...) don't all
