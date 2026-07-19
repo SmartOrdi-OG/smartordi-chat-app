@@ -3841,8 +3841,15 @@ function openPlanChangeModal(plan,force){
   document.getElementById('pcErrorMsg').style.display='none';
   const saved=getPaymentMethod();
   selectPaymentMethod(saved?saved.method:'card');
-  document.getElementById('pcCardNumber').value=saved && saved.method==='card' ? saved.number : '';
-  document.getElementById('pcCardExpiry').value=saved && saved.method==='card' ? saved.expiry : '';
+  // The full card number/expiry are never persisted (see confirmPlanChange()
+  // below) -- only last4 is kept for display, so there is nothing to
+  // prefill here. Re-entering the full card each time mirrors how real
+  // payment forms behave (a processor never hands your old PAN back to
+  // you either); the IBAN/Kontoinhaber fields still prefill since keeping
+  // a full IBAN on file is normal, legal practice for SEPA direct debit
+  // mandates -- unlike a card PAN, it isn't PCI-DSS-restricted data.
+  document.getElementById('pcCardNumber').value='';
+  document.getElementById('pcCardExpiry').value='';
   document.getElementById('pcCardCvc').value='';
   document.getElementById('pcIban').value=saved && saved.method==='sepa' ? saved.iban : '';
   document.getElementById('pcKontoinhaber').value=saved && saved.method==='sepa' ? saved.kontoinhaber : '';
@@ -3867,7 +3874,12 @@ async function confirmPlanChange(){
       errEl.style.display='block';
       return;
     }
-    payment={method:'card',number,expiry,last4:number.slice(-4)};
+    // Only last4 is persisted -- the full card number and expiry never
+    // reach savePracticeSettings()/Supabase at all. Storing a complete PAN
+    // and expiry in plaintext with no PCI-DSS-compliant processor involved
+    // is exactly the kind of card data a real payment integration (e.g.
+    // Stripe) exists to keep this app from ever having to touch.
+    payment={method:'card',last4:number.slice(-4)};
   }else{
     const iban=document.getElementById('pcIban').value.replace(/\s+/g,'');
     const kontoinhaber=document.getElementById('pcKontoinhaber').value.trim();
