@@ -26,7 +26,16 @@ function setPatientToken(token){
 // back to check_join_request_status to tell those two cases apart.
 async function patientLogin(username,password){
   const {data,error}=await sb.rpc('patient_login',{p_username:username,p_password:password});
-  if(error){ console.error('patientLogin failed',error); return null; }
+  if(error){
+    // supabase/phase14_patient_login_hardening.sql -- these two are real,
+    // actionable states the login screen shows a specific message for, so
+    // they're re-thrown instead of silently swallowed. Anything else keeps
+    // the original behavior (caller falls back to check_join_request_status).
+    if(error.message&&(error.message.indexOf('account_locked')!==-1||error.message.indexOf('temp_password_expired')!==-1)){
+      throw error;
+    }
+    console.error('patientLogin failed',error); return null;
+  }
   const row=data&&data[0];
   if(!row) return null;
   return {

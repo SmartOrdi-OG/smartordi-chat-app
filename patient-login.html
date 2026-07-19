@@ -355,7 +355,23 @@ async function doLogin(){
     // migrated yet (no Supabase patients row for them at all), so a
     // Supabase miss falls back to the original local password check, which
     // still covers them.
-    const result=await patientLogin(u,p);
+    let result;
+    try{
+      result=await patientLogin(u,p);
+    }catch(err){
+      const msg=err&&err.message||'';
+      const key=msg.indexOf('account_locked')!==-1?'login.error.accountLocked'
+        :msg.indexOf('temp_password_expired')!==-1?'login.error.tempPasswordExpired'
+        :null;
+      if(key){
+        resetLoginBtn();
+        document.getElementById('errorText').textContent=tr(key);
+        document.getElementById('errorMsg').classList.add('show');
+        document.getElementById('password').value='';
+        return;
+      }
+      throw err;
+    }
     if(result&&result.token){
       setPatientToken(result.token);
       // Real (server-side) answer to "has this patient already filled in
