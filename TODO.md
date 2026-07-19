@@ -1,10 +1,20 @@
 # Smartordi – قائمة المهام
 
 ## ⏳ بانتظار الدمج بكرة (Vercel rate-limited اليوم — "retry in 24 hours")
-- **PR #205** ("Stop persisting full card number/expiry; keep only last4") — الكود جاهز ومختبر ١٠٠٪ (كل الاختبارات عدّت)، بس CI فشل بسبب حد أقصى نشرات Vercel اليومي (rate limit)، مش بسبب الكود. **لازم نرجع نتأكد من CI ونضغط دمج (merge) عليه بكرة** لما ينحل الـrate limit.
-- بعد ما ينحل الـrate limit بشكل عام: أي PR/فرع تاني اتعمل اليوم ("بلش بالتدريج" — تصليحات/ميزات إضافية) بيكون بنفس وضعية "جاهز بس ما انضغط دمج" — تأكد تفحص فروع/PRs مفتوحة إضافية غير #205 قبل ما تعتبر الشغل خلص.
+- **PR #205** على فرع `claude/smart-order-chat-myt482` — تراكم فيه ٣ أشياء جاهزة ومختبرة ١٠٠٪ (كل الاختبارات عدّت محلياً)، بس CI (Vercel) فشل بسبب حد أقصى نشرات يومي (rate limit)، مش بسبب الكود:
+  1. تصليح تخزين رقم البطاقة الكامل (last4 بس هلق)
+  2. نظام اختبارات CI حقيقي (`tests/` + `.github/workflows/tests.yml`) — لاحظنا إنه check الـ"playwright" الجديد هذا شغال فعلياً على GitHub Actions بغض النظر عن مشكلة Vercel (مستقل عنها تماماً)
+  3. `supabase/phase19_patient_join_requests_rls.sql` — عزل آخر جدول باقي من multi-tenant (تفاصيل بقسم "تم إنجازه" تحت)
+  - **لازم نرجع نتأكد من CI (خاصة Vercel) ونضغط دمج (merge) على PR #205 بكرة** لما ينحل الـrate limit — بعدها لازم نذكّر المستخدم يشغّل `phase19_patient_join_requests_rls.sql` بمحرر Supabase (إذا ما شغّلها قبل هيك).
 
 ## تم إنجازه
+
+- **(بند ٢ من خارطة الطريق، آخر قطعة من multi-tenant) عزلنا `patient_join_requests` بين العيادات**: المستخدم بعتلي صلاحيات RLS الحالية على الجدول (طلبتها منه قبل ما ألمسه، نفس السبب يلي خلانا نطلب نصوص `consume_staff_invite`/`validate_staff_invite` قبل phase15) — طلعت `SELECT`/`UPDATE` مفتوحتين لأي موظف مسجل دخول على **كل الصفوف بكل قاعدة البيانات** بدون أي عزل بين العيادات (يعني موظف بعيادة تقدر تشوف/توافق على طلبات انضمام مرضى لعيادة تانية بالكامل). صلحناها بـ`supabase/phase19_patient_join_requests_rls.sql`:
+  - عزلنا `SELECT`/`UPDATE` ليصيروا مقيدين بـ`practice_id = current_practice_id()` (نفس نمط phase15).
+  - أضفنا trigger جديد (`set_join_request_practice_id`) يعبّي `practice_id` تلقائياً على أي طلب انضمام جديد — لازم trigger مختلف عن اللي بستخدمو الموظفين (`set_practice_id_from_staff`) لأنه المريض غير مسجل دخول أصلاً (`auth.uid()` فاضي)، فبيدي القيمة الافتراضية "أقدم عيادة موجودة" — يعني صحيح ١٠٠٪ لواقع اليوم (عيادة وحدة حقيقية شغالة)، بس **مش حل نهائي**: لما يصير في أكتر من عيادة حقيقية تقبل تسجيل مرضى جدد بنفس الوقت، لازم نبني شاشة "اختر عيادتك" حقيقية بدل الاعتماد على هالافتراضي — موثّق بتعليق بالملف نفسه.
+  - `INSERT` تركناها متل ما هي بدون أي تعديل (مفتوحة لـanon+authenticated) — هيك لازم تضل، لأنه المريض يقدم الطلب قبل ما يصير عندو أي حساب/جلسة.
+  - ما احتاج أي تعديل كود (secretary.html/patient-login.html) — الفلترة بصير تلقائياً وشفافة عبر RLS، نفس نمط patients/termine تماماً.
+  - **بهيك خلص بند ٢ (multi-tenant) بالكامل** — كل الجداول (patients, termine, patient_messages, patient_documents, mkp_untersuchungen, patient_impfungen, staff_profiles, staff_invites, practices, patient_join_requests) هلق معزولة بين العيادات.
 
 - **(بند ٥ من خارطة الطريق) بنينا نظام اختبارات آلية حقيقي (CI) بدل السكريبتات المؤقتة**: طوال هالجلسة، كل تصليح/ميزة كنا نتحقق منه بسكريبت Playwright مؤقت بمجلد scratchpad (خارج الـrepo، بيضيع كل ما تخلص الجلسة) وكنا نعيد تشغيل السكريبتات القديمة يدوياً يا كل PR جديد كـ"regression suite" — هلق صار عنا نظام حقيقي دائم بالـrepo نفسه، ينشغل تلقائياً على GitHub Actions مع كل push/PR:
   - `package.json`+`package-lock.json`: أضفنا `@playwright/test` كـdevDependency، مع سكريبت `npm test`.
