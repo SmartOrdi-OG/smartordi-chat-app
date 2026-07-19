@@ -44,6 +44,7 @@ function terminRowToJs(row){
     reasonNote: row.reason_note,
     startedAt: row.started_at,
     completedAt: row.completed_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -268,7 +269,7 @@ async function refreshAllMessages(){
 // already use, so callers can treat a cached row exactly like a local one.
 function loadMessagesForPatientCached(patientId){
   return (_allMessagesByPatient[patientId]||[]).map(function(row){
-    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16)};
+    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16), createdAt:row.created_at};
   });
 }
 const allMessagesReady=refreshAllMessages();
