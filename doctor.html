@@ -369,15 +369,16 @@
 .tu-col-card{background:#fff;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:7px 9px;cursor:pointer;transition:background .2s,opacity .2s,box-shadow .2s;}
 .tu-col-card:hover{background:#EAF4F1;}
 .tu-col-card.cancelled{opacity:.5;}
-.tu-col-card.past{opacity:.55;}
+.tu-col-card.done{opacity:.55;}
 .tu-col-time{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:#64748b;font-variant-numeric:tabular-nums;}
 .tu-col-name{font-size:12.5px;font-weight:700;color:var(--text-1,#0f172a);margin-top:1px;}
 .tu-col-name.strike{text-decoration:line-through;color:#94a3b8;}
-.tu-col-badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 7px;border-radius:20px;}
-.tu-col-badge.now{background:#dc2626;color:#fff;}
-.tu-col-badge.next{background:#d97706;color:#fff;}
+.tu-col-badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 7px;border-radius:20px;background:#f1f5f9;color:#64748b;}
+.tu-col-btn{display:inline-block;margin-top:4px;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:9.5px;font-weight:800;cursor:pointer;font-family:inherit;background:#EAF4F1;color:#0E5E56;}
+.tu-col-btn:hover{background:#dcecea;}
+.tu-col-btn.done{border-color:#bbf7d0;background:#dcfce7;color:#16a34a;}
+.tu-col-btn.done:hover{background:#c7f5d3;}
 .tu-col-card.now{background:#fef2f2;border-color:#fecaca;box-shadow:0 2px 10px -5px rgba(220,38,38,.4);}
-.tu-col-card.next{background:#fff7ed;border-color:#fde68a;}
 .tu-col-card.now .tu-col-time{animation:tuNowPulse 1.8s ease-in-out infinite;}
 @media(prefers-reduced-motion:reduce){.tu-col-card.now .tu-col-time{animation:none;}}
 
@@ -411,17 +412,17 @@
 .tu-appt-chip{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;flex-shrink:0;color:#0E5E56;background:#EAF4F1;}
 .tu-appt-chip.pending{color:#d97706;background:#fef3c7;}
 .tu-appt-chip.cancelled{color:#94a3b8;background:#f1f5f9;}
-.tu-appt-row.past{opacity:.5;}
+.tu-appt-row.done{opacity:.5;}
 .tu-appt-row.now{background:#fef2f2;box-shadow:0 2px 12px -5px rgba(220,38,38,.4);}
 .tu-appt-row.now:hover{background:#fde8e8;}
-.tu-appt-row.next{background:#fff7ed;}
-.tu-appt-row.next:hover{background:#fef0dc;}
 .tu-appt-row.now .tu-appt-bar{background:#dc2626;animation:tuNowPulse 1.8s ease-in-out infinite;}
 @keyframes tuNowPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.45);}50%{box-shadow:0 0 0 5px rgba(220,38,38,0);}}
 @media(prefers-reduced-motion:reduce){.tu-appt-row.now .tu-appt-bar{animation:none;}}
-.tu-time-chip{font-size:10px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:20px;flex-shrink:0;}
-.tu-time-chip.now{background:#dc2626;color:#fff;}
-.tu-time-chip.next{background:#d97706;color:#fff;}
+.tu-time-chip{font-size:10px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:20px;flex-shrink:0;background:#f1f5f9;color:#64748b;}
+.tu-visit-btn{border:1px solid #bfdbfe;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;background:#EAF4F1;color:#0E5E56;transition:background .15s;}
+.tu-visit-btn:hover{background:#dcecea;}
+.tu-visit-btn.done{border-color:#bbf7d0;background:#dcfce7;color:#16a34a;}
+.tu-visit-btn.done:hover{background:#c7f5d3;}
 .tu-empty{padding:20px 0;text-align:center;color:#94a3b8;font-size:13px;}
 .landing-page.hidden { display: none; }
 
@@ -2967,42 +2968,47 @@ function tuWorkWeekDates(dateStr){
   }
   return out;
 }
-// Marks each of today's non-cancelled appointments as 'now' (current time
-// falls inside its [time,endTime) span), 'next' (the first one still ahead
-// of now), or 'past' (already ended) -- only meaningful for today, so this
-// returns an empty map for any other selected date.
-function tuClassifyAppts(dayAppts){
-  const map={};
-  if(tuSelectedDate!==todayStr()) return map;
-  const nowDec=(new Date()).getHours()+(new Date()).getMinutes()/60;
-  let nextAssigned=false;
-  dayAppts.forEach(function(t){
-    if(t.status==='abgesagt'||!t.time) return;
-    const s=tuTimeToDecimal(t.time);
-    const e=t.endTime?tuTimeToDecimal(t.endTime):s+0.33;
-    if(nowDec>=s&&nowDec<e) map[t.id]='now';
-    else if(nowDec<s&&!nextAssigned){ map[t.id]='next'; nextAssigned=true; }
-    else if(nowDec>=e) map[t.id]='past';
-  });
-  return map;
+// Visit progress is entirely doctor-driven (supabase/phase7_termin_visit_state.sql)
+// -- NOT inferred from the clock. Comparing scheduled time to now used to
+// decide "now/next/past", but that breaks the moment the day runs behind
+// or a patient is seen out of order, which is the normal case here. 'now'
+// only means the doctor explicitly started that visit; 'done' only means
+// they explicitly marked it finished. There is no "next" prediction at all
+// anymore, since order isn't reliable enough to guess.
+function tuVisitState(t){
+  if(t.completedAt) return 'done';
+  if(t.startedAt) return 'now';
+  return null;
 }
-function tuApptRowHtml(t,timeClass){
+async function tuMarkStarted(id){
+  if(await startTerminVisit(id)) renderTagesuhr();
+}
+async function tuMarkDone(id){
+  if(await completeTerminVisit(id)) renderTagesuhr();
+}
+function tuVisitControlHtml(t,size){
+  if(t.status==='abgesagt') return `<span class="${size==='col'?'tu-col-badge':'tu-appt-chip'} cancelled">Abgesagt</span>`;
+  const state=tuVisitState(t);
+  const btnCls=size==='col'?'tu-col-btn':'tu-visit-btn';
+  if(state==='done') return `<span class="${size==='col'?'tu-col-badge':'tu-time-chip'} done">✓ Fertig</span>`;
+  if(state==='now') return `<button class="${btnCls} done" onclick="event.stopPropagation();tuMarkDone('${t.id}')">✓ Fertig</button>`;
+  return `<button class="${btnCls}" onclick="event.stopPropagation();tuMarkStarted('${t.id}')">▶ Start</button>`;
+}
+function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
   const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  const rowClass='tu-appt-row'+(timeClass?' '+timeClass:'');
-  const rightBadge=timeClass==='now'?'<span class="tu-time-chip now">JETZT</span>'
-    :timeClass==='next'?'<span class="tu-time-chip next">NÄCHSTER</span>'
-    :`<span class="tu-appt-chip ${statusClass}">${t.status==='abgesagt'?'Abgesagt':(t.status==='bestaetigt'?'Bestätigt':'Neu')}</span>`;
+  const visitState=tuVisitState(t);
+  const rowClass='tu-appt-row'+(visitState?' '+visitState:'');
   return `<div class="${rowClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
     <div class="tu-appt-time">${t.time||''}</div>
     <div class="tu-appt-bar ${statusClass}"></div>
     <div class="tu-appt-info"><div class="tu-appt-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div><div class="tu-appt-type">${escapeHtml(t.art||'')}</div></div>
-    ${rightBadge}
+    ${tuVisitControlHtml(t,'row')}
   </div>`;
 }
-// Replaces the old circular clock-face dial: doctors need to scan "how
-// many appointments, what's next" in one glance rather than read an
-// analog dial, so this is just a one-line summary above the plain
+// Replaces the old circular clock-face dial: doctors need to scan "how many
+// appointments, who's currently being seen" in one glance rather than read
+// an analog dial, so this is just a one-line summary above the plain
 // chronological list (tu-appt-row) that was already the real information.
 function renderTuSummary(dayAppts){
   const el=document.getElementById('tuSummary');
@@ -3014,35 +3020,29 @@ function renderTuSummary(dayAppts){
   }
   const label=active.length===1?'Termin':'Termine';
   let html=`<span class="tu-summary-icon">📅</span><span>${active.length} ${label} an diesem Tag</span>`;
-  if(tuSelectedDate===todayStr()){
-    const nowDec=(new Date()).getHours()+(new Date()).getMinutes()/60;
-    const next=active.find(t=>t.time&&tuTimeToDecimal(t.time)>=nowDec);
-    if(next) html+=`<span class="tu-summary-next">· Nächster: ${next.time} Uhr – ${escapeHtml(next.patient)}</span>`;
-  }
+  const inProgress=active.find(t=>tuVisitState(t)==='now');
+  if(inProgress) html+=`<span class="tu-summary-next">· Gerade bei: ${escapeHtml(inProgress.patient)}</span>`;
   el.innerHTML=html;
 }
 const TU_MONTHS_DE=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
 const TU_DOW_DE=['So','Mo','Di','Mi','Do','Fr','Sa'];
-function tuColCardHtml(t,timeClass){
-  const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
-  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+function tuColCardHtml(t){
+  const visitState=tuVisitState(t);
   const cls=['tu-col-card'];
-  if(timeClass) cls.push(timeClass);
+  if(visitState) cls.push(visitState);
   if(t.status==='abgesagt') cls.push('cancelled');
-  const badge=timeClass==='now'?'<span class="tu-col-badge now">JETZT</span>'
-    :timeClass==='next'?'<span class="tu-col-badge next">NÄCHSTER</span>':'';
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
   return `<div class="${cls.join(' ')}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${escapeHtml(t.versicherung||'')}')">
     <div class="tu-col-time">${t.time||''}</div>
     <div class="tu-col-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
-    ${badge}
+    ${tuVisitControlHtml(t,'col')}
   </div>`;
 }
 function tuDayColumnHtml(ds,dayAppts){
   const d=new Date(ds+'T00:00:00');
   const isToday=ds===todayStr();
-  const timeClassMap=isToday?tuClassifyAppts(dayAppts):{};
   const cardsHtml=dayAppts.length
-    ? dayAppts.map(t=>tuColCardHtml(t,timeClassMap[t.id])).join('')
+    ? dayAppts.map(tuColCardHtml).join('')
     : '<div class="tu-col-empty">Frei</div>';
   return `<div class="tu-col${isToday?' today':''}">
     <div class="tu-col-head"><span class="dow">${TU_DOW_DE[d.getDay()]}</span><span class="dom">${d.getDate()}.</span></div>
@@ -3105,12 +3105,11 @@ function renderTagesuhr(){
   }
 
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  const timeClassMap=tuClassifyAppts(dayAppts);
 
   const legendEl=document.getElementById('tuLegendList');
   if(legendEl){
     legendEl.innerHTML = dayAppts.length
-      ? dayAppts.map(t=>tuApptRowHtml(t,timeClassMap[t.id])).join('')
+      ? dayAppts.map(tuApptRowHtml).join('')
       : '<div class="tu-empty">Keine Termine an diesem Tag</div>';
   }
   renderTuSummary(dayAppts);
