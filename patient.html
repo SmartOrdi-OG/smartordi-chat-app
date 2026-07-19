@@ -1041,10 +1041,17 @@ function msgRowHtml(m){
     return `<div class="msg-row${outClass}">${avatar}<div class="voice-bubble"><button class="voice-play" onclick="showToast('▶ Sprachnachricht wird abgespielt...')">▶</button><div class="voice-wave">${voiceWaveHtml()}</div><span class="voice-duration">${escapeHtml(m.duration)}</span></div></div>`;
   }
   let bubble;
+  // docId links to a real patient_documents row (supabase/phase9_chat_documents.sql)
+  // -- previously both branches below just showed a toast pretending to
+  // download, with no real file behind them at all. Only wire up a real
+  // click when a docId actually exists (older/local-only message shapes
+  // never had one and would otherwise 404).
+  const filenameEsc=escapeHtml(m.filename||'').replace(/'/g,"\\'");
+  const downloadAttr=m.docId?` onclick="downloadPatientDocument('${m.docId}','${filenameEsc}')"`:'';
   if(m.type==='doc'){
-    bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;" onclick="showToast('📄 Datei wird heruntergeladen...')"><span style="font-size:22px;">📄</span><div><div style="font-size:13px;font-weight:700;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size)}</div></div></div></div>`;
+    bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;"${downloadAttr}><span style="font-size:22px;">📄</span><div><div style="font-size:13px;font-weight:700;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size||'')}</div></div></div></div>`;
   }else if(m.type==='uw'){
-    bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble" onclick="showToast('📎 Datei wird heruntergeladen...')"><span class="uw-icon">📎</span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub)}</div></div></div></div>`;
+    bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon">📎</span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub||'')}</div></div></div></div>`;
   }else{
     bubble=`<div class="msg-bubble">${escapeHtml(m.text)}</div>`;
   }

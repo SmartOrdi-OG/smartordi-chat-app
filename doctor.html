@@ -2883,7 +2883,8 @@ async function hydrateRealThreadFromSupabase(name){
   if(!patientId) return false;
   const rows=await getMessagesForPatient(patientId);
   MESSAGES[name]={date:'', items: rows.map(function(r){
-    return {dir:r.dir, type:r.type, text:r.text, time:(r.created_at||'').slice(11,16)};
+    return {dir:r.dir, type:r.type, text:r.text, time:(r.created_at||'').slice(11,16),
+      docId:r.doc_id, filename:r.filename, sub:r.doc_sub};
   })};
   return true;
 }
@@ -2893,10 +2894,19 @@ function avatarSmallHtml(color,initial){
 function msgRowHtml(m,color,initial){
   const av=m.dir==='in'?avatarSmallHtml(color,initial):'';
   let bubble;
+  const docMsgIconSvg=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
   if(m.type==='voice'){
     bubble=`<div class="msg-bubble voice-msg"><button class="play-btn">▶</button><div class="voice-wave"></div><span class="voice-duration">${escapeHtml(m.duration)}</span></div>`;
   }else if(m.type==='doc'){
-    bubble=`<div class="msg-bubble"><div class="doc-msg"><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div class="doc-info"><div class="doc-name">${escapeHtml(m.filename)}</div><div class="doc-size">${escapeHtml(m.size)} · PDF</div></div></div></div>`;
+    const clickAttr=m.docId?` onclick="downloadKarteiDocument('${m.docId}')" style="cursor:pointer;"`:'';
+    bubble=`<div class="msg-bubble"><div class="doc-msg"${clickAttr}><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;">${docMsgIconSvg}</span><div class="doc-info"><div class="doc-name">${escapeHtml(m.filename)}</div><div class="doc-size">${escapeHtml(m.size||'')} · PDF</div></div></div></div>`;
+  }else if(m.type==='uw'){
+    // Real referral (Überweisung) PDF attachment -- see supabase/phase9_chat_documents.sql.
+    // Previously this whole message type was never actually written by any
+    // real code path (a fake, DOM-only "sent" animation), so there was no
+    // real m.docId to link to; this only renders as clickable once one exists.
+    const clickAttr=m.docId?` onclick="downloadKarteiDocument('${m.docId}')" style="cursor:pointer;"`:'';
+    bubble=`<div class="msg-bubble">${escapeHtml(m.text)}<div class="doc-msg" style="margin-top:6px;"${clickAttr}><span class="doc-icon" style="display:flex;align-items:center;color:#64748b;">${docMsgIconSvg}</span><div class="doc-info"><div class="doc-name">${escapeHtml(m.filename)}</div><div class="doc-size">${escapeHtml(m.sub||'')}</div></div></div></div>`;
   }else{
     bubble=`<div class="msg-bubble">${escapeHtml(m.text)}</div>`;
   }
@@ -4721,40 +4731,58 @@ function buildUwA4(){
   `;
 }
 
-function handleUwSend(){
+// "Per Chat senden" used to be a pure DOM-only animation (fake chat bubble
+// appended via setTimeout, never actually saved anywhere) -- see
+// supabase/phase9_chat_documents.sql. It now really: builds the same PDF
+// downloadUwPDF() would produce, uploads it as a real patient_documents row
+// (so it shows up in the Dokumente tab and is genuinely downloadable, not
+// just a filename label), and persists a real chat message referencing it,
+// so the patient, the secretary, and any other doctor who opens this same
+// chat all see the exact same thing -- not just whoever clicked send.
+async function handleUwSend(){
   const d = getUwData();
   let html = '<div style="display:flex;flex-direction:column;gap:8px;padding:16px 20px 0;">';
 
   if(d.sendChat){
     html+=`<div style="display:flex;align-items:center;gap:8px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;color:#0f766e;">✓  Per Chat an <strong>${d.pName}</strong>gesendet</div>`;
-    setTimeout(()=>{
-      const msgs=document.getElementById('messages');
-      if(!msgs)return;
-      const row=document.createElement('div');row.className='msg-row out';
-      row.innerHTML=`<div><div class="msg-bubble"><div class="doc-msg" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);">
-        <span class="doc-icon" style="display:flex;align-items:center;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
-        <div class="doc-info">
-          <div class="doc-name">Überweisung_${d.pNachname}.pdf</div>
-          <div class="doc-size">${d.fach} · ${d.dring}</div>
-        </div></div></div>
-        <span class="msg-time">${getTime()} ✓✓</span></div>`;
-      msgs.appendChild(row);
-      const sys=document.createElement('div');sys.className='system-msg';
-      sys.style.cssText='background:#faf5ff;border-color:#e9d5ff;color:#7c3aed;margin:4px auto;';
-      sys.textContent=` Überweisung → ${d.an} (${d.fach}) · ${d.dring}`;
-      msgs.appendChild(sys);
-      msgs.scrollTop=msgs.scrollHeight;
-    },500);
   }
-
   if(d.sendEmail && d.email){
     html+=`<div style="display:flex;align-items:center;gap:8px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;color:#0369a1;">✓  E-Mail an <strong>${d.email}</strong>gesendet</div>`;
   } else if(d.sendEmail && !d.email){
     html+=`<div style="display:flex;align-items:center;gap:8px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;color:#c2410c;">Keine E-Mail-Adresse angegeben</div>`;
   }
-
   html+='</div>';
   document.getElementById('uwSendStatus').innerHTML=html;
+
+  if(!d.sendChat) return;
+
+  try{
+    const pdfDoc=buildUeberweisungPdf();
+    const base64Data=pdfDoc.output('datauristring').split(',')[1];
+    const filename=`Überweisung_${d.pNachname}_${d.datum.replace(/\./g,'-')}.pdf`;
+    let docId=null;
+    const patientId=await findPatientIdByFullName(d.pName);
+    if(patientId){
+      const session=currentStaffSession();
+      const sizeBytes=Math.round(base64Data.length*0.75);
+      const saved=await uploadPatientDocument(patientId,{
+        category:'ueberweisung', title:'Überweisung an '+d.an, filename, mimeType:'application/pdf', sizeBytes, base64Data,
+      },session?session.username:null);
+      docId=saved.id;
+    }
+    const msg={dir:'out', type:'uw', text:`Überweisung → ${d.an} (${d.fach}) · ${d.dring}`,
+      filename, sub:`${d.fach} · ${d.dring}`, docId, time:getTime()+' ✓'};
+    appendRealMessage(d.pName,msg);
+    // If this patient's chat happens to be the one currently open, redraw it
+    // so the real persisted message replaces whatever's on screen right now.
+    const chatNameEl=document.getElementById('chat-name');
+    if(chatNameEl && chatNameEl.textContent===d.pName){
+      renderMessages(d.pName,colorForName(d.pName));
+    }
+  }catch(e){
+    console.error('Failed to send Überweisung via chat',e);
+    showToast('✗ Senden über Chat fehlgeschlagen','error');
+  }
 }
 
 // ══ ADVANCED SEARCH ══
@@ -6009,8 +6037,12 @@ function generateRezeptPDF(){
   openPdfAndPrint(pdfUrl);
 }
 
-function downloadUwPDF(){
-  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+// Builds the actual Überweisung PDF -- shared by downloadUwPDF() (client-side
+// download) and handleUwSend()'s real chat-send path (uploads this same PDF
+// as a real patient_documents row), so both deliver the exact same document
+// instead of the chat path being a separate, purely cosmetic simulation.
+function buildUeberweisungPdf(){
+  if(typeof window.jspdf==='undefined'){ throw new Error('jsPDF not loaded'); }
   const { jsPDF } = window.jspdf;
   const d = getUwData();
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -6102,6 +6134,12 @@ function downloadUwPDF(){
     try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){}
   }
 
+  return doc;
+}
+function downloadUwPDF(){
+  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+  const d = getUwData();
+  const doc = buildUeberweisungPdf();
   doc.save(`Überweisung_${d.pNachname}_${d.datum.replace(/\./g,'-')}.pdf`);
 }
 
