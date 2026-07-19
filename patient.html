@@ -1607,7 +1607,15 @@ async function bookTermin(){
     }catch(err){
       console.error('patientBookTermin failed',err);
       const isSlotTaken=err&&err.message&&err.message.indexOf('slot_taken')!==-1;
-      showToast(tr(isSlotTaken?'termine.toast.slotTaken':'termine.toast.noAccount'),'error');
+      // Distinct from slot_taken: that's "this doctor already has someone
+      // else at this time," this is "I already have a different doctor's
+      // appointment at this time" -- both are real double-booking risks a
+      // shared practice calendar makes possible, but need separate messages
+      // since only the first one means "pick a different slot," the second
+      // means "you're already booked, check your own appointments."
+      const isPatientAlreadyBooked=err&&err.message&&err.message.indexOf('patient_already_booked')!==-1;
+      const key=isSlotTaken?'termine.toast.slotTaken':isPatientAlreadyBooked?'termine.toast.patientAlreadyBooked':'termine.toast.noAccount';
+      showToast(tr(key),'error');
       if(isSlotTaken) renderTimeSlots();
     }
     return;
