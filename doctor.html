@@ -4304,11 +4304,14 @@ async function exportPatientPdf(){
   const dobFmt=rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):'—';
 
   let y=15;
-  doc.setFillColor(30,64,175);doc.rect(0,0,210,22,'F');
-  T('PATIENTENBERICHT',15,14,18,'bold',[255,255,255]);
-  T('Österreich · DSGVO-konform',150,10,8,'normal',[180,200,255]);
-  T(today,150,16,9,'normal',[180,200,255]);
-  y=32;
+  // Plain white header (bold colored title + a thin rule) instead of a
+  // full-width solid-fill banner -- printed on a real printer, that dark
+  // block burns through ink/toner for zero extra information over a title.
+  T('PATIENTENBERICHT',15,14,18,'bold',[30,64,175]);
+  T('Österreich · DSGVO-konform',150,10,8,'normal',[120,120,120]);
+  T(today,150,16,9,'normal',[120,120,120]);
+  doc.setDrawColor(30,64,175);L(10,20,200,20,0.6);
+  y=28;
 
   R(10,y,90,22);
   T('Übermittelnde Ärztin:',13,y+6,8,'normal',[120,120,120]);
@@ -4955,13 +4958,16 @@ function printImpfpass(){
   if(typeof window.jspdf==='undefined'){alert('jsPDF lädt...');return;}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  doc.setFillColor(22,163,74);doc.rect(0,0,210,20,'F');
-  doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
-  doc.text(' Impfpass',15,13);
-  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  // Plain white header (bold colored title + a thin rule) instead of a
+  // full-width solid-fill banner -- printed on a real printer, that dark
+  // block burns through ink/toner for zero extra information over a title.
+  doc.setFontSize(16);doc.setFont('helvetica','bold');doc.setTextColor(22,163,74);
+  doc.text('Impfpass',15,14);
+  doc.setDrawColor(22,163,74);doc.setLineWidth(0.6);doc.line(10,19,200,19);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
   const n=document.getElementById('kartei-name')?.textContent||'—';
-  doc.text('Patient: '+n,15,25);doc.text('Datum: '+new Date().toLocaleDateString('de-AT'),150,25);
-  let y=35;
+  doc.text('Patient: '+n,15,27);doc.text('Datum: '+new Date().toLocaleDateString('de-AT'),150,27);
+  let y=37;
   const entries=document.querySelectorAll('.impf-eintrag');
   entries.forEach(e=>{
     const lines=e.innerText.split('\n').filter(l=>l.trim());
@@ -5904,12 +5910,14 @@ function generateRezeptPDF(){
 
   let y=15;
 
-  // Header
-  doc.setFillColor(30,64,175);doc.rect(0,0,210,22,'F');
-  T('KASSENREZEPT',15,14,18,'bold',[255,255,255]);
-  T('Österreich · DSGVO-konform',140,10,8,'normal',[180,200,255]);
-  T(new Date().toLocaleDateString('de-AT'),140,16,9,'normal',[180,200,255]);
-  y=32;
+  // Header -- plain white background (bold colored title + a thin rule)
+  // instead of a full-width solid-fill banner, which burns through a real
+  // printer's ink/toner for zero extra information over a title.
+  T('KASSENREZEPT',15,14,18,'bold',[30,64,175]);
+  T('Österreich · DSGVO-konform',140,10,8,'normal',[120,120,120]);
+  T(new Date().toLocaleDateString('de-AT'),140,16,9,'normal',[120,120,120]);
+  doc.setDrawColor(30,64,175);L(10,20,200,20,0.6);
+  y=28;
 
   // Arzt Info
   R(10,y,90,22);
