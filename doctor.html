@@ -3198,12 +3198,29 @@ function tuLayoutDayTimeline(dayAppts){
     items.forEach(other=>{ if(other.start<it.end && other.end>it.start && other.col>maxCol) maxCol=other.col; });
     it.colCount=maxCol+1;
   });
+  // The readability floor below (28px) can be taller than the actual time
+  // gap between two back-to-back appointments packed into the same column
+  // -- e.g. two 20-min slots 20 minutes apart are only 24px apart at this
+  // zoom level, so forcing both to 28px make them visually overlap even
+  // though their time ranges don't. Cap each item's available height to the
+  // real gap before whatever comes next in its own column (Infinity, i.e.
+  // no cap, if nothing follows there).
+  const byCol={};
+  items.forEach(it=>{ (byCol[it.col]=byCol[it.col]||[]).push(it); });
+  Object.values(byCol).forEach(colItems=>{
+    colItems.sort((a,b)=>a.start-b.start);
+    colItems.forEach((it,i)=>{
+      const next=colItems[i+1];
+      it.availablePx=next?(next.start-it.start)*TU_TIMELINE_PX_PER_MIN-2:Infinity;
+    });
+  });
   return items;
 }
 function tuTlApptHtml(it){
   const t=it.t;
   const top=(it.start-tuTlRangeStart)*TU_TIMELINE_PX_PER_MIN;
-  const height=Math.max(28,(it.end-it.start)*TU_TIMELINE_PX_PER_MIN);
+  const desired=Math.max(28,(it.end-it.start)*TU_TIMELINE_PX_PER_MIN);
+  const height=Math.max(14,Math.min(desired,it.availablePx));
   const leftCalc=`calc((100% - 4px) * ${it.col/it.colCount} + 2px)`;
   const widthCalc=`calc((100% - 4px) / ${it.colCount} - 4px)`;
   const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
