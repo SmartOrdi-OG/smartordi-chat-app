@@ -1014,13 +1014,17 @@ body.windows-mode .kartei-header{display:none;}
 
 /* ══ DASHBOARD ══ */
 .dashboard{flex:1;overflow-y:auto;padding:0;background:#f0f4f8;}
-.dash-header{background:linear-gradient(135deg,#0E5E56,#12746A);padding:28px 32px 64px;position:relative;overflow:hidden;}
-.dash-header::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.07);}
-.dash-header::after{content:'';position:absolute;bottom:-20px;right:80px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.05);}
-.dash-title{font-size:13px;color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:4px;letter-spacing:0.5px;text-transform:uppercase;}
-.dash-title span{font-family:'Fraunces',serif;color:white;font-size:24px;font-weight:700;display:block;margin-top:4px;letter-spacing:-0.5px;}
-.dash-subtitle{font-size:13px;color:rgba(255,255,255,0.6);margin-top:6px;}
-.compliance-bar{margin:0 20px;margin-top:-28px;background:white;border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 4px 24px rgba(0,0,0,0.12);position:relative;z-index:2;margin-bottom:20px;}
+/* Compact single-row hero: the old version was a ~220px decorative panel
+   (giant 100x100 logo, two purely ornamental blurred circles, stacked
+   uppercase-label+serif-name+subtitle) that pushed all the real patient/
+   practice data below the fold on mobile. A greeting still earns its
+   keep, but not a quarter of the screen for it. */
+.dash-header{background:linear-gradient(135deg,#0E5E56,#12746A);padding:14px 20px;display:flex;align-items:center;gap:12px;}
+.dash-logo{width:36px;height:36px;object-fit:contain;border-radius:9px;flex-shrink:0;display:block;}
+.dash-title{font-size:11px;color:rgba(255,255,255,0.65);font-weight:600;letter-spacing:0.4px;text-transform:uppercase;line-height:1.3;}
+.dash-title span{font-family:'Fraunces',serif;color:white;font-size:16px;font-weight:700;display:block;letter-spacing:-0.3px;}
+.dash-subtitle{font-size:11.5px;color:rgba(255,255,255,0.6);margin-top:2px;}
+.compliance-bar{margin:0 20px;margin-top:-10px;background:white;border-radius:14px;padding:10px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,0.1);position:relative;z-index:2;margin-bottom:20px;}
 .compliance-item{display:flex;align-items:center;gap:6px;font-size:12px;}
 .compliance-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .compliance-label{color:var(--text-2);}
@@ -1099,9 +1103,9 @@ body.windows-mode .kartei-header{display:none;}
   .stats-grid{grid-template-columns:1fr 1fr;gap:10px;padding:0 14px;}
   .dash-grid{grid-template-columns:1fr;padding:0 14px 14px;}
   .dashboard{padding:0;}
-  .dash-header{padding:20px 16px 50px;}
-  .compliance-bar{margin:0 14px;margin-top:-24px;gap:10px;padding:12px 14px;}
-  .dash-title span{font-size:18px;}
+  .dash-header{padding:12px 14px;}
+  .compliance-bar{margin:0 14px;margin-top:-8px;gap:10px;padding:10px 14px;}
+  .dash-title span{font-size:15px;}
   .vertretung-main{padding:16px;}
   .transfer-stats{grid-template-columns:repeat(3,1fr);}
 }
@@ -2060,12 +2064,14 @@ body.windows-mode .kartei-header{display:none;}
 
     <!-- Header -->
     <div class="dash-header">
-      <img src="logo..jpeg" alt="Logo" style="width:100px;height:100px;object-fit:contain;border-radius:20px;margin-bottom:12px;display:block;">
-      <div class="dash-title">
-        Guten Morgen
-        <span id="dashGreetingName">Dr. Sarah Ahmed</span>
+      <img src="logo..jpeg" alt="Logo" class="dash-logo">
+      <div>
+        <div class="dash-title">
+          Guten Morgen
+          <span id="dashGreetingName">Dr. Sarah Ahmed</span>
+        </div>
+        <div class="dash-subtitle">Ordination · Linz · Juni 2026</div>
       </div>
-      <div class="dash-subtitle">Ordination · Linz · Juni 2026</div>
     </div>
 
     <!-- DSGVO Compliance Bar -->
