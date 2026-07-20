@@ -304,17 +304,17 @@
 .app-wrapper.active .view.active{height:calc(100vh - 116px);}
 #appNavBar{position:fixed;top:48px;left:0;right:0;z-index:199;background:white;border-bottom:1px solid #e2e8f0;height:68px;display:flex;align-items:center;padding:0 12px;gap:2px;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
 #tuHome{display:none;}
+/* Home canvas (Tagesuhr calendar): an explicit tab like any other real
+   .view, toggled via body.mobile-tuhome-active (see mnavActive()/
+   showKalender()) instead of auto-appearing behind whichever window used
+   to be closed -- also the default state on load (see the unconditional
+   renderTagesuhr() call near the bottom of this file). */
+body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px;height:calc(100vh - 116px);}
 @media(max-width:768px){
   .app-wrapper.active #appNavBar{display:none!important;}
   .app-wrapper.active{padding-top:48px;}
   .app-wrapper.active .view.active{height:calc(100vh - 110px);}
-  /* Mobile reaches the same Tagesuhr calendar as desktop's home canvas,
-     but through an explicit "Kalender" bottom-nav tab instead of an
-     always-visible backdrop -- mobile has no equivalent "empty space next
-     to a sidebar" for it to fill by default. mobileShowKalender() hides
-     every real .view and toggles this body class instead of relying on
-     switchView() (which only knows about .view elements). */
-  body.mobile-tuhome-active #tuHome{display:flex;position:static;padding:16px;height:calc(100vh - 110px);overflow-y:auto;}
+  body.mobile-tuhome-active #tuHome{padding:16px;height:calc(100vh - 110px);}
 }
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;padding-top:48px;padding-left:84px;}
@@ -323,21 +323,8 @@
   .dash-header{padding-left:32px !important;}
   .dashboard{padding-left:32px !important;}
   /* Icon nav becomes a fixed left sidebar instead of a horizontal top bar
-     (matching patient.html/secretary.html's desktop layout), so windows
-     open into the remaining space to the right rather than under a top
-     bar. #appMain (wrapping every .view + the window taskbar) is the
-     positioned ancestor for windows-mode's absolutely-positioned windows;
-     it's pinned via position:fixed with explicit insets (not :relative)
-     because it's a plain content div with no intrinsic height of its own
-     -- its children are almost all position:absolute once windows-mode
-     is on, so an auto/flow height would collapse to ~0. */
+     (matching patient.html/secretary.html's desktop layout). */
   #appNavBar{top:48px;left:0;right:auto;bottom:0;width:84px;height:auto;flex-direction:column;border-bottom:none;border-right:1px solid #e2e8f0;padding:14px 8px;gap:6px;overflow-y:auto;}
-  body.windows-mode #appMain{position:fixed;top:48px;left:84px;right:0;bottom:0;}
-  /* Home canvas: sits behind every real window (z-index 1, vs. 500+ for
-     .view once opened -- see winZ/win-fullscreen) so it's only ever
-     visible when nothing else is open, filling what would otherwise be
-     empty space with today's schedule instead. */
-  #tuHome{display:flex;position:absolute;inset:0;z-index:1;overflow-y:auto;background:var(--bg,#f8fafc);padding:36px 40px;}
 }
 .tu-widget{width:100%;max-width:820px;margin:0 auto;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:28px 32px 26px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.12);}
 /* Scales with the viewport instead of a flat px value -- on a large
@@ -687,16 +674,18 @@
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <span class="nav-tab-label">Dashboard</span>
     </button>
+    <button class="nav-tab" onclick="showKalender(this);mnavActive('mnav-kalender')">
+      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
+      <span class="nav-tab-label">Kalender</span>
+    </button>
     <button class="nav-tab" onclick="openWindow('settings',this)">
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
       <span class="nav-tab-label">Einstellungen</span>
     </button>
   </div>
   <div id="appMain">
-  <!-- Home canvas: fills the empty space behind whichever real window is
-       open (or all of it, when none is) -- not a .view/window itself (no
-       titlebar, not in WIN_TITLES), just a permanent backdrop rendered at
-       a low z-index so any opened window naturally covers it. -->
+  <!-- Home canvas (Tagesuhr calendar): an explicit tab like any other,
+       shown via body.mobile-tuhome-active -- see its CSS/showKalender(). -->
   <div id="tuHome">
     <div class="tu-widget tu-widget-wide">
       <div class="tu-widget-head">
@@ -803,34 +792,12 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .view.active{display:flex;height:calc(100vh - 116px);}
 @supports(padding-bottom:env(safe-area-inset-bottom)){.view.active{height:calc(100vh - 116px - env(safe-area-inset-bottom));}}
 
-/* ══ WINDOW MODE (desktop >=1024px): every tab opens as its own draggable, minimizable window ══ */
-/* Positioned ancestor for the absolute .view windows below is #appMain
-   (set in the >=1024px media query above), not .app-wrapper itself --
-   #appMain is scoped to the area right of the sidebar via padding-left
-   on .app-wrapper, so windows never open underneath/behind the sidebar. */
-/* Window sizes scale with the viewport instead of a flat px value, so a
-   wide monitor actually gets a bigger window instead of the same small
-   box floating in empty space -- min() keeps a sane ceiling on the
-   biggest screens. A brief attempt at letting windows grow unbounded
-   (max() with no ceiling) made the app feel emptier, not fuller: the
-   window got wider but the content inside it didn't have more to show,
-   so the extra width was just more blank space. Widening the content
-   itself (real multi-column layouts, not just a wider single-purpose
-   panel) is the actual fix for that, and is future work, not this. */
-body.windows-mode .view{position:absolute;margin-left:0;width:min(1100px, calc(100vw - 160px));max-width:calc(100vw - 40px);height:min(760px, calc(100vh - 170px));max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
-/* Praxis/Kartei-Chat has 3 fixed-width columns (sidebar 300px + patient
-   panel 260px) plus the chat area's own unshrinkable minimum content width
-   (~460px, from the header's name/status/action buttons) -- the generic
-   window width is ~260px too narrow for that on its own, silently hiding
-   the whole Patientendaten panel behind an easy-to-miss horizontal
-   scrollbar. This is also the window a doctor has open most of the day,
-   so it gets the most headroom on a large monitor. */
-body.windows-mode #view-clinic{width:min(1600px, calc(100vw - 160px));max-width:calc(100vw - 40px);}
-/* On a genuinely large monitor the Praxis window is now wide enough that
-   its original mobile-era text sizes read as small/lost in the space --
-   bump the text a doctor actually reads all day (patient list, chat,
-   Patientendaten panel) a couple of px. Scoped to windows-mode so it
-   never touches the phone/tablet layout. */
+/* ══ DESKTOP TYPOGRAPHY (>=1440px): the Praxis workspace now uses the full
+   width of the screen (see .view.active above) instead of a narrow
+   floating window, so its original mobile-era text sizes read as
+   small/lost in the space -- bump the text a doctor actually reads all
+   day (patient list, chat, Patientendaten panel) a couple of px. Scoped
+   to windows-mode (desktop) so it never touches the phone/tablet layout. ══ */
 @media(min-width:1440px){
   body.windows-mode .patient-name{font-size:15px;}
   body.windows-mode .patient-preview{font-size:13px;}
@@ -842,26 +809,10 @@ body.windows-mode #view-clinic{width:min(1600px, calc(100vw - 160px));max-width:
   body.windows-mode .info-row{font-size:14px;}
   body.windows-mode .panel-section-title{font-size:11px;}
 }
-body.windows-mode .view.win-open{display:flex;}
-body.windows-mode .view.win-minimized{display:none!important;}
-body.windows-mode .view.win-fullscreen{position:absolute!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}
-body.windows-mode .view.win-fullscreen .app-window-titlebar{border-radius:0;cursor:default;}
-.app-window-titlebar{display:none;flex-shrink:0;height:32px;background:linear-gradient(135deg,#EAF4F1,#DCEAE6);color:#0A4A44;align-items:center;justify-content:space-between;padding:0 6px 0 14px;cursor:move;user-select:none;font-size:12px;font-weight:700;letter-spacing:-0.2px;border-radius:12px 12px 0 0;border-bottom:1px solid #bfdbfe;}
-body.windows-mode .view .app-window-titlebar{display:flex;}
-.app-window-controls{display:flex;gap:5px;}
-.app-window-btn{width:21px;height:21px;border-radius:6px;border:none;background:rgba(14,94,86,0.1);color:#0A4A44;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;font-family:inherit;}
-.app-window-btn:hover{background:rgba(14,94,86,0.2);}
-.app-window-btn.win-close:hover{background:#fecaca;color:#991b1b;}
-.app-window-btn svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-.app-window-body{flex:1;min-height:0;display:flex;overflow:auto;}
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
 .mobile-nav-item .chat-nav-badge{position:absolute;top:6px;right:calc(50% - 18px);margin-left:0;}
 .mobile-nav-item .chat-nav-badge.show{display:flex;}
-#winTaskbar{position:fixed;left:0;right:0;bottom:0;height:0;overflow:hidden;display:flex;align-items:center;gap:8px;padding:0 12px;background:rgba(15,23,42,0.92);z-index:650;transition:height 0.15s;}
-#winTaskbar.has-items{height:44px;}
-.win-chip{background:#fff;color:#0f172a;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
-.win-chip:hover{background:#EAF4F1;color:#0E5E56;}
 
 /* ══ PATIENT SIDEBAR ══ */
 .clinic-sidebar{width:300px;background:#fafbfc;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
@@ -1009,7 +960,11 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 /* ══ KARTEI PANEL ══ */
 .kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
 body.windows-mode .kartei-header{display:none;}
-#view-kartei > .app-window-body{flex-direction:column;overflow:hidden;}
+/* #view-kartei carries both .kartei-panel (width:0 above, for its mobile
+   slide-in form) and .view -- once switchView() marks it .active on
+   desktop it needs its real width/layout back instead of the collapsed
+   mobile default. */
+body.windows-mode #view-kartei.active{width:auto;flex-direction:column;overflow:hidden;}
 .kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#EAF4F1,#DCEAE6);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
 .kartei-header-icon{width:28px;height:28px;background:rgba(14,94,86,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
@@ -1288,7 +1243,7 @@ body.windows-mode .kartei-header{display:none;}
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
       <span>Dashboard</span>
     </button>
-    <button class="mobile-nav-item" id="mnav-kalender" onclick="mobileShowKalender();mnavActive('mnav-kalender')">
+    <button class="mobile-nav-item" id="mnav-kalender" onclick="showKalender();mnavActive('mnav-kalender')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>
       <span>Kalender</span>
     </button>
@@ -1298,9 +1253,6 @@ body.windows-mode .kartei-header{display:none;}
     </button>
   </div>
 </nav>
-
-<!-- ══ WINDOW MODE TASKBAR (desktop): minimized windows dock here ══ -->
-<div id="winTaskbar"></div>
 
 <!-- ══ CLINIC VIEW ══ -->
 <div id="view-clinic" class="view">
@@ -2687,149 +2639,14 @@ function switchView(view,btn){
   if(el && typeof ANAMNESE_COMMON_HTML!=='undefined') el.innerHTML=ANAMNESE_COMMON_HTML;
 })();
 
-/* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable window ══ */
-const WIN_TITLES={clinic:'Praxis',kartei:'Kartei',vertretung:'Vertretung',dashboard:'Dashboard',settings:'Einstellungen'};
-const WIN_MIN_TOP=126;
-const WIN_DEFAULT_POS={clinic:{left:20,top:WIN_MIN_TOP+6},kartei:{left:60,top:WIN_MIN_TOP+46},vertretung:{left:100,top:WIN_MIN_TOP+86},dashboard:{left:140,top:WIN_MIN_TOP+126},settings:{left:180,top:WIN_MIN_TOP+166}};
-let winZ=500;
-
 function isDesktopWidth(){ return window.innerWidth>=1024; }
 
-const WIN_ICON_SHRINK='<path d="M8 3v3a2 2 0 0 1-2 2H3m18-5v3a2 2 0 0 0 2 2h3M3 16h3a2 2 0 0 1 2 2v3m13-5h-3a2 2 0 0 0-2 2v3"/>';
-const WIN_ICON_EXPAND='<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>';
-
-function ensureWindowChrome(){
-  document.querySelectorAll('.view').forEach(function(v){
-    if(v.querySelector(':scope > .app-window-titlebar')) return;
-    const id=v.id.replace('view-','');
-    const title=WIN_TITLES[id]||id;
-    const badgeHtml=id==='clinic'?'<span class="chat-nav-badge" id="winBadge-'+id+'">0</span>':'';
-    const bar=document.createElement('div');
-    bar.className='app-window-titlebar';
-    bar.innerHTML='<span>'+title+badgeHtml+'</span>'+
-      '<div class="app-window-controls">'+
-      '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="Minimieren">–</button>'+
-      '<button class="app-window-btn win-fs" onclick="toggleWindowFullscreen(\''+id+'\')" title="Verkleinern"><svg viewBox="0 0 24 24">'+WIN_ICON_SHRINK+'</svg></button>'+
-      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="Schließen">✕</button>'+
-      '</div>';
-    const body=document.createElement('div');
-    body.className='app-window-body';
-    while(v.firstChild) body.appendChild(v.firstChild);
-    v.appendChild(bar);
-    v.appendChild(body);
-    makeWindowDraggable(v,bar);
-  });
-}
-
-function toggleWindowFullscreen(id){
-  const el=document.getElementById('view-'+id);
-  if(!el) return;
-  const btn=el.querySelector('.win-fs');
-  const isFs=el.classList.toggle('win-fullscreen');
-  if(btn){
-    btn.innerHTML='<svg viewBox="0 0 24 24">'+(isFs?WIN_ICON_SHRINK:WIN_ICON_EXPAND)+'</svg>';
-    btn.title=isFs?'Verkleinern':'Vollbild';
-  }
-  if(!isFs && !el.dataset.winPositioned){
-    const pos=WIN_DEFAULT_POS[id]||{left:40,top:40};
-    el.style.left=pos.left+'px'; el.style.top=pos.top+'px';
-    el.dataset.winPositioned='1';
-  }
-  focusWindow(id);
-}
-
-function makeWindowDraggable(win,handle){
-  let dragging=false,sx=0,sy=0,ol=0,ot=0;
-  handle.addEventListener('mousedown',function(e){
-    if(e.target.closest('.app-window-btn'))return;
-    if(!isDesktopWidth())return;
-    if(win.classList.contains('win-fullscreen'))return;
-    dragging=true;
-    focusWindow(win.id.replace('view-',''));
-    sx=e.clientX; sy=e.clientY;
-    ol=win.offsetLeft; ot=win.offsetTop;
-    document.body.style.userSelect='none';
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove',function(e){
-    if(!dragging)return;
-    const parent=win.parentElement;
-    let nl=ol+(e.clientX-sx), nt=ot+(e.clientY-sy);
-    nl=Math.max(0,Math.min(nl,parent.clientWidth-80));
-    nt=Math.max(WIN_MIN_TOP,Math.min(nt,parent.clientHeight-40));
-    win.style.left=nl+'px'; win.style.top=nt+'px';
-  });
-  document.addEventListener('mouseup',function(){
-    if(dragging){dragging=false;document.body.style.userSelect='';}
-  });
-}
-
-function focusWindow(id){
-  winZ++;
-  const el=document.getElementById('view-'+id);
-  // Fullscreen windows need a higher baseline than floating ones so they
-  // always stay above them, but must still be individually distinguishable
-  // -- two fullscreen windows opened back-to-back (e.g. opening Kartei from
-  // a modal launched off an already-open Dashboard) otherwise tie and the
-  // one later in DOM order silently wins, hiding the one just opened. Kept
-  // to a bounded 700-799 range (via modulo) so it can never grow past
-  // modal-overlay's z-index (900), unlike winZ itself which climbs forever.
-  if(el) el.style.zIndex = el.classList.contains('win-fullscreen') ? 700+(winZ%100) : winZ;
-}
-
+// Desktop tabs used to each open as their own draggable/minimizable
+// floating window; every tab (including Kartei) now just goes through
+// switchView() like mobile already did, so a wide monitor gets one full-
+// width workspace per tab instead of a small box floating in empty canvas.
 function openWindow(view,btn){
-  if(!isDesktopWidth()){ switchView(view,btn); return; }
-  ensureWindowChrome();
-  const el=document.getElementById('view-'+view);
-  if(!el) return;
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  if(btn && btn.classList && btn.classList.contains('nav-tab')) btn.classList.add('active');
-  const mmap={'clinic':'mnav-clinic','vertretung':'mnav-vertretung','dashboard':'mnav-dashboard','settings':'mnav-settings'};
-  if(mmap[view]) mnavActive(mmap[view]);
-  if(!el.dataset.winPositioned){
-    const pos=WIN_DEFAULT_POS[view]||{left:40,top:40};
-    el.style.left=pos.left+'px'; el.style.top=pos.top+'px';
-    el.dataset.winPositioned='1';
-  }
-  el.classList.remove('win-minimized');
-  if(!el.classList.contains('win-open')) el.classList.add('win-fullscreen');
-  el.classList.add('win-open');
-  removeTaskbarChip(view);
-  focusWindow(view);
-  document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
-}
-
-function closeWindow(id){
-  const el=document.getElementById('view-'+id);
-  if(el){ el.classList.remove('win-open'); el.classList.remove('win-minimized'); el.classList.remove('active'); }
-  removeTaskbarChip(id);
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-}
-
-function minimizeWindow(id){
-  const el=document.getElementById('view-'+id);
-  if(!el) return;
-  el.classList.add('win-minimized');
-  addTaskbarChip(id);
-}
-
-function addTaskbarChip(id){
-  const bar=document.getElementById('winTaskbar');
-  if(!bar || document.getElementById('winChip-'+id)) return;
-  const chip=document.createElement('button');
-  chip.className='win-chip';
-  chip.id='winChip-'+id;
-  chip.textContent=WIN_TITLES[id]||id;
-  chip.onclick=function(){ openWindow(id); };
-  bar.appendChild(chip);
-  bar.classList.add('has-items');
-}
-
-function removeTaskbarChip(id){
-  const chip=document.getElementById('winChip-'+id);
-  if(chip) chip.remove();
-  const bar=document.getElementById('winTaskbar');
-  if(bar && !bar.querySelector('.win-chip')) bar.classList.remove('has-items');
+  switchView(view,btn);
 }
 
 function updateChatUnreadBadge(){
@@ -2842,26 +2659,10 @@ function updateChatUnreadBadge(){
   });
 }
 
-// #tuHome (the home canvas, see its CSS/markup) now fills the empty space
-// behind whichever window is open -- or all of it, when none is -- so
-// there's no need to force a default tab open anymore.
+// body.windows-mode now only gates desktop-only typography/layout tweaks
+// (see its CSS), not window chrome -- kept in sync with the viewport here.
 function syncWindowsModeState(){
-  const desktop=isDesktopWidth();
-  document.body.classList.toggle('windows-mode',desktop);
-  if(desktop){
-    // Guards against a stale mobile-tuhome-active class from surviving a
-    // resize-up (the mobile Kalender tab is unreachable at this width, so
-    // it could otherwise linger and outrank #tuHome's desktop CSS).
-    document.body.classList.remove('mobile-tuhome-active');
-    ensureWindowChrome();
-    const activeView=document.querySelector('.view.active');
-    if(activeView){
-      const id=activeView.id.replace('view-','');
-      if(!activeView.classList.contains('win-open') && !activeView.classList.contains('win-minimized')){
-        openWindow(id);
-      }
-    }
-  }
+  document.body.classList.toggle('windows-mode',isDesktopWidth());
   updateChatUnreadBadge();
 }
 window.addEventListener('resize',syncWindowsModeState);
@@ -3770,12 +3571,14 @@ function mnavActive(id){
   if(id!=='mnav-kalender') document.body.classList.remove('mobile-tuhome-active');
 }
 
-// Mobile-only entry point for the Tagesuhr calendar (desktop reaches the
-// same #tuHome as an always-visible backdrop instead, see its CSS). Hides
-// every real .view directly rather than going through switchView(), since
-// #tuHome isn't a .view itself (no titlebar/window-mode participation).
-function mobileShowKalender(){
+// Entry point for the Tagesuhr calendar tab, used by both mobile's
+// bottom-nav "Kalender" button and desktop's own nav-tab. Hides every real
+// .view directly rather than going through switchView(), since #tuHome
+// isn't a .view itself (no nav-tab-mirrored id to look up).
+function showKalender(btn){
   document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  if(btn) btn.classList.add('active');
   if(typeof karteiOpen!=='undefined' && karteiOpen) toggleKartei();
   document.body.classList.add('mobile-tuhome-active');
   renderTagesuhr();
@@ -4204,8 +4007,8 @@ function openKarteiContextual(){
   }
 }
 
-// Mobile-only: desktop opens/closes Kartei through the generic window
-// system (openWindow('kartei')/closeWindow('kartei')) instead.
+// Mobile-only: desktop opens Kartei through the generic view system
+// (openWindow('kartei'), which now just delegates to switchView()) instead.
 function toggleKartei(){
   karteiOpen=!karteiOpen;
   const panel=document.getElementById('view-kartei');
@@ -6730,6 +6533,10 @@ async function confirmTransfer(){
   showToast('✓ Weitergeleitet an '+toDoctorName+' · '+terminPart+(messaged?' · Patient per Chat informiert':''),'success');
 }
 
+// Kalender/Tagesuhr is the default landing tab (no .view starts .active in
+// the markup) -- clicking any real nav-tab clears mobile-tuhome-active via
+// mnavActive(), same as coming back here later through showKalender().
+document.body.classList.add('mobile-tuhome-active');
 renderTagesuhr();
 // Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
 // Termine lists), Termine, patient identities and vaccination records all
