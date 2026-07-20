@@ -6194,23 +6194,40 @@ function showToast(msg,type='success'){
 function showToastSettings(msg){showToast(msg,'success');}
 
 // Init canvas when settings view opens
-document.addEventListener('smartordi-view-change', function(e){
+document.addEventListener('smartordi-view-change', async function(e){
   if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); renderCloudMigrationCard(); }
-  if(e.detail === 'vertretung') renderVertretungView();
+  if(e.detail === 'vertretung'){ await vertretungReady; renderVertretungView(); }
 });
 
 // ══ VERTRETUNG (real absence + substitute-doctor notice, replacing the old
 // fully-static "Dr. Klaus Weber" demo and fictional inter-practice network
 // map) ══
-const VERTRETUNG_KEY='smartordi_vertretung';
-function loadVertretungAll(){
-  try{ return JSON.parse(localStorage.getItem(VERTRETUNG_KEY))||{}; }catch(e){ return {}; }
+// Supabase-backed (supabase/phase22_vertretung_supabase.sql) -- used to be
+// plain localStorage, which meant a doctor's own Vertretung was invisible
+// on any other device/browser than the one that saved it. One row per
+// doctor (arzt_id = currentDoctorUsername(), same as staff_profiles.id),
+// cached in memory the same way loadTermine()/loadPatients() already work
+// elsewhere in this file: an async refresh kicked off once, every
+// synchronous call site just reads whatever's currently cached.
+let _vertretung=null;
+async function refreshVertretung(){
+  const me=currentDoctorUsername();
+  if(!me) return;
+  const {data,error}=await sb.from('practice_vertretung').select('*').eq('arzt_id',me).maybeSingle();
+  if(error){ console.error('refreshVertretung failed',error); return; }
+  _vertretung=data;
 }
 function loadVertretung(){
-  const me=currentDoctorUsername()||'dr.ahmed';
-  return loadVertretungAll()[me]||null;
+  if(!_vertretung) return null;
+  return {
+    von:_vertretung.von, bis:_vertretung.bis, mode:_vertretung.mode,
+    internalUsername:_vertretung.internal_username||'',
+    name:_vertretung.name, fach:_vertretung.fach,
+    adresse:_vertretung.adresse, tel:_vertretung.tel, email:_vertretung.email,
+    sentTo:_vertretung.sent_to||[], sentAt:_vertretung.sent_at,
+  };
 }
-function saveVertretungAll(all){ localStorage.setItem(VERTRETUNG_KEY, JSON.stringify(all)); }
+const vertretungReady=refreshVertretung();
 
 // Every patient who's ever had a Termin with this doctor -- "all of this
 // doctor's patients" the way the user described it (not just ones with an
@@ -6357,23 +6374,30 @@ function renderVertretungView(){
     ? v.sentTo.map(name=>`<div class="transfer-patient-item"><div class="avatar" style="background:${colorForName(name)};width:38px;height:38px;font-size:14px;">${name[0]}</div><div class="tp-info"><div class="tp-name">${name}</div></div><span class="tp-status sent">✓ Benachrichtigt</span></div>`).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Noch keine Benachrichtigungen gesendet</div>';
 }
-function saveVertretung(){
-  const me=currentDoctorUsername()||'dr.ahmed';
+async function saveVertretung(){
+  const me=currentDoctorUsername();
   const form=readVertretungForm();
   if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
   if(form.mode==='internal'){
     if(!form.internalUsername){ showToast('Bitte einen Kollegen/eine Kollegin auswählen','error'); return; }
   } else if(!form.name){ showToast('Bitte Namen des Vertretungsarztes angeben','error'); return; }
-  const all=loadVertretungAll();
-  const existing=all[me]||{};
-  all[me]=Object.assign({},existing,form);
-  saveVertretungAll(all);
+  // Omitting sent_to/sent_at from the payload leaves them untouched on
+  // conflict (Supabase's upsert only overwrites the columns you send) --
+  // same "merge, don't clobber" behavior the old localStorage
+  // Object.assign(existing, form) had.
+  const {data,error}=await sb.from('practice_vertretung').upsert({
+    arzt_id:me, von:form.von, bis:form.bis, mode:form.mode,
+    internal_username:form.internalUsername||null,
+    name:form.name, fach:form.fach, adresse:form.adresse, tel:form.tel, email:form.email,
+  },{onConflict:'arzt_id'}).select().single();
+  if(error){ console.error('saveVertretung failed',error); showToast('✗ Speichern fehlgeschlagen','error'); return; }
+  _vertretung=data;
   renderVertretungView();
   updateDashboardStats();
   showToast('✓ Vertretung gespeichert','success');
 }
-function sendVertretungBroadcast(){
-  const me=currentDoctorUsername()||'dr.ahmed';
+async function sendVertretungBroadcast(){
+  const me=currentDoctorUsername();
   const form=readVertretungForm();
   if(!form.von||!form.bis){ showToast('Bitte Von/Bis-Datum angeben','error'); return; }
   if(form.mode==='internal'){
@@ -6393,9 +6417,14 @@ function sendVertretungBroadcast(){
   patients.forEach(function(name){
     if(appendRealMessage(name,{dir:'out',type:'text',text,time})) sentTo.push(name);
   });
-  const all=loadVertretungAll();
-  all[me]=Object.assign({},all[me],form,{sentAt:now.toISOString(),sentTo});
-  saveVertretungAll(all);
+  const {data,error}=await sb.from('practice_vertretung').upsert({
+    arzt_id:me, von:form.von, bis:form.bis, mode:form.mode,
+    internal_username:form.internalUsername||null,
+    name:form.name, fach:form.fach, adresse:form.adresse, tel:form.tel, email:form.email,
+    sent_at:now.toISOString(), sent_to:sentTo,
+  },{onConflict:'arzt_id'}).select().single();
+  if(error){ console.error('sendVertretungBroadcast failed',error); showToast('✗ Senden fehlgeschlagen','error'); return; }
+  _vertretung=data;
   renderVertretungView();
   renderPatientList();
   showToast(sentTo.length?'✓ '+sentTo.length+' Patient/in(nen) benachrichtigt':'Keine Patient/innen mit echtem Konto gefunden','success');
@@ -6544,7 +6573,7 @@ filterVisits();
 // vendor/staff-accounts.js/vendor/patient-data.js before the first render
 // that depends on any of them (allDueVaccinations needs both patients and
 // impfungen loaded to scan every patient at once).
-Promise.all([staffRosterReady, termineReady, patientsReady, impfungenReady, allMessagesReady]).then(()=>{
+Promise.all([staffRosterReady, termineReady, patientsReady, impfungenReady, allMessagesReady, vertretungReady]).then(()=>{
   renderTeamCard();
   renderDashTermine();
   updateDashboardStats();
