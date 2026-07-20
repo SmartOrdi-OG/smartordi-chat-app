@@ -822,6 +822,15 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
   body.windows-mode .kartei-patient-meta{font-size:13px;}
   body.windows-mode .k-section-title{font-size:12px;}
   body.windows-mode .k-row{font-size:14px;}
+  /* Verlauf (visit history) entries -- same gap as the rest of Kartei
+     above, just missed the first pass since they're rendered by a
+     different function (filterVisits(), not populateKarteiStamm()). */
+  body.windows-mode .k-visit-count{font-size:12.5px;}
+  body.windows-mode .k-visit-date{font-size:12px;padding:4px 9px;}
+  body.windows-mode .k-visit-type{font-size:12.5px;}
+  body.windows-mode .k-visit-diag{font-size:14px;}
+  body.windows-mode .k-visit-notes{font-size:12.5px;}
+  body.windows-mode .k-visit-therapy{font-size:12.5px;}
 }
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
