@@ -795,13 +795,20 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
    day (patient list, chat, Patientendaten panel) a couple of px. Scoped
    to windows-mode (desktop) so it never touches the phone/tablet layout. ══ */
 @media(min-width:1440px){
-  body.windows-mode .patient-name{font-size:15px;}
-  body.windows-mode .patient-preview{font-size:13px;}
-  body.windows-mode .patient-time{font-size:12px;}
-  body.windows-mode .chat-patient-name{font-size:17px;}
+  body.windows-mode .patient-name{font-size:16px;}
+  body.windows-mode .patient-preview{font-size:14px;}
+  body.windows-mode .patient-time{font-size:13px;}
+  body.windows-mode .chat-patient-name{font-size:18px;}
   body.windows-mode .chat-patient-sub,
-  body.windows-mode .chat-patient-status{font-size:13px;}
-  body.windows-mode .msg-bubble{font-size:15px;}
+  body.windows-mode .chat-patient-status{font-size:14px;}
+  body.windows-mode .msg-bubble{font-size:16px;}
+  /* Kartei's own text never got a desktop bump before -- it used to be a
+     small mobile-style panel, but it's now a permanent, generously-wide
+     column, so its mobile-era sizes read as too small for the space. */
+  body.windows-mode .kartei-patient-name{font-size:15px;}
+  body.windows-mode .kartei-patient-meta{font-size:13px;}
+  body.windows-mode .k-section-title{font-size:12px;}
+  body.windows-mode .k-row{font-size:14px;}
 }
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
