@@ -831,7 +831,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .transfer-badge{background:#f59e0b;color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;}
 
 /* ══ CHAT ══ */
-.chat-area{flex:1;display:flex;flex-direction:column;background:#f8fafc;}
+.chat-area{flex:1;max-width:820px;display:flex;flex-direction:column;background:#f8fafc;}
 .chat-header{background:white;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
 .chat-patient-name{font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:-0.3px;}
 .chat-patient-sub{font-size:12px;color:var(--text-2);}
@@ -952,7 +952,7 @@ body.windows-mode .kartei-header{display:none;}
    needs its own explicit width/flex layout back regardless of any .open
    toggle. The chat header's own "Kartei öffnen" button is redundant once
    Kartei is always showing right next to it. */
-body.windows-mode #karteiPanel{width:min(560px, 42vw);flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+body.windows-mode #karteiPanel{flex:1;width:auto;min-width:480px;display:flex;flex-direction:column;overflow:hidden;}
 body.windows-mode #karteiBtn{display:none;}
 .kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#EAF4F1,#DCEAE6);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
