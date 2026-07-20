@@ -442,6 +442,17 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .tu-empty{padding:20px 0;text-align:center;color:#94a3b8;font-size:13px;}
 .landing-page.hidden { display: none; }
 
+/* ══ TOP BAR (logo + user chip) ══ */
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-logo{width:36px;height:36px;object-fit:contain;border-radius:9px;background:white;box-shadow:0 2px 6px rgba(0,0,0,0.18);flex-shrink:0;}
+.topbar-brand-name{color:white;font-size:15px;font-weight:800;letter-spacing:-0.2px;white-space:nowrap;}
+.topbar-brand-name span{color:rgba(255,255,255,0.65);font-weight:600;}
+.topbar-user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:24px;padding:4px 4px 4px 5px;}
+.topbar-avatar{width:26px;height:26px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0E5E56;font-size:12px;font-weight:800;flex-shrink:0;}
+.topbar-user-name{color:white;font-size:13px;font-weight:700;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar-logout-btn{background:rgba(255,255,255,0.15);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s;}
+.topbar-logout-btn:hover{background:#dc2626;}
+
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
 @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
 @keyframes fadeUp { from{opacity:0;transform:translateY(24px);} to{opacity:1;transform:translateY(0);} }
@@ -645,15 +656,17 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
       <button onclick="goBack()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.15);color:#fff;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;white-space:nowrap;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Zurück
       </button>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <img src="logo..jpeg" alt="Logo" style="width:44px;height:44px;object-fit:contain;border-radius:10px;background:white;">
-        <span style="color:white;font-size:14px;font-weight:800;letter-spacing:-0.3px;">Smartordi<span style="color:rgba(255,255,255,0.7);">.chat.eu</span></span>
+      <div class="topbar-brand">
+        <img src="logo..jpeg" alt="Logo" class="topbar-logo">
+        <span class="topbar-brand-name">Smartordi<span>.chat.eu</span></span>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div id="doctorAvatarDisplay" style="width:30px;height:30px;background:#0E5E56;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:700;flex-shrink:0;">S</div>
-      <span id="doctorNameDisplay" style="color:rgba(255,255,255,0.9);font-size:13px;font-weight:600;">Dr. Sarah Ahmed</span>
-      <button onclick="doctorLogout()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:white;padding:5px 11px;border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;" title="Abmelden">Abmelden</button>
+    <div class="topbar-user-chip">
+      <div id="doctorAvatarDisplay" class="topbar-avatar">S</div>
+      <span id="doctorNameDisplay" class="topbar-user-name">Dr. Sarah Ahmed</span>
+      <button onclick="doctorLogout()" class="topbar-logout-btn" title="Abmelden">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
     </div>
   </div>
   <div id="appNavBar">
