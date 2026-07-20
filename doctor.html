@@ -340,7 +340,12 @@
   #tuHome{display:flex;position:absolute;inset:0;z-index:1;overflow-y:auto;background:var(--bg,#f8fafc);padding:36px 40px;}
 }
 .tu-widget{width:100%;max-width:820px;margin:0 auto;background:var(--surface,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:28px 32px 26px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.12);}
-.tu-widget-wide{max-width:1160px;}
+/* Scales with the viewport instead of a flat px value -- on a large
+   monitor the home-canvas timeline (the one thing visible when no window
+   is open) was capped at 1160px and centered, leaving huge empty margins
+   on either side instead of using the screen. max() keeps the original
+   1160px as a floor so nothing shrinks on smaller desktop screens. */
+.tu-widget-wide{max-width:max(1160px, calc(100vw - 300px));}
 .tu-desktop-view{display:block;}
 .tu-mobile-view{display:none;}
 @media(max-width:900px){
@@ -806,8 +811,12 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 /* Window sizes scale with the viewport instead of a flat px value, so a
    wide monitor actually gets a bigger window instead of the same small
    box floating in empty space -- min() keeps a sane ceiling on the
-   biggest screens and still shrinks gracefully down to the 1024px
-   windows-mode threshold itself. */
+   biggest screens. A brief attempt at letting windows grow unbounded
+   (max() with no ceiling) made the app feel emptier, not fuller: the
+   window got wider but the content inside it didn't have more to show,
+   so the extra width was just more blank space. Widening the content
+   itself (real multi-column layouts, not just a wider single-purpose
+   panel) is the actual fix for that, and is future work, not this. */
 body.windows-mode .view{position:absolute;margin-left:0;width:min(1100px, calc(100vw - 160px));max-width:calc(100vw - 40px);height:min(760px, calc(100vh - 170px));max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 /* Praxis/Kartei-Chat has 3 fixed-width columns (sidebar 300px + patient
    panel 260px) plus the chat area's own unshrinkable minimum content width
