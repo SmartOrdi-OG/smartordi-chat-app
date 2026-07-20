@@ -803,13 +803,36 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
    (set in the >=1024px media query above), not .app-wrapper itself --
    #appMain is scoped to the area right of the sidebar via padding-left
    on .app-wrapper, so windows never open underneath/behind the sidebar. */
-body.windows-mode .view{position:absolute;margin-left:0;width:760px;max-width:calc(100vw - 40px);height:600px;max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
+/* Window sizes scale with the viewport instead of a flat px value, so a
+   wide monitor actually gets a bigger window instead of the same small
+   box floating in empty space -- min() keeps a sane ceiling on the
+   biggest screens and still shrinks gracefully down to the 1024px
+   windows-mode threshold itself. */
+body.windows-mode .view{position:absolute;margin-left:0;width:min(1100px, calc(100vw - 160px));max-width:calc(100vw - 40px);height:min(760px, calc(100vh - 170px));max-height:calc(100vh - 130px);flex-direction:column;background:var(--surface,#fff);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 48px rgba(15,23,42,0.22);pointer-events:auto;}
 /* Praxis/Kartei-Chat has 3 fixed-width columns (sidebar 300px + patient
    panel 260px) plus the chat area's own unshrinkable minimum content width
    (~460px, from the header's name/status/action buttons) -- the generic
-   760px window width is ~260px too narrow for that, silently hiding the
-   whole Patientendaten panel behind an easy-to-miss horizontal scrollbar. */
-body.windows-mode #view-clinic{width:1040px;max-width:calc(100vw - 40px);}
+   window width is ~260px too narrow for that on its own, silently hiding
+   the whole Patientendaten panel behind an easy-to-miss horizontal
+   scrollbar. This is also the window a doctor has open most of the day,
+   so it gets the most headroom on a large monitor. */
+body.windows-mode #view-clinic{width:min(1600px, calc(100vw - 160px));max-width:calc(100vw - 40px);}
+/* On a genuinely large monitor the Praxis window is now wide enough that
+   its original mobile-era text sizes read as small/lost in the space --
+   bump the text a doctor actually reads all day (patient list, chat,
+   Patientendaten panel) a couple of px. Scoped to windows-mode so it
+   never touches the phone/tablet layout. */
+@media(min-width:1440px){
+  body.windows-mode .patient-name{font-size:15px;}
+  body.windows-mode .patient-preview{font-size:13px;}
+  body.windows-mode .patient-time{font-size:12px;}
+  body.windows-mode .chat-patient-name{font-size:17px;}
+  body.windows-mode .chat-patient-sub,
+  body.windows-mode .chat-patient-status{font-size:13px;}
+  body.windows-mode .msg-bubble{font-size:15px;}
+  body.windows-mode .info-row{font-size:14px;}
+  body.windows-mode .panel-section-title{font-size:11px;}
+}
 body.windows-mode .view.win-open{display:flex;}
 body.windows-mode .view.win-minimized{display:none!important;}
 body.windows-mode .view.win-fullscreen{position:absolute!important;inset:0!important;width:100%!important;max-width:100%!important;height:100%!important;max-height:100%!important;border-radius:0;z-index:700;}
