@@ -125,6 +125,16 @@ function mockScript(seed) {
 }
 
 async function installMockSupabase(page, seed, extraInit) {
+  // Every staff/patient-facing page loads the real @supabase/supabase-js
+  // library from a CDN via <script src="https://cdn.jsdelivr.net/...">.
+  // addInitScript() runs before that tag executes, so on a network that
+  // can reach the CDN (unlike this sandbox, but very much like a normal
+  // CI runner) the real library loads afterwards and overwrites
+  // window.supabase with itself -- silently discarding this mock and
+  // sending every subsequent sb.from(...) call to the actual production
+  // Supabase project instead. Abort that one request so the mock always
+  // wins regardless of what network the test happens to run on.
+  await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2', route => route.abort());
   await page.addInitScript(mockScript(seed || {}));
   if (extraInit) await page.addInitScript(extraInit);
 }
