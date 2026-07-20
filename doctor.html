@@ -3212,9 +3212,14 @@ function updateDashboardStats(){
   const vertItem=document.getElementById('dashVertretungItem');
   const vertVal=document.getElementById('dashVertretungValue');
   if(vertItem&&vertVal){
+    // Only a currently-active absence (today within von-bis), not just any
+    // Vertretung ever saved -- otherwise this would keep showing forever
+    // after the absence already ended.
     const v=loadVertretung();
-    if(v&&v.bis){
-      vertVal.textContent=new Date(v.bis+'T00:00:00').toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'});
+    const today=todayStr();
+    if(v&&v.von&&v.bis&&v.von<=today&&today<=v.bis){
+      const bisLabel=new Date(v.bis+'T00:00:00').toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'});
+      vertVal.textContent='bis '+bisLabel+(v.name?' · '+v.name:'');
       vertItem.style.display='';
     } else {
       vertItem.style.display='none';
