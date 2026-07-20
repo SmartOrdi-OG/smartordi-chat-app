@@ -53,6 +53,17 @@ async function patientChangePassword(newPassword){
   if(error){ console.error('patientChangePassword failed',error); return false; }
   return !!data;
 }
+// supabase/phase20_patient_self_deletion.sql -- lets the patient request
+// their own erasure (Art. 17 DSGVO) directly, instead of only through
+// staff. Same retention-reconciliation logic as the staff-facing
+// request_patient_deletion() (10-year § 51 ÄrzteG retention): anonymizes
+// immediately if that period already elapsed, otherwise schedules the
+// legally earliest allowed date and returns it.
+async function patientRequestDeletion(){
+  const {data,error}=await sb.rpc('patient_request_deletion',{p_token:getPatientToken()});
+  if(error){ console.error('patientRequestDeletion failed',error); throw error; }
+  return data&&data[0];
+}
 // supabase/phase8_anamnese.sql -- saves the mandatory first-login Anamnese
 // questionnaire server-side instead of a browser-local record, so it's
 // visible from any device the patient logs in from afterward.

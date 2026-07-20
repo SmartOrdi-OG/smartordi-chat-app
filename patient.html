@@ -788,6 +788,15 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
         <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilOrdTel">—</span></div>
       </div>
 
+      <div class="info-card" id="profilDeletionCard" style="display:none;border-left-color:var(--red);">
+        <div class="info-card-header" data-i18n="profil.deletion.title">Datenlöschung beantragen</div>
+        <div style="padding:0 16px 12px;font-size:12px;color:var(--text-muted);line-height:1.6;" data-i18n="profil.deletion.desc">Sie können jederzeit die Löschung Ihrer Daten beantragen (Art. 17 DSGVO). Ärztliche Aufzeichnungen müssen gesetzlich mindestens 10 Jahre nach der letzten Behandlung aufbewahrt werden (§ 51 ÄrzteG) — ist diese Frist bereits abgelaufen, werden Ihre Daten sofort anonymisiert; andernfalls zum frühestmöglichen gesetzlich zulässigen Zeitpunkt.</div>
+        <div id="profilDeletionResult" style="display:none;margin:0 16px 12px;padding:8px 10px;background:var(--bg);border:1.5px dashed var(--red);border-radius:8px;font-size:12px;font-weight:700;color:var(--text);"></div>
+        <div style="padding:0 16px 14px;">
+          <button class="logout-btn" id="profilDeletionBtn" onclick="requestOwnDataDeletion()" data-i18n="profil.deletion.button">🗑️ Löschung beantragen</button>
+        </div>
+      </div>
+
       <button class="logout-btn" style="background:#EAF4F1;color:#0E5E56;" onclick="openChangePasswordModal()" data-i18n="changepw2.button">🔒 Passwort ändern</button>
       <button class="logout-btn" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
 
@@ -1381,6 +1390,12 @@ async function initPatientData(){
   document.getElementById('profilEmail').textContent=account.email||'—';
   document.getElementById('profilVersicherung').textContent=account.versicherung||'—';
   document.getElementById('profilSvnr').textContent=account.svnr||'—';
+  // Only a real Supabase-backed account (has a session token) has a
+  // patients row to actually request erasure of -- a local-only/guardian/
+  // demo account has nothing server-side for patient_request_deletion()
+  // to act on.
+  const deletionCard=document.getElementById('profilDeletionCard');
+  if(deletionCard) deletionCard.style.display=getPatientToken()?'block':'none';
   renderPatientMessages();
   if(!(account.messages&&account.messages.length)){
     const b1=document.querySelector('#nav-chat .nav-badge');if(b1)b1.remove();
@@ -1790,6 +1805,39 @@ async function logout(){
     sessionStorage.removeItem('smartordi_user');
     setPatientToken(null);
     window.location.href='login.html';
+  }
+}
+
+// supabase/phase20_patient_self_deletion.sql's patient_request_deletion
+// RPC decides server-side whether the 10-year statutory retention
+// (§ 51 ÄrzteG) has already elapsed (anonymizes immediately, logging the
+// patient out since their account no longer exists) or not (schedules the
+// legal date and lets the patient keep using their account until then) --
+// this button only triggers it and shows whichever outcome the server
+// returns, it never anonymizes/deletes anything itself.
+async function requestOwnDataDeletion(){
+  if(!confirm(tr('profil.deletion.confirm')||'Datenlöschung wirklich beantragen? Dies kann nicht rückgängig gemacht werden, sobald Ihre Daten anonymisiert sind.')) return;
+  const btn=document.getElementById('profilDeletionBtn');
+  btn.disabled=true;
+  const resultEl=document.getElementById('profilDeletionResult');
+  try{
+    const row=await patientRequestDeletion();
+    resultEl.style.display='block';
+    if(row&&row.anonymized_immediately){
+      resultEl.textContent=tr('profil.deletion.doneNow')||'✓ Ihre Daten wurden anonymisiert (Aufbewahrungsfrist bereits abgelaufen).';
+      await patientLogout();
+      sessionStorage.removeItem('smartordi_user');
+      setPatientToken(null);
+      setTimeout(()=>{ window.location.href='login.html'; },2500);
+    }else if(row){
+      const df=new Date(row.effective_or_scheduled_date).toLocaleDateString('de-AT');
+      resultEl.textContent=(tr('profil.deletion.scheduled')||'Löschung geplant für {date} (gesetzliche Aufbewahrungsfrist § 51 ÄrzteG: 10 Jahre nach letzter Behandlung).').replace('{date}',df);
+      btn.disabled=false;
+    }
+  }catch(e){
+    resultEl.style.display='block';
+    resultEl.textContent=tr('profil.deletion.failed')||'✗ Löschung fehlgeschlagen — bitte erneut versuchen.';
+    btn.disabled=false;
   }
 }
 
