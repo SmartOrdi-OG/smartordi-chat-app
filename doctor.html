@@ -661,10 +661,6 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
       <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
     </button>
-    <button class="nav-tab" id="karteiNavTab" onclick="openKarteiSearch(this)">
-      <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
-      <span class="nav-tab-label">Kartei</span>
-    </button>
     <button class="nav-tab vertretung-tab" onclick="openWindow('vertretung',this)">
       <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></span>
       <span class="nav-tab-label">Vertretung</span>
@@ -806,8 +802,6 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
   body.windows-mode .chat-patient-sub,
   body.windows-mode .chat-patient-status{font-size:13px;}
   body.windows-mode .msg-bubble{font-size:15px;}
-  body.windows-mode .info-row{font-size:14px;}
-  body.windows-mode .panel-section-title{font-size:11px;}
 }
 .chat-nav-badge{display:none;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;margin-left:6px;min-width:16px;vertical-align:middle;}
 .chat-nav-badge.show{display:inline-flex;}
@@ -850,13 +844,6 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .action-btn.transfer-btn{background:#fff7ed;border-color:#f59e0b;color:#d97706;}
 .action-btn.transfer-btn:hover{background:#fef3c7;transform:translateY(-1px);}
 
-/* ══ PATIENT PANEL ══ */
-.patient-panel{width:260px;background:white;border-left:1px solid var(--border);padding:16px;overflow-y:auto;flex-shrink:0;}
-.panel-section{margin-bottom:20px;}
-.panel-section-title{font-size:10px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
-.info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;}
-.info-label{color:var(--text-2);}
-.info-value{font-weight:600;color:var(--text-1);}
 .tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin:2px;}
 .tag-blue{background:#DCEAE6;color:#12746A;}
 .tag-red{background:#fee2e2;color:#dc2626;}
@@ -960,11 +947,13 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 /* ══ KARTEI PANEL ══ */
 .kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
 body.windows-mode .kartei-header{display:none;}
-/* #view-kartei carries both .kartei-panel (width:0 above, for its mobile
-   slide-in form) and .view -- once switchView() marks it .active on
-   desktop it needs its real width/layout back instead of the collapsed
-   mobile default. */
-body.windows-mode #view-kartei.active{width:auto;flex-direction:column;overflow:hidden;}
+/* Kartei is now permanently visible alongside chat on desktop -- a real
+   column, not the collapsed (width:0) mobile slide-in form above -- so it
+   needs its own explicit width/flex layout back regardless of any .open
+   toggle. The chat header's own "Kartei öffnen" button is redundant once
+   Kartei is always showing right next to it. */
+body.windows-mode #karteiPanel{width:min(420px, 36vw);flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+body.windows-mode #karteiBtn{display:none;}
 .kartei-header{padding:8px 18px;border-bottom:1px solid #bfdbfe;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,#EAF4F1,#DCEAE6);flex-shrink:0;}
 .kartei-header-left{display:flex;align-items:center;gap:10px;}
 .kartei-header-icon{width:28px;height:28px;background:rgba(14,94,86,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;}
@@ -1121,7 +1110,6 @@ body.windows-mode #view-kartei.active{width:auto;flex-direction:column;overflow:
   .clinic-sidebar.mobile-hidden{display:none;}
   .patient-list{overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .chat-area{width:100%;}
-  .patient-panel{display:none;}
   /* Mobile always uses the compact .mobile-chat-back header, never the
      desktop one -- some entry points (switchView's back-to-clinic branch,
      etc.) still flip #desktopChatHeader's inline display for legacy reasons,
@@ -1328,31 +1316,10 @@ body.windows-mode #view-kartei.active{width:auto;flex-direction:column;overflow:
     </div>
   </div>
 
-  <div class="patient-panel scrollbar">
-    <div class="panel-section">
-      <div class="panel-section-title">Patientendaten</div>
-      <div class="info-row"><span class="info-label">Name</span><span class="info-value" id="pp-name">—</span></div>
-      <div class="info-row"><span class="info-label">Geburtsdatum</span><span class="info-value" id="pp-dob">—</span></div>
-      <div class="info-row"><span class="info-label">Telefon</span><span class="info-value" id="pp-tel">—</span></div>
-      <div class="info-row"><span class="info-label">Versicherung</span><span class="info-value" id="pp-versicherung">—</span></div>
-      <div class="info-row"><span class="info-label">SV-Nummer</span><span class="info-value" id="pp-svnr">—</span></div>
-    </div>
-    <div class="panel-section">
-      <div class="panel-section-title">Diagnosen</div>
-      <div id="pp-diagnosen"><span style="color:#94a3b8;font-size:12px;">Keine Diagnosen erfasst</span></div>
-    </div>
-    <div class="panel-section">
-      <div class="panel-section-title">Nächste Termine</div>
-      <div id="pp-termine"><span style="color:#94a3b8;font-size:12px;">Keine bevorstehenden Termine</span></div>
-    </div>
-    <div class="panel-section">
-      <div class="panel-section-title">DSGVO-Status</div>
-      <div class="info-row"><span class="info-label">Einwilligung</span><span class="info-value" id="pp-dsgvo-status">—</span></div>
-      <div class="info-row"><span class="info-label">Datum</span><span class="info-value" id="pp-dsgvo-datum">—</span></div>
-    </div>
-  </div>
-
-  <!-- ══ KARTEI PANEL ══ -->
+  <!-- ══ KARTEI PANEL: now permanently visible alongside chat on desktop
+       (see body.windows-mode #karteiPanel CSS) instead of behind a separate
+       "Kartei öffnen" click -- replaces the old Patientendaten summary
+       sidebar with the real Kartei tabs (Verlauf/Anamnese/Rezept/...). ══ -->
   <div class="kartei-panel scrollbar" id="karteiPanel">
     <div class="kartei-header">
       <div class="kartei-header-left">
@@ -2618,17 +2585,6 @@ function switchView(view,btn){
   document.dispatchEvent(new CustomEvent('smartordi-view-change',{detail:view}));
 }
 
-// Kartei used to live nested inside #view-clinic; promote it to a top-level
-// view so it can be dragged/minimized/fullscreen-toggled like every other tab.
-(function promoteKarteiToWindow(){
-  const kartei=document.getElementById('karteiPanel');
-  const clinicView=document.getElementById('view-clinic');
-  if(kartei && clinicView && clinicView.parentElement){
-    kartei.id='view-kartei';
-    kartei.classList.add('view');
-    clinicView.parentElement.insertBefore(kartei, clinicView.nextSibling);
-  }
-})();
 
 // Render the shared Anamnese common-section markup once -- kept in
 // vendor/anamnese-shared.js so it's byte-identical to the patient's
@@ -2688,7 +2644,8 @@ window.addEventListener('storage',function(e){
       if(!DEMO_CHAT_LIST.some(function(p){return p.name===openName;})) delete MESSAGES[openName];
       const openColor=document.getElementById('chat-avatar')?.style.background;
       renderMessages(openName,openColor);
-      updatePatientPanel(openName);
+      const openRec=findPatientRecord(openName);
+      if(isDesktopWidth()) openKarteiForPatient(openName, openRec&&openRec.svnr, openRec&&openRec.versicherung, openRec&&openRec.dob, true);
     }
   }
 });
@@ -3513,7 +3470,6 @@ function selectPatient(el,name,color,insurance){
   document.getElementById('chat-avatar').style.background=color;
   const rec=findPatientRecord(name);
   document.getElementById('chat-insurance').textContent=insurance+' · SV-Nr: '+((rec&&rec.svnr&&rec.svnr!=='—')?rec.svnr:'—');
-  updatePatientPanel(name);
   const badge=el.querySelector('.unread-badge');if(badge)badge.remove();
   // Mutate the underlying data too, not just this one DOM node -- otherwise
   // a later renderPatientList() call (e.g. from sendClinicMsg()) would
@@ -3537,6 +3493,12 @@ function selectPatient(el,name,color,insurance){
   if(knm) knm.textContent=name;
   if(kmt) kmt.textContent=insurance+' · –';
   updateMkpTabVisibility(rec?rec.dob:'');
+  // Desktop: Kartei now lives permanently alongside chat instead of behind
+  // a separate "Kartei öffnen" click, so keep its full content (tab bar,
+  // Verlauf history, SV-Nr/age in the patient bar) in sync with whichever
+  // patient is selected. Mobile keeps the lighter pre-fill above only,
+  // since Kartei there is still a separate panel the doctor opens explicitly.
+  if(isDesktopWidth()) openKarteiForPatient(name, rec&&rec.svnr, insurance, rec&&rec.dob, true);
 }
 
 function getTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
@@ -3988,30 +3950,25 @@ function resetKarteiToSearch(){
   switchKarteiTab('suche',document.querySelector('.kartei-tab[onclick*="suche"]'));
 }
 
-function openKarteiSearch(navBtn){
-  openWindow('kartei',navBtn);
-  resetKarteiToSearch();
-}
-
 // The "Kartei öffnen" button inside a patient's chat is reachable on mobile
-// too (the demo's default chat is pre-opened). openWindow('kartei') can't be
-// used here on mobile: its fallback path is switchView(), which only ever
-// toggles the .active class -- but Kartei's mobile visibility runs on the
-// separate .open class driven by toggleKartei()/karteiOpen. Route explicitly.
+// too (the demo's default chat is pre-opened). On desktop Kartei is already
+// permanently visible alongside chat (see selectPatient()), so this just
+// makes sure Praxis itself is showing; on mobile it's still the only way to
+// reach the separate slide-in Kartei panel.
 function openKarteiContextual(){
   karteiPatientLoaded=true;
   if(isDesktopWidth()){
-    openWindow('kartei');
+    openWindow('clinic');
   }else if(!karteiOpen){
     toggleKartei();
   }
 }
 
-// Mobile-only: desktop opens Kartei through the generic view system
-// (openWindow('kartei'), which now just delegates to switchView()) instead.
+// Mobile-only: desktop shows Kartei permanently alongside chat instead of
+// toggling it open/closed (see body.windows-mode #karteiPanel CSS).
 function toggleKartei(){
   karteiOpen=!karteiOpen;
-  const panel=document.getElementById('view-kartei');
+  const panel=document.getElementById('karteiPanel');
   if(karteiOpen){
     panel.classList.add('open');
     switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
@@ -4075,43 +4032,6 @@ function findPatientRecord(name){
 // including his real diagnoses/allergies, which is actively dangerous if a
 // doctor mistakes it for the selected patient's. Wire it the same way
 // populateKarteiStamm() already does for the Kartei tab.
-function updatePatientPanel(name){
-  const rec=findPatientRecord(name);
-  const nameEl=document.getElementById('pp-name');
-  const dobEl=document.getElementById('pp-dob');
-  const telEl=document.getElementById('pp-tel');
-  const versEl=document.getElementById('pp-versicherung');
-  const svnrEl=document.getElementById('pp-svnr');
-  const diagRoot=document.getElementById('pp-diagnosen');
-  const termineRoot=document.getElementById('pp-termine');
-  const dsgvoStatusEl=document.getElementById('pp-dsgvo-status');
-  const dsgvoDatumEl=document.getElementById('pp-dsgvo-datum');
-
-  if(nameEl) nameEl.textContent=name;
-  if(dobEl) dobEl.textContent=rec&&rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):'—';
-  if(telEl) telEl.textContent=(rec&&rec.tel)||'—';
-  if(versEl) versEl.textContent=(rec&&rec.versicherung)||'—';
-  if(svnrEl) svnrEl.textContent=(rec&&rec.svnr)||'—';
-
-  if(diagRoot){
-    const diagTags=(rec&&rec.diagnosen&&rec.diagnosen!=='—')
-      ?rec.diagnosen.split(',').map(s=>`<span class="tag tag-red">${escapeHtml(s.trim())}</span>`)
-      :[];
-    const allergyTag=rec&&rec.allergie?[`<span class="tag tag-amber">${escapeHtml(rec.allergie)}</span>`]:[];
-    const html=diagTags.concat(allergyTag).join('');
-    diagRoot.innerHTML=html||'<span style="color:#94a3b8;font-size:12px;">Keine Diagnosen erfasst</span>';
-  }
-  if(termineRoot){
-    const upcoming=loadTermine()
-      .filter(t=>t.patient===name&&t.status!=='abgesagt'&&t.date>=todayStr())
-      .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-    termineRoot.innerHTML=upcoming.length
-      ?upcoming.slice(0,3).map(t=>`<div class="appt-card"><div class="appt-date">${new Date(t.date+'T00:00:00').toLocaleDateString('de-AT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})} — ${t.time} Uhr</div><div class="appt-type">${t.art}${t.arztUsername?' · '+arztDisplayName(t.arztUsername):''}</div></div>`).join('')
-      :'<span style="color:#94a3b8;font-size:12px;">Keine bevorstehenden Termine</span>';
-  }
-  if(dsgvoStatusEl) dsgvoStatusEl.innerHTML=(rec&&rec.dsgvoDatum&&rec.dsgvoDatum!=='—')?'<span class="tag tag-green">✓ Erteilt</span>':'<span style="color:#94a3b8;">—</span>';
-  if(dsgvoDatumEl) dsgvoDatumEl.textContent=(rec&&rec.dsgvoDatum&&rec.dsgvoDatum!=='—')?rec.dsgvoDatum:'—';
-}
 
 // ══ PATIENT CSV EXPORT (e.g. to send to another doctor on request) ══
 // Uses the exact same column set as secretary.html's bulk import, so a file
@@ -5723,7 +5643,7 @@ function searchPatient(){
   document.getElementById('such-ergebnisse').innerHTML=html;
 }
 
-function openKarteiForPatient(name,svnr,versicherung,dob){
+function openKarteiForPatient(name,svnr,versicherung,dob,silent){
   const kav=document.getElementById('kartei-avatar');
   const knm=document.getElementById('kartei-name');
   const kmt=document.getElementById('kartei-meta');
@@ -5732,7 +5652,11 @@ function openKarteiForPatient(name,svnr,versicherung,dob){
   if(kav){kav.textContent=name[0];kav.style.background=colorForName(name);}
   if(knm) knm.textContent=name;
   if(kmt) kmt.textContent=(versicherung||'—')+' · SV '+(svnr||'—')+' · '+age+' J.';
-  showToast('Kartei geöffnet: '+name);
+  // Silent from selectPatient()/the storage-sync handler, where Kartei is
+  // just following along with routine patient/chat switching on desktop --
+  // not something worth a toast every single time, unlike explicitly
+  // opening Kartei for a patient from Dashboard/"Alle Termine".
+  if(!silent) showToast('Kartei geöffnet: '+name);
   updateMkpTabVisibility(dob);
   switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
 }
@@ -5752,14 +5676,15 @@ function updateMkpTabVisibility(dob){
   }
 }
 
-// Used by "Alle Termine": opens the Kartei window itself (unlike
-// openKarteiForPatient above, which only fills content into an already-open
-// Kartei) and loads the given patient into it.
+// Used by "Alle Termine": jumps to Praxis (Kartei is permanently visible
+// there on desktop) and loads the given patient into it, unlike
+// openKarteiForPatient above which only fills content into an already-open
+// Kartei.
 function openKarteiForPatientAndShow(name,svnr,versicherung,dob){
   document.getElementById('allTermineModal').classList.remove('show');
   karteiPatientLoaded=true;
   if(isDesktopWidth()){
-    openWindow('kartei');
+    openWindow('clinic');
   }else if(!karteiOpen){
     toggleKartei();
   }
@@ -6195,15 +6120,9 @@ function showToast(msg,type='success'){
 }
 function showToastSettings(msg){showToast(msg,'success');}
 
-// Init canvas when settings view opens; refresh Kartei content when it opens
+// Init canvas when settings view opens
 document.addEventListener('smartordi-view-change', function(e){
   if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); renderCloudMigrationCard(); }
-  if(e.detail === 'kartei'){
-    switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
-    setKarteiDate();
-    renderYearPills();
-    filterVisits();
-  }
   if(e.detail === 'vertretung') renderVertretungView();
 });
 
@@ -6538,6 +6457,14 @@ async function confirmTransfer(){
 // mnavActive(), same as coming back here later through showKalender().
 document.body.classList.add('mobile-tuhome-active');
 renderTagesuhr();
+// Kartei is now permanently visible alongside Praxis chat on desktop (see
+// body.windows-mode #karteiPanel CSS) instead of behind a separate open
+// action, so it needs its default (no-patient-selected) state set once
+// here, the same init it used to only get the first time it was opened.
+switchKarteiTab('verlauf',document.querySelector('.kartei-tab'));
+setKarteiDate();
+renderYearPills();
+filterVisits();
 // Staff roster (Team card, arztDisplayName everywhere, doctor-filtered
 // Termine lists), Termine, patient identities and vaccination records all
 // live in Supabase now -- wait for the fetches kicked off by
