@@ -842,6 +842,11 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .patient-item.active{background:#EAF4F1;border-left:3px solid #0E5E56;}
 .patient-item.transferred{border-left:3px solid #f59e0b;}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:white;flex-shrink:0;position:relative;}
+.patient-list-section-title{padding:10px 16px 6px;font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;background:#fafbfc;}
+.patient-status-dot{position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;}
+.patient-status-dot.now{background:#16a34a;}
+.patient-status-dot.waiting{background:#f59e0b;}
+.patient-status-dot.done{background:#94a3b8;}
 .patient-info{flex:1;min-width:0;}
 .patient-name{font-size:14px;font-weight:700;color:var(--text-1);margin-bottom:3px;letter-spacing:-0.2px;}
 .patient-preview{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -3464,15 +3469,36 @@ function patientListEntries(){
   });
   return entries;
 }
-function patientItemHtml(p,activeName){
+// Today's Termine per patient (this doctor's own, not cancelled) -- used to
+// split the sidebar into "Heute"/"Alle Patienten" and to show each today
+// patient's visit status. Keyed by patient name since that's the only
+// identifier patientListEntries() itself has.
+function todaysTerminByPatient(){
+  const today=todayStr();
+  const map={};
+  filterToMyTermine(loadTermine()).forEach(t=>{
+    if(t.date===today && t.status!=='abgesagt') map[t.patient]=t;
+  });
+  return map;
+}
+function patientItemHtml(p,activeName,todayTermin){
   const activeClass=p.name===activeName?' active':'';
   const transferClass=p.transferred?' transferred':'';
   const metaHtml=p.transferBadge
     ?`<div class="patient-time">${p.time}</div><div class="transfer-badge">${p.transferBadge}</div>`
     :`<div class="patient-time">${p.time}</div>${p.badge?`<div class="unread-badge">${p.badge}</div>`:''}`;
   const nameEsc=escapeHtml(p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  // Doctor-driven, same as tuVisitState() -- never inferred from the
+  // scheduled time itself, since a day running behind (the normal case)
+  // makes a time-based "who's next" guess actively misleading.
+  let dotHtml='';
+  if(todayTermin){
+    const dotClass=todayTermin.completedAt?'done':todayTermin.startedAt?'now':'waiting';
+    const dotTitle=dotClass==='now'?'Behandlung läuft':dotClass==='done'?'Behandlung abgeschlossen':'Wartet auf Behandlung heute';
+    dotHtml=`<span class="patient-status-dot ${dotClass}" title="${dotTitle}"></span>`;
+  }
   return `<div class="patient-item${activeClass}${transferClass}" onclick="selectPatient(this,'${nameEsc}','${p.color}','${p.versicherung}')">
-    <div class="avatar" style="background:${p.color};">${escapeHtml(p.name[0])}</div>
+    <div class="avatar" style="background:${p.color};">${escapeHtml(p.name[0])}${dotHtml}</div>
     <div class="patient-info"><div class="patient-name">${escapeHtml(p.name)}</div><div class="patient-preview"${p.dynamic?' style="font-style:italic;color:#94a3b8;"':''}>${escapeHtml(p.preview)}</div></div>
     <div class="patient-meta">${metaHtml}</div>
   </div>`;
@@ -3484,7 +3510,15 @@ function renderPatientList(){
   const list=document.getElementById('patientList');
   if(!list) return;
   const activeName=document.getElementById('chat-name')?.textContent||'';
-  list.innerHTML=patientListEntries().map(p=>patientItemHtml(p,activeName)).join('');
+  const todayMap=todaysTerminByPatient();
+  const entries=patientListEntries();
+  const todayEntries=entries.filter(p=>todayMap[p.name]);
+  const otherEntries=entries.filter(p=>!todayMap[p.name]);
+  const todayHtml=todayEntries.map(p=>patientItemHtml(p,activeName,todayMap[p.name])).join('');
+  const otherHtml=otherEntries.map(p=>patientItemHtml(p,activeName,null)).join('');
+  list.innerHTML=
+    (todayEntries.length?`<div class="patient-list-section-title">Heute (${todayEntries.length})</div>${todayHtml}`:'')+
+    `<div class="patient-list-section-title">Alle Patienten</div>${otherHtml}`;
 }
 
 function selectPatient(el,name,color,insurance){
@@ -5701,13 +5735,18 @@ function updateMkpTabVisibility(dob){
   }
 }
 
-// Used by "Alle Termine": jumps to Praxis (Kartei is permanently visible
-// there on desktop) and loads the given patient into it, unlike
-// openKarteiForPatient above which only fills content into an already-open
-// Kartei.
+// Used by "Alle Termine" and the Kalender row menu: jumps to Praxis (Kartei
+// is permanently visible there on desktop) and loads the given patient into
+// it, unlike openKarteiForPatient above which only fills content into an
+// already-open Kartei. Also switches the chat column to the same patient
+// (via selectPatient(), if they already have a thread in the sidebar) --
+// otherwise a doctor opening Kartei for patient X from the calendar would
+// land on Praxis still showing whichever OTHER patient's chat was open.
 function openKarteiForPatientAndShow(name,svnr,versicherung,dob){
   document.getElementById('allTermineModal').classList.remove('show');
   karteiPatientLoaded=true;
+  const item=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
+  if(item) selectPatient(item,name,colorForName(name),versicherung||'');
   if(isDesktopWidth()){
     openWindow('clinic');
   }else if(!karteiOpen){
