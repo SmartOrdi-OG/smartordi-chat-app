@@ -26,6 +26,9 @@ body{
   padding:24px;
 }
 
+.login-shell{width:100%;display:flex;align-items:center;justify-content:center;}
+.brand-panel{display:none;}
+
 /* -- Form, no card shape at all -- */
 .right{
   width:100%;max-width:420px;
@@ -36,6 +39,37 @@ body{
 @media(max-width:480px){
   body{padding:0;}
   .right{max-width:100%;min-height:100vh;padding:32px 24px;justify-content:center;}
+}
+
+/* On a real desktop monitor the centered 420px card left the rest of the
+   screen as plain background -- adding a branded panel next to the form is
+   actual content (who this is, what it does), not just a wider box around
+   the same form. Below 1024px there's no room for two columns side by
+   side, so this stays exactly as it was: a single centered card. */
+@media(min-width:1024px){
+  body{padding:0;align-items:stretch;}
+  .login-shell{min-height:100vh;align-items:stretch;justify-content:flex-start;}
+  .brand-panel{
+    display:flex;flex-direction:column;justify-content:center;
+    flex:1 1 50%;max-width:640px;padding:0 clamp(48px,6vw,96px);
+    background:linear-gradient(160deg,#0E5E56 0%,#0A4A44 100%);color:#fff;
+  }
+  .brand-logo{width:56px;height:56px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:28px;overflow:hidden;}
+  .brand-logo img{width:100%;height:100%;object-fit:contain;}
+  .brand-title{font-size:28px;font-weight:800;margin-bottom:14px;}
+  .brand-title span{color:#DCEAE6;}
+  .brand-tagline{font-size:15px;line-height:1.6;color:rgba(255,255,255,0.86);max-width:420px;margin-bottom:36px;}
+  .brand-features{list-style:none;display:flex;flex-direction:column;gap:14px;}
+  .brand-features li{font-size:14px;color:rgba(255,255,255,0.92);display:flex;align-items:center;gap:10px;}
+  /* flex:1 (not a max-width cap) so .right fills all space the brand panel
+     doesn't use, all the way to the screen edge -- otherwise the leftover
+     width past a capped form column is an uncentered blank strip on the
+     right only, which looks worse than the single centered card it replaced.
+     The padding formula centers a ~480px content column inside whatever
+     width .right actually gets, so the extra space becomes symmetric
+     padding instead of empty space on one side. */
+  .right{flex:1 1 auto;max-width:none;margin:0;padding:64px max(56px, calc(50% - 240px));}
+  .right .mobile-logo{display:none;}
 }
 
 /* Logo */
@@ -98,6 +132,20 @@ body{
 </style>
 </head>
 <body>
+
+<div class="login-shell">
+
+<!-- Shown only on desktop (>=1024px), next to the form -- see .brand-panel -->
+<div class="brand-panel">
+  <div class="brand-logo"><img src="logo..jpeg" alt="Logo"></div>
+  <div class="brand-title">Smartordi<span>.chat</span></div>
+  <div class="brand-tagline">Die digitale Praxis-Software für Ärzt:innen und Praxisteams in Österreich.</div>
+  <ul class="brand-features">
+    <li>📅 Termine &amp; Tagesplan auf einen Blick</li>
+    <li>🗂 Digitale Patientenakte</li>
+    <li>💬 Sichere Kommunikation mit Patient:innen</li>
+  </ul>
+</div>
 
 <!-- Form -->
 <div class="right">
@@ -227,6 +275,7 @@ body{
   <div class="footer-note">
     <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <a href="impressum.html" target="_blank">Impressum</a>
   </div>
+</div>
 </div>
 
 <script>
