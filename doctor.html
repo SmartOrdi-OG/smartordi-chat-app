@@ -368,11 +368,22 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .tu-mc-cell.selected{background:#0E5E56;color:#fff;font-weight:700;}
 .tu-timeline-col{flex:1;min-width:0;}
 .tu-day-list-scroll{max-height:600px;overflow-y:auto;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:#fff;padding:14px;}
-.tu-day-list{display:flex;flex-direction:column;gap:8px;}
-.tu-day-list .tu-appt-time{width:52px;font-size:14px;}
-.tu-day-list .tu-appt-name{font-size:15px;}
-.tu-day-list .tu-appt-type{font-size:12.5px;}
-.tu-day-list .tu-appt-row{padding:12px;}
+/* A single full-width row per appointment left a wide blank strip between
+   the name/type text on the left and the status control pinned to the far
+   right on a wide desktop screen -- cards that wrap into several per row
+   fill that width with actual content instead. */
+.tu-day-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;align-content:start;}
+.tu-appt-card{background:#f8fafc;border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:14px;cursor:pointer;transition:box-shadow .15s,border-color .15s;}
+.tu-appt-card:hover{box-shadow:0 4px 14px rgba(0,0,0,0.08);border-color:#bfdbfe;}
+.tu-appt-card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.tu-appt-card-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;}
+.tu-appt-card-time{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13.5px;color:#475569;flex:1;}
+.tu-appt-card-name{font-size:15px;font-weight:700;color:var(--text-1,#0f172a);margin-bottom:2px;}
+.tu-appt-card-name.strike{text-decoration:line-through;color:#94a3b8;}
+.tu-appt-card-type{font-size:12.5px;color:#64748b;margin-bottom:12px;}
+.tu-appt-card-foot{display:flex;justify-content:flex-end;}
+.tu-appt-card.now{background:#fef2f2;border-color:#fecaca;}
+.tu-appt-card.done{opacity:.55;}
 .tu-row-menu-btn{background:transparent;border:none;color:#94a3b8;font-size:15px;line-height:1;cursor:pointer;padding:2px 5px;border-radius:6px;flex-shrink:0;font-family:inherit;}
 .tu-row-menu-btn:hover{background:#e2e8f0;color:#0f172a;}
 .tu-col-badge{display:inline-block;margin-top:4px;font-size:9px;font-weight:800;letter-spacing:.03em;padding:2px 7px;border-radius:20px;background:#f1f5f9;color:#64748b;}
@@ -2942,6 +2953,29 @@ function tuApptRowHtml(t){
     ${tuVisitControlHtml(t,'row')}
   </div>`;
 }
+// Desktop's card-grid equivalent of tuApptRowHtml() above -- same data and
+// same actions (open chat / row menu / start-visit), just laid out as a
+// card so several fit side-by-side on a wide screen instead of one row
+// stretching edge-to-edge with a big gap between the name and the button.
+function tuApptCardHtml(t){
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  const versEsc=escapeHtml(t.versicherung||'');
+  const svnrEsc=escapeHtml(t.svnr||'');
+  const dobEsc=escapeHtml(t.dob||'');
+  const visitState=tuVisitState(t);
+  const cardClass='tu-appt-card'+(visitState?' '+visitState:'');
+  const initial=escapeHtml((t.patient||'?')[0]||'?');
+  return `<div class="${cardClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
+    <div class="tu-appt-card-top">
+      <div class="tu-appt-card-avatar" style="background:${colorForName(t.patient)};">${initial}</div>
+      <div class="tu-appt-card-time">${t.time||''}</div>
+      <button class="tu-row-menu-btn" onclick="tuToggleRowMenu(event,'${nameEsc}','${svnrEsc}','${versEsc}','${dobEsc}')" title="Weitere Optionen">⋮</button>
+    </div>
+    <div class="tu-appt-card-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+    <div class="tu-appt-card-type">${escapeHtml(t.art||'')}</div>
+    <div class="tu-appt-card-foot">${tuVisitControlHtml(t,'col')}</div>
+  </div>`;
+}
 // Replaces the old circular clock-face dial: doctors need to scan "how many
 // appointments, who's currently being seen" in one glance rather than read
 // an analog dial, so this is just a one-line summary above the plain
@@ -3050,18 +3084,16 @@ function renderTagesuhr(){
     }).join('');
   }
 
-  // Same chronological list feeds both the desktop day column and the
-  // mobile legend below the day-strip -- there's only one real rendering
-  // of "this day's appointments" now, not a separate proportional-timeline
-  // layout for desktop.
+  // Same underlying appointment list feeds both -- the desktop day column
+  // (a card grid, tuApptCardHtml) and the mobile legend below the day-strip
+  // (a plain row list, tuApptRowHtml) -- just two different layouts of the
+  // same data, not two separately-fetched/filtered views.
   const dayAppts=mine.filter(t=>t.date===tuSelectedDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  const dayApptsHtml = dayAppts.length
-    ? dayAppts.map(tuApptRowHtml).join('')
-    : '<div class="tu-empty">Keine Termine an diesem Tag</div>';
+  const emptyHtml='<div class="tu-empty">Keine Termine an diesem Tag</div>';
   const legendEl=document.getElementById('tuLegendList');
-  if(legendEl) legendEl.innerHTML=dayApptsHtml;
+  if(legendEl) legendEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptRowHtml).join('') : emptyHtml;
   const dayListEl=document.getElementById('tuDayList');
-  if(dayListEl) dayListEl.innerHTML=dayApptsHtml;
+  if(dayListEl) dayListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
   renderTuSummary(dayAppts);
 }
 // The Dashboard's top stat cards used to be permanently hardcoded numbers
