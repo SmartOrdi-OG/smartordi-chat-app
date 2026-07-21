@@ -3238,15 +3238,26 @@ function updateDashboardStats(){
 
   const vertItem=document.getElementById('dashVertretungItem');
   const vertVal=document.getElementById('dashVertretungValue');
+  const vertDot=vertItem?vertItem.querySelector('.compliance-dot'):null;
   if(vertItem&&vertVal){
-    // Only a currently-active absence (today within von-bis), not just any
-    // Vertretung ever saved -- otherwise this would keep showing forever
-    // after the absence already ended.
+    // A doctor can reasonably record an absence months ahead (planning a
+    // vacation, say), not only a currently-active one -- so besides "bis X"
+    // for today-within-von/bis, also surface a future-dated one as
+    // "geplant ab X" instead of just hiding it until the day it starts.
+    // A past one (bis already gone) still hides completely, same as before.
     const v=loadVertretung();
     const today=todayStr();
     if(v&&v.von&&v.bis&&v.von<=today&&today<=v.bis){
       const bisLabel=new Date(v.bis+'T00:00:00').toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit'});
       vertVal.textContent='bis '+bisLabel+(v.name?' · '+v.name:'');
+      vertVal.style.color='#d97706';
+      if(vertDot) vertDot.style.background='#f59e0b';
+      vertItem.style.display='';
+    } else if(v&&v.von&&v.bis&&v.von>today){
+      const vonLabel=new Date(v.von+'T00:00:00').toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+      vertVal.textContent='geplant ab '+vonLabel+(v.name?' · '+v.name:'');
+      vertVal.style.color='#0284c7';
+      if(vertDot) vertDot.style.background='#0ea5e9';
       vertItem.style.display='';
     } else {
       vertItem.style.display='none';
