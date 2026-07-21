@@ -2458,15 +2458,23 @@ body.windows-mode #karteiBtn{display:none;}
           <div class="form-group"><label class="form-label">Adresse</label><input class="form-input" id="rptDoctorAdresse" placeholder="z.B. Hauptstraße 1, 4020 Linz"></div>
           <div style="display:flex;gap:10px;">
             <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="rptDoctorTel" placeholder="+43 ..."></div>
-            <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="rptDoctorEmail" placeholder="..."></div>
+            <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="rptDoctorEmail" placeholder="..." oninput="updateRptDestUI()"></div>
           </div>
         </div>
       </div>
-      <div id="rptStatus" style="font-size:12px;color:#64748b;"></div>
+      <div class="form-group">
+        <label class="form-label">Versandart</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label id="rptSendChatRow" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSendChat" checked> Per Chat senden</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSendEmail" onchange="updateRptDestUI()"> Per E-Mail senden <span id="rptEmailHint" style="color:#94a3b8;font-weight:400;"></span></label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSendDownload"> Zusätzlich als PDF herunterladen</label>
+        </div>
+      </div>
+      <div id="rptStatus" style="font-size:12px;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeKarteiReportModal()">Abbrechen</button>
-      <button class="btn-primary" id="rptSendBtn" onclick="sendKarteiReport()">📤 Per Chat senden</button>
+      <button class="btn-primary" id="rptSendBtn" onclick="sendKarteiReport()">📤 Senden</button>
     </div>
   </div>
 </div>
@@ -4076,7 +4084,7 @@ function findPatientRecord(name){
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
 }
 
 // The chat view's "Patientendaten" side panel (Name/Geburtsdatum/Telefon/
@@ -4319,20 +4327,38 @@ function openKarteiReportModal(){
   document.getElementById('rptDoctorAdresse').value='';
   document.getElementById('rptDoctorTel').value='';
   document.getElementById('rptDoctorEmail').value='';
-  document.getElementById('rptStatus').textContent='';
+  document.getElementById('rptSendChat').checked=true;
+  document.getElementById('rptSendEmail').checked=false;
+  document.getElementById('rptSendDownload').checked=false;
+  document.getElementById('rptStatus').innerHTML='';
   updateRptDestUI();
   document.getElementById('karteiReportModal').classList.add('show');
 }
 function closeKarteiReportModal(){
   document.getElementById('karteiReportModal').classList.remove('show');
 }
-// Sending "per Chat" only makes sense once the report actually has
-// somewhere real to land -- an external doctor has no chat account in
-// this app, so that path downloads the PDF instead (see sendKarteiReport()).
+// "Per Chat" only makes sense for the patient -- an external doctor has no
+// chat account in this app -- so that row hides/unchecks itself for that
+// destination. The e-mail hint shows exactly which address will actually
+// receive it (the patient's own on-file address, or whatever's typed into
+// the external doctor's e-mail field) so a missing address is obvious
+// before hitting Senden, not after.
 function updateRptDestUI(){
   const dest=document.querySelector('input[name="rptDest"]:checked')?.value||'patient';
   document.getElementById('rptDoctorFields').style.display=dest==='doctor'?'block':'none';
-  document.getElementById('rptSendBtn').textContent=dest==='doctor'?'⬇ PDF herunterladen':'📤 Per Chat senden';
+  const chatRow=document.getElementById('rptSendChatRow');
+  const hint=document.getElementById('rptEmailHint');
+  if(dest==='doctor'){
+    chatRow.style.display='none';
+    document.getElementById('rptSendChat').checked=false;
+    const email=(document.getElementById('rptDoctorEmail').value||'').trim();
+    hint.textContent=email?('(an '+email+')'):'(bitte E-Mail-Adresse oben eintragen)';
+  }else{
+    chatRow.style.display='flex';
+    const name=document.getElementById('kartei-name')?.textContent;
+    const rec=(name&&name!=='Kein Patient ausgewählt')?findPatientRecord(name):null;
+    hint.textContent=(rec&&rec.email)?('(an '+rec.email+')'):'(keine E-Mail-Adresse für diesen Patienten hinterlegt)';
+  }
 }
 async function sendKarteiReport(){
   const sections={
@@ -4346,16 +4372,27 @@ async function sendKarteiReport(){
   };
   if(!Object.values(sections).some(Boolean)){ showToast('Bitte mindestens einen Inhalt auswählen.','error'); return; }
   const dest=document.querySelector('input[name="rptDest"]:checked')?.value||'patient';
+  const doChat=dest==='patient'&&document.getElementById('rptSendChat').checked;
+  const doEmail=document.getElementById('rptSendEmail').checked;
+  const doDownload=document.getElementById('rptSendDownload').checked;
+  if(!doChat&&!doEmail&&!doDownload){ showToast('Bitte mindestens eine Versandart wählen.','error'); return; }
+
   const btn=document.getElementById('rptSendBtn');
+  const statusEl=document.getElementById('rptStatus');
   btn.disabled=true;
+  statusEl.innerHTML='';
   try{
     const doc=await buildPatientReportPdf(sections);
     if(!doc) return;
+    const name=doc._reportPatientName;
+    const rec=findPatientRecord(name);
     const today=new Date().toLocaleDateString('de-AT').replace(/\./g,'-');
-    if(dest==='patient'){
-      const name=doc._reportPatientName;
-      const filename=('Patientenbericht_'+name+'_'+today).replace(/\s+/g,'_')+'.pdf';
-      const base64Data=doc.output('datauristring').split(',')[1];
+    const recipientLabel=dest==='doctor'?(document.getElementById('rptDoctorName').value||'Arzt').trim():name;
+    const filename=('Patientenbericht_'+recipientLabel+'_'+today).replace(/\s+/g,'_')+'.pdf';
+    const base64Data=doc.output('datauristring').split(',')[1];
+    const results=[];
+
+    if(doChat){
       const patientId=await findPatientIdByFullName(name);
       let docId=null;
       if(patientId){
@@ -4372,17 +4409,40 @@ async function sendKarteiReport(){
       if(chatNameEl&&chatNameEl.textContent===name) renderMessages(name,colorForName(name));
       renderPatientList();
       updateDashboardStats();
-      showToast('✓ Bericht per Chat gesendet');
-    }else{
-      // No real delivery channel yet for an external doctor (that needs
-      // real email sending, a separate follow-up) -- download the
-      // custom-section PDF instead so the doctor can hand it off manually.
-      const doctorName=(document.getElementById('rptDoctorName').value||'Arzt').trim();
-      const filename=('Patientenbericht_'+doctorName+'_'+today).replace(/\s+/g,'_')+'.pdf';
-      doc.save(filename);
-      showToast('✓ PDF heruntergeladen');
+      results.push({ok:true,text:'✓ Per Chat gesendet'});
     }
-    closeKarteiReportModal();
+
+    if(doEmail){
+      const targetEmail=dest==='doctor'?(document.getElementById('rptDoctorEmail').value||'').trim():(rec?.email||'');
+      if(!targetEmail){
+        results.push({ok:false,text:'✗ Keine E-Mail-Adresse angegeben'});
+      }else{
+        try{
+          const {error}=await sb.functions.invoke('send-report-email',{body:{
+            toEmail:targetEmail,
+            subject:'Ihr Patientenbericht — Smartordi',
+            bodyText:'Im Anhang finden Sie den angeforderten Patientenbericht.',
+            filename,
+            pdfBase64:base64Data,
+          }});
+          if(error) throw error;
+          results.push({ok:true,text:'✓ Per E-Mail gesendet an '+targetEmail});
+        }catch(e){
+          console.error('send-report-email failed',e);
+          results.push({ok:false,text:'✗ E-Mail-Versand fehlgeschlagen'});
+        }
+      }
+    }
+
+    if(doDownload){
+      doc.save(filename);
+      results.push({ok:true,text:'✓ PDF heruntergeladen'});
+    }
+
+    statusEl.innerHTML=results.map(r=>`<div style="color:${r.ok?'#16a34a':'#dc2626'};">${escapeHtml(r.text)}</div>`).join('');
+    const allOk=results.every(r=>r.ok);
+    showToast(allOk?'✓ Bericht gesendet':'Teilweise gesendet — siehe Details',allOk?'success':'error');
+    if(allOk) closeKarteiReportModal();
   }catch(e){
     console.error('Failed to send Kartei report',e);
     showToast('✗ Senden fehlgeschlagen','error');
