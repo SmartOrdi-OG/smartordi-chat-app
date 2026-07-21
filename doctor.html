@@ -6396,7 +6396,13 @@ function clearSig(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 }
 
-function saveSig(){
+async function persistSignature(fields){
+  const me=currentDoctorUsername();
+  if(!me) return;
+  const ok=await saveStaffSignature(me,fields);
+  if(!ok) showToast('✗ Speichern fehlgeschlagen — bleibt nur für diese Sitzung aktiv','error');
+}
+async function saveSig(){
   const canvas = document.getElementById('sigCanvas');
   const data = canvas.toDataURL('image/png');
   // Check if empty
@@ -6406,12 +6412,13 @@ function saveSig(){
   sigDataUrl = data;
   showSigPreview(data);
   showToastSettings('✓ Unterschrift gespeichert');
+  await persistSignature({sig_data_url:data});
 }
 
 function loadSigFromFile(e){
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { sigDataUrl = ev.target.result; showSigPreview(ev.target.result); showToastSettings('✓ Unterschrift hochgeladen'); };
+  reader.onload = async ev => { sigDataUrl = ev.target.result; showSigPreview(ev.target.result); showToastSettings('✓ Unterschrift hochgeladen'); await persistSignature({sig_data_url:ev.target.result}); };
   reader.readAsDataURL(file);
 }
 
@@ -6429,7 +6436,7 @@ function showSigPreview(src){
   if(prevEmpty) prevEmpty.style.display='none';
 }
 
-function deleteSig(){
+async function deleteSig(){
   sigDataUrl = '';
   document.getElementById('sigPreview').style.display='none';
   document.getElementById('sigEmpty').style.display='block';
@@ -6440,13 +6447,14 @@ function deleteSig(){
   if(prev) prev.style.display='none';
   if(prevEmpty) prevEmpty.style.display='block';
   clearSig();
+  await persistSignature({sig_data_url:null});
 }
 
 // Stempel
 function loadStempel(e){
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); };
+  reader.onload = async ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); await persistSignature({stempel_data_url:ev.target.result}); };
   reader.readAsDataURL(file);
 }
 
@@ -6456,7 +6464,7 @@ function handleStempelDrop(e){
   document.getElementById('stempelDropzone').style.background='#fafbfc';
   const file = e.dataTransfer.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); };
+  reader.onload = async ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); await persistSignature({stempel_data_url:ev.target.result}); };
   reader.readAsDataURL(file);
 }
 
@@ -6474,7 +6482,7 @@ function showStempelPreview(src){
   if(prevEmpty) prevEmpty.style.display='none';
 }
 
-function deleteStempel(){
+async function deleteStempel(){
   stempelDataUrl='';
   document.getElementById('stempelPreview').style.display='none';
   document.getElementById('stempelEmpty').style.display='block';
@@ -6484,6 +6492,7 @@ function deleteStempel(){
   const prevEmpty=document.getElementById('previewStempelEmpty');
   if(prev) prev.style.display='none';
   if(prevEmpty) prevEmpty.style.display='block';
+  await persistSignature({stempel_data_url:null});
 }
 
 function saveSettings(){
@@ -6979,6 +6988,12 @@ window.addEventListener('load', async function() {
     if(sel)sel.value=savedFach;
     updateAnamneseByFach(savedFach);
   }
+  // Signature/stamp (supabase/phase23_staff_signature_stamp.sql) -- restores
+  // whatever this doctor last saved, same reasoning as Fachrichtung above:
+  // it now lives on their own staff_profiles row, not just this session's
+  // in-memory stempelDataUrl/sigDataUrl.
+  if(myAccount&&myAccount.sigDataUrl){ sigDataUrl=myAccount.sigDataUrl; showSigPreview(myAccount.sigDataUrl); }
+  if(myAccount&&myAccount.stempelDataUrl){ stempelDataUrl=myAccount.stempelDataUrl; showStempelPreview(myAccount.stempelDataUrl); }
   // Praxisprofil: Name des Arztes/der Ärztin was a static demo placeholder
   // ("Dr. Sarah Ahmed") never wired to the actual logged-in account, plus
   // Adresse/Telefon captured at registration but never read back -- fill
