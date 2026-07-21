@@ -4429,7 +4429,7 @@ async function sendKarteiReport(){
           results.push({ok:true,text:'✓ Per E-Mail gesendet an '+targetEmail});
         }catch(e){
           console.error('send-report-email failed',e);
-          results.push({ok:false,text:'✗ E-Mail-Versand fehlgeschlagen'});
+          results.push({ok:false,text:'✗ E-Mail-Versand fehlgeschlagen'+(e?.message?' ('+e.message+')':'')});
         }
       }
     }
