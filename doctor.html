@@ -1370,7 +1370,7 @@ body.windows-mode #karteiBtn{display:none;}
         <div class="kartei-patient-meta" id="kartei-meta">—</div>
       </div>
       <div style="flex:1;"></div>
-      <button onclick="exportPatientPdf()" title="Patientenbericht als PDF — zum Lesen/Drucken, z.B. für einen anderen Arzt" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;">📄 PDF</button>
+      <button onclick="openKarteiReportModal()" title="Bericht zusammenstellen — Inhalte auswählen und per Chat senden oder herunterladen" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;">📄 PDF</button>
       <button onclick="exportPatientCsv()" title="Patientendaten als CSV — für den Import in ein anderes (Smartordi-)System" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;">📊 CSV</button>
     </div>
 
@@ -2420,6 +2420,53 @@ body.windows-mode #karteiBtn{display:none;}
     <div class="modal-footer">
       <button class="btn-secondary" onclick="document.getElementById('transferModal').classList.remove('show')">Abbrechen</button>
       <button class="btn-primary" onclick="confirmTransfer()">✓ Weiterleiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ KARTEI REPORT MODAL: lets the doctor pick exactly which sections go
+     into the PDF and where it goes, instead of the old "PDF" button always
+     generating one fixed full report with no destination. ══ -->
+<div class="modal-overlay" id="karteiReportModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">📄 Bericht senden</div>
+      <button class="modal-close" onclick="closeKarteiReportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Inhalte auswählen</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecStamm" checked> Stammdaten</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecVerlauf" checked> Verlauf / Krankengeschichte</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecDiagnosen" checked> Diagnosen</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecAnamnese"> Anamnese</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecImpfung"> Impfungen</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecLabor"> Labor-Befunde</label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecDokumente"> Hochgeladene Dokumente (Liste)</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Empfänger</label>
+        <div style="display:flex;gap:16px;margin-bottom:10px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="rptDest" value="patient" checked onchange="updateRptDestUI()"> Der Patient/die Patientin selbst</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;"><input type="radio" name="rptDest" value="doctor" onchange="updateRptDestUI()"> Externer Arzt/Ärztin</label>
+        </div>
+        <div id="rptDoctorFields" style="display:none;">
+          <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="rptDoctorName" placeholder="z.B. Dr. Klaus Weber"></div>
+          <div class="form-group"><label class="form-label">Fachrichtung</label><input class="form-input" id="rptDoctorFach" placeholder="z.B. Allgemeinmedizin"></div>
+          <div class="form-group"><label class="form-label">Adresse</label><input class="form-input" id="rptDoctorAdresse" placeholder="z.B. Hauptstraße 1, 4020 Linz"></div>
+          <div style="display:flex;gap:10px;">
+            <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="rptDoctorTel" placeholder="+43 ..."></div>
+            <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="rptDoctorEmail" placeholder="..."></div>
+          </div>
+        </div>
+      </div>
+      <div id="rptStatus" style="font-size:12px;color:#64748b;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeKarteiReportModal()">Abbrechen</button>
+      <button class="btn-primary" id="rptSendBtn" onclick="sendKarteiReport()">📤 Per Chat senden</button>
     </div>
   </div>
 </div>
@@ -4080,14 +4127,40 @@ async function exportPatientCsv(){
 // record to another doctor to read/print/file, rather than importing it into
 // another system (see the same "PATIENTENBERICHT" structure other Kartei PDFs
 // like Überweisung/Rezept already use for a consistent look).
-async function exportPatientPdf(){
-  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+// Builds the report PDF from only the sections the doctor actually ticked
+// in the "Bericht senden" modal (see openKarteiReportModal() etc. below),
+// instead of the old exportPatientPdf() always generating one fixed report
+// with everything in it. MKP is deliberately not offered here yet -- its
+// per-exam data (MKP_EXAMS/mkp_untersuchungen) needs its own extraction
+// logic, a separate follow-up.
+async function buildPatientReportPdf(sections){
+  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return null; }
   const name=document.getElementById('kartei-name')?.textContent;
-  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return null; }
   const rec=findPatientRecord(name);
-  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
-  await impfungenReady;
-  const impfungenList=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
+  if(!rec){ showToast('Patientendaten nicht gefunden.'); return null; }
+
+  let impfungenList=[], laborDocs=[], allDocs=[], anamneseLines=[];
+  if(sections.impfung){
+    await impfungenReady;
+    impfungenList=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
+  }
+  if(sections.labor||sections.dokumente){
+    const patientId=await findPatientIdByFullName(name);
+    if(patientId){
+      allDocs=await getDocumentsForPatient(patientId);
+      laborDocs=allDocs.filter(d=>d.category==='befund');
+    }
+  }
+  if(sections.anamnese){
+    // loadAnamneseForPatient() otherwise only ever runs lazily when the
+    // doctor actually clicks into the Anamnese tab -- forcing it here
+    // guarantees #anamnese-collapse-body reflects THIS patient even if
+    // that tab was never opened this session.
+    loadAnamneseForPatient(name);
+    const root=document.getElementById('anamnese-collapse-body');
+    if(root) anamneseLines=collectAnamneseSummaryLines(root);
+  }
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
@@ -4096,6 +4169,11 @@ async function exportPatientPdf(){
   };
   const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
   const R=(x,y,w,h,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h);};
+  // Sections are now picked à la carte (could be as little as one, or all
+  // of them for a long-standing patient), so unlike the old fixed report
+  // this can genuinely overflow a single page -- start a fresh one instead
+  // of letting content run off the bottom.
+  const ensureSpace=(yy,needed=20)=>{ if(yy+needed>270){ doc.addPage(); return 15; } return yy; };
   const arztName=document.getElementById('setArztName')?.value||'—';
   const arztFach=document.getElementById('setFach')?.value||'—';
   const arztAdresse=document.getElementById('setAdresse')?.value||'—';
@@ -4124,49 +4202,193 @@ async function exportPatientPdf(){
   T('SV-Nr: '+(rec.svnr==='—'?'—':rec.svnr)+'  Geb: '+dobFmt+(age?' ('+age+' J.)':''),108,y+18,8);
   y+=30;
 
-  T('Stammdaten',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
-  T('Versicherung: '+(rec.versicherung==='—'?'—':rec.versicherung),13,y,9);
-  T('Telefon: '+(rec.tel==='—'?'—':rec.tel),110,y,9);y+=6;
-  T('Adresse: '+(rec.adresse==='—'?'—':rec.adresse),13,y,9);
-  T('Blutgruppe: '+(rec.blutgruppe==='—'?'—':rec.blutgruppe),110,y,9);y+=10;
-
-  T('Diagnosen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
-  T(rec.diagnosen==='—'?'Keine erfasst':rec.diagnosen,13,y,9);y+=10;
-
-  if(rec.allergie){
-    doc.setFillColor(254,242,242);doc.rect(10,y-5,190,9,'F');
-    T(rec.allergie,13,y,10,'bold',[220,38,38]);y+=10;
+  if(sections.stamm){
+    y=ensureSpace(y);
+    T('Stammdaten',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    T('Versicherung: '+(rec.versicherung==='—'?'—':rec.versicherung),13,y,9);
+    T('Telefon: '+(rec.tel==='—'?'—':rec.tel),110,y,9);y+=6;
+    T('Adresse: '+(rec.adresse==='—'?'—':rec.adresse),13,y,9);
+    T('Blutgruppe: '+(rec.blutgruppe==='—'?'—':rec.blutgruppe),110,y,9);y+=10;
   }
 
-  T('Impfungen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
-  if(!impfungenList.length){ T('Keine erfasst',13,y,9);y+=8; }
-  else{
-    impfungenList.forEach(imp=>{
-      const datumFmt=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
-      T('• '+imp.vaccineName+(imp.doseLabel?' ('+imp.doseLabel+')':'')+' — '+datumFmt,13,y,9);y+=6;
-    });
-    y+=2;
+  if(sections.diagnosen){
+    y=ensureSpace(y);
+    T('Diagnosen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    T(rec.diagnosen==='—'?'Keine erfasst':rec.diagnosen,13,y,9);y+=10;
+    if(rec.allergie){
+      doc.setFillColor(254,242,242);doc.rect(10,y-5,190,9,'F');
+      T(rec.allergie,13,y,10,'bold',[220,38,38]);y+=10;
+    }
   }
 
-  T('Krankengeschichte / Verlauf',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
-  const visitsText=VISITS.filter(v=>v.patient===name).map(v=>{
-    const df=new Date(v.date).toLocaleDateString('de-AT');
-    return df+' — '+v.type+': '+v.diag;
-  }).join('\n');
-  const history=rec.legacyHistory||visitsText||'Keine Einträge';
-  const lines=doc.splitTextToSize(history,185);
-  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text(lines,13,y);
-  y+=lines.length*4.5+8;
+  if(sections.anamnese){
+    y=ensureSpace(y,30);
+    T('Anamnese',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    if(!anamneseLines.length){ T('Keine Angaben erfasst',13,y,9);y+=8; }
+    else{
+      anamneseLines.forEach(line=>{
+        const wrapped=doc.splitTextToSize('• '+line,185);
+        y=ensureSpace(y,wrapped.length*4.5+2);
+        doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);
+        doc.text(wrapped,13,y);y+=wrapped.length*4.5+1.5;
+      });
+      y+=4;
+    }
+  }
 
-  if(y>260) y=260;
+  if(sections.impfung){
+    y=ensureSpace(y);
+    T('Impfungen',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    if(!impfungenList.length){ T('Keine erfasst',13,y,9);y+=8; }
+    else{
+      impfungenList.forEach(imp=>{
+        y=ensureSpace(y,8);
+        const datumFmt=imp.datum?new Date(imp.datum).toLocaleDateString('de-AT'):'—';
+        T('• '+imp.vaccineName+(imp.doseLabel?' ('+imp.doseLabel+')':'')+' — '+datumFmt,13,y,9);y+=6;
+      });
+      y+=2;
+    }
+  }
+
+  if(sections.labor){
+    y=ensureSpace(y);
+    T('Labor-Befunde',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    if(!laborDocs.length){ T('Keine erfasst',13,y,9);y+=8; }
+    else{
+      laborDocs.forEach(d=>{
+        y=ensureSpace(y,8);
+        const df=new Date(d.created_at).toLocaleDateString('de-AT');
+        T('• '+d.title+' — '+df+(d.body_text?'':' (PDF hochgeladen)'),13,y,9);y+=6;
+      });
+      y+=2;
+    }
+  }
+
+  if(sections.dokumente){
+    y=ensureSpace(y);
+    T('Hochgeladene Dokumente',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    if(!allDocs.length){ T('Keine erfasst',13,y,9);y+=8; }
+    else{
+      allDocs.forEach(d=>{
+        y=ensureSpace(y,8);
+        const df=new Date(d.created_at).toLocaleDateString('de-AT');
+        T('• '+d.title+' ('+(DOK_KATEGORIE_LABEL[d.category]||d.category)+') — '+df,13,y,9);y+=6;
+      });
+      y+=2;
+    }
+  }
+
+  if(sections.verlauf){
+    y=ensureSpace(y,30);
+    T('Krankengeschichte / Verlauf',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    const visitsText=VISITS.filter(v=>v.patient===name).map(v=>{
+      const df=new Date(v.date).toLocaleDateString('de-AT');
+      return df+' — '+v.type+': '+v.diag;
+    }).join('\n');
+    const history=rec.legacyHistory||visitsText||'Keine Einträge';
+    const lines=doc.splitTextToSize(history,185);
+    y=ensureSpace(y,lines.length*4.5+8);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(0,0,0);doc.text(lines,13,y);
+    y+=lines.length*4.5+8;
+  }
+
+  y=ensureSpace(y,40);
   L(15,y,195,y,0.3);y+=4;
   T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
   T('Smartordi.eu | DSGVO-konform | '+today,195,y,7,'normal',[150,150,150]);
   if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,y-28,28,20); }catch(e){} }
   if(typeof sigDataUrl!=='undefined'&&sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){} }
 
-  const nameParts=name.trim().split(/\s+/);
-  doc.save(('Patientenbericht_'+(nameParts[1]||nameParts[0])+'_'+today.replace(/\./g,'-')+'.pdf').replace(/\s+/g,'_'));
+  doc._reportPatientName=name;
+  return doc;
+}
+
+function openKarteiReportModal(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  document.getElementById('rptSecStamm').checked=true;
+  document.getElementById('rptSecVerlauf').checked=true;
+  document.getElementById('rptSecDiagnosen').checked=true;
+  document.getElementById('rptSecAnamnese').checked=false;
+  document.getElementById('rptSecImpfung').checked=false;
+  document.getElementById('rptSecLabor').checked=false;
+  document.getElementById('rptSecDokumente').checked=false;
+  document.querySelector('input[name="rptDest"][value="patient"]').checked=true;
+  document.getElementById('rptDoctorName').value='';
+  document.getElementById('rptDoctorFach').value='';
+  document.getElementById('rptDoctorAdresse').value='';
+  document.getElementById('rptDoctorTel').value='';
+  document.getElementById('rptDoctorEmail').value='';
+  document.getElementById('rptStatus').textContent='';
+  updateRptDestUI();
+  document.getElementById('karteiReportModal').classList.add('show');
+}
+function closeKarteiReportModal(){
+  document.getElementById('karteiReportModal').classList.remove('show');
+}
+// Sending "per Chat" only makes sense once the report actually has
+// somewhere real to land -- an external doctor has no chat account in
+// this app, so that path downloads the PDF instead (see sendKarteiReport()).
+function updateRptDestUI(){
+  const dest=document.querySelector('input[name="rptDest"]:checked')?.value||'patient';
+  document.getElementById('rptDoctorFields').style.display=dest==='doctor'?'block':'none';
+  document.getElementById('rptSendBtn').textContent=dest==='doctor'?'⬇ PDF herunterladen':'📤 Per Chat senden';
+}
+async function sendKarteiReport(){
+  const sections={
+    stamm:document.getElementById('rptSecStamm').checked,
+    verlauf:document.getElementById('rptSecVerlauf').checked,
+    diagnosen:document.getElementById('rptSecDiagnosen').checked,
+    anamnese:document.getElementById('rptSecAnamnese').checked,
+    impfung:document.getElementById('rptSecImpfung').checked,
+    labor:document.getElementById('rptSecLabor').checked,
+    dokumente:document.getElementById('rptSecDokumente').checked,
+  };
+  if(!Object.values(sections).some(Boolean)){ showToast('Bitte mindestens einen Inhalt auswählen.','error'); return; }
+  const dest=document.querySelector('input[name="rptDest"]:checked')?.value||'patient';
+  const btn=document.getElementById('rptSendBtn');
+  btn.disabled=true;
+  try{
+    const doc=await buildPatientReportPdf(sections);
+    if(!doc) return;
+    const today=new Date().toLocaleDateString('de-AT').replace(/\./g,'-');
+    if(dest==='patient'){
+      const name=doc._reportPatientName;
+      const filename=('Patientenbericht_'+name+'_'+today).replace(/\s+/g,'_')+'.pdf';
+      const base64Data=doc.output('datauristring').split(',')[1];
+      const patientId=await findPatientIdByFullName(name);
+      let docId=null;
+      if(patientId){
+        const session=currentStaffSession();
+        const sizeBytes=Math.round(base64Data.length*0.75);
+        const saved=await uploadPatientDocument(patientId,{
+          category:'sonstiges', title:'Patientenbericht', filename, mimeType:'application/pdf', sizeBytes, base64Data,
+        },session?session.username:null);
+        docId=saved.id;
+      }
+      const msg={dir:'out', type:'doc', filename, size:formatFileSize(Math.round(base64Data.length*0.75)), docId, time:getTime()+' ✓'};
+      appendRealMessage(name,msg);
+      const chatNameEl=document.getElementById('chat-name');
+      if(chatNameEl&&chatNameEl.textContent===name) renderMessages(name,colorForName(name));
+      renderPatientList();
+      updateDashboardStats();
+      showToast('✓ Bericht per Chat gesendet');
+    }else{
+      // No real delivery channel yet for an external doctor (that needs
+      // real email sending, a separate follow-up) -- download the
+      // custom-section PDF instead so the doctor can hand it off manually.
+      const doctorName=(document.getElementById('rptDoctorName').value||'Arzt').trim();
+      const filename=('Patientenbericht_'+doctorName+'_'+today).replace(/\s+/g,'_')+'.pdf';
+      doc.save(filename);
+      showToast('✓ PDF heruntergeladen');
+    }
+    closeKarteiReportModal();
+  }catch(e){
+    console.error('Failed to send Kartei report',e);
+    showToast('✗ Senden fehlgeschlagen','error');
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 function populateKarteiStamm(name){
@@ -4686,6 +4908,32 @@ function updateAnamneseByFach(fach){
     if(label)label.textContent='Allgemeinanamnese';
     section.innerHTML='';
   }
+}
+
+// Reads whichever answers are actually filled in on the (already-populated,
+// see loadAnamneseForPatient()) Anamnese form as plain "Label: value" lines,
+// for the report PDF -- reuses the rendered DOM as the data source (same
+// idea printImpfpass() already relies on) instead of re-deriving each
+// field's human label from its data-key storage key.
+function collectAnamneseSummaryLines(root){
+  const lines=[];
+  root.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(el.type==='checkbox'){
+      if(!el.checked) return;
+      const label=el.closest('label');
+      const span=label?label.querySelector('span'):null;
+      const text=(span?span.textContent:(label?.textContent||'')).trim();
+      if(text) lines.push(text);
+      return;
+    }
+    const val=(el.value||'').trim();
+    if(!val) return;
+    const container=el.closest('div');
+    const labelEl=container?container.querySelector('.k-form-label'):null;
+    const labelText=labelEl?labelEl.textContent.trim():(el.placeholder||'').trim();
+    lines.push(labelText?labelText+': '+val:val);
+  });
+  return lines;
 }
 
 function toggleSonstigeImpf(sel){
