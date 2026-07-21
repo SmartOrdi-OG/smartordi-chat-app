@@ -1,0 +1,17 @@
+{
+  "name": "smartordi-lab-email-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "postal-mime": "^2.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250101.0",
+    "typescript": "^5.4.0",
+    "wrangler": "^3.78.0"
+  }
+}

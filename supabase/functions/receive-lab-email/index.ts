@@ -8,22 +8,17 @@
 // labInboundEmailAddress()); the doctor gives THAT address to the lab
 // once instead of a personal one.
 //
-// This function is called by the inbound-email provider's webhook (e.g.
-// Postmark's "Inbound" parsing, https://postmarkapp.com/support/article/1064),
-// NOT by the browser -- the sender has no Supabase session/JWT at all, so
-// this must be deployed with `--no-verify-jwt`:
+// Called by cloudflare/email-worker (Cloudflare Email Routing -> a Worker
+// that parses the raw MIME message with postal-mime and POSTs the result
+// here), NOT by the browser -- the sender has no Supabase session/JWT at
+// all, so this must be deployed with `--no-verify-jwt`:
 //   supabase functions deploy receive-lab-email --no-verify-jwt
-// and the provider's inbound webhook configured to POST here. It also
-// needs the practice's inbound domain (see labInboundEmailAddress()) to
-// have an MX record pointed at that provider -- both are one-time setup
-// steps outside this codebase, done by whoever administers the
-// smartordi.eu domain.
+// Since that flag also means anyone who finds this URL can POST to it
+// directly, every request must additionally carry the shared secret
+// (LAB_EMAIL_WEBHOOK_SECRET) the Worker was configured with.
 //
-// Expects Postmark's inbound webhook JSON shape:
-//   { From, Subject, OriginalRecipient, Attachments: [{Name, Content, ContentType}] }
-// (Content is already base64 -- Postmark decodes MIME for us, so no e-mail
-// parsing library is needed here.) Adjust the field names below if a
-// different inbound provider is used instead.
+// Expects: { to, from, subject, attachments: [{filename, contentType, content}] }
+// (content is already base64 -- the Worker decodes MIME for us).
 //
 // Uses the service-role key (bypasses RLS) since there is no staff
 // session to satisfy lab_result_uploads' normal "own practice" policies
@@ -33,6 +28,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const WEBHOOK_SECRET = Deno.env.get("LAB_EMAIL_WEBHOOK_SECRET");
 
 const ALLOWED_MIME = new Set(["application/pdf", "image/png", "image/jpeg"]);
 
@@ -51,12 +47,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  if (WEBHOOK_SECRET && req.headers.get("x-webhook-secret") !== WEBHOOK_SECRET) {
+    return new Response(JSON.stringify({ error: "unauthorized" }), { status: 401 });
+  }
+
   let body: {
-    From?: string;
-    Subject?: string;
-    OriginalRecipient?: string;
-    To?: string;
-    Attachments?: { Name?: string; Content?: string; ContentType?: string }[];
+    to?: string;
+    from?: string;
+    subject?: string;
+    attachments?: { filename?: string; content?: string; contentType?: string }[];
   };
   try {
     body = await req.json();
@@ -64,9 +63,9 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "invalid_json" }), { status: 400 });
   }
 
-  const token = tokenFromRecipient(body.OriginalRecipient || body.To);
+  const token = tokenFromRecipient(body.to);
   if (!token) {
-    // Nothing we can route this to -- acknowledge so the provider doesn't retry.
+    // Nothing we can route this to -- acknowledge so the Worker doesn't retry forever.
     return new Response(JSON.stringify({ ok: true, skipped: "no_token" }), { status: 200 });
   }
 
@@ -82,8 +81,8 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: true, skipped: "unknown_token" }), { status: 200 });
   }
 
-  const attachments = (body.Attachments || []).filter(
-    (a) => a.Content && a.ContentType && ALLOWED_MIME.has(a.ContentType)
+  const attachments = (body.attachments || []).filter(
+    (a) => a.content && a.contentType && ALLOWED_MIME.has(a.contentType)
   );
   if (attachments.length === 0) {
     return new Response(JSON.stringify({ ok: true, skipped: "no_attachments" }), { status: 200 });
@@ -91,12 +90,12 @@ Deno.serve(async (req: Request) => {
 
   const rows = attachments.map((a) => ({
     practice_id: practice.id,
-    patient_name: body.Subject || null,
-    sender_email: body.From || null,
-    subject: body.Subject || null,
-    filename: a.Name || "laborbefund",
-    mime_type: a.ContentType,
-    file_data: a.Content,
+    patient_name: body.subject || null,
+    sender_email: body.from || null,
+    subject: body.subject || null,
+    filename: a.filename || "laborbefund",
+    mime_type: a.contentType,
+    file_data: a.content,
     status: "pending",
   }));
 
