@@ -6427,6 +6427,7 @@ async function sendVertretungBroadcast(){
   _vertretung=data;
   renderVertretungView();
   renderPatientList();
+  updateDashboardStats();
   showToast(sentTo.length?'✓ '+sentTo.length+' Patient/in(nen) benachrichtigt':'Keine Patient/innen mit echtem Konto gefunden','success');
 }
 
