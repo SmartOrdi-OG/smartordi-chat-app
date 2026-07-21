@@ -2661,10 +2661,8 @@ body.windows-mode #karteiBtn{display:none;}
 
 <script>
 function doctorLogout(){
-  if(confirm('Wirklich abmelden?')){
-    sessionStorage.removeItem('smartordi_user');
-    window.location.href='login.html';
-  }
+  sessionStorage.removeItem('smartordi_user');
+  window.location.href='login.html';
 }
 
 function buildWave(id,count){
