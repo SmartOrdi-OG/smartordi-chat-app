@@ -1,0 +1,14 @@
+name = "smartordi-lab-email-worker"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Plain (non-secret) config: where to forward parsed lab-result e-mails.
+[vars]
+RECEIVE_LAB_EMAIL_URL = "https://ewilgwndhpxibkogxqbk.supabase.co/functions/v1/receive-lab-email"
+
+# LAB_EMAIL_WEBHOOK_SECRET is NOT set here (secrets don't belong in a
+# checked-in file) -- set it with:
+#   wrangler secret put LAB_EMAIL_WEBHOOK_SECRET
+# using the same value configured on the Supabase function's
+# LAB_EMAIL_WEBHOOK_SECRET secret.

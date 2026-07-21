@@ -138,14 +138,15 @@ const practiceSettingsReady=refreshPracticeSettings();
 // A lab's own LIS already e-mails results automatically to whatever
 // address the ordering doctor gave it -- nothing changes on the lab's
 // side. Each practice gets its own dedicated inbound address instead of
-// a doctor's personal one; supabase/functions/receive-lab-email (called
-// by the inbound-email provider's webhook, not the browser) drops one
-// row here per e-mail attachment for a doctor to review and attach to
-// the right patient's file.
+// a doctor's personal one; cloudflare/email-worker catches mail sent to
+// this domain (Cloudflare Email Routing, free) and forwards a parsed
+// JSON payload to supabase/functions/receive-lab-email (not called by
+// the browser), which drops one row here per e-mail attachment for a
+// doctor to review and attach to the right patient's file.
 //
-// Domain that must have an MX record pointed at the inbound-email
-// provider (Postmark/Mailgun/etc.) -- one-time DNS setup outside this
-// codebase, done by whoever administers the smartordi.eu domain.
+// Domain that must have Cloudflare Email Routing enabled -- one-time
+// setup outside this codebase, done by whoever administers the
+// smartordi.eu domain (see cloudflare/email-worker's own header comment).
 const LAB_INBOUND_DOMAIN='labs.smartordi.eu';
 function labInboundEmailAddress(token){
   return `lab-${token}@${LAB_INBOUND_DOMAIN}`;
