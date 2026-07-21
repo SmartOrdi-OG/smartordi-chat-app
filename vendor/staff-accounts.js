@@ -134,6 +134,68 @@ async function savePracticeSettings(fields){
 }
 const practiceSettingsReady=refreshPracticeSettings();
 
+// ── Lab result inbox (supabase/phase24_lab_result_inbox.sql) ──
+// A lab's own LIS already e-mails results automatically to whatever
+// address the ordering doctor gave it -- nothing changes on the lab's
+// side. Each practice gets its own dedicated inbound address instead of
+// a doctor's personal one; supabase/functions/receive-lab-email (called
+// by the inbound-email provider's webhook, not the browser) drops one
+// row here per e-mail attachment for a doctor to review and attach to
+// the right patient's file.
+//
+// Domain that must have an MX record pointed at the inbound-email
+// provider (Postmark/Mailgun/etc.) -- one-time DNS setup outside this
+// codebase, done by whoever administers the smartordi.eu domain.
+const LAB_INBOUND_DOMAIN='labs.smartordi.eu';
+function labInboundEmailAddress(token){
+  return `lab-${token}@${LAB_INBOUND_DOMAIN}`;
+}
+// Generates the practice's token once and persists it -- every call
+// after the first just returns the same address, same lazy-generate-once
+// shape as a staff invite link.
+async function ensureLabEmailToken(){
+  await practiceSettingsReady;
+  const existing=getPracticeSettings()?.lab_email_token;
+  if(existing) return existing;
+  // Raw random hex, no prefix -- labInboundEmailAddress() already adds the
+  // "lab-" prefix that receive-lab-email's tokenFromRecipient() strips back
+  // off, so prefixing it here too would just double it up.
+  const token=genStaffInviteToken().slice(4);
+  const ok=await savePracticeSettings({lab_email_token:token});
+  return ok ? token : null;
+}
+async function getPendingLabResults(){
+  const {data,error}=await sb.from('lab_result_uploads').select('*').eq('status','pending').order('created_at',{ascending:false});
+  if(error){ console.error('getPendingLabResults failed',error); return []; }
+  return data||[];
+}
+// Copies the pending row's file into the matched patient's own Dokumente
+// (uploadPatientDocument, vendor/patient-data.js) under the 'labor'
+// category, then marks the inbox row as attached -- mirrors how the
+// Kartei "Dokumente" tab / chat attachments already land in the same
+// patient_documents table.
+async function attachLabResultToPatient(labResultId,patientId,uploadedBy){
+  const {data:row,error:fetchErr}=await sb.from('lab_result_uploads').select('*').eq('id',labResultId).single();
+  if(fetchErr||!row){ console.error('attachLabResultToPatient: row not found',fetchErr); return false; }
+  await uploadPatientDocument(patientId,{
+    category:'labor', title:row.subject||'Laborbefund', filename:row.filename,
+    mimeType:row.mime_type, base64Data:row.file_data,
+  },uploadedBy);
+  const {error:updateErr}=await sb.from('lab_result_uploads').update({status:'attached',matched_patient_id:patientId}).eq('id',labResultId);
+  if(updateErr){ console.error('attachLabResultToPatient: status update failed',updateErr); return false; }
+  return true;
+}
+async function dismissLabResult(labResultId){
+  const {error}=await sb.from('lab_result_uploads').update({status:'dismissed'}).eq('id',labResultId);
+  if(error){ console.error('dismissLabResult failed',error); return false; }
+  return true;
+}
+function subscribeLabResultsRealtime(onChange){
+  sb.channel('lab-result-uploads-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'lab_result_uploads'},function(){ if(onChange) onChange(); })
+    .subscribe();
+}
+
 function genStaffInviteToken(){
   // crypto.getRandomValues instead of Math.random() -- this token grants
   // account creation to whoever holds the link, so it needs to be
