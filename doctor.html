@@ -2185,6 +2185,15 @@ body.windows-mode #karteiBtn{display:none;}
         <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
       </div>
 
+      <!-- Eingehende Laborergebnisse -->
+      <div class="dash-card">
+        <div class="dash-card-header">
+          📥 Eingehende Laborergebnisse
+          <span style="font-size:11px;color:#0E5E56;font-weight:600;" id="labResultsCount"></span>
+        </div>
+        <div class="dash-card-body" style="padding:8px 16px;" id="dashLabResultsRoot"></div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -2234,6 +2243,18 @@ body.windows-mode #karteiBtn{display:none;}
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Telefon</label>
           <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({tel:this.value})">
+        </div>
+      </div>
+    </div>
+
+    <!-- Labor-E-Mail -->
+    <div class="dash-card" style="margin-bottom:20px;">
+      <div class="dash-card-header">📧 Labor-E-Mail <span style="font-size:11px;color:#64748b;font-weight:400;">— eine feste Adresse für Ihre Praxis, die Labore statt einer persönlichen E-Mail verwenden können</span></div>
+      <div class="dash-card-body">
+        <div style="font-size:12.5px;color:#475569;margin-bottom:10px;line-height:1.5;">Geben Sie diese Adresse Ihrem Labor (oder richten Sie eine Weiterleitung darauf ein) — Ergebnisse, die dort ankommen, erscheinen automatisch im Dashboard unter „Eingehende Laborergebnisse" zur Zuordnung.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input type="text" id="labEmailAddress" readonly value="Wird erstellt…" style="flex:1;min-width:220px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;background:#f8fafc;color:#0f172a;">
+          <button type="button" onclick="copyLabEmailAddress()" style="background:#EAF4F1;border:1px solid #bfdbfe;color:#0E5E56;padding:9px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Kopieren</button>
         </div>
       </div>
     </div>
@@ -7026,7 +7047,66 @@ window.addEventListener('load', async function() {
   applyPlanGating();
   renderPlanSettings();
   applyTrialStatus();
+  // Labor-E-Mail (supabase/phase24_lab_result_inbox.sql) -- generated once
+  // per practice and shown read-only in Settings for copy/paste to a lab.
+  const labAddrInput=document.getElementById('labEmailAddress');
+  if(labAddrInput){
+    const labToken=await ensureLabEmailToken();
+    labAddrInput.value=labToken?labInboundEmailAddress(labToken):'Fehler beim Erstellen';
+  }
+  renderLabResultInbox();
+  subscribeLabResultsRealtime(renderLabResultInbox);
 });
+
+function copyLabEmailAddress(){
+  const text=document.getElementById('labEmailAddress').value;
+  navigator.clipboard.writeText(text).then(()=>showToast('✓ Adresse kopiert')).catch(()=>showToast('✗ Kopieren fehlgeschlagen','error'));
+}
+
+// Renders the "Eingehende Laborergebnisse" dashboard card -- one entry per
+// pending lab_result_uploads row, each with a patient picker (from the
+// real patient roster, vendor/patient-data.js) so a doctor can confirm
+// the right match before it lands in that patient's Dokumente.
+async function renderLabResultInbox(){
+  const root=document.getElementById('dashLabResultsRoot');
+  const countEl=document.getElementById('labResultsCount');
+  if(!root) return;
+  await patientsReady;
+  const results=await getPendingLabResults();
+  if(countEl) countEl.textContent=results.length?results.length+' neu':'';
+  if(!results.length){
+    root.innerHTML='<span style="color:#94a3b8;font-size:12px;">Keine neuen Ergebnisse</span>';
+    return;
+  }
+  const patients=Object.values(loadPatients()).filter(p=>p.id);
+  const optionsHtml='<option value="">Patient wählen…</option>'+patients.map(p=>`<option value="${p.id}">${escapeHtml(p.fullName)}</option>`).join('');
+  root.innerHTML=results.map(r=>{
+    const when=new Date(r.created_at).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    return `<div style="padding:10px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="font-size:12.5px;font-weight:700;color:#0f172a;">${escapeHtml(r.subject||r.filename||'Laborbefund')}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">${escapeHtml(r.sender_email||'')} · ${when}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <select id="labResultPatient-${r.id}" style="flex:1;min-width:160px;padding:6px 8px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:inherit;font-size:12px;background:white;">${optionsHtml}</select>
+        <button onclick="assignLabResult('${r.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;color:#0E5E56;padding:6px 12px;border-radius:7px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Zuordnen</button>
+        <button onclick="dismissLabResultRow('${r.id}')" style="background:#f8fafc;border:1px solid #e2e8f0;color:#64748b;padding:6px 12px;border-radius:7px;font-family:inherit;font-size:12px;cursor:pointer;">Verwerfen</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function assignLabResult(labResultId){
+  const sel=document.getElementById('labResultPatient-'+labResultId);
+  const patientId=sel?sel.value:'';
+  if(!patientId){ showToast('Bitte zuerst einen Patienten wählen.','error'); return; }
+  const session=currentStaffSession();
+  const ok=await attachLabResultToPatient(labResultId,patientId,session?session.username:null);
+  if(ok){ showToast('✓ Befund zur Akte hinzugefügt'); renderLabResultInbox(); updateDashboardStats(); }
+  else showToast('✗ Zuordnung fehlgeschlagen','error');
+}
+async function dismissLabResultRow(labResultId){
+  const ok=await dismissLabResult(labResultId);
+  if(ok) renderLabResultInbox();
+  else showToast('✗ Fehlgeschlagen','error');
+}
 
 function goBack() {
   window.history.back();
