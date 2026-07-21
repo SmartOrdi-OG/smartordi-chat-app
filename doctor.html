@@ -1768,9 +1768,12 @@ body.windows-mode #karteiBtn{display:none;}
           <label for="rz-befreit" style="font-size:13px;font-weight:600;color:#15803d;cursor:pointer;">Rezeptgebührenbefreit</label>
         </div>
 
-        <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-          <button style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="generateRezeptPDF()">
-            🖨 Rezept drucken / PDF
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:10px;">
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="printRezept()" title="Patient ist in der Ordination">
+            🖨 Drucken
+          </button>
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="sendRezeptToChat()" title="Als PDF an den Chat senden">
+            📄 Per Chat senden
           </button>
         </div>
         <div class="k-dsgvo-note">DSGVO-konform · Österreichisches Kassenrezept</div>
@@ -5802,10 +5805,14 @@ function openChatForPatient(name,color,insurance){
   }
 }
 
-function generateRezeptPDF(){
-  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+// Builds the actual Rezept PDF -- shared by printRezept() (physical print,
+// patient present in the office) and sendRezeptToChat() (uploads the same
+// PDF to the patient's chat instead), so a doctor can pick either action
+// separately rather than the old single button always doing both at once.
+function buildRezeptPdf(){
+  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return null; }
   const currentName=document.getElementById('kartei-name')?.textContent;
-  if(!currentName||currentName==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  if(!currentName||currentName==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return null; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
 
@@ -5918,9 +5925,51 @@ function generateRezeptPDF(){
   T(' DSGVO-konform · Erstellt via Smartordi.chat',10,290,7,'normal',[150,150,150]);
   T('Datum: '+new Date().toLocaleDateString('de-AT'),170,290,7,'normal',[150,150,150]);
 
-  // Print
-  const pdfUrl = doc.output('bloburl');
-  openPdfAndPrint(pdfUrl);
+  doc._rezeptPatientName=p.name;
+  doc._rezeptMedSummary=[med1,med2].filter(Boolean).join(', ')||'Rezept';
+  return doc;
+}
+
+// "Der Patient ist in der Ordination" -- print it now, on paper, for the
+// patient to take with them.
+function printRezept(){
+  const doc=buildRezeptPdf();
+  if(!doc) return;
+  openPdfAndPrint(doc.output('bloburl'));
+}
+
+// "Als PDF an den Chat senden" -- same document, delivered to the patient's
+// own chat/account instead of paper (kept separate from printRezept() since
+// a doctor picks exactly one of the two, not both every time).
+async function sendRezeptToChat(){
+  const doc=buildRezeptPdf();
+  if(!doc) return;
+  const name=doc._rezeptPatientName;
+  try{
+    const base64Data=doc.output('datauristring').split(',')[1];
+    const filename=`Rezept_${name.replace(/\s+/g,'_')}_${new Date().toLocaleDateString('de-AT').replace(/\./g,'-')}.pdf`;
+    const patientId=await findPatientIdByFullName(name);
+    let docId=null;
+    if(patientId){
+      const session=currentStaffSession();
+      const sizeBytes=Math.round(base64Data.length*0.75);
+      const saved=await uploadPatientDocument(patientId,{
+        category:'rezept', title:'Rezept', filename, mimeType:'application/pdf', sizeBytes, base64Data,
+      },session?session.username:null);
+      docId=saved.id;
+    }
+    const msg={dir:'out', type:'uw', text:`Rezept ausgestellt · ${doc._rezeptMedSummary}`,
+      filename, sub:'Kassenrezept', docId, time:getTime()+' ✓'};
+    appendRealMessage(name,msg);
+    const chatNameEl=document.getElementById('chat-name');
+    if(chatNameEl && chatNameEl.textContent===name){
+      renderMessages(name,colorForName(name));
+    }
+    showToast('✓ Rezept per Chat gesendet');
+  }catch(e){
+    console.error('Failed to send Rezept via chat',e);
+    showToast('✗ Senden über Chat fehlgeschlagen','error');
+  }
 }
 
 // Builds the actual Überweisung PDF -- shared by downloadUwPDF() (client-side
