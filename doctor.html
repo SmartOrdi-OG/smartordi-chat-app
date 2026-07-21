@@ -4839,18 +4839,29 @@ async function addImpfung(){
   showToast('✓ Impfung eingetragen!');
 }
 
-// Opens a jsPDF blob URL in a new tab, brings it to the front (window.open
-// alone doesn't guarantee focus), and closes that tab automatically once the
-// print dialog is dismissed (afterprint fires on cancel too) -- otherwise the
-// tab was appearing behind the app and hanging around forever after printing.
-// Mirrors the window.onafterprint pattern secretary.html already uses for its
-// document.write()-based print windows.
+// Loads the PDF into a hidden iframe and prints straight from there, instead
+// of window.open()'ing a full visible tab showing Chrome's own PDF viewer --
+// a doctor pressing "Drucken" just wants the print dialog, not Chrome's PDF
+// viewer flashing open on screen first (with its own print icon needing a
+// second click, since w.print() fires before the blob has actually loaded
+// there). Positioned off-screen rather than display:none, since some
+// browsers refuse to print content from a display:none iframe.
 function openPdfAndPrint(blobUrl){
-  const w=window.open(blobUrl);
-  if(!w) return;
-  w.focus();
-  w.addEventListener('afterprint',()=>w.close());
-  w.print();
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:-10000px;left:-10000px;width:1px;height:1px;border:0;';
+  iframe.src=blobUrl;
+  document.body.appendChild(iframe);
+  const cleanup=()=>iframe.remove();
+  iframe.onload=()=>{
+    try{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }catch(e){ cleanup(); window.open(blobUrl); }
+  };
+  window.addEventListener('afterprint',cleanup,{once:true});
+  // Safety net in case afterprint never fires -- don't leave the iframe
+  // sitting in the DOM forever.
+  setTimeout(cleanup,120000);
 }
 function printImpfpass(){
   if(typeof window.jspdf==='undefined'){alert('jsPDF lädt...');return;}
