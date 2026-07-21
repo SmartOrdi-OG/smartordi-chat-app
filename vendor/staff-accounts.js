@@ -76,6 +76,7 @@ async function refreshStaffRoster(){
     next[p.id]={
       vorname:p.vorname, nachname:p.nachname, fullName:p.full_name,
       role:p.role, fach:p.fach, isAdmin:p.is_admin, email:p.email,
+      stempelDataUrl:p.stempel_data_url||'', sigDataUrl:p.sig_data_url||'',
     };
   });
   _staffRoster=next;
@@ -87,6 +88,20 @@ function loadStaffAccounts(){
 // inline script runs), so the fetch is already in flight by the time a page
 // wants to gate its first render on it via: await staffRosterReady
 const staffRosterReady=refreshStaffRoster();
+
+// Persists a doctor's own signature/stamp (supabase/phase23_staff_
+// signature_stamp.sql) -- staffId is always the CALLER's own id in every
+// real call site (doctor.html only ever saves its own logged-in doctor's
+// signature), never another staff member's.
+async function saveStaffSignature(staffId,fields){
+  const {data,error}=await sb.from('staff_profiles').update(fields).eq('id',staffId).select().single();
+  if(error){ console.error('saveStaffSignature failed',error); return false; }
+  if(_staffRoster[staffId]){
+    _staffRoster[staffId].stempelDataUrl=data.stempel_data_url||'';
+    _staffRoster[staffId].sigDataUrl=data.sig_data_url||'';
+  }
+  return true;
+}
 
 // Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
 // lives on the practice's own row in `practices` (supabase/phase18_practices_
