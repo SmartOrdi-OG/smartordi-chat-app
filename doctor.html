@@ -6149,11 +6149,14 @@ function buildRezeptPdf(){
   L(10,y,200,y);
   y+=8;
 
-  // Stamp & Signature from settings
-  const stempelImg=localStorage.getItem('stempelImg');
-  const sigData=localStorage.getItem('sigData');
-  if(stempelImg){try{doc.addImage(stempelImg,'PNG',10,y,35,18);}catch(e){}}
-  if(sigData){try{doc.addImage(sigData,'PNG',60,y,50,18);}catch(e){}}
+  // Stamp & Signature from settings -- stempelDataUrl/sigDataUrl (declared
+  // further down, set by saveSig()/the stamp upload handlers) are what
+  // Einstellungen actually populates; these two localStorage keys were never
+  // written by anything, so a saved signature never actually made it onto a
+  // printed/sent Rezept. Same variables Überweisung/Patientenbericht already
+  // read correctly.
+  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){try{doc.addImage(stempelDataUrl,'PNG',10,y,35,18);}catch(e){}}
+  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){try{doc.addImage(sigDataUrl,'PNG',60,y,50,18);}catch(e){}}
   T('Stempel & Unterschrift',10,y+24,8,'normal',[150,150,150]);
   T(document.getElementById('setArztName')?.value||'—',60,y+24,9,'bold');
   const stempelAdresse=document.getElementById('setAdresse')?.value||'';
