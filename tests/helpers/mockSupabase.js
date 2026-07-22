@@ -48,6 +48,11 @@ function mockScript(seed) {
         order() { return b; },
         limit() { return b; },
         maybeSingle() {
+          if (b._pendingUpdate) {
+            const matched = rows.filter(x => __matches(x, b._filters));
+            matched.forEach(x => Object.assign(x, b._pendingUpdate));
+            return Promise.resolve({ data: matched[0] || null, error: null });
+          }
           const r = rows.filter(x => __matches(x, b._filters));
           return Promise.resolve({ data: r[0] || null, error: null });
         },
