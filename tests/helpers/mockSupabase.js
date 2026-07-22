@@ -79,13 +79,21 @@ function mockScript(seed) {
         },
         upsert(v, opts) {
           const arr = Array.isArray(v) ? v : [v];
-          const conflictKey = opts && opts.onConflict;
+          // onConflict may name more than one column (e.g. a composite
+          // unique constraint like 'patient_id,exam_key') -- comparing the
+          // whole comma-joined string as a single, nonexistent property
+          // made every row's r[conflictKey] equal undefined, so find()
+          // matched the first row in the table regardless of its actual
+          // patient_id/exam_key. Split into real column names and require
+          // every one to match (and be actually defined) instead.
+          const conflictKeys = opts && opts.onConflict ? opts.onConflict.split(',').map(k => k.trim()) : null;
+          const matches = (r, x) => conflictKeys.every(k => x[k] !== undefined && r[k] === x[k]);
           arr.forEach(x => {
-            let existing = conflictKey ? rows.find(r => r[conflictKey] === x[conflictKey]) : null;
+            let existing = conflictKeys ? rows.find(r => matches(r, x)) : null;
             if (existing) { Object.assign(existing, x); }
             else { if (!x.id) x.id = 'gen-' + Math.random().toString(36).slice(2); rows.push(x); existing = x; }
           });
-          b._insertedRows = arr.map(x => conflictKey ? rows.find(r => r[conflictKey] === x[conflictKey]) : x);
+          b._insertedRows = arr.map(x => conflictKeys ? rows.find(r => matches(r, x)) : x);
           return b;
         },
         update(v) { b._pendingUpdate = v; return b; },
