@@ -49,32 +49,53 @@ function mockScript(seed) {
         order() { return b; },
         limit() { return b; },
         maybeSingle() {
+          // Same window.__forceError escape hatch then() supports (see its
+          // own comment below) -- previously missing here, so an
+          // insert()/update().select().maybeSingle() chain (a very common
+          // Supabase pattern in this codebase) had no way to simulate a
+          // real DB error in a test.
+          if (window.__forceError && window.__forceError[table]) {
+            return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
+          }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
+          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
           const r = rows.filter(x => __matches(x, b._filters));
           return Promise.resolve({ data: r[0] || null, error: null });
         },
         single() {
+          if (window.__forceError && window.__forceError[table]) {
+            return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
+          }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
-          if (b._insertedRows) return Promise.resolve({ data: b._insertedRows[0], error: null });
+          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
           const r = rows.filter(x => __matches(x, b._filters));
           return Promise.resolve({ data: r[0] || null, error: null });
         },
         insert(v) {
-          const arr = Array.isArray(v) ? v : [v];
-          arr.forEach(x => {
-            if (!x.id) x.id = 'gen-' + Math.random().toString(36).slice(2);
-            if (!x.created_at) x.created_at = new Date().toISOString();
-            rows.push(x);
-          });
-          b._insertedRows = arr;
+          // The actual row(s) are only pushed into the table by _commit(),
+          // called from whichever resolution method (single/maybeSingle/
+          // then) ends up running -- and only once that method has
+          // confirmed window.__forceError isn't set for this table. Real
+          // Postgres never persists a row whose statement ultimately
+          // errors (e.g. a CHECK constraint violation); eagerly pushing it
+          // here regardless of the caller's later forced error would make
+          // "a rejected insert leaves no row behind" impossible to test.
+          b._insertedRows = Array.isArray(v) ? v : [v];
+          b._commit = function () {
+            b._insertedRows.forEach(x => {
+              if (!x.id) x.id = 'gen-' + Math.random().toString(36).slice(2);
+              if (!x.created_at) x.created_at = new Date().toISOString();
+              rows.push(x);
+            });
+          };
           return b;
         },
         upsert(v, opts) {
@@ -88,12 +109,17 @@ function mockScript(seed) {
           // every one to match (and be actually defined) instead.
           const conflictKeys = opts && opts.onConflict ? opts.onConflict.split(',').map(k => k.trim()) : null;
           const matches = (r, x) => conflictKeys.every(k => x[k] !== undefined && r[k] === x[k]);
-          arr.forEach(x => {
-            let existing = conflictKeys ? rows.find(r => matches(r, x)) : null;
-            if (existing) { Object.assign(existing, x); }
-            else { if (!x.id) x.id = 'gen-' + Math.random().toString(36).slice(2); rows.push(x); existing = x; }
-          });
-          b._insertedRows = arr.map(x => conflictKeys ? rows.find(r => matches(r, x)) : x);
+          // Same deferred-commit reasoning as insert() above.
+          b._insertedRows = arr;
+          b._commit = function () {
+            b._insertedRows = arr.map(x => {
+              const existing = conflictKeys ? rows.find(r => matches(r, x)) : null;
+              if (existing) { Object.assign(existing, x); return existing; }
+              if (!x.id) x.id = 'gen-' + Math.random().toString(36).slice(2);
+              rows.push(x);
+              return x;
+            });
+          };
           return b;
         },
         update(v) { b._pendingUpdate = v; return b; },
@@ -110,7 +136,7 @@ function mockScript(seed) {
           if (window.__forceError && window.__forceError[table]) {
             return Promise.resolve({ data: null, error: { message: window.__forceError[table] } }).then(res, rej);
           }
-          if (b._insertedRows) return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej);
+          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej); }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
