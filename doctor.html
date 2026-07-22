@@ -6219,7 +6219,7 @@ async function sendRezeptToChat(){
       const session=currentStaffSession();
       const sizeBytes=Math.round(base64Data.length*0.75);
       const saved=await uploadPatientDocument(patientId,{
-        category:'rezept', title:'Rezept', filename, mimeType:'application/pdf', sizeBytes, base64Data,
+        category:'rezept', title:doc._rezeptMedSummary, filename, mimeType:'application/pdf', sizeBytes, base64Data,
       },session?session.username:null);
       docId=saved.id;
     }
