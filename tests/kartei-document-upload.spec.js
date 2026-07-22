@@ -103,6 +103,21 @@ test('uploads a valid PDF with the selected category, title and correct size, at
   expect(Buffer.from(result.doc.file_data, 'base64').equals(content)).toBe(true);
 });
 
+test('a real server-side rejection (e.g. the phase25 size/MIME-type constraint) shows a failure toast instead of crashing or silently succeeding', async ({ page }) => {
+  await setupPage(page);
+  await page.selectOption('#kDokKategorie', 'befund');
+  await page.fill('#kDokTitel', 'Blutbild');
+  await page.setInputFiles('#kDokFile', { name: 'befund.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 fake') });
+  const result = await page.evaluate(async () => {
+    window.__forceError = { patient_documents: 'new row for relation "patient_documents" violates check constraint "patient_documents_file_size_limit"' };
+    await uploadKarteiDocument();
+    await new Promise(r => setTimeout(r, 100));
+    return { toastText: document.getElementById('toast')?.textContent || '', rows: window.__store.patient_documents.length };
+  });
+  expect(result.toastText).toContain('fehlgeschlagen');
+  expect(result.rows, 'a rejected insert must not leave a row behind').toBe(0);
+});
+
 test('deleteKarteiDocument() asks for confirmation and does nothing if cancelled', async ({ page }) => {
   await setupPage(page);
   page.on('dialog', d => d.dismiss());
