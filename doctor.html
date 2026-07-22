@@ -2510,7 +2510,9 @@ body.windows-mode #karteiBtn{display:none;}
   </div>
 </div>
 
-<!-- PAKET WECHSELN / ZAHLUNGSMETHODE MODAL -->
+<!-- PAKET WECHSELN MODAL -- redirects to Stripe Checkout (hosted, real
+     payment) instead of collecting card/IBAN details in this app itself;
+     see supabase/functions/create-checkout-session. -->
 <div class="modal-overlay" id="planChangeModal">
   <div class="modal">
     <div class="modal-header">
@@ -2519,56 +2521,13 @@ body.windows-mode #karteiBtn{display:none;}
     </div>
     <div class="modal-body">
       <div style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12px;color:#0E5E56;margin-bottom:14px;">
-        Für den Paketwechsel wird eine Zahlungsmethode benötigt. Ihre Angaben werden nicht wirklich abgebucht (Demo).
+        Sie werden zu Stripe weitergeleitet, um Ihre Zahlungsdaten sicher einzugeben. Smartordi.chat speichert nie Ihre vollständige Kartennummer.
       </div>
       <div class="error-msg" id="pcErrorMsg" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px;"></div>
-      <div class="form-group">
-        <label class="form-label">Zahlungsmethode</label>
-        <div class="clinic-option selected" id="pcMethodCard" onclick="selectPaymentMethod('card')">
-          <span class="clinic-option-icon">💳</span>
-          <div class="clinic-option-info">
-            <div class="clinic-option-name">Kreditkarte</div>
-            <div class="clinic-option-detail">Visa, Mastercard</div>
-          </div>
-        </div>
-        <div class="clinic-option" id="pcMethodSepa" onclick="selectPaymentMethod('sepa')">
-          <span class="clinic-option-icon">🏦</span>
-          <div class="clinic-option-info">
-            <div class="clinic-option-name">SEPA-Lastschrift</div>
-            <div class="clinic-option-detail">Bankeinzug per IBAN</div>
-          </div>
-        </div>
-      </div>
-      <div id="pcCardFields">
-        <div class="form-group">
-          <label class="form-label">Kartennummer</label>
-          <input class="form-input" id="pcCardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
-        </div>
-        <div style="display:flex;gap:10px;">
-          <div class="form-group" style="flex:1;">
-            <label class="form-label">Ablaufdatum</label>
-            <input class="form-input" id="pcCardExpiry" placeholder="MM/JJ" maxlength="5">
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label class="form-label">CVC</label>
-            <input class="form-input" id="pcCardCvc" placeholder="123" maxlength="4">
-          </div>
-        </div>
-      </div>
-      <div id="pcSepaFields" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">IBAN</label>
-          <input class="form-input" id="pcIban" placeholder="AT12 3456 7890 1234 5678">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Kontoinhaber</label>
-          <input class="form-input" id="pcKontoinhaber" placeholder="Vor- und Nachname">
-        </div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closePlanChangeModal()">Abbrechen</button>
-      <button class="btn-primary" onclick="confirmPlanChange()">✓ Bestätigen & wechseln</button>
+      <button class="btn-primary" id="pcConfirmBtn" onclick="confirmPlanChange()">✓ Weiter zu Stripe</button>
     </div>
   </div>
 </div>
@@ -3721,82 +3680,97 @@ function getPlan(){
 function planHasFeature(feature){
   return !!PLAN_FEATURES[getPlan()][feature];
 }
-async function setPlan(plan){
-  if(!PLAN_FEATURES[plan]) return;
-  const ok=await savePracticeSettings({plan});
-  if(!ok){ showToast('✗ Speichern fehlgeschlagen','error'); return; }
-  applyPlanGating();
-  renderPlanSettings();
-  showToast('✓ Paket "'+PLAN_FEATURES[plan].label+'" aktiv');
-}
 function getPaymentMethod(){
   return getPracticeSettings()?.payment_method||null;
 }
 
-// A plan change is a billing action, not just a UI toggle -- clicking a
-// package (here, or on register.html) always goes through a payment step
-// before it actually takes effect.
+// A plan change is a real billing action now, not a client-side toggle:
+// clicking a package redirects to a real Stripe Checkout session
+// (supabase/functions/create-checkout-session). The practice's actual
+// `plan` column only ever changes once Stripe confirms the payment back
+// to supabase/functions/stripe-webhook -- there is deliberately no
+// client-side "just set the plan" path anymore (there used to be one,
+// setPlan(), which this replaces; keeping it around would have let anyone
+// with devtools grant themselves a paid plan for free).
 let pendingPlan=null;
 function openPlanChangeModal(plan,force){
   if(!force && plan===getPlan()){ showToast('Dieses Paket ist bereits aktiv.'); return; }
   pendingPlan=plan;
   document.getElementById('pcPlanLabel').textContent=PLAN_FEATURES[plan].label+' ('+PLAN_FEATURES[plan].price+'/Monat)';
   document.getElementById('pcErrorMsg').style.display='none';
-  const saved=getPaymentMethod();
-  selectPaymentMethod(saved?saved.method:'card');
-  // The full card number/expiry are never persisted (see confirmPlanChange()
-  // below) -- only last4 is kept for display, so there is nothing to
-  // prefill here. Re-entering the full card each time mirrors how real
-  // payment forms behave (a processor never hands your old PAN back to
-  // you either); the IBAN/Kontoinhaber fields still prefill since keeping
-  // a full IBAN on file is normal, legal practice for SEPA direct debit
-  // mandates -- unlike a card PAN, it isn't PCI-DSS-restricted data.
-  document.getElementById('pcCardNumber').value='';
-  document.getElementById('pcCardExpiry').value='';
-  document.getElementById('pcCardCvc').value='';
-  document.getElementById('pcIban').value=saved && saved.method==='sepa' ? saved.iban : '';
-  document.getElementById('pcKontoinhaber').value=saved && saved.method==='sepa' ? saved.kontoinhaber : '';
+  document.getElementById('pcConfirmBtn').disabled=false;
+  document.getElementById('pcConfirmBtn').textContent='✓ Weiter zu Stripe';
   document.getElementById('planChangeModal').classList.add('show');
 }
-function selectPaymentMethod(method){
-  document.getElementById('pcMethodCard').classList.toggle('selected',method==='card');
-  document.getElementById('pcMethodSepa').classList.toggle('selected',method==='sepa');
-  document.getElementById('pcCardFields').style.display=method==='card'?'block':'none';
-  document.getElementById('pcSepaFields').style.display=method==='sepa'?'block':'none';
-}
 async function confirmPlanChange(){
-  const usingCard=document.getElementById('pcMethodCard').classList.contains('selected');
   const errEl=document.getElementById('pcErrorMsg');
-  let payment;
-  if(usingCard){
-    const number=document.getElementById('pcCardNumber').value.replace(/\s+/g,'');
-    const expiry=document.getElementById('pcCardExpiry').value.trim();
-    const cvc=document.getElementById('pcCardCvc').value.trim();
-    if(!/^\d{13,19}$/.test(number)||!/^\d{2}\/\d{2}$/.test(expiry)||!/^\d{3,4}$/.test(cvc)){
-      errEl.textContent='Bitte eine gültige Kartennummer, Ablaufdatum (MM/JJ) und CVC eingeben.';
+  const btn=document.getElementById('pcConfirmBtn');
+  errEl.style.display='none';
+  btn.disabled=true;
+  btn.textContent='Wird weitergeleitet...';
+  try{
+    const {data,error}=await sb.functions.invoke('create-checkout-session',{
+      body:{plan:pendingPlan, returnUrl:window.location.origin+window.location.pathname},
+    });
+    if(error||!data?.url){
+      errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.';
       errEl.style.display='block';
+      btn.disabled=false;
+      btn.textContent='✓ Weiter zu Stripe';
       return;
     }
-    // Only last4 is persisted -- the full card number and expiry never
-    // reach savePracticeSettings()/Supabase at all. Storing a complete PAN
-    // and expiry in plaintext with no PCI-DSS-compliant processor involved
-    // is exactly the kind of card data a real payment integration (e.g.
-    // Stripe) exists to keep this app from ever having to touch.
-    payment={method:'card',last4:number.slice(-4)};
-  }else{
-    const iban=document.getElementById('pcIban').value.replace(/\s+/g,'');
-    const kontoinhaber=document.getElementById('pcKontoinhaber').value.trim();
-    if(iban.length<15||!kontoinhaber){
-      errEl.textContent='Bitte eine gültige IBAN und den Kontoinhaber eingeben.';
-      errEl.style.display='block';
-      return;
-    }
-    payment={method:'sepa',iban,kontoinhaber,last4:iban.slice(-4)};
+    window.location.href=data.url;
+  }catch(e){
+    console.error('create-checkout-session failed',e);
+    errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.';
+    errEl.style.display='block';
+    btn.disabled=false;
+    btn.textContent='✓ Weiter zu Stripe';
   }
-  await savePracticeSettings({payment_method:payment});
-  document.getElementById('planChangeModal').classList.remove('show');
-  await setPlan(pendingPlan);
+}
+// "Zahlungsmethode verwalten" -- an already-subscribed practice updates
+// their card or cancels via Stripe's own hosted Billing Portal instead of
+// this app ever handling a real card number itself. Only reachable once a
+// real Stripe customer exists (see renderPlanSettings()).
+async function manageBilling(){
+  try{
+    const {data,error}=await sb.functions.invoke('create-billing-portal-session',{
+      body:{returnUrl:window.location.origin+window.location.pathname},
+    });
+    if(error||!data?.url){ showToast('✗ Öffnen der Zahlungsverwaltung fehlgeschlagen','error'); return; }
+    window.location.href=data.url;
+  }catch(e){
+    console.error('create-billing-portal-session failed',e);
+    showToast('✗ Öffnen der Zahlungsverwaltung fehlgeschlagen','error');
+  }
+}
+// Stripe redirects back here with ?checkout=success once Checkout itself
+// completes -- that only means the *browser* got redirected, not that
+// stripe-webhook's server-to-server checkout.session.completed has
+// necessarily landed and updated `practices` yet. Refetch practice
+// settings (with one short retry) rather than assume the plan is already
+// updated, and strip the query param so a later page refresh doesn't
+// re-trigger this.
+async function handleStripeCheckoutReturn(){
+  const params=new URLSearchParams(window.location.search);
+  const checkout=params.get('checkout');
+  if(!checkout) return;
+  history.replaceState(null,'',window.location.pathname);
+  if(checkout==='cancelled'){ showToast('Paketwechsel abgebrochen.'); return; }
+  showToast('✓ Zahlung erfolgreich — wird synchronisiert...');
+  await refreshPracticeSettings();
+  renderPlanSettings();
   applyTrialStatus();
+  if(!getPaymentMethod()){
+    // The webhook is server-to-server and can lag a couple seconds behind
+    // the browser's own redirect -- one delayed re-check before giving up
+    // silently, rather than leaving the UI stuck on stale data.
+    setTimeout(async()=>{
+      await refreshPracticeSettings();
+      renderPlanSettings();
+      applyTrialStatus();
+    },3000);
+  }
 }
 
 // ══ TRIAL STATUS (30 Tage kostenlos, siehe register.html) ══
@@ -3892,9 +3866,16 @@ function renderPlanSettings(){
   }).join('');
   const payment=getPaymentMethod();
   const paymentLine=payment
-    ? (payment.method==='card' ? '💳 Kreditkarte •••• '+payment.last4 : '🏦 SEPA-Lastschrift •••• '+payment.last4)
+    ? (payment.method==='card' ? '💳 '+(payment.brand?payment.brand.charAt(0).toUpperCase()+payment.brand.slice(1)+' ':'Kreditkarte ')+'•••• '+payment.last4 : '🏦 SEPA-Lastschrift •••• '+payment.last4)
     : 'Keine Zahlungsmethode hinterlegt';
-  body.innerHTML=cards+`<div style="grid-column:1/-1;font-size:12px;color:#64748b;margin-top:2px;">Zahlungsmethode: <strong style="color:#0f172a;">${paymentLine}</strong></div>`;
+  // Only reachable once stripe-webhook has actually created a real Stripe
+  // customer for this practice (i.e. after at least one completed
+  // Checkout) -- before that there is nothing yet for the Billing Portal
+  // to manage.
+  const manageBtn=getPracticeSettings()?.stripe_customer_id
+    ? `<button onclick="manageBilling()" style="grid-column:1/-1;justify-self:start;margin-top:6px;background:white;border:1px solid #e2e8f0;border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;">⚙ Zahlungsmethode verwalten</button>`
+    : '';
+  body.innerHTML=cards+`<div style="grid-column:1/-1;font-size:12px;color:#64748b;margin-top:2px;">Zahlungsmethode: <strong style="color:#0f172a;">${paymentLine}</strong></div>`+manageBtn;
 }
 // ── Team (Ärzte/Sekretär:innen dieser Ordination, siehe vendor/staff-accounts.js) ──
 function currentStaffSession(){
@@ -7049,6 +7030,7 @@ window.addEventListener('load', async function() {
   applyPlanGating();
   renderPlanSettings();
   applyTrialStatus();
+  handleStripeCheckoutReturn();
   // Labor-E-Mail (supabase/phase24_lab_result_inbox.sql) -- generated once
   // per practice and shown read-only in Settings for copy/paste to a lab.
   const labAddrInput=document.getElementById('labEmailAddress');

@@ -153,6 +153,14 @@ function mockScript(seed) {
         from: (t) => __builder(t),
         channel: () => ({ on() { return this; }, subscribe() { return this; } }),
         rpc: () => Promise.resolve({ data: null, error: null }),
+        // Reassignable per-test the same way sb.rpc already is (see
+        // dsgvo-deletion.spec.js) -- e.g.
+        // sb.functions.invoke = async (name, opts) => ({data:{url:'...'}, error:null});
+        // Previously missing entirely, so any code calling
+        // sb.functions.invoke(...) (send-report-email, create-checkout-session,
+        // create-billing-portal-session) threw "Cannot read properties of
+        // undefined" the moment a test reached it.
+        functions: { invoke: () => Promise.resolve({ data: null, error: null }) },
         auth: {
           signUp: () => Promise.resolve({ data: { user: { id: 'new-user-uuid' } }, error: null }),
           signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'not mocked' } }),

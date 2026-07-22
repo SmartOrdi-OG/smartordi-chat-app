@@ -8,11 +8,26 @@
 **باقي وما خلص بعد (إداري/قرارات، مو تصليحات كود):**
 - 🏛️ **إداري، مو تقني**: تأكيد/توقيع DPA مع Supabase من Organization Settings (منطقة المشروع تأكدت أصلاً Frankfurt ✅).
 - 🚨 **لازم تشغّل `supabase/phase25_document_upload_server_validation.sql` يدويًا بمحرر SQL تبع Supabase**: كود التطبيق والاختبارات جاهزين، بس القيد الفعلي (منع أي MIME type غير PDF أو ملف أكبر من 8MB على مستوى الـDB نفسه) ما رح يشتغل بالإنتاج لحد ما تشغّل هالملف بنفسك — نفس طريقة كل ملفات `phaseXX_*.sql` السابقة.
-- 🚨 **الحل الكامل لتخزين معلومات الدفع**: لسا محتاج ربط معالج دفع حقيقي معتمد PCI-DSS (متل Stripe) — التصليح الحالي (last4 بس) هو تخفيف مؤقت، مش الحل النهائي؛ صفحة "تغيير الباقة" لسا شكلية/ديمو، مش دفع حقيقي.
+- 🚨 **ربط Stripe الحقيقي بده إعداد يدوي (المستخدم ما عنده حساب Stripe لسا)**: الكود جاهز بالكامل (شوف قسم "تم إنجازه" تحت) بس ما رح يشتغل لحد ما تعمل الخطوات هاي:
+  1. تعمل حساب Stripe (stripe.com) — مجاني، بيجيك test mode تلقائيًا.
+  2. تعمل 3 Products بـStripe Dashboard (Basic/Pro/Enterprise) وتاخد الـPrice ID (`price_...`) تبع كل وحدة.
+  3. تشغّل `supabase/phase26_stripe_billing.sql` بمحرر SQL تبع Supabase.
+  4. تنشر (deploy) الـ3 Edge Functions الجديدة (`create-checkout-session`, `create-billing-portal-session`, `stripe-webhook` — هاد الأخير بـ`--no-verify-jwt` لأنه Stripe نفسه بيناديه، مش المستخدم).
+  5. تعمل `supabase secrets set` للقيم: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_ENTERPRISE`, `STRIPE_WEBHOOK_SECRET` (هاد الأخير من Stripe Dashboard → Developers → Webhooks → بعد ما تسجل رابط الـ`stripe-webhook` المنشور هناك).
+  كل التفاصيل والتعليقات موجودة جوا كل ملف Edge Function نفسه.
 - 💡 **فكرة اترحت وانرفضت (شات بين طبيبين من عيادتين مختلفتين)**: المستخدم سأل هل ممكن نفتح شات مباشر بين طبيبين مشتركين بالبرنامج بس من عيادتين مختلفتين. أوضحنا إنه هاد نقلة كبيرة عن كل شي مبني لهلق (كل الشات الحالي بين الطبيب ومريضه بس، وكل جدول بالـSupabase معزول بـ`practice_id` عن باقي العيادات بقصد) — بده جدول وقواعد RLS جديدة كلياً (مو استخدام نفس نظام المرضى)، وسألنا هل الإرسال بده يكون مفتوح لأي طبيب أو يحتاج "طلب تواصل" أول. **المستخدم قرر يلغي الفكرة** ("مجرد فكرة") — ما انبنى أي شي.
 - 🔲 **مؤجل بقصد: قسم MKP (مرضى الأطفال) بمودال "Bericht senden"**: بيانات الفحوصات الدورية (`mkp_untersuchungen`) شكلها ديناميكي (فحص وحقول مختلفة لكل عمر)، فبده استخراج بيانات منفصل عن باقي الأقسام — سجلناها كمتابعة لاحقة لما يصير في وقت.
 
 ## تم إنجازه
+
+- **ربط Stripe الحقيقي (الكود جاهز بالكامل، بانتظار حساب Stripe تبع المستخدم)**: المستخدم أكد إنه ما عندو حساب Stripe بعد وطلب "جهز الكود" لحد ما يصير عندو واحد. استبدلنا فورم بطاقة/IBAN الوهمي بـ`doctor.html` (يلي كان يكتب last4 وهمي بدون أي دفع حقيقي) بتدفق Stripe Checkout حقيقي كامل:
+  - `supabase/phase26_stripe_billing.sql`: أعمدة جديدة على `practices` (`stripe_customer_id`, `stripe_subscription_id`, `subscription_status`).
+  - `supabase/functions/create-checkout-session`: تنشئ جلسة Stripe Checkout حقيقية للباقة المختارة — محمية بالكامل ضمن سياق RLS تبع المستخدم نفسه (بتستخدم الـJWT تبعو، مش صلاحية admin)، فما تقدر توصل أو تعدل ولا عيادة تانية غير عيادته.
+  - `supabase/functions/create-billing-portal-session`: زر "⚙ Zahlungsmethode verwalten" الجديد بصفحة الباقات — بيوديك على Stripe Billing Portal الرسمي لتعديل البطاقة أو الإلغاء، بدل ما التطبيق يتعامل مع أرقام بطاقات حقيقية بنفسه إطلاقًا.
+  - `supabase/functions/stripe-webhook`: البوابة الوحيدة يلي فعلاً بتفعّل الباقة/تحدّث حالة الاشتراك — بتتحقق من توقيع Stripe يدويًا (HMAC-SHA256 عبر Web Crypto API، بدون مكتبة stripe-node)، وبتستخدم service-role key لأنه ما في مستخدم مسجل دخول أصلاً (Stripe نفسه يلي بيناديها). بتعالج `checkout.session.completed` (تفعيل الباقة + حفظ آخر 4 أرقام واسم البطاقة الحقيقيين من Stripe نفسه) و`customer.subscription.updated`/`.deleted`.
+  - `confirmPlanChange()` بقى بس يوجه لـStripe Checkout ويرجع يفحص إذا الدفع نجح فعلاً (`handleStripeCheckoutReturn()`، مع إعادة محاولة قصيرة لأنه الـwebhook ممكن ياخد كذا ثانية زيادة عن التحويل نفسه). `setPlan()` القديم (يلي كان يفعّل الباقة مباشرة بدون أي دفع) انحذف بالكامل — كان أي حدا بالـdevtools يقدر يستدعيه ويفعّل باقة مدفوعة مجانًا.
+  - أضفنا `sb.functions.invoke` لملف الـmock المشترك (كان ناقص بالكامل — حتى `send-report-email` الموجودة أصلاً ما كان إلها أي تغطية لنفس السبب) و`tests/stripe-billing.spec.js` (7 اختبارات) يغطي الجزء يلي فينا نفحصه من المتصفح: التوجيه الصحيح لـStripe، معالجة الأخطاء، زر إدارة الدفع، وعرض الحالة بعد الرجوع من Stripe. حذفنا `tests/payment-card-storage.spec.js` القديم لأنه كان بيفحص فورم البطاقة الوهمي يلي ما عاد موجود أصلاً.
+  - **الكود منطق Edge Functions (Deno) ما ينفحص بـPlaywright** (نفس القيد الموجود أصلاً لـ`send-report-email`/`receive-lab-email`) — التحقق الحقيقي بده حساب Stripe test mode فعلي من طرف المستخدم. تفاصيل الإعداد المطلوب مسجّلة بقسم "باقي" بالأعلى.
 
 - **تحقق من الملفات المرفوعة على مستوى السيرفر (Supabase)، مش بس الواجهة + تصليح بگين إضافيين حقيقيين بملف الـmock**: كنا حددنا هاد كثغرة وقت السؤال عن كفاية الحماية — `uploadKarteiDocument()` كانت بتفحص نوع الملف (PDF) وحجمه (حد 8MB) بالـJavaScript بس، فأي حساب طاقم (أو حساب مخترق) يقدر يتخطى الفحص بالكامل ويستدعي الـAPI مباشرة.
   - أضفنا `supabase/phase25_document_upload_server_validation.sql`: قيدين حقيقيين على جدول `patient_documents` — `mime_type` لازم يكون `'application/pdf'` لو في ملف فعلي، وطول `file_data` (الملف نفسه المخزّن، مش رقم `size_bytes` يلي المستخدم يقدر يكذب فيه) محدود بما يعادل ~8MB بعد فك تشفير base64. لازم تشغّلها بنفسك بمحرر SQL تبع Supabase (مسجّلة كبند "باقي" بالأعلى).
