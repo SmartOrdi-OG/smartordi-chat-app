@@ -251,11 +251,16 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .uw-bubble{
   background:#f8fafc;border:1px solid var(--border);
   border-radius:10px;padding:8px 10px;margin-top:4px;
-  display:flex;align-items:center;gap:8px;cursor:pointer;
+  display:flex;align-items:center;gap:8px;cursor:pointer;max-width:240px;
 }
 .uw-bubble:hover{background:#EAF4F1;}
 .uw-icon{font-size:20px;flex-shrink:0;}
-.uw-info-name{font-size:12px;font-weight:700;}
+/* Without min-width:0 a flex item never shrinks past its content's
+   intrinsic width -- a long underscore-separated filename (no spaces/
+   hyphens to break on) pushed the text straight out of the bubble instead
+   of wrapping onto a second line. */
+.uw-bubble>div{flex:1;min-width:0;}
+.uw-info-name{font-size:12px;font-weight:700;overflow-wrap:break-word;word-break:break-word;}
 .uw-info-sub{font-size:10px;opacity:0.8;}
 
 .system-msg{
@@ -1059,7 +1064,7 @@ function msgRowHtml(m){
   const filenameEsc=escapeHtml(m.filename||'').replace(/'/g,"\\'");
   const downloadAttr=m.docId?` onclick="downloadPatientDocument('${m.docId}','${filenameEsc}')"`:'';
   if(m.type==='doc'){
-    bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;"${downloadAttr}><span style="font-size:22px;">📄</span><div><div style="font-size:13px;font-weight:700;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size||'')}</div></div></div></div>`;
+    bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;max-width:240px;"${downloadAttr}><span style="font-size:22px;flex-shrink:0;">📄</span><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size||'')}</div></div></div></div>`;
   }else if(m.type==='uw'){
     bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon">📎</span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub||'')}</div></div></div></div>`;
   }else{
