@@ -48,10 +48,19 @@ function terminRowToJs(row){
   };
 }
 
+// Fetches only the columns terminRowToJs() actually reads (skips
+// updated_at/practice_id -- the latter is RLS-only bookkeeping, never
+// needed once it already scoped which rows came back) -- a smaller payload
+// for the exact same full-history fetch, since the Kalender/mini-calendar
+// still needs every past+future termine in memory to browse back to any
+// month. See the row-count warning below for when that itself needs
+// revisiting (real windowing/on-demand loading, not implemented yet).
+const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,created_at';
 let _termine=[];
 async function refreshTermine(){
-  const {data,error}=await sb.from('termine').select('*').order('date').order('time');
+  const {data,error}=await sb.from('termine').select(TERMINE_COLUMNS).order('date').order('time');
   if(error){ console.error('refreshTermine failed',error); return; }
+  if(data&&data.length>3000) console.warn('refreshTermine: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching the whole table on every page load will get noticeably slow; time to add real windowing/on-demand loading for the Kalender.');
   _termine=(data||[]).map(terminRowToJs);
 }
 function loadTermine(){
@@ -172,10 +181,16 @@ function subscribeTermineRealtime(onChange){
 function localPatientAccountsRaw(){
   try{ return JSON.parse(localStorage.getItem('smartordi_patient_accounts'))||{}; }catch(e){ return {}; }
 }
+// Explicit column list for the same reason as TERMINE_COLUMNS above --
+// notably excludes pw_hash/temp_password (zero legitimate use client-side,
+// even though RLS already keeps them within the same practice's own staff)
+// and practice_id/guardian_id (server-side/RPC-only bookkeeping).
+const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note';
 let _patients={};
 async function refreshPatients(){
-  const {data,error}=await sb.from('patients').select('*');
+  const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS);
   if(error){ console.error('refreshPatients failed',error); return; }
+  if(data&&data.length>3000) console.warn('refreshPatients: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every patient on every page load will get noticeably slow; time to add real pagination/search-on-demand.');
   const localAccounts=localPatientAccountsRaw();
   const merged={};
   (data||[]).forEach(function(row){
@@ -277,8 +292,11 @@ async function sendMessageToPatient(patientId,msg){
   if(error){ console.error('sendMessageToPatient failed',error); throw error; }
   return data;
 }
+// practice_id excluded -- RLS-only bookkeeping, never read once these rows
+// already came back scoped to it.
+const PATIENT_MESSAGE_COLUMNS='id,patient_id,dir,type,text,sent_by,created_at,doc_id,filename,doc_sub';
 async function getMessagesForPatient(patientId){
-  const {data,error}=await sb.from('patient_messages').select('*').eq('patient_id',patientId).order('created_at');
+  const {data,error}=await sb.from('patient_messages').select(PATIENT_MESSAGE_COLUMNS).eq('patient_id',patientId).order('created_at');
   if(error){ console.error('getMessagesForPatient failed',error); return []; }
   return data||[];
 }
@@ -288,11 +306,14 @@ async function getMessagesForPatient(patientId){
 // copy of messages (acc.messages) and so never showed a real patient's own
 // messages at all: those are sent straight from patient.html to this table
 // since PR6 and never touch a staff device's localStorage. Same
-// cache-then-sync-getter shape as _termine/_impfungen.
+// cache-then-sync-getter shape as _termine/_impfungen. Only fetches the
+// columns loadMessagesForPatientCached() actually remaps below (this
+// aggregate view is preview-only, never renders document attachments).
 let _allMessagesByPatient={};
 async function refreshAllMessages(){
-  const {data,error}=await sb.from('patient_messages').select('*').order('created_at');
+  const {data,error}=await sb.from('patient_messages').select('patient_id,dir,type,text,created_at').order('created_at');
   if(error){ console.error('refreshAllMessages failed',error); return; }
+  if(data&&data.length>3000) console.warn('refreshAllMessages: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every message on every page load will get noticeably slow; time to add real windowing (e.g. only recent + unread).');
   const byPatient={};
   (data||[]).forEach(function(row){
     (byPatient[row.patient_id]=byPatient[row.patient_id]||[]).push(row);
@@ -421,9 +442,11 @@ async function saveMkpExam(patientId,examKey,fieldData,uploadedBy){
 // row once, cache by patient_id" shape doctor.html/secretary.html's
 // due-vaccination sweep (allDueVaccinations) needs to scan every patient at
 // once, not just the one currently open in Kartei.
+// uploaded_by/practice_id excluded -- never read by impfRowToJs() below.
+const IMPFUNGEN_COLUMNS='id,patient_id,vaccine_key,vaccine_name,dose_label,datum,next_due,charge,created_at';
 let _impfungen={};
 async function refreshImpfungen(){
-  const {data,error}=await sb.from('patient_impfungen').select('*').order('datum',{ascending:false});
+  const {data,error}=await sb.from('patient_impfungen').select(IMPFUNGEN_COLUMNS).order('datum',{ascending:false});
   if(error){ console.error('refreshImpfungen failed',error); return; }
   const byPatient={};
   (data||[]).forEach(function(row){
