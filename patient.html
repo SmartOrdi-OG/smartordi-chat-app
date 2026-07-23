@@ -1778,11 +1778,18 @@ async function submitSymptoms(){
   const reason=[...selectedSymptoms].map(k=>k.split(':')[1]);
   const reasonNote=document.getElementById('symptomNote').value.trim();
   if(getPatientToken()){
+    let ok=false;
     try{
-      await patientSetSymptoms(symptomTerminId,reason,reasonNote);
-      await refreshRemoteTermine();
-      renderPatientTermine();
-    }catch(err){ console.error('patientSetSymptoms failed',err); }
+      ok=await patientSetSymptoms(symptomTerminId,reason,reasonNote);
+    }catch(err){
+      console.error('patientSetSymptoms failed',err);
+    }
+    if(!ok){
+      showToast(tr('symptom.toast.saveFailed'),'error');
+      return;
+    }
+    await refreshRemoteTermine();
+    renderPatientTermine();
   }else{
     const list=loadTermine();
     const t=list.find(x=>x.id===symptomTerminId);
