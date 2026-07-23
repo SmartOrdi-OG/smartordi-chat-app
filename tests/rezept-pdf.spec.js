@@ -17,29 +17,7 @@
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
-
-const JSPDF_STUB = () => {
-  function FakeJsPDF() {
-    this._texts = [];
-    this._images = [];
-  }
-  FakeJsPDF.prototype.setFontSize = function () { return this; };
-  FakeJsPDF.prototype.setFont = function () { return this; };
-  FakeJsPDF.prototype.setTextColor = function () { return this; };
-  FakeJsPDF.prototype.setDrawColor = function () { return this; };
-  FakeJsPDF.prototype.setFillColor = function () { return this; };
-  FakeJsPDF.prototype.setLineWidth = function () { return this; };
-  FakeJsPDF.prototype.line = function () { return this; };
-  FakeJsPDF.prototype.rect = function () { return this; };
-  FakeJsPDF.prototype.text = function (str) { this._texts.push(String(str)); return this; };
-  FakeJsPDF.prototype.splitTextToSize = function (str) { return [String(str)]; };
-  FakeJsPDF.prototype.addImage = function (dataUrl) { this._images.push(dataUrl); return this; };
-  FakeJsPDF.prototype.output = function (type) {
-    if (type === 'datauristring') return 'data:application/pdf;base64,ZmFrZS1wZGY=';
-    return 'blob:fake-pdf-url';
-  };
-  window.jspdf = { jsPDF: FakeJsPDF };
-};
+const { installJsPdfMock } = require('./helpers/jspdfStub');
 
 function seed() {
   return {
@@ -50,8 +28,7 @@ function seed() {
 }
 
 async function setupPage(page) {
-  await page.route('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', route => route.abort());
-  await page.addInitScript(JSPDF_STUB);
+  await installJsPdfMock(page);
   await installMockSupabase(page, seed(), () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
