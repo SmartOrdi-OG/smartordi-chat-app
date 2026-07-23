@@ -206,8 +206,9 @@ async function refreshPatients(){
     });
   });
   // Accounts that only exist locally so far (not yet uploaded/created in
-  // Supabase -- e.g. a guardian/child account, deferred to a later phase)
-  // still need to show up exactly as they did before this migration.
+  // Supabase -- e.g. a not-yet-migrated legacy guardian/child pair from
+  // before supabase/phase28_guardian_child_accounts.sql) still need to show
+  // up exactly as they did before this migration.
   Object.keys(localAccounts).forEach(function(u){
     if(!merged[u]) merged[u]=localAccounts[u];
   });
@@ -230,6 +231,35 @@ async function upsertPatientIdentity(username,fields){
   const {data,error}=await sb.from('patients').upsert(row,{onConflict:'username'}).select().single();
   if(error){ console.error('upsertPatientIdentity failed',error); throw error; }
   await refreshPatients();
+  return data;
+}
+
+// ── GUARDIANS (supabase/phase28_guardian_child_accounts.sql) -- a parent
+// logging in on behalf of a child patient too young for their own login.
+// Deliberately a separate cache/table from patients: a guardian has no
+// clinical data of their own and must never show up in the staff
+// "Patienten" search/list alongside real patients. ──
+let _guardians={};
+async function refreshGuardians(){
+  const {data,error}=await sb.from('patient_guardians').select('*');
+  if(error){ console.error('refreshGuardians failed',error); return; }
+  const merged={};
+  (data||[]).forEach(function(row){
+    merged[row.username]={ id:row.id, username:row.username, name:row.name, fullName:row.full_name, firstLogin:row.first_login };
+  });
+  _guardians=merged;
+}
+function loadGuardians(){
+  return _guardians;
+}
+const guardiansReady=refreshGuardians();
+// Never touches temp_password/pw_hash unless explicitly asked to, same rule
+// as upsertPatientIdentity above.
+async function upsertGuardianIdentity(username,fields){
+  const row=Object.assign({username},fields);
+  const {data,error}=await sb.from('patient_guardians').upsert(row,{onConflict:'username'}).select().single();
+  if(error){ console.error('upsertGuardianIdentity failed',error); throw error; }
+  await refreshGuardians();
   return data;
 }
 
