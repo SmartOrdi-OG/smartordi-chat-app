@@ -6216,12 +6216,17 @@ function buildRezeptPdf(){
   // written by anything, so a saved signature never actually made it onto a
   // printed/sent Rezept. Same variables Überweisung/Patientenbericht already
   // read correctly.
-  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){try{doc.addImage(stempelDataUrl,'PNG',10,y,35,18);}catch(e){}}
-  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){try{doc.addImage(sigDataUrl,'PNG',60,y,50,18);}catch(e){}}
-  T('Stempel & Unterschrift',10,y+24,8,'normal',[150,150,150]);
-  T(document.getElementById('setArztName')?.value||'—',60,y+24,9,'bold');
+  // Was 35x18/50x18 -- a real rubber stamp impression is roughly round
+  // (~40mm across), and squeezing it into an 18mm-tall box shrank it well
+  // below legible size on a printed page (user: "حجم الختم صغير كتير عالوصفة").
+  // Sized up (and the label/name lines pushed down to match) so the stamp
+  // prints at a size close to its real physical footprint.
+  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){try{doc.addImage(stempelDataUrl,'PNG',10,y,40,30);}catch(e){}}
+  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){try{doc.addImage(sigDataUrl,'PNG',60,y,55,26);}catch(e){}}
+  T('Stempel & Unterschrift',10,y+34,8,'normal',[150,150,150]);
+  T(document.getElementById('setArztName')?.value||'—',60,y+34,9,'bold');
   const stempelAdresse=document.getElementById('setAdresse')?.value||'';
-  T((document.getElementById('setFach')?.value||'—')+(stempelAdresse?' · '+stempelAdresse.split(',').pop().trim():''),60,y+28,7,'normal',[120,120,120]);
+  T((document.getElementById('setFach')?.value||'—')+(stempelAdresse?' · '+stempelAdresse.split(',').pop().trim():''),60,y+38,7,'normal',[120,120,120]);
 
   // Footer
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
