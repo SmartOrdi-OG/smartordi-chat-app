@@ -86,10 +86,14 @@ Deno.serve(async (req: Request) => {
   params.set("metadata[plan]", plan);
   params.set("success_url", `${returnUrl}?checkout=success`);
   params.set("cancel_url", `${returnUrl}?checkout=cancelled`);
+  // `customer_creation` is only valid in `mode:"payment"` Checkout Sessions
+  // -- Stripe rejects it entirely in `mode:"subscription"` (used here),
+  // since a subscription Session always creates a customer on its own when
+  // none is passed. Passing an existing one is still how a returning
+  // practice's second-ever plan change reuses the same Stripe customer
+  // instead of creating a duplicate.
   if (practice.stripe_customer_id) {
     params.set("customer", practice.stripe_customer_id);
-  } else {
-    params.set("customer_creation", "always");
   }
 
   const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
