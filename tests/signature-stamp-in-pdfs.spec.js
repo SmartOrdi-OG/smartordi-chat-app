@@ -71,6 +71,18 @@ test('the signature and stamp appear on the Rezept PDF', async ({ page }) => {
   expect(images).toContain(FAKE_STEMPEL);
 });
 
+test('the stamp prints at a legible size on the Rezept PDF, not squeezed into a tiny box', async ({ page }) => {
+  // Regression for a real complaint: the stamp used to be placed in a
+  // 35x18mm box -- a real round stamp impression squeezed that flat came out
+  // tiny and hard to read on a printed page ("حجم الختم صغير كتير عالوصفة").
+  await setupPage(page);
+  await page.evaluate(() => { switchView('clinic'); toggleKartei(); switchKarteiTab('rezept', document.getElementById('ktab-btn-rezept')); });
+  await page.fill('#rz-med1', 'Amoxicillin 500mg');
+  const stempelCall = await page.evaluate((stempelUrl) => buildRezeptPdf()._imageCalls.find(c => c.url === stempelUrl), FAKE_STEMPEL);
+  expect(stempelCall.w).toBeGreaterThanOrEqual(38);
+  expect(stempelCall.h).toBeGreaterThanOrEqual(28);
+});
+
 test('the signature and stamp appear on the Überweisung PDF', async ({ page }) => {
   await setupPage(page);
   const images = await page.evaluate(() => buildUeberweisungPdf()._images);
