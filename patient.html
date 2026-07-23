@@ -1490,7 +1490,10 @@ async function sendMsg(){
   // from doctor.html's sendClinicMsg() in an earlier migration step.
   if(getPatientToken()){
     try{ await patientSendMessage(txt); await refreshRemoteMessages(); }
-    catch(err){ console.error('patientSendMessage failed',err); }
+    catch(err){
+      console.error('patientSendMessage failed',err);
+      showToast(tr('chat.toast.sendFailed'),'error');
+    }
   }
 }
 
