@@ -6512,10 +6512,46 @@ async function deleteSig(){
 }
 
 // Stempel
-function loadStempel(e){
+// A photographed stamp is almost always dark ink on white/light paper -- a
+// raw photo upload kept that whole paper rectangle as an opaque background,
+// which then covered part of the PDF underneath it instead of just showing
+// the ink. Since we can't rely on any external/ML background-removal
+// service (CSP + no backend for this), fade near-white pixels to transparent
+// client-side via canvas, with a soft band (not a hard cutoff) so
+// anti-aliased ink edges don't turn jagged. This only helps when the stamp
+// was photographed against a plain white/light surface with decent
+// lighting -- it can't separate ink from a colored or shadowed background.
+function removeStempelBackground(dataUrl){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const canvas=document.createElement('canvas');
+        canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0);
+        const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+        const d=imgData.data;
+        for(let i=0;i<d.length;i+=4){
+          const brightness=(d[i]+d[i+1]+d[i+2])/3;
+          if(brightness>235) d[i+3]=0;
+          else if(brightness>190) d[i+3]=Math.round(d[i+3]*(235-brightness)/45);
+        }
+        ctx.putImageData(imgData,0,0);
+        resolve(canvas.toDataURL('image/png'));
+      }catch(err){ resolve(dataUrl); }
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+async function loadStempel(e){
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = async ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); await persistSignature({stempel_data_url:ev.target.result}); };
+  reader.onload = async ev => {
+    const cleaned = await removeStempelBackground(ev.target.result);
+    stempelDataUrl = cleaned; showStempelPreview(cleaned); showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt'); await persistSignature({stempel_data_url:cleaned});
+  };
   reader.readAsDataURL(file);
 }
 
@@ -6525,7 +6561,10 @@ function handleStempelDrop(e){
   document.getElementById('stempelDropzone').style.background='#fafbfc';
   const file = e.dataTransfer.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = async ev => { stempelDataUrl = ev.target.result; showStempelPreview(ev.target.result); showToastSettings('✓ Stempel hochgeladen'); await persistSignature({stempel_data_url:ev.target.result}); };
+  reader.onload = async ev => {
+    const cleaned = await removeStempelBackground(ev.target.result);
+    stempelDataUrl = cleaned; showStempelPreview(cleaned); showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt'); await persistSignature({stempel_data_url:cleaned});
+  };
   reader.readAsDataURL(file);
 }
 
