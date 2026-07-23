@@ -102,6 +102,19 @@ async function saveStaffSignature(staffId,fields){
   }
   return true;
 }
+// Persists the doctor's own name/Fachrichtung from Einstellungen
+// (staff_profiles.full_name/fach) -- the settings form used to only update
+// the on-screen name and a localStorage shadow copy, so the edit silently
+// reverted to the old server value on reload or from any other device.
+async function saveStaffProfileFields(staffId,fields){
+  const {data,error}=await sb.from('staff_profiles').update(fields).eq('id',staffId).select().single();
+  if(error){ console.error('saveStaffProfileFields failed',error); return false; }
+  if(_staffRoster[staffId]){
+    _staffRoster[staffId].fullName=data.full_name;
+    _staffRoster[staffId].fach=data.fach;
+  }
+  return true;
+}
 
 // Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
 // lives on the practice's own row in `practices` (supabase/phase18_practices_
