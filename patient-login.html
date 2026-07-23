@@ -241,6 +241,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <div id="anamnese-specialty-title" class="anamnese-specialty-title"></div>
       <div id="anamnese-specialty-section"></div>
     </div>
+    <div class="error-msg" id="anamneseErrorMsg"><span>!</span><span id="anamneseErrorText"></span></div>
     <button class="btn-main" onclick="submitAnamnese()" data-i18n="anamnese.submit">✓ Anamnese absenden</button>
   </div>
 
@@ -649,10 +650,18 @@ function showAnamneseScreen(){
 async function submitAnamnese(){
   const root=document.getElementById('anamneseForm');
   const data=collectAnamneseData(root);
+  const errorEl=document.getElementById('anamneseErrorMsg');
+  const errorText=document.getElementById('anamneseErrorText');
+  errorEl.classList.remove('show');
   if(getPatientToken()){
     // Real (Supabase-backed) patient -- save server-side (phase8_anamnese.sql)
     // so it's visible from any device they log in from, not just this one.
-    await patientSetAnamnese(data);
+    const ok=await patientSetAnamnese(data);
+    if(!ok){
+      errorText.textContent=tr('anamnese.err.saveFailed');
+      errorEl.classList.add('show');
+      return;
+    }
   } else {
     // Guardian/demo accounts have no Supabase patients row at all yet --
     // same local-only fallback as before for them.
