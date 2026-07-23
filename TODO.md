@@ -8,13 +8,8 @@
 **باقي وما خلص بعد (إداري/قرارات، مو تصليحات كود):**
 - 🏛️ **إداري، مو تقني**: تأكيد/توقيع DPA مع Supabase من Organization Settings (منطقة المشروع تأكدت أصلاً Frankfurt ✅).
 - 🚨 **لازم تشغّل `supabase/phase25_document_upload_server_validation.sql` يدويًا بمحرر SQL تبع Supabase**: كود التطبيق والاختبارات جاهزين، بس القيد الفعلي (منع أي MIME type غير PDF أو ملف أكبر من 8MB على مستوى الـDB نفسه) ما رح يشتغل بالإنتاج لحد ما تشغّل هالملف بنفسك — نفس طريقة كل ملفات `phaseXX_*.sql` السابقة.
-- 🚨 **ربط Stripe الحقيقي بده إعداد يدوي (المستخدم ما عنده حساب Stripe لسا)**: الكود جاهز بالكامل (شوف قسم "تم إنجازه" تحت) بس ما رح يشتغل لحد ما تعمل الخطوات هاي:
-  1. تعمل حساب Stripe (stripe.com) — مجاني، بيجيك test mode تلقائيًا.
-  2. تعمل 3 Products بـStripe Dashboard (Basic/Pro/Enterprise) وتاخد الـPrice ID (`price_...`) تبع كل وحدة.
-  3. تشغّل `supabase/phase26_stripe_billing.sql` بمحرر SQL تبع Supabase.
-  4. تنشر (deploy) الـ3 Edge Functions الجديدة (`create-checkout-session`, `create-billing-portal-session`, `stripe-webhook` — هاد الأخير بـ`--no-verify-jwt` لأنه Stripe نفسه بيناديه، مش المستخدم).
-  5. تعمل `supabase secrets set` للقيم: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_BASIC`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_ENTERPRISE`, `STRIPE_WEBHOOK_SECRET` (هاد الأخير من Stripe Dashboard → Developers → Webhooks → بعد ما تسجل رابط الـ`stripe-webhook` المنشور هناك).
-  كل التفاصيل والتعليقات موجودة جوا كل ملف Edge Function نفسه.
+- ✅ **ربط Stripe الحقيقي — الإعداد المباشر اكتمل واتفحص فعلياً بالإنتاج (Sandbox)**: المستخدم عمل حساب Stripe، أنشأ الـ3 Products/Prices (Basic/Pro/Enterprise)، شغّل `phase26_stripe_billing.sql`، نشر الـ3 Edge Functions (`create-checkout-session`, `create-billing-portal-session`, `stripe-webhook`)، وضبط كل الـsecrets والـwebhook. جرّبنا اشتراك Pro كامل ببطاقة اختبار (4242...) من الموبايل: وصلت فعليًا لصفحة Stripe Checkout الحقيقية، الدفع نجح، ورجعت الصفحة وصار `plan: 'pro'` فعليًا بقاعدة البيانات (الـwebhook فعّل الباقة تلقائيًا). السلسلة كاملة (Checkout → Stripe → Webhook → تفعيل الخطة) شغّالة من الأول للآخر.
+  - بالطريق اكتشفنا وصلحنا بگين حقيقيين وقت الإعداد المباشر: (1) إعادة تسمية Edge Function من صفحة Settings بتغيّر بس الاسم التجميلي مش الـURL slug الفعلي — لازم تحذف/تنشئ من جديد وتحط الاسم الصح من البداية. (2) `customer_creation` بـStripe API صالح بس بوضع `mode:"payment"`، مش `mode:"subscription"` (يلي مستخدم هون) — Stripe كان يرفض الطلب بخطأ 400 لحد ما شلناه (PR #285، مدموج).
 - 💡 **فكرة اترحت وانرفضت (شات بين طبيبين من عيادتين مختلفتين)**: المستخدم سأل هل ممكن نفتح شات مباشر بين طبيبين مشتركين بالبرنامج بس من عيادتين مختلفتين. أوضحنا إنه هاد نقلة كبيرة عن كل شي مبني لهلق (كل الشات الحالي بين الطبيب ومريضه بس، وكل جدول بالـSupabase معزول بـ`practice_id` عن باقي العيادات بقصد) — بده جدول وقواعد RLS جديدة كلياً (مو استخدام نفس نظام المرضى)، وسألنا هل الإرسال بده يكون مفتوح لأي طبيب أو يحتاج "طلب تواصل" أول. **المستخدم قرر يلغي الفكرة** ("مجرد فكرة") — ما انبنى أي شي.
 - 🔲 **مؤجل بقصد: قسم MKP (مرضى الأطفال) بمودال "Bericht senden"**: بيانات الفحوصات الدورية (`mkp_untersuchungen`) شكلها ديناميكي (فحص وحقول مختلفة لكل عمر)، فبده استخراج بيانات منفصل عن باقي الأقسام — سجلناها كمتابعة لاحقة لما يصير في وقت.
 
