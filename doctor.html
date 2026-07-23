@@ -6642,13 +6642,20 @@ async function deleteStempel(){
   await persistSignature({stempel_data_url:null});
 }
 
-function saveSettings(){
-  // Update doctor name in nav
+async function saveSettings(){
   const name = document.getElementById('setArztName')?.value||'—';
+  const fach = document.getElementById('setFach')?.value||'Allgemeinmedizin';
+  const session=currentStaffSession();
+  if(session&&session.username){
+    const ok=await saveStaffProfileFields(session.username,{full_name:name,fach});
+    if(!ok){ showToastSettings('✗ Speichern fehlgeschlagen'); return; }
+    session.name=name;
+    sessionStorage.setItem('smartordi_user',JSON.stringify(session));
+  }
+  // Update doctor name in nav
   const nameEl = document.getElementById('doctorNameDisplay');
   if(nameEl) nameEl.textContent = name;
   // Update uwVon field
-  const fach = document.getElementById('setFach')?.value||'Allgemeinmedizin';
   const uwVonEl = document.getElementById('uwVon');
   if(uwVonEl) uwVonEl.value = `${name} – ${fach}`;
   showToastSettings('✓ Einstellungen gespeichert');
