@@ -4008,6 +4008,24 @@ Promise.all([patientsReady, allMessagesReady]).then(()=>{ renderPatientList(); u
 
 const VISITS = [];
 
+// Fetches this patient's real visit history (supabase/phase27_patient_visits.sql)
+// into the VISITS cache and re-renders -- VISITS itself used to be the ONLY
+// place this data lived (never persisted anywhere), so every logged visit
+// vanished on reload and never reached a second device. Clears any stale
+// entries for this patient name first so repeated tab switches don't pile
+// up duplicates of the same rows.
+async function loadKarteiVisits(name){
+  for(let i=VISITS.length-1;i>=0;i--){ if(VISITS[i].patient===name) VISITS.splice(i,1); }
+  if(!name||name==='Kein Patient ausgewählt'){ renderYearPills();filterVisits(); return; }
+  const patientId=await findPatientIdByFullName(name);
+  if(!patientId){ renderYearPills();filterVisits(); return; }
+  const rows=await getVisitsForPatient(patientId);
+  rows.forEach(r=>{
+    VISITS.push({patient:name,date:r.visit_date,type:r.visit_type,beschwerde:r.beschwerde||'',temp:r.temperature||'',bd:r.blutdruck||'',schmerz:r.schmerz||'',diag:r.diagnose||'Keine Diagnose',notes:r.notes||'–',therapy:r.therapy||''});
+  });
+  renderYearPills();filterVisits();
+}
+
 function renderYearPills(){
   const patientName=document.getElementById('kartei-name')?.textContent;
   const years=[...new Set(VISITS.filter(v=>v.patient===patientName).map(v=>v.date.slice(0,4)))].sort((a,b)=>b-a);
@@ -4054,17 +4072,17 @@ function renderVisitList(list){
     const fmt=new Date(v.date).toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
     const ts=TYPE_STYLE[v.type]||TYPE_STYLE['Ordination'];
     const vitals=[
-      v.beschwerde?`Beschwerde: ${v.beschwerde}`:'',
-      v.temp?`Temp. ${v.temp}`:'',
-      v.bd?`RR ${v.bd}`:'',
-      v.schmerz?`Schmerz ${v.schmerz}/10`:'',
+      v.beschwerde?`Beschwerde: ${escapeHtml(v.beschwerde)}`:'',
+      v.temp?`Temp. ${escapeHtml(v.temp)}`:'',
+      v.bd?`RR ${escapeHtml(v.bd)}`:'',
+      v.schmerz?`Schmerz ${escapeHtml(v.schmerz)}/10`:'',
     ].filter(Boolean).join(' · ');
     return `<div class="k-visit">
-      <div class="k-visit-header"><span class="k-visit-date">${fmt}</span><span class="k-visit-type" style="${ts}">${v.type}</span></div>
-      <div class="k-visit-diag">${v.diag}</div>
+      <div class="k-visit-header"><span class="k-visit-date">${fmt}</span><span class="k-visit-type" style="${ts}">${escapeHtml(v.type)}</span></div>
+      <div class="k-visit-diag">${escapeHtml(v.diag)}</div>
       ${vitals?`<div class="k-visit-notes" style="color:#0891b2;font-weight:600;">${vitals}</div>`:''}
-      <div class="k-visit-notes">${v.notes}</div>
-      ${v.therapy?`<span class="k-visit-therapy"> ${v.therapy}</span>`:''}
+      <div class="k-visit-notes">${escapeHtml(v.notes)}</div>
+      ${v.therapy?`<span class="k-visit-therapy"> ${escapeHtml(v.therapy)}</span>`:''}
     </div>`;
   }).join('');
 }
@@ -4181,6 +4199,9 @@ async function exportPatientCsv(){
   const vorname=nameParts[0]||'';
   const nachname=nameParts.slice(1).join(' ')||'';
   const impfungenStr=impfungen.map(i=>i.vaccineName+':'+i.datum).join('; ');
+  // Same reason as buildPatientReportPdf's Verlauf section: VISITS is only
+  // ever populated for whichever patient the tab was last opened for.
+  await loadKarteiVisits(name);
   const visitsStr=VISITS.filter(v=>v.patient===name).map(v=>v.date+'|'+v.type+'|'+v.diag).join('; ');
   const krankengeschichte=rec.legacyHistory||visitsStr||'';
   const headers=['Vorname','Nachname','Geburtsdatum','SVNr','Versicherung','Telefon','Adresse','Diagnosen','Allergien','Blutgruppe','Impfungen','Krankengeschichte'];
@@ -4354,6 +4375,10 @@ async function buildPatientReportPdf(sections){
   }
 
   if(sections.verlauf){
+    // VISITS is only ever populated for whichever patient the Verlauf tab
+    // was last opened for -- fetch fresh here so a report generated without
+    // ever opening that tab first still includes the real visit history.
+    await loadKarteiVisits(name);
     y=ensureSpace(y,30);
     T('Krankengeschichte / Verlauf',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
     const visitsText=VISITS.filter(v=>v.patient===name).map(v=>{
@@ -4568,8 +4593,8 @@ function switchKarteiTab(tab,btn){
     mehrBtn.textContent=inMehrGroup?('Mehr: '+mehrLabels[tab]+' ▾'):'Mehr ▾';
   }
   if(tab==='verlauf'){
-    renderYearPills();filterVisits();
     const currentName=document.getElementById('kartei-name')?.textContent;
+    loadKarteiVisits(currentName);
     const legacy=currentName?findPatientRecord(currentName)?.legacyHistory:'';
     const legacyEl=document.getElementById('kLegacyHistory');
     if(legacyEl){
@@ -6386,7 +6411,13 @@ function downloadUwPDF(){
   doc.save(`Überweisung_${d.pNachname}_${d.datum.replace(/\./g,'-')}.pdf`);
 }
 
-function saveKarteiVisit(){
+// Real bug this used to have: nothing here ever reached Supabase -- every
+// logged visit lived only in the in-memory VISITS array and vanished on
+// reload (supabase/phase27_patient_visits.sql). Now inserts a real row
+// first, then re-fetches the Verlauf tab from that same source of truth
+// (via switchKarteiTab below) so the UI reflects exactly what's actually
+// persisted instead of a locally-guessed shape.
+async function saveKarteiVisit(){
   const patient=document.getElementById('kartei-name')?.textContent||'';
   const date=document.getElementById('kDate').value;
   const type=document.getElementById('kType').value;
@@ -6397,7 +6428,16 @@ function saveKarteiVisit(){
   const diag=document.getElementById('kDiag').value.trim()||'Keine Diagnose';
   const notes=document.getElementById('kNotes').value.trim()||'–';
   const therapy=document.getElementById('kTherapy').value.trim();
-  VISITS.unshift({patient,date,type,beschwerde,temp,bd,schmerz,diag,notes,therapy});
+  if(!date){ showToast('Bitte ein Datum angeben.','error'); return; }
+  const patientId=await findPatientIdByFullName(patient);
+  if(!patientId){ showToast('Dieser Patient hat noch kein Cloud-Konto — Besuche können erst gespeichert werden, sobald ein echtes Patientenkonto besteht.','error'); return; }
+  try{
+    const session=currentStaffSession();
+    await createPatientVisit(patientId,{date,type,beschwerde,temp,bd,schmerz,diag,notes,therapy},session?session.username:null);
+  }catch(e){
+    showToast('✗ Speichern fehlgeschlagen','error');
+    return;
+  }
   document.getElementById('kBeschwerde').value='';
   document.getElementById('kTemp').value='';
   document.getElementById('kBD').value='';
