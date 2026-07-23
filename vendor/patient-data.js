@@ -333,6 +333,37 @@ async function deletePatientDocument(docId){
   if(error){ console.error('deletePatientDocument failed',error); throw error; }
 }
 
+// ── VISITS (patient_visits, supabase/phase27_patient_visits.sql) ──
+// Kartei's "Verlauf" tab (Neue Behandlung: date/type/complaint/vitals/
+// diagnosis/notes/therapy) used to live in a plain in-memory JS array with
+// nothing persisting it -- every entry vanished on reload and never
+// reached a second device. Staff-only, same access model as
+// patient_documents: patients never read their raw visit log directly,
+// only whatever a doctor explicitly sends via "Bericht senden".
+async function createPatientVisit(patientId,visit,createdBy){
+  const row={
+    patient_id: patientId,
+    visit_date: visit.date,
+    visit_type: visit.type,
+    beschwerde: visit.beschwerde||null,
+    temperature: visit.temp||null,
+    blutdruck: visit.bd||null,
+    schmerz: visit.schmerz||null,
+    diagnose: visit.diag||'',
+    notes: visit.notes||null,
+    therapy: visit.therapy||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_visits').insert(row).select('id,visit_date,visit_type,beschwerde,temperature,blutdruck,schmerz,diagnose,notes,therapy,created_at').single();
+  if(error){ console.error('createPatientVisit failed',error); throw error; }
+  return data;
+}
+async function getVisitsForPatient(patientId){
+  const {data,error}=await sb.from('patient_visits').select('id,visit_date,visit_type,beschwerde,temperature,blutdruck,schmerz,diagnose,notes,therapy,created_at').eq('patient_id',patientId).order('visit_date',{ascending:false});
+  if(error){ console.error('getVisitsForPatient failed',error); return []; }
+  return data||[];
+}
+
 // ── MKP (Mutter-Kind-Pass) UNTERSUCHUNGEN -- staff-only,
 // supabase/phase4_mkp_untersuchungen.sql. Never read by patient.html: the
 // parents already carry the official physical booklet, this is just the
