@@ -5007,6 +5007,10 @@ function findPatientAccountByFullName(name){
 // row (upsertPatientIdentity), not just this device's localStorage, so it's
 // the same data the patient sees (and can no longer be wrongly re-prompted
 // for) from any device.
+// Real bug found: the success toast used to fire unconditionally at the end
+// regardless of whether anything upstream actually ran -- no patient
+// selected, or a patient with no real Supabase account yet, both silently
+// skipped the save entirely and still claimed "✓ Anamnese gespeichert!".
 async function saveAnamnese(){
   // Scoped to the questionnaire itself (see loadAnamneseForPatient's own
   // note) -- #ktab-anamnese now also nests the unrelated "Neu" visit-entry
@@ -5014,16 +5018,14 @@ async function saveAnamnese(){
   const root=document.getElementById('anamnese-collapse-body');
   const data=collectAnamneseData(root);
   const currentName=document.getElementById('kartei-name')?.textContent;
-  if(currentName && currentName!=='Kein Patient ausgewählt'){
-    const found=findPatientAccountByFullName(currentName);
-    if(found){
-      try{
-        await upsertPatientIdentity(found.username,{anamnese:data});
-      }catch(e){
-        showToast('✗ Speichern fehlgeschlagen','error');
-        return;
-      }
-    }
+  if(!currentName||currentName==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.','error'); return; }
+  const found=findPatientAccountByFullName(currentName);
+  if(!found){ showToast('Dieser Patient hat noch kein Cloud-Konto — die Anamnese kann erst gespeichert werden, sobald ein echtes Patientenkonto besteht.','error'); return; }
+  try{
+    await upsertPatientIdentity(found.username,{anamnese:data});
+  }catch(e){
+    showToast('✗ Speichern fehlgeschlagen','error');
+    return;
   }
   showToast('✓ Anamnese gespeichert!');
 }
