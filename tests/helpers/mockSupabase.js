@@ -21,7 +21,7 @@ const EMPTY_STORE = {
   patients: [], termine: [], patient_messages: [], patient_documents: [],
   mkp_untersuchungen: [], patient_impfungen: [], staff_invites: [],
   patient_join_requests: [], patient_sessions: [], audit_log: [],
-  practice_vertretung: [], patient_visits: [],
+  practice_vertretung: [], patient_visits: [], patient_guardians: [], guardian_sessions: [],
 };
 
 function mockScript(seed) {

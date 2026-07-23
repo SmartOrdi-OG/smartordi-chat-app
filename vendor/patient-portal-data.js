@@ -48,6 +48,35 @@ async function patientLogin(username,password){
     anamnese: row.anamnese,
   };
 }
+// ── GUARDIAN LOGIN (supabase/phase28_guardian_child_accounts.sql) -- a
+// parent logging in on behalf of a child patient too young for their own
+// login. A guardian is not itself a patient, so it gets its own token
+// (never stored under PATIENT_TOKEN_KEY) until guardianSelectChild() mints
+// a completely ordinary patient session token for the chosen child --
+// every function above this comment then works unmodified from that point
+// on, scoped to the child. ──
+async function guardianLogin(username,password){
+  const {data,error}=await sb.rpc('guardian_login',{p_username:username,p_password:password});
+  if(error){ console.error('guardianLogin failed',error); return null; }
+  const row=data&&data[0];
+  if(!row) return null;
+  return { token:row.token, guardianId:row.guardian_id, fullName:row.full_name, name:row.name, firstLogin:row.first_login };
+}
+async function guardianChangePassword(guardianToken,newPassword){
+  const {data,error}=await sb.rpc('guardian_change_password',{p_token:guardianToken,p_new_password:newPassword});
+  if(error){ console.error('guardianChangePassword failed',error); return false; }
+  return !!data;
+}
+async function guardianGetChildren(guardianToken){
+  const {data,error}=await sb.rpc('guardian_get_children',{p_token:guardianToken});
+  if(error){ console.error('guardianGetChildren failed',error); return []; }
+  return (data||[]).map(row=>({ id:row.id, username:row.username, name:row.name, fullName:row.full_name, fach:row.fach, dob:row.dob }));
+}
+async function guardianSelectChild(guardianToken,childId){
+  const {data,error}=await sb.rpc('guardian_select_child',{p_token:guardianToken,p_child_id:childId});
+  if(error){ console.error('guardianSelectChild failed',error); return null; }
+  return data||null;
+}
 async function patientChangePassword(newPassword){
   const {data,error}=await sb.rpc('patient_change_password',{p_token:getPatientToken(),p_new_password:newPassword});
   if(error){ console.error('patientChangePassword failed',error); return false; }
