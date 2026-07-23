@@ -6506,9 +6506,10 @@ function clearSig(){
 
 async function persistSignature(fields){
   const me=currentDoctorUsername();
-  if(!me) return;
+  if(!me) return false;
   const ok=await saveStaffSignature(me,fields);
   if(!ok) showToast('✗ Speichern fehlgeschlagen — bleibt nur für diese Sitzung aktiv','error');
+  return ok;
 }
 async function saveSig(){
   const canvas = document.getElementById('sigCanvas');
@@ -6519,14 +6520,16 @@ async function saveSig(){
   if(data === blank.toDataURL('image/png')){ alert('Bitte zuerst unterschreiben!'); return; }
   sigDataUrl = data;
   showSigPreview(data);
-  showToastSettings('✓ Unterschrift gespeichert');
-  await persistSignature({sig_data_url:data});
+  if(await persistSignature({sig_data_url:data})) showToastSettings('✓ Unterschrift gespeichert');
 }
 
 function loadSigFromFile(e){
   const file = e.target.files[0]; if(!file) return;
   const reader = new FileReader();
-  reader.onload = async ev => { sigDataUrl = ev.target.result; showSigPreview(ev.target.result); showToastSettings('✓ Unterschrift hochgeladen'); await persistSignature({sig_data_url:ev.target.result}); };
+  reader.onload = async ev => {
+    sigDataUrl = ev.target.result; showSigPreview(ev.target.result);
+    if(await persistSignature({sig_data_url:ev.target.result})) showToastSettings('✓ Unterschrift hochgeladen');
+  };
   reader.readAsDataURL(file);
 }
 
@@ -6597,7 +6600,8 @@ async function loadStempel(e){
   const reader = new FileReader();
   reader.onload = async ev => {
     const cleaned = await removeStempelBackground(ev.target.result);
-    stempelDataUrl = cleaned; showStempelPreview(cleaned); showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt'); await persistSignature({stempel_data_url:cleaned});
+    stempelDataUrl = cleaned; showStempelPreview(cleaned);
+    if(await persistSignature({stempel_data_url:cleaned})) showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt');
   };
   reader.readAsDataURL(file);
 }
@@ -6610,7 +6614,8 @@ function handleStempelDrop(e){
   const reader = new FileReader();
   reader.onload = async ev => {
     const cleaned = await removeStempelBackground(ev.target.result);
-    stempelDataUrl = cleaned; showStempelPreview(cleaned); showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt'); await persistSignature({stempel_data_url:cleaned});
+    stempelDataUrl = cleaned; showStempelPreview(cleaned);
+    if(await persistSignature({stempel_data_url:cleaned})) showToastSettings('✓ Stempel hochgeladen — Hintergrund automatisch entfernt');
   };
   reader.readAsDataURL(file);
 }
