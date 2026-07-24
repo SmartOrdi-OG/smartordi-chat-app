@@ -946,6 +946,13 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 
 /* ══ MESSAGES ══ */
 .messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
+/* Shown only while #messages has zero children -- true before any patient
+   is ever opened (renderMessages() always fills it with at least its own
+   "no messages yet" placeholder the moment a real patient is selected, so
+   this never overlaps with that case). Plain CSS :empty instead of a JS
+   toggle -- there's no state to keep in sync, it's just however many
+   children the element actually has right now. */
+.messages:empty::before{content:'💬  Wählen Sie einen Patienten aus der Liste, um die Unterhaltung zu öffnen';flex:1;display:flex;align-items:center;justify-content:center;text-align:center;color:#94a3b8;font-size:13px;padding:0 40px;}
 .msg-row{display:flex;align-items:flex-end;gap:8px;}
 .msg-row.out{flex-direction:row-reverse;}
 /* max-width lives here, not on .msg-bubble -- .msg-bubble's parent div
