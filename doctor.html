@@ -3318,6 +3318,9 @@ function updateDashboardStats(){
   const impfEl=document.getElementById('statDashImpfFaellig');
   if(patEl) patEl.textContent=patients.length;
   if(msgEl){
+    // loadMessagesForPatientCached() only covers the last
+    // ALL_MESSAGES_WINDOW_DAYS (vendor/patient-data.js) -- this stat is
+    // "messages in that window", not the practice's true all-time total.
     const accounts=loadPatients();
     const total=Object.values(accounts).reduce((sum,a)=>{
       if(!a) return sum;

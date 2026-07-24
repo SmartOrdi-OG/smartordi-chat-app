@@ -337,12 +337,29 @@ async function getMessagesForPatient(patientId){
 // columns loadMessagesForPatientCached() actually remaps below (this
 // aggregate view is preview-only, never renders document attachments).
 let _allMessagesByPatient={};
+// Rolling window, not the practice's full lifetime history -- this bulk
+// cache (every patient's messages, used only for the "Nachrichten" preview
+// text and the unread-since-last-viewed count, see unreadCountFor() in
+// secretary.html) was pulling every row ever sent, for every patient, on
+// every page load, which really does grow without bound over a practice's
+// multi-year lifetime. A patient's full per-conversation history is
+// unaffected -- getMessagesForPatient() above still loads it all the
+// moment that specific chat is actually opened, one patient at a time
+// (naturally bounded by that one patient's own message count, never
+// multiplied across everyone else's). 365 days keeps unread-tracking
+// correct for any patient staff has been reasonably attentive to (a
+// message sitting unread for over a year is already a workflow problem
+// this window doesn't need to solve); a patient whose last real message
+// predates the window just shows "Noch keine Nachrichten" in the preview
+// instead of a very old one -- cosmetic, not data loss.
+const ALL_MESSAGES_WINDOW_DAYS=365;
 async function refreshAllMessages(){
+  const cutoff=new Date(Date.now()-ALL_MESSAGES_WINDOW_DAYS*24*60*60*1000).toISOString();
   const {data,error}=await selectWithColumnFallback(
-    cols=>sb.from('patient_messages').select(cols).order('created_at'),
+    cols=>sb.from('patient_messages').select(cols).gte('created_at',cutoff).order('created_at'),
     'patient_id,dir,type,text,created_at','refreshAllMessages');
   if(error){ reportCriticalDataError('refreshAllMessages',error); return; }
-  if(data&&data.length>3000) console.warn('refreshAllMessages: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every message on every page load will get noticeably slow; time to add real windowing (e.g. only recent + unread).');
+  if(data&&data.length>3000) console.warn('refreshAllMessages: '+data.length+' rows loaded (last '+ALL_MESSAGES_WINDOW_DAYS+' days) -- this practice is approaching the point where even the rolling window will get noticeably slow; time to shrink the window or move unread-tracking server-side.');
   const byPatient={};
   (data||[]).forEach(function(row){
     (byPatient[row.patient_id]=byPatient[row.patient_id]||[]).push(row);
