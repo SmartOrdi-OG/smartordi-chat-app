@@ -992,7 +992,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .input-row:focus-within{border-color:#0E5E56;background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.1);}
 .input-btn{width:34px;height:34px;border-radius:8px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-3);transition:all 0.15s;flex-shrink:0;}
 .input-btn:hover{background:#EAF4F1;color:#0E5E56;}
-.msg-input{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text-1);outline:none;padding:4px;resize:none;height:34px;}
+.msg-input{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text-1);outline:none;padding:4px;resize:none;height:34px;max-height:110px;overflow-y:auto;}
 .send-btn{width:36px;height:36px;border-radius:10px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all 0.15s;flex-shrink:0;box-shadow:0 2px 8px rgba(14,94,86,0.35);}
 .send-btn:hover{transform:scale(1.08);box-shadow:0 4px 12px rgba(14,94,86,0.45);}
 
@@ -1415,7 +1415,8 @@ body.windows-mode #karteiBtn{display:none;}
         <button class="input-btn" title="Emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
         <input type="file" id="clinicAttachFile" accept="application/pdf" style="display:none;" onchange="handleClinicAttach(event)">
         <button class="input-btn" title="Anhang" onclick="document.getElementById('clinicAttachFile').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-        <textarea class="msg-input" placeholder="Nachricht schreiben..." id="clinicInput"></textarea>
+        <textarea class="msg-input" placeholder="Nachricht schreiben..." id="clinicInput" rows="1"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';"></textarea>
         <button class="input-btn" title="Sprachnachricht"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
         <button class="send-btn" onclick="sendClinicMsg()">➤</button>
       </div>
@@ -3685,7 +3686,7 @@ function sendClinicMsg(){
   const outTime=getTime()+' ✓';
   const row=document.createElement('div');row.className='msg-row out';
   row.innerHTML=`<div><div class="msg-bubble">${escapeHtml(txt)}</div><span class="msg-time">${outTime}</span></div>`;
-  msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';
+  msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;inp.value='';inp.style.height='34px';
   if(name){
     appendRealMessage(name,{dir:'out',type:'text',text:txt,time:outTime});
     renderPatientList(); // refresh the sidebar preview text to the new message
@@ -6561,7 +6562,6 @@ async function saveKarteiVisit(){
   }
 }
 
-document.getElementById('clinicInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendClinicMsg();}});
 let stempelDataUrl = '';
 let sigDataUrl = '';
 let sigDrawing = false;
