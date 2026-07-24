@@ -29,6 +29,29 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, c=>HTML_ESCAPE_MAP[c]);
 }
 
+// Lets doctor.html/secretary.html show a persistent, hard-to-miss warning
+// when a core clinical data cache (patients, termine, staff roster, ...)
+// fails to load -- a real production incident showed that a failed
+// refresh*() call previously just logged to the console and left its
+// cache empty, which looks EXACTLY like "this practice genuinely has no
+// patients" to the doctor/secretary actually looking at the screen (no
+// visible error at all). Queues failures that happen before
+// setCriticalDataErrorHandler() is registered, since some refresh*() calls
+// fire the instant their script loads, before the page's own
+// window.load handler has a chance to run.
+let _onCriticalDataError=null;
+let _pendingCriticalDataErrors=[];
+function setCriticalDataErrorHandler(fn){
+  _onCriticalDataError=fn;
+  _pendingCriticalDataErrors.forEach(function(e){ fn(e.context,e.error); });
+  _pendingCriticalDataErrors=[];
+}
+function reportCriticalDataError(context,error){
+  console.error(context+' failed',error);
+  if(_onCriticalDataError) _onCriticalDataError(context,error);
+  else _pendingCriticalDataErrors.push({context,error});
+}
+
 // Shared bookable-appointment-slot grid (08:00-11:30, 14:00-16:00, 15-minute
 // steps) -- both the patient-facing self-booking picker (patient.html) and
 // staff's own booking forms (secretary.html) generate their slot list from
@@ -70,7 +93,7 @@ function timeSlotEndOptionsHtml(){
 let _staffRoster={};
 async function refreshStaffRoster(){
   const {data,error}=await sb.from('staff_profiles').select('*');
-  if(error){ console.error('refreshStaffRoster failed',error); return; }
+  if(error){ reportCriticalDataError('refreshStaffRoster',error); return; }
   const next={};
   (data||[]).forEach(p=>{
     next[p.id]={
@@ -132,7 +155,7 @@ async function refreshPracticeSettings(){
   // resolves to "my practice" without the client needing to know its id
   // up front (same transparent-RLS-filtering pattern as patients/termine).
   const {data,error}=await sb.from('practices').select('*').limit(1).maybeSingle();
-  if(error){ console.error('refreshPracticeSettings failed',error); return; }
+  if(error){ reportCriticalDataError('refreshPracticeSettings',error); return; }
   _practiceSettings=data||null;
 }
 function getPracticeSettings(){

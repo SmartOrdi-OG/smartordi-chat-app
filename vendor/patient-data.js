@@ -59,7 +59,7 @@ const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_ti
 let _termine=[];
 async function refreshTermine(){
   const {data,error}=await sb.from('termine').select(TERMINE_COLUMNS).order('date').order('time');
-  if(error){ console.error('refreshTermine failed',error); return; }
+  if(error){ reportCriticalDataError('refreshTermine',error); return; }
   if(data&&data.length>3000) console.warn('refreshTermine: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching the whole table on every page load will get noticeably slow; time to add real windowing/on-demand loading for the Kalender.');
   _termine=(data||[]).map(terminRowToJs);
 }
@@ -189,7 +189,7 @@ const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,ve
 let _patients={};
 async function refreshPatients(){
   const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS);
-  if(error){ console.error('refreshPatients failed',error); return; }
+  if(error){ reportCriticalDataError('refreshPatients',error); return; }
   if(data&&data.length>3000) console.warn('refreshPatients: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every patient on every page load will get noticeably slow; time to add real pagination/search-on-demand.');
   const localAccounts=localPatientAccountsRaw();
   const merged={};
@@ -312,7 +312,7 @@ async function getMessagesForPatient(patientId){
 let _allMessagesByPatient={};
 async function refreshAllMessages(){
   const {data,error}=await sb.from('patient_messages').select('patient_id,dir,type,text,created_at').order('created_at');
-  if(error){ console.error('refreshAllMessages failed',error); return; }
+  if(error){ reportCriticalDataError('refreshAllMessages',error); return; }
   if(data&&data.length>3000) console.warn('refreshAllMessages: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every message on every page load will get noticeably slow; time to add real windowing (e.g. only recent + unread).');
   const byPatient={};
   (data||[]).forEach(function(row){
@@ -447,7 +447,7 @@ const IMPFUNGEN_COLUMNS='id,patient_id,vaccine_key,vaccine_name,dose_label,datum
 let _impfungen={};
 async function refreshImpfungen(){
   const {data,error}=await sb.from('patient_impfungen').select(IMPFUNGEN_COLUMNS).order('datum',{ascending:false});
-  if(error){ console.error('refreshImpfungen failed',error); return; }
+  if(error){ reportCriticalDataError('refreshImpfungen',error); return; }
   const byPatient={};
   (data||[]).forEach(function(row){
     (byPatient[row.patient_id]=byPatient[row.patient_id]||[]).push(row);
