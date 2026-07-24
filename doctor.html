@@ -1166,7 +1166,15 @@ body.windows-mode #karteiBtn{display:none;}
 .stat-change{font-size:11px;font-weight:700;margin-top:8px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;}
 .stat-change.up{color:#16a34a;background:#f0fdf4;}
 .stat-change.down{color:#dc2626;background:#fef2f2;}
-.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px 20px;}
+/* Second column (dash-timeline-card) is real content -- today's actual
+   schedule -- not a wider copy of the first column, so a bigger Dashboard
+   window on a large monitor fills with more real information instead of
+   more blank margin. align-items:start so the timeline card doesn't
+   stretch to some arbitrary grid-row height; its own max-height/scroll
+   handles overflow on a very busy day instead. */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px 20px;align-items:start;}
+.dash-grid-main{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.dash-timeline-card{min-width:0;}
 .dash-card{background:white;border-radius:18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);overflow:hidden;border:1px solid rgba(0,0,0,0.04);}
 .dash-card-header{padding:16px 20px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:800;color:var(--text-1);display:flex;justify-content:space-between;align-items:center;letter-spacing:-0.2px;}
 .dash-card-body{padding:16px 20px;}
@@ -2217,33 +2225,59 @@ body.windows-mode #karteiBtn{display:none;}
     <!-- Dash Grid -->
     <div class="dash-grid">
 
-      <!-- Activity Card -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Letzte Aktivitäten
-          <span style="font-size:11px;color:#94a3b8;">Heute</span>
+      <div class="dash-grid-main">
+        <!-- Activity Card -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Letzte Aktivitäten
+            <span style="font-size:11px;color:#94a3b8;">Heute</span>
+          </div>
+          <div class="dash-card-body">
+            <span style="color:#94a3b8;font-size:12px;">Keine aktuelle Aktivität</span>
+          </div>
         </div>
-        <div class="dash-card-body">
-          <span style="color:#94a3b8;font-size:12px;">Keine aktuelle Aktivität</span>
+
+        <!-- Today's Patients -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Heutige Termine
+            <span style="font-size:11px;color:#0E5E56;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
+          </div>
+          <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
+        </div>
+
+        <!-- Impfungen fällig -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Impfungen fällig
+            <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
+          </div>
+          <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
         </div>
       </div>
 
-      <!-- Today's Patients -->
-      <div class="dash-card">
+      <!-- Today's real hour-by-hour timeline, reusing the same visual
+           language as #tuHome's Tagesuhr -- deliberately a *separate*
+           render function/state (dashTlRangeStart local, not tuTlRangeStart)
+           rather than sharing tuHome's renderer, since that one is driven by
+           mutable module-level globals (tuSelectedDate, tuTlRangeStart, ...)
+           for its own day-navigation UI; wiring Dashboard into the same
+           globals would make picking a date in one silently move the other,
+           or leave one stale after an action taken from the other's rows.
+           Read-only here (no Start/Fertig buttons) for the same reason --
+           only tuHome's own copy should be able to flip a visit's state. -->
+      <div class="dash-card dash-timeline-card">
         <div class="dash-card-header">
-           Heutige Termine
-          <span style="font-size:11px;color:#0E5E56;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
+           Tagesplan
+          <span style="font-size:11px;color:#94a3b8;" id="dashTimelineDateLabel"></span>
         </div>
-        <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
-      </div>
-
-      <!-- Impfungen fällig -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Impfungen fällig
-          <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
+        <div class="dash-card-body" style="padding:0;">
+          <div class="tu-timeline-scroll scrollbar" style="border:none;border-radius:0;max-height:520px;">
+            <div class="tu-timeline" id="dashTimeline"></div>
+          </div>
+          <div id="dashTimelineEmpty" style="display:none;padding:32px 16px;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>
+          <div id="dashTimelineCancelled" style="padding:0 16px;"></div>
         </div>
-        <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
       </div>
 
       <!-- Eingehende Laborergebnisse -->
@@ -2940,6 +2974,83 @@ function renderDashTermine(){
   root.innerHTML = heute.length
     ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+  renderDashTimeline();
+}
+// Today's hour-by-hour timeline for the Dashboard's second column -- reuses
+// #tuHome's pure layout math (tuLayoutDayTimeline/tuTimeToMin, defined
+// below) but keeps its own local rangeStart and a read-only row renderer
+// instead of tuTlApptHtml/tuTlRangeStart. Those are tuHome's own
+// module-level mutable state for its date-navigation UI; sharing them here
+// would mean picking a day in one view silently moves the other, or a
+// Start/Fertig button clicked from this copy updating the visit in the DB
+// correctly but only refreshing tuHome's rendering, leaving this card
+// showing a stale button until the Dashboard happens to re-render.
+function dashTlApptHtml(it,rangeStart){
+  const t=it.t;
+  const top=(it.start-rangeStart)*TU_TIMELINE_PX_PER_MIN;
+  const desired=Math.max(28,(it.end-it.start)*TU_TIMELINE_PX_PER_MIN);
+  const height=Math.max(14,Math.min(desired,it.availablePx));
+  const leftCalc=`calc((100% - 4px) * ${it.col/it.colCount} + 2px)`;
+  const widthCalc=`calc((100% - 4px) / ${it.colCount} - 4px)`;
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  const versEsc=escapeHtml(t.versicherung||'');
+  const svnrEsc=escapeHtml(t.svnr||'');
+  const dobEsc=escapeHtml(t.dob||'');
+  const visitState=tuVisitState(t);
+  const cls=['tu-tl-appt'];
+  if(visitState) cls.push(visitState);
+  const stateChip=visitState==='done'?'<span class="tu-time-chip done">✓ Fertig</span>':visitState==='now'?'<span class="tu-time-chip">● Läuft</span>':'';
+  return `<div class="${cls.join(' ')}" style="top:${top}px;height:${height}px;left:${leftCalc};width:${widthCalc};" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
+    <div class="tu-tl-appt-time">${t.time||''}${t.endTime?'–'+t.endTime:''}</div>
+    <div class="tu-tl-appt-name-row">
+      <div class="tu-tl-appt-name">${escapeHtml(t.patient)}</div>
+      <button class="tu-row-menu-btn" onclick="tuToggleRowMenu(event,'${nameEsc}','${svnrEsc}','${versEsc}','${dobEsc}')" title="Weitere Optionen">⋮</button>
+    </div>
+    <div class="tu-tl-appt-type">${escapeHtml(t.art||'')}</div>
+    ${stateChip}
+  </div>`;
+}
+function renderDashTimeline(){
+  const timelineEl=document.getElementById('dashTimeline');
+  if(!timelineEl) return;
+  const labelEl=document.getElementById('dashTimelineDateLabel');
+  const emptyEl=document.getElementById('dashTimelineEmpty');
+  const cancelledEl=document.getElementById('dashTimelineCancelled');
+  const today=todayStr();
+  if(labelEl) labelEl.textContent=longDateDE(today);
+
+  const dayAll=filterToMyTermine(loadTermine()).filter(t=>t.date===today);
+  const dayAppts=dayAll.filter(t=>t.status!=='abgesagt').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const cancelledAppts=dayAll.filter(t=>t.status==='abgesagt');
+
+  let rangeStart=TU_TIMELINE_START_DEFAULT, rangeEnd=TU_TIMELINE_END_DEFAULT;
+  dayAppts.forEach(t=>{
+    const s=tuTimeToMin(t.time), e=Math.max(s+20,tuTimeToMin(t.endTime||t.time));
+    rangeStart=Math.min(rangeStart,Math.floor(s/60)*60);
+    rangeEnd=Math.max(rangeEnd,Math.ceil(e/60)*60);
+  });
+
+  if(emptyEl) emptyEl.style.display = dayAppts.length ? 'none' : 'block';
+  if(!dayAppts.length){
+    timelineEl.innerHTML='';
+    timelineEl.style.height='0px';
+  } else {
+    let hoursHtml='';
+    for(let m=rangeStart;m<=rangeEnd;m+=60){
+      const top=(m-rangeStart)*TU_TIMELINE_PX_PER_MIN;
+      hoursHtml+=`<div class="tu-tl-hourline" style="top:${top}px;"></div><div class="tu-tl-hourlabel" style="top:${top}px;">${String(Math.floor(m/60)).padStart(2,'0')}:00</div>`;
+    }
+    const items=tuLayoutDayTimeline(dayAppts);
+    const apptsHtml=items.map(it=>dashTlApptHtml(it,rangeStart)).join('');
+    timelineEl.style.height=((rangeEnd-rangeStart)*TU_TIMELINE_PX_PER_MIN)+'px';
+    timelineEl.innerHTML=`<div class="tu-tl-hours">${hoursHtml}</div><div class="tu-tl-body">${apptsHtml}</div>`;
+  }
+
+  if(cancelledEl){
+    cancelledEl.innerHTML=cancelledAppts.length
+      ? `<div class="tu-tl-cancelled-title">Abgesagt</div>`+cancelledAppts.map(t=>`<div class="tu-tl-cancelled-item"><span>${t.time||''}</span><span class="strike">${escapeHtml(t.patient)}</span></div>`).join('')
+      : '';
+  }
 }
 
 // ══ TAGESUHR (home-canvas calendar, #tuHome) ══
