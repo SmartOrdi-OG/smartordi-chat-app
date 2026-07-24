@@ -421,6 +421,37 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .tu-mc-cell.selected{background:#0E5E56;color:#fff;font-weight:700;}
 .tu-timeline-col{flex:1;min-width:0;}
 .tu-day-list-scroll{max-height:600px;overflow-y:auto;border:1px solid var(--border,#e2e8f0);border-radius:14px;background:#fff;padding:14px;}
+/* Woche (week) view -- an additional, optional overview alongside Tag, not
+   a replacement: the comment above (tu-desktop-view) explains why an
+   always-on week-columns layout was already tried and dropped once (one
+   busy day towers over an otherwise-empty week). Each column here scrolls
+   independently (max-height, own overflow-y), so a busy day just gets a
+   longer scroll within its own column instead of stretching the whole row
+   -- the actual fix, not just hiding the problem. Five columns (Mon-Fri),
+   same as tuWorkWeekDates() -- the practice is closed weekends everywhere
+   else in this view too. */
+.tu-view-toggle{display:inline-flex;background:#f1f5f9;border-radius:10px;padding:3px;gap:2px;}
+.tu-view-toggle button{padding:6px 14px;border:none;border-radius:8px;background:transparent;color:#64748b;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s,color .15s;}
+.tu-view-toggle button.active{background:#fff;color:#0E5E56;box-shadow:0 1px 4px rgba(15,23,42,.08);}
+.tu-week-grid{display:none;grid-template-columns:repeat(5,1fr);gap:12px;}
+#tuHome.tu-week-mode .tu-week-grid{display:grid;}
+#tuHome.tu-week-mode .tu-day-layout{display:none;}
+.tu-week-col{background:#fff;border:1px solid var(--border,#e2e8f0);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;}
+.tu-week-col-head{padding:10px 8px;text-align:center;cursor:pointer;border-bottom:1px solid var(--border,#e2e8f0);background:#f8fafc;transition:background .15s;}
+.tu-week-col-head:hover{background:#EAF4F1;}
+.tu-week-col-head.selected{background:#0E5E56;}
+.tu-week-col-head.selected .tu-week-col-dow,.tu-week-col-head.selected .tu-week-col-dom{color:#fff;}
+.tu-week-col-dow{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;}
+.tu-week-col-dom{font-size:17px;font-weight:800;color:var(--text-1,#0f172a);}
+.tu-week-col-head.today:not(.selected) .tu-week-col-dom{color:#0E5E56;}
+.tu-week-col-list{flex:1;overflow-y:auto;max-height:520px;padding:6px;}
+.tu-week-col-list .tu-empty{padding:14px 4px;font-size:11.5px;}
+.tu-week-col-list .tu-appt-row{padding:7px 6px;gap:8px;}
+.tu-week-col-list .tu-appt-time{width:36px;font-size:11px;}
+.tu-week-col-list .tu-appt-name{font-size:12.5px;}
+@media(max-width:1100px){
+  .tu-week-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
+}
 /* A single full-width row per appointment left a wide blank strip between
    the name/type text on the left and the status control pinned to the far
    right on a wide desktop screen -- cards that wrap into several per row
@@ -761,9 +792,13 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
            are never selectable, not just muted. -->
       <div class="tu-desktop-view">
         <div class="tu-day-toolbar">
-          <button class="tu-week-arrow" onclick="tuShiftDay(-1)" title="Voriger Tag">‹</button>
+          <button class="tu-week-arrow" onclick="tuShiftView(-1)" title="Zurück">‹</button>
           <div class="tu-month-label" id="tuDayLabel">–</div>
-          <button class="tu-week-arrow" onclick="tuShiftDay(1)" title="Nächster Tag">›</button>
+          <button class="tu-week-arrow" onclick="tuShiftView(1)" title="Weiter">›</button>
+          <div class="tu-view-toggle">
+            <button id="tuViewTagBtn" class="active" onclick="tuSetViewMode('tag')">Tag</button>
+            <button id="tuViewWocheBtn" onclick="tuSetViewMode('woche')">Woche</button>
+          </div>
         </div>
         <div class="tu-day-layout">
           <div class="tu-mini-cal" id="tuMiniCal"></div>
@@ -773,6 +808,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
             </div>
           </div>
         </div>
+        <div class="tu-week-grid" id="tuWeekGrid"></div>
       </div>
 
       <!-- Mobile: one compact horizontal day-strip up top, everything else
@@ -3050,6 +3086,26 @@ let tuSelectedDate=null;
 // forever (until a manual click or full page reload), since nothing else
 // re-evaluates what "today" currently is.
 let tuFollowingToday=true;
+// Tag (single day, the existing view) vs Woche (5-day work-week overview,
+// added alongside it -- see the tu-week-grid CSS comment for why this is
+// additive, not a replacement). Plain module-level state like
+// tuSelectedDate above -- survives until reload, not persisted further.
+let tuViewMode='tag';
+function tuSetViewMode(mode){
+  tuViewMode=mode;
+  const root=document.getElementById('tuHome');
+  if(root) root.classList.toggle('tu-week-mode',mode==='woche');
+  document.getElementById('tuViewTagBtn')?.classList.toggle('active',mode==='tag');
+  document.getElementById('tuViewWocheBtn')?.classList.toggle('active',mode==='woche');
+  renderTagesuhr();
+}
+// Toolbar's ‹/› arrows mean "one step back/forward in whatever unit the
+// current view shows" -- a real day in Tag mode (tuShiftDay's own
+// weekend-skipping logic), a full week in Woche mode.
+function tuShiftView(delta){
+  if(tuViewMode==='woche') tuShiftWeek(delta*7);
+  else tuShiftDay(delta);
+}
 function tuSelectDate(dateStr){
   tuSelectedDate=dateStr;
   tuFollowingToday=(dateStr===todayStr());
@@ -3276,13 +3332,17 @@ function renderTagesuhr(){
     tuMiniCalYear=selD.getFullYear(); tuMiniCalMonth=selD.getMonth();
   }
   renderTuMiniCal();
+  const week=tuWorkWeekDates(tuSelectedDate);
   const dayLabelEl=document.getElementById('tuDayLabel');
   if(dayLabelEl){
-    const d=new Date(tuSelectedDate+'T00:00:00');
-    dayLabelEl.textContent=TU_DOW_DE[d.getDay()]+', '+d.getDate()+'. '+TU_MONTHS_DE[d.getMonth()]+' '+d.getFullYear();
+    if(tuViewMode==='woche'){
+      const first=new Date(week[0]+'T00:00:00'), last=new Date(week[4]+'T00:00:00');
+      dayLabelEl.textContent=first.getDate()+'.–'+last.getDate()+'. '+TU_MONTHS_DE[last.getMonth()]+' '+last.getFullYear();
+    } else {
+      const d=new Date(tuSelectedDate+'T00:00:00');
+      dayLabelEl.textContent=TU_DOW_DE[d.getDay()]+', '+d.getDate()+'. '+TU_MONTHS_DE[d.getMonth()]+' '+d.getFullYear();
+    }
   }
-
-  const week=tuWorkWeekDates(tuSelectedDate);
   const activeDateSet=new Set(mine.filter(t=>t.status!=='abgesagt').map(t=>t.date));
   const stripEl=document.getElementById('tuDayStrip');
   if(stripEl){
@@ -3307,6 +3367,40 @@ function renderTagesuhr(){
   const dayListEl=document.getElementById('tuDayList');
   if(dayListEl) dayListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
   renderTuSummary(dayAppts);
+  renderTuWeekGrid(mine,week);
+}
+// Woche view: one column per work day, each independently scrollable
+// (capped height, own overflow-y) -- a busy day scrolls within its own
+// column instead of growing taller than the rest of the week, which is
+// exactly the failure mode noted in tu-desktop-view's own comment above.
+// Always rendered (not gated on tuViewMode) so switching to Woche never
+// shows stale data from before the last real refresh -- cheap relative to
+// a full page's worth of DOM, and CSS alone controls whether it's visible.
+function renderTuWeekGrid(mine,week){
+  const gridEl=document.getElementById('tuWeekGrid');
+  if(!gridEl) return;
+  const emptyHtml='<div class="tu-empty">Keine Termine</div>';
+  gridEl.innerHTML=week.map(function(ds){
+    const d=new Date(ds+'T00:00:00');
+    const isToday=ds===todayStr();
+    const isSelected=ds===tuSelectedDate;
+    const dayAppts=mine.filter(t=>t.date===ds).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const headClass='tu-week-col-head'+(isToday?' today':'')+(isSelected?' selected':'');
+    return `<div class="tu-week-col">
+      <div class="${headClass}" onclick="tuWeekColClick('${ds}')">
+        <div class="tu-week-col-dow">${TU_DOW_DE[d.getDay()]}</div>
+        <div class="tu-week-col-dom">${d.getDate()}</div>
+      </div>
+      <div class="tu-week-col-list scrollbar">${dayAppts.length?dayAppts.map(tuApptRowHtml).join(''):emptyHtml}</div>
+    </div>`;
+  }).join('');
+}
+// Clicking a column's day header jumps straight into that day's full Tag
+// view -- a week overview is for orientation ("which day looks busy"), the
+// actual work (opening a chat, starting a visit) still happens in Tag.
+function tuWeekColClick(dateStr){
+  tuSelectDate(dateStr);
+  tuSetViewMode('tag');
 }
 // The Dashboard's top stat cards used to be permanently hardcoded numbers
 // (127 Nachrichten heute, 34 Aktive Patienten, 28 Weitergeleitet, 5
