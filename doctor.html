@@ -1166,7 +1166,15 @@ body.windows-mode #karteiBtn{display:none;}
 .stat-change{font-size:11px;font-weight:700;margin-top:8px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;}
 .stat-change.up{color:#16a34a;background:#f0fdf4;}
 .stat-change.down{color:#dc2626;background:#fef2f2;}
-.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px 20px;}
+/* Second column (dash-timeline-card) is real content -- today's actual
+   schedule -- not a wider copy of the first column, so a bigger Dashboard
+   window on a large monitor fills with more real information instead of
+   more blank margin. align-items:start so the timeline card doesn't
+   stretch to some arbitrary grid-row height; its own max-height/scroll
+   handles overflow on a very busy day instead. */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 20px 20px;align-items:start;}
+.dash-grid-main{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.dash-timeline-card{min-width:0;}
 .dash-card{background:white;border-radius:18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);overflow:hidden;border:1px solid rgba(0,0,0,0.04);}
 .dash-card-header{padding:16px 20px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:800;color:var(--text-1);display:flex;justify-content:space-between;align-items:center;letter-spacing:-0.2px;}
 .dash-card-body{padding:16px 20px;}
@@ -2217,33 +2225,59 @@ body.windows-mode #karteiBtn{display:none;}
     <!-- Dash Grid -->
     <div class="dash-grid">
 
-      <!-- Activity Card -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Letzte Aktivitäten
-          <span style="font-size:11px;color:#94a3b8;">Heute</span>
+      <div class="dash-grid-main">
+        <!-- Activity Card -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Letzte Aktivitäten
+            <span style="font-size:11px;color:#94a3b8;">Heute</span>
+          </div>
+          <div class="dash-card-body">
+            <span style="color:#94a3b8;font-size:12px;">Keine aktuelle Aktivität</span>
+          </div>
         </div>
-        <div class="dash-card-body">
-          <span style="color:#94a3b8;font-size:12px;">Keine aktuelle Aktivität</span>
+
+        <!-- Today's Patients -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Heutige Termine
+            <span style="font-size:11px;color:#0E5E56;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
+          </div>
+          <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
+        </div>
+
+        <!-- Impfungen fällig -->
+        <div class="dash-card">
+          <div class="dash-card-header">
+             Impfungen fällig
+            <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
+          </div>
+          <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
         </div>
       </div>
 
-      <!-- Today's Patients -->
-      <div class="dash-card">
+      <!-- Today's real appointment cards, reusing #tuHome's tu-appt-card
+           visual language -- deliberately a *separate* render function
+           (renderDashTimeline/dashApptCardHtml) rather than calling
+           renderTagesuhr()/tuApptCardHtml() directly, since tuHome's own
+           renderer is driven by mutable module-level globals (tuSelectedDate,
+           ...) for its own day-navigation UI; wiring Dashboard into the same
+           globals would make picking a date in one silently move the other.
+           Read-only here (no Start/Fertig button) for the same reason --
+           tuMarkStarted/tuMarkDone call renderTagesuhr() specifically after
+           a DB update, which would leave this copy stale until Dashboard
+           happens to re-render on its own. -->
+      <div class="dash-card dash-timeline-card">
         <div class="dash-card-header">
-           Heutige Termine
-          <span style="font-size:11px;color:#0E5E56;font-weight:600;cursor:pointer;" onclick="openAlleTermineModal()">Alle sehen →</span>
+           Tagesplan
+          <span style="font-size:11px;color:#94a3b8;" id="dashTimelineDateLabel"></span>
         </div>
-        <div class="dash-card-body" style="padding:8px 16px;" id="dashTermineRoot"></div>
-      </div>
-
-      <!-- Impfungen fällig -->
-      <div class="dash-card">
-        <div class="dash-card-header">
-           Impfungen fällig
-          <span style="font-size:11px;color:#94a3b8;" id="impfWarnCount"></span>
+        <div class="dash-card-body" style="padding:16px;">
+          <div class="tu-day-list-scroll scrollbar" style="max-height:520px;">
+            <div class="tu-day-list" id="dashTimeline"></div>
+          </div>
+          <div id="dashTimelineEmpty" style="display:none;padding:32px 16px;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>
         </div>
-        <div class="dash-card-body" style="padding:8px 16px;" id="dashImpfWarnRoot"></div>
       </div>
 
       <!-- Eingehende Laborergebnisse -->
@@ -2940,6 +2974,52 @@ function renderDashTermine(){
   root.innerHTML = heute.length
     ? heute.slice(0,3).map(t=>dashTerminRowHtml(t,dueSet)).join('')
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine Termine heute</div>';
+  renderDashTimeline();
+}
+// Today's appointment cards for the Dashboard's second column -- reuses
+// #tuHome's tu-appt-card visual language but a read-only variant
+// (dashApptCardHtml, no Start/Fertig button) instead of calling
+// tuApptCardHtml()/renderTagesuhr() directly. Those drive tuHome's own
+// date-navigation UI via mutable module-level state (tuSelectedDate, ...);
+// a Start/Fertig button clicked from a second copy of that markup would
+// update the visit in the DB correctly but only refresh tuHome's own
+// rendering (tuMarkStarted/tuMarkDone both call renderTagesuhr()
+// specifically), leaving this card stale until Dashboard happens to
+// re-render on its own.
+function dashApptCardHtml(t){
+  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
+  const versEsc=escapeHtml(t.versicherung||'');
+  const svnrEsc=escapeHtml(t.svnr||'');
+  const dobEsc=escapeHtml(t.dob||'');
+  const visitState=tuVisitState(t);
+  const cardClass='tu-appt-card'+(visitState?' '+visitState:'');
+  const initial=escapeHtml((t.patient||'?')[0]||'?');
+  const stateChip=visitState==='done'?'<span class="tu-time-chip done">✓ Fertig</span>':visitState==='now'?'<span class="tu-time-chip">● Läuft</span>':'';
+  return `<div class="${cardClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
+    <div class="tu-appt-card-top">
+      <div class="tu-appt-card-avatar" style="background:${colorForName(t.patient)};">${initial}</div>
+      <div class="tu-appt-card-time">${t.time||''}</div>
+      <button class="tu-row-menu-btn" onclick="tuToggleRowMenu(event,'${nameEsc}','${svnrEsc}','${versEsc}','${dobEsc}')" title="Weitere Optionen">⋮</button>
+    </div>
+    <div class="tu-appt-card-name${t.status==='abgesagt'?' strike':''}">${escapeHtml(t.patient)}</div>
+    <div class="tu-appt-card-type">${escapeHtml(t.art||'')}</div>
+    <div class="tu-appt-card-foot">${stateChip}</div>
+  </div>`;
+}
+function renderDashTimeline(){
+  const listEl=document.getElementById('dashTimeline');
+  if(!listEl) return;
+  const labelEl=document.getElementById('dashTimelineDateLabel');
+  const emptyEl=document.getElementById('dashTimelineEmpty');
+  const today=todayStr();
+  if(labelEl) labelEl.textContent=longDateDE(today);
+
+  // Same "every appointment today, cancelled included but struck through"
+  // rule renderTagesuhr()/tuDayList use -- not just the confirmed ones.
+  const dayAppts=filterToMyTermine(loadTermine()).filter(t=>t.date===today).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+
+  if(emptyEl) emptyEl.style.display = dayAppts.length ? 'none' : 'block';
+  listEl.innerHTML = dayAppts.map(dashApptCardHtml).join('');
 }
 
 // ══ TAGESUHR (home-canvas calendar, #tuHome) ══
