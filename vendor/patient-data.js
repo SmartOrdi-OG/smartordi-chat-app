@@ -19,6 +19,29 @@
 // and chat (messages) intentionally keep reading/writing the raw
 // localStorage object directly until their own migration PRs land.
 //
+// Retries a query with select('*') if the explicit column list itself is
+// what failed. Built after a real incident (2026-07-24): a migration
+// adding patients.anamnese hadn't actually been applied on this project,
+// so refreshPatients()'s explicit column list failed outright and the
+// ENTIRE patient list vanished with no visible error until a doctor
+// noticed live. reportCriticalDataError() (see vendor/staff-accounts.js)
+// now at least surfaces that class of failure as a visible banner instead
+// of silent data loss -- but this goes one step further and prevents the
+// failure itself: a column missing because a migration lagged behind a
+// later performance-only change degrades to "loads every column, a bit
+// slower" instead of blacking out the whole feature. queryFn(columns) must
+// build and await the full query (select+filters+order) for that column
+// list; run supabase/schema_health_check.sql to find exactly which column
+// is actually missing after a warning like this shows up.
+async function selectWithColumnFallback(queryFn,explicitColumns,context){
+  let {data,error}=await queryFn(explicitColumns);
+  if(error){
+    console.warn(context+': explicit column select failed, retrying with select(*) -- run supabase/schema_health_check.sql to find out what\'s missing.',error);
+    ({data,error}=await queryFn('*'));
+  }
+  return {data,error};
+}
+
 // Every Termin row coming back from Supabase is remapped into the same
 // camelCase shape (patient/endTime/arztUsername/reasonNote) the app's
 // existing render functions already expect, so dashboards/lists/print
@@ -58,7 +81,9 @@ function terminRowToJs(row){
 const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,created_at';
 let _termine=[];
 async function refreshTermine(){
-  const {data,error}=await sb.from('termine').select(TERMINE_COLUMNS).order('date').order('time');
+  const {data,error}=await selectWithColumnFallback(
+    cols=>sb.from('termine').select(cols).order('date').order('time'),
+    TERMINE_COLUMNS,'refreshTermine');
   if(error){ reportCriticalDataError('refreshTermine',error); return; }
   if(data&&data.length>3000) console.warn('refreshTermine: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching the whole table on every page load will get noticeably slow; time to add real windowing/on-demand loading for the Kalender.');
   _termine=(data||[]).map(terminRowToJs);
@@ -188,7 +213,9 @@ function localPatientAccountsRaw(){
 const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note';
 let _patients={};
 async function refreshPatients(){
-  const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS);
+  const {data,error}=await selectWithColumnFallback(
+    cols=>sb.from('patients').select(cols),
+    PATIENTS_COLUMNS,'refreshPatients');
   if(error){ reportCriticalDataError('refreshPatients',error); return; }
   if(data&&data.length>3000) console.warn('refreshPatients: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every patient on every page load will get noticeably slow; time to add real pagination/search-on-demand.');
   const localAccounts=localPatientAccountsRaw();
@@ -311,7 +338,9 @@ async function getMessagesForPatient(patientId){
 // aggregate view is preview-only, never renders document attachments).
 let _allMessagesByPatient={};
 async function refreshAllMessages(){
-  const {data,error}=await sb.from('patient_messages').select('patient_id,dir,type,text,created_at').order('created_at');
+  const {data,error}=await selectWithColumnFallback(
+    cols=>sb.from('patient_messages').select(cols).order('created_at'),
+    'patient_id,dir,type,text,created_at','refreshAllMessages');
   if(error){ reportCriticalDataError('refreshAllMessages',error); return; }
   if(data&&data.length>3000) console.warn('refreshAllMessages: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every message on every page load will get noticeably slow; time to add real windowing (e.g. only recent + unread).');
   const byPatient={};
@@ -446,7 +475,9 @@ async function saveMkpExam(patientId,examKey,fieldData,uploadedBy){
 const IMPFUNGEN_COLUMNS='id,patient_id,vaccine_key,vaccine_name,dose_label,datum,next_due,charge,created_at';
 let _impfungen={};
 async function refreshImpfungen(){
-  const {data,error}=await sb.from('patient_impfungen').select(IMPFUNGEN_COLUMNS).order('datum',{ascending:false});
+  const {data,error}=await selectWithColumnFallback(
+    cols=>sb.from('patient_impfungen').select(cols).order('datum',{ascending:false}),
+    IMPFUNGEN_COLUMNS,'refreshImpfungen');
   if(error){ reportCriticalDataError('refreshImpfungen',error); return; }
   const byPatient={};
   (data||[]).forEach(function(row){
