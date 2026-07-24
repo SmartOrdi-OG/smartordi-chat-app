@@ -214,10 +214,21 @@ async function getPendingLabResults(){
 async function attachLabResultToPatient(labResultId,patientId,uploadedBy){
   const {data:row,error:fetchErr}=await sb.from('lab_result_uploads').select('*').eq('id',labResultId).single();
   if(fetchErr||!row){ console.error('attachLabResultToPatient: row not found',fetchErr); return false; }
-  await uploadPatientDocument(patientId,{
-    category:'labor', title:row.subject||'Laborbefund', filename:row.filename,
-    mimeType:row.mime_type, base64Data:row.file_data,
-  },uploadedBy);
+  // uploadPatientDocument() throws on failure (doesn't return false) --
+  // uncaught here, that exception would propagate straight out of
+  // assignLabResult() in doctor.html too (it has no try/catch of its own
+  // either), so a real DB error would silently abort the whole assignment
+  // with no toast at all -- not even the "✗ Zuordnung fehlgeschlagen" error
+  // path, since the code would never reach that check.
+  try{
+    await uploadPatientDocument(patientId,{
+      category:'labor', title:row.subject||'Laborbefund', filename:row.filename,
+      mimeType:row.mime_type, base64Data:row.file_data,
+    },uploadedBy);
+  }catch(err){
+    console.error('attachLabResultToPatient: uploadPatientDocument failed',err);
+    return false;
+  }
   const {error:updateErr}=await sb.from('lab_result_uploads').update({status:'attached',matched_patient_id:patientId}).eq('id',labResultId);
   if(updateErr){ console.error('attachLabResultToPatient: status update failed',updateErr); return false; }
   return true;
