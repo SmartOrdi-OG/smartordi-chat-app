@@ -79,13 +79,30 @@ function terminRowToJs(row){
 // month. See the row-count warning below for when that itself needs
 // revisiting (real windowing/on-demand loading, not implemented yet).
 const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,created_at';
+// Rolling window on the past only, same reasoning as
+// ALL_MESSAGES_WINDOW_DAYS above -- termine grows without bound over a
+// practice's multi-year lifetime, but the actual daily workflow (today's
+// schedule, the Kalender's mini-calendar/day-strip, "next appointment"
+// panels, the Vertretung broadcast) only ever needs recent-past-through-
+// future, never the practice's entire history at once. No upper/future
+// bound: a practice's future-booked appointments are naturally
+// self-limiting (nobody pre-books years ahead), so only bounding backward
+// avoids ever hiding an appointment someone is actively about to have.
+// A patient's own visit history for continuity-of-care purposes lives in
+// the separate patient_visits table (getVisitsForPatient(), scoped to one
+// patient at a time, already unaffected by this) -- not termine, so a
+// termin older than this window disappearing from the live Kalender view
+// doesn't lose any clinical record, just how far back the day-by-day
+// schedule browser can casually scroll without a page reload.
+const TERMINE_PAST_WINDOW_DAYS=730;
 let _termine=[];
 async function refreshTermine(){
+  const cutoff=new Date(Date.now()-TERMINE_PAST_WINDOW_DAYS*24*60*60*1000).toISOString().slice(0,10);
   const {data,error}=await selectWithColumnFallback(
-    cols=>sb.from('termine').select(cols).order('date').order('time'),
+    cols=>sb.from('termine').select(cols).gte('date',cutoff).order('date').order('time'),
     TERMINE_COLUMNS,'refreshTermine');
   if(error){ reportCriticalDataError('refreshTermine',error); return; }
-  if(data&&data.length>3000) console.warn('refreshTermine: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching the whole table on every page load will get noticeably slow; time to add real windowing/on-demand loading for the Kalender.');
+  if(data&&data.length>3000) console.warn('refreshTermine: '+data.length+' rows loaded (last '+TERMINE_PAST_WINDOW_DAYS+' days onward) -- this practice is approaching the point where even the rolling window will get noticeably slow; time to shrink the window or add real on-demand loading for the Kalender.');
   _termine=(data||[]).map(terminRowToJs);
 }
 function loadTermine(){
