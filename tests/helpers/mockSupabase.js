@@ -40,8 +40,8 @@ function mockScript(seed) {
     function __builder(table) {
       const rows = window.__store[table] || (window.__store[table] = []);
       const b = {
-        _filters: [], _pendingUpdate: null, _insertedRows: null,
-        select() { return b; },
+        _filters: [], _pendingUpdate: null, _insertedRows: null, _selectCols: null,
+        select(cols) { b._selectCols = cols; return b; },
         eq(k, v) { b._filters.push(['eq', k, v]); return b; },
         neq(k, v) { b._filters.push(['neq', k, v]); return b; },
         gte(k, v) { b._filters.push(['gte', k, v]); return b; },
@@ -135,6 +135,15 @@ function mockScript(seed) {
           // live (and therefore unreachable, from this sandbox) database.
           if (window.__forceError && window.__forceError[table]) {
             return Promise.resolve({ data: null, error: { message: window.__forceError[table] } }).then(res, rej);
+          }
+          // Simulates a migration that added a column but was never fully
+          // applied on this project (the 2026-07-24 incident this whole
+          // fallback mechanism exists for): only the explicit-column select
+          // fails, a plain select('*') still succeeds -- lets tests verify
+          // selectWithColumnFallback() (vendor/patient-data.js) actually
+          // recovers instead of leaving the cache empty.
+          if (window.__forceErrorOnColumns && window.__forceErrorOnColumns[table] && b._selectCols !== '*') {
+            return Promise.resolve({ data: null, error: { message: window.__forceErrorOnColumns[table] } }).then(res, rej);
           }
           if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej); }
           if (b._pendingUpdate) {
