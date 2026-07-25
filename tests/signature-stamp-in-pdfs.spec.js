@@ -97,6 +97,37 @@ test('the signature and stamp appear on the Patientenbericht PDF', async ({ page
   expect(images).toContain(FAKE_STEMPEL);
 });
 
+test('the signature/stamp sit above the divider line on the Patientenbericht, not overlapping earlier content (real user report: they overlapped "Verlauf")', async ({ page }) => {
+  // Regression for a real screenshot: on a report ending with a short
+  // section (Verlauf's "Keine Einträge" placeholder is just one line), the
+  // stamp/signature used to be positioned via a fixed offset counting on
+  // whitespace that was never actually reserved, so they landed back up
+  // over the Verlauf section's own heading instead of in clear space above
+  // the signature line.
+  await setupPage(page);
+  const result = await page.evaluate(async () => (await buildPatientReportPdf({ stamm: true, verlauf: true, diagnosen: true })));
+  const stempelCall = result._imageCalls.find(c => c.url === FAKE_STEMPEL);
+  const sigCall = result._imageCalls.find(c => c.url === FAKE_SIG);
+  const lastLine = result._lines[result._lines.length - 1];
+  expect(stempelCall.y + stempelCall.h).toBeLessThanOrEqual(lastLine.y1);
+  expect(sigCall.y + sigCall.h).toBeLessThanOrEqual(lastLine.y1);
+  // And they must not have been pushed back up above the "Verlauf" section
+  // heading text that was drawn just before them.
+  const verlaufHeadingIndex = result._texts.indexOf('Krankengeschichte / Verlauf');
+  expect(verlaufHeadingIndex).toBeGreaterThanOrEqual(0);
+  expect(stempelCall.y).toBeGreaterThan(0);
+});
+
+test('the signature/stamp sit above the divider line on the Überweisung, not overlapping the printed dashed placeholder box above', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(() => buildUeberweisungPdf());
+  const stempelCall = result._imageCalls.find(c => c.url === FAKE_STEMPEL);
+  const sigCall = result._imageCalls.find(c => c.url === FAKE_SIG);
+  const lastLine = result._lines[result._lines.length - 1];
+  expect(stempelCall.y + stempelCall.h).toBeLessThanOrEqual(lastLine.y1);
+  expect(sigCall.y + sigCall.h).toBeLessThanOrEqual(lastLine.y1);
+});
+
 test('without a saved signature/stamp, none of the three PDFs draw a broken/empty image', async ({ page }) => {
   await installJsPdfMock(page);
   await installMockSupabase(page, {

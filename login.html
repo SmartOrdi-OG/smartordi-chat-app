@@ -55,10 +55,6 @@ body{
     flex:1 1 55%;max-width:760px;padding:0 clamp(48px,6vw,96px);
     background:linear-gradient(160deg,#0E5E56 0%,#0A4A44 100%);color:#fff;
   }
-  .brand-logo{width:72px;height:72px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:32px;overflow:hidden;}
-  .brand-logo img{width:100%;height:100%;object-fit:contain;}
-  .brand-title{font-size:36px;font-weight:800;margin-bottom:16px;}
-  .brand-title span{color:#DCEAE6;}
   .brand-tagline{font-size:17px;line-height:1.6;color:rgba(255,255,255,0.86);max-width:480px;margin-bottom:40px;}
   /* Every real tab in the app (see doctor.html's nav bar), shown as a tile
      grid instead of the previous 3-line bullet summary -- this is what
@@ -73,7 +69,6 @@ body{
      width past a capped form column is an uncentered blank strip on the
      right only, which looks worse than the single centered card it replaced. */
   .right{flex:1 1 auto;max-width:none;margin:0;padding:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  .right .mobile-logo{display:none;}
   /* The form used to just float, borderless, in whatever space .right had --
      wrapping it in an actual card gives it a clear, contained shape instead
      of reading as loose fields scattered over empty background. On a large
@@ -93,12 +88,6 @@ body{
   .login-card .footer-note{font-size:12px;}
   .login-card [style*="font-size:13px"]{font-size:14px !important;}
 }
-
-/* Logo */
-.mobile-logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;}
-.mobile-logo-icon{width:56px;height:56px;background:var(--teal);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;}
-.mobile-logo-text{font-size:18px;font-weight:800;color:var(--slate);}
-.mobile-logo-text span{color:var(--teal);}
 
 .form-title{font-size:26px;font-weight:800;color:#0f172a;margin-bottom:6px;}
 .form-sub{font-size:13px;color:#0f172a;margin-bottom:28px;}
@@ -159,8 +148,6 @@ body{
 
 <!-- Shown only on desktop (>=1024px), next to the form -- see .brand-panel -->
 <div class="brand-panel">
-  <div class="brand-logo"><img src="logo..jpeg" alt="Logo"></div>
-  <div class="brand-title">Smartordi<span>.chat</span></div>
   <div class="brand-tagline">Die digitale Praxis-Software für Ärzt:innen und Praxisteams in Österreich.</div>
   <ul class="brand-features">
     <li><span class="brand-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Praxis-Chat</li>
@@ -174,12 +161,6 @@ body{
 
 <!-- Form -->
 <div class="right">
-
-  <!-- Mobile logo -->
-  <div class="mobile-logo">
-    <div class="mobile-logo-icon" style="background:white;border:1.5px solid #e2e8f0;"><img src="logo..jpeg" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:8px;"></div>
-    <div class="mobile-logo-text">Smartordi<span>.chat</span></div>
-  </div>
 
   <div class="login-card">
   <div id="normalLoginForm">
