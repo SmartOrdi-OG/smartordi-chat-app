@@ -2619,6 +2619,7 @@ body.windows-mode #karteiBtn{display:none;}
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecDiagnosen" checked> Diagnosen</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecAnamnese"> Anamnese</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecImpfung"> Impfungen</label>
+          <label id="rptSecMkpRow" style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecMkp"> Mutter-Kind-Pass (MKP)</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecLabor"> Labor-Befunde</label>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" id="rptSecDokumente"> Hochgeladene Dokumente (Liste)</label>
         </div>
@@ -4455,9 +4456,7 @@ async function exportPatientCsv(){
 // Builds the report PDF from only the sections the doctor actually ticked
 // in the "Bericht senden" modal (see openKarteiReportModal() etc. below),
 // instead of the old exportPatientPdf() always generating one fixed report
-// with everything in it. MKP is deliberately not offered here yet -- its
-// per-exam data (MKP_EXAMS/mkp_untersuchungen) needs its own extraction
-// logic, a separate follow-up.
+// with everything in it.
 async function buildPatientReportPdf(sections){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return null; }
   const name=document.getElementById('kartei-name')?.textContent;
@@ -4465,16 +4464,19 @@ async function buildPatientReportPdf(sections){
   const rec=findPatientRecord(name);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return null; }
 
-  let impfungenList=[], laborDocs=[], allDocs=[], anamneseLines=[];
+  let impfungenList=[], laborDocs=[], allDocs=[], anamneseLines=[], mkpRecords=[];
   if(sections.impfung){
     await impfungenReady;
     impfungenList=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
   }
-  if(sections.labor||sections.dokumente){
+  if(sections.labor||sections.dokumente||sections.mkp){
     const patientId=await findPatientIdByFullName(name);
     if(patientId){
-      allDocs=await getDocumentsForPatient(patientId);
-      laborDocs=allDocs.filter(d=>d.category==='befund');
+      if(sections.labor||sections.dokumente){
+        allDocs=await getDocumentsForPatient(patientId);
+        laborDocs=allDocs.filter(d=>d.category==='befund');
+      }
+      if(sections.mkp) mkpRecords=await getMkpExamsForPatient(patientId);
     }
   }
   if(sections.anamnese){
@@ -4575,6 +4577,40 @@ async function buildPatientReportPdf(sections){
     }
   }
 
+  if(sections.mkp){
+    y=ensureSpace(y);
+    T('Mutter-Kind-Pass (MKP)',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
+    const completedExams=MKP_EXAMS.map(exam=>({exam,record:mkpRecords.find(r=>r.exam_key===exam.key)})).filter(x=>x.record&&x.record.completed_at);
+    if(!completedExams.length){ T('Keine Untersuchungen erfasst',13,y,9);y+=8; }
+    else{
+      completedExams.forEach(({exam,record})=>{
+        y=ensureSpace(y,14);
+        const df=new Date(record.completed_at).toLocaleDateString('de-AT');
+        T(exam.title+' ('+exam.ageLabel+') — '+df,13,y,9,'bold');y+=5;
+        const data=record.data||{};
+        // Only entered fields, not the whole 5-30-field template (most stay
+        // blank per exam) -- same "skip empties" idea buildPatientReportPdf
+        // already uses for Diagnosen/allergie above.
+        const parts=exam.fields.map(f=>{
+          const v=data[f.id];
+          if(v===null||v===undefined||v==='') return null;
+          if(f.type==='check') return v===true?f.label:null;
+          if(f.type==='yn') return f.label+': '+(v==='ja'?'Ja':'Nein');
+          if(f.type==='status') return f.label+': '+(v==='auffaellig'?'Auffällig':'Unauffällig');
+          return f.label+': '+v;
+        }).filter(Boolean);
+        if(!parts.length){ T('Keine Angaben',16,y,8,'normal',[150,150,150]);y+=6; }
+        else{
+          const wrapped=doc.splitTextToSize(parts.join('   |   '),182);
+          y=ensureSpace(y,wrapped.length*4.2+2);
+          doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(60,60,60);
+          doc.text(wrapped,16,y);y+=wrapped.length*4.2+4;
+        }
+      });
+      y+=2;
+    }
+  }
+
   if(sections.labor){
     y=ensureSpace(y);
     T('Labor-Befunde',10,y,11,'bold');y+=2;L(10,y,200,y);y+=6;
@@ -4640,8 +4676,15 @@ function openKarteiReportModal(){
   document.getElementById('rptSecDiagnosen').checked=true;
   document.getElementById('rptSecAnamnese').checked=false;
   document.getElementById('rptSecImpfung').checked=false;
+  document.getElementById('rptSecMkp').checked=false;
   document.getElementById('rptSecLabor').checked=false;
   document.getElementById('rptSecDokumente').checked=false;
+  // MKP is a pediatric-only record -- hide the option entirely for a
+  // patient old enough that the tab itself is hidden (see
+  // updateMkpTabVisibility()), instead of offering a section that would
+  // always come back empty.
+  const mkpTabHidden=document.getElementById('ktab-btn-mkp')?.style.display==='none';
+  document.getElementById('rptSecMkpRow').style.display=mkpTabHidden?'none':'flex';
   document.querySelector('input[name="rptDest"][value="patient"]').checked=true;
   document.getElementById('rptDoctorName').value='';
   document.getElementById('rptDoctorFach').value='';
@@ -4688,6 +4731,7 @@ async function sendKarteiReport(){
     diagnosen:document.getElementById('rptSecDiagnosen').checked,
     anamnese:document.getElementById('rptSecAnamnese').checked,
     impfung:document.getElementById('rptSecImpfung').checked,
+    mkp:document.getElementById('rptSecMkp').checked,
     labor:document.getElementById('rptSecLabor').checked,
     dokumente:document.getElementById('rptSecDokumente').checked,
   };

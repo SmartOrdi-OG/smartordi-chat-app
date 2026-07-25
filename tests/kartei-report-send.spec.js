@@ -29,11 +29,12 @@ async function setupPage(page, patientOverrides) {
   });
   await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
   await page.waitForTimeout(1200);
-  await page.evaluate(async () => {
+  await page.evaluate(async (dob) => {
     await patientsReady;
     document.getElementById('kartei-name').textContent = 'Maria Huber';
+    updateMkpTabVisibility(dob);
     openKarteiReportModal();
-  });
+  }, s.patients[0].dob);
 }
 
 test('refuses to send when no content section is selected', async ({ page }) => {
@@ -135,6 +136,49 @@ test('sends to an external doctor\'s typed e-mail address instead of the patient
   });
   expect(result.captured.opts.body.toEmail).toBe('extern@klinik.at');
   expect(result.messagesAfter).toBe(result.messagesBefore);
+});
+
+test('MKP section only offered for a pediatric patient, and includes the real completed-exam data in the sent PDF', async ({ page }) => {
+  const s = seed();
+  // ~2 years old -- within the pediatric window updateMkpTabVisibility() uses.
+  s.patients[0].dob = String(new Date().getFullYear() - 2) + '-01-01';
+  s.mkp_untersuchungen = [{
+    id: 'mkp1', patient_id: 'p1', exam_key: 'lw4_7_allgemein',
+    data: { gewicht: 3800, laenge: 55, stillen: 'ja', allgemeinzustand: 'unauffaellig', diagnose: 'Alles unauffällig' },
+    completed_at: '2026-01-15T10:00:00Z',
+  }];
+  await installJsPdfMock(page);
+  await installMockSupabase(page, s, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  const result = await page.evaluate(async (dob) => {
+    await patientsReady;
+    document.getElementById('kartei-name').textContent = 'Maria Huber';
+    updateMkpTabVisibility(dob);
+    openKarteiReportModal();
+    const rowVisible = document.getElementById('rptSecMkpRow').style.display !== 'none';
+    document.getElementById('rptSecMkp').checked = true;
+    const doc = await buildPatientReportPdf({ mkp: true });
+    return { rowVisible, texts: doc._texts };
+  }, s.patients[0].dob);
+  expect(result.rowVisible, 'MKP row is offered for a pediatric patient').toBe(true);
+  const joined = result.texts.join(' | ');
+  expect(joined).toContain('Mutter-Kind-Pass');
+  expect(joined).toContain('Allgemeine Untersuchung');
+  expect(joined).toContain('Körpergewicht (g): 3800');
+  expect(joined).toContain('Stillen: Ja');
+  expect(joined).toContain('Allgemeinzustand: Unauffällig');
+  expect(joined).toContain('Diagnose: Alles unauffällig');
+});
+
+test('MKP section is hidden entirely for a patient too old for it', async ({ page }) => {
+  await setupPage(page, { dob: '1985-01-01' }); // adult, well past the pediatric window
+  const rowVisible = await page.evaluate(() => document.getElementById('rptSecMkpRow').style.display !== 'none');
+  expect(rowVisible).toBe(false);
 });
 
 test('partial success (chat sent, e-mail failed) is reported as partial and leaves the modal open', async ({ page }) => {
