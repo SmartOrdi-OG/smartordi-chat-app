@@ -54,6 +54,7 @@ test('saveWorkingHours() persists the edited schedule to the practices row', asy
     // Close Monday, open Saturday morning only.
     document.getElementById('wh-mon-open').checked = false;
     document.getElementById('wh-sat-open').checked = true;
+    document.getElementById('wh-sat-b1on').checked = true;
     document.getElementById('wh-sat-b1s').value = '09:00';
     document.getElementById('wh-sat-b1e').value = '12:00';
     await saveWorkingHours();
@@ -110,6 +111,41 @@ test('a day with only one time range saves cleanly even if the (unchecked) secon
   expect(result.b2onCheckedBeforeSave, 'the second range must default to off, not silently active').toBe(false);
   expect(result.toast).toContain('gespeichert');
   expect(result.wed).toEqual({ open: true, blocks: [['08:00', '11:30']] });
+});
+
+// Regression test for a second, related real bug: range 1 had no opt-out at
+// all (unlike range 2), so a doctor who only works evenings on a given day
+// -- no morning session -- had no way to represent that. Range 1's fields
+// also default-rendered as "00:00" when untouched, so leaving it "on" with
+// no real values entered a bogus 00:00-00:00 block and blocked the save
+// with "Bis muss nach Von liegen". Both ranges are now equally optional.
+test('a day can be configured as evening-only, with range 1 unchecked entirely', async ({ page }) => {
+  await installMockSupabase(page, seed({ practices: [{ id: 'prac1', name: 'Test Praxis' }] }), () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1200);
+
+  const result = await page.evaluate(async () => {
+    openWorkingHoursModal();
+    // Mittwoch: doctor only works in the evening -- no morning session at
+    // all. Range 1 stays unchecked despite carrying stray "00:00" values
+    // (the exact browser quirk reported), range 2 is the only real range.
+    document.getElementById('wh-wed-b1on').checked = false;
+    document.getElementById('wh-wed-b1s').value = '00:00';
+    document.getElementById('wh-wed-b1e').value = '00:00';
+    document.getElementById('wh-wed-b2on').checked = true;
+    document.getElementById('wh-wed-b2s').value = '18:00';
+    document.getElementById('wh-wed-b2e').value = '21:00';
+    await saveWorkingHours();
+    return {
+      toast: document.getElementById('toast')?.textContent || '',
+      wed: window.__store.practices[0].working_hours.wed,
+    };
+  });
+  expect(result.toast).toContain('gespeichert');
+  expect(result.wed).toEqual({ open: true, blocks: [['18:00', '21:00']] });
 });
 
 test('the Uhrzeit list respects a custom schedule: closed on the configured date, open with the configured block on another', async ({ page }) => {
