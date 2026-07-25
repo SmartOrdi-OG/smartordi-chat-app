@@ -85,6 +85,13 @@ function timeSlotOptionsHtml(){
 function timeSlotEndOptionsHtml(){
   return PRACTICE_TIME_SLOTS_END.map(s=>`<option>${s}</option>`).join('');
 }
+// Real interval overlap (half-open [start,end)) instead of exact start-time
+// matching -- two appointments with different start times can still
+// genuinely overlap (e.g. 09:00-09:45 conflicts with a 09:15 booking), which
+// comparing only the start time would silently miss.
+function timeRangesOverlap(aStart,aEnd,bStart,bEnd){
+  return aStart<bEnd && bStart<aEnd;
+}
 
 // In-memory cache of every staff_profiles row, keyed by uuid -- refreshed
 // once (awaited) during each page's init so the many existing synchronous
