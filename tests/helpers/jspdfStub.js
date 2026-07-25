@@ -14,6 +14,7 @@ function installJsPdfStub() {
     this._texts = [];
     this._images = [];
     this._imageCalls = [];
+    this._lines = [];
   }
   FakeJsPDF.prototype.setFontSize = function () { return this; };
   FakeJsPDF.prototype.setFont = function () { return this; };
@@ -22,7 +23,7 @@ function installJsPdfStub() {
   FakeJsPDF.prototype.setFillColor = function () { return this; };
   FakeJsPDF.prototype.setLineWidth = function () { return this; };
   FakeJsPDF.prototype.setLineDashPattern = function () { return this; };
-  FakeJsPDF.prototype.line = function () { return this; };
+  FakeJsPDF.prototype.line = function (x1, y1, x2, y2) { this._lines.push({ x1, y1, x2, y2 }); return this; };
   FakeJsPDF.prototype.rect = function () { return this; };
   FakeJsPDF.prototype.text = function (str) { this._texts.push(String(str)); return this; };
   FakeJsPDF.prototype.splitTextToSize = function (str) { return [String(str)]; };

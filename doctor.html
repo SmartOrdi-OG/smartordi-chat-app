@@ -4657,12 +4657,26 @@ async function buildPatientReportPdf(sections){
     y+=lines.length*4.5+8;
   }
 
+  // Was placed via a fixed "y-28" offset counting on ~28mm of whitespace
+  // already sitting above the line -- but nothing upstream ever actually
+  // reserved that space, so a report ending on a short section (e.g.
+  // Verlauf's "Keine Einträge") left the line only a few mm below the last
+  // line of real content, and the images (anchored off the line) landed
+  // back up ON TOP of that content instead of in clear space above the
+  // line (user screenshot: stamp/signature overlapping "Krankengeschichte
+  // / Verlauf"). Reserving the space explicitly, then flowing the line
+  // below the images, works regardless of how much content came before.
   y=ensureSpace(y,40);
+  const sigY=y;
+  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,sigY,28,20); }catch(e){} }
+  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,sigY,48,20); }catch(e){} }
+  y=sigY+22;
   L(15,y,195,y,0.3);y+=4;
   T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
-  T('DSGVO-konform | '+today,195,y,7,'normal',[150,150,150]);
-  if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,y-28,28,20); }catch(e){} }
-  if(typeof sigDataUrl!=='undefined'&&sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){} }
+  // Was x=195 -- with this string's real length, left-aligned text starting
+  // there runs off the right edge of the A4 page instead of fitting on it
+  // (same screenshot showed "DSGVO-konfi" cut off mid-word).
+  T('DSGVO-konform | '+today,150,y,7,'normal',[150,150,150]);
 
   doc._reportPatientName=name;
   return doc;
@@ -6664,18 +6678,21 @@ function buildUeberweisungPdf(){
   doc.setLineDashPattern([1,1],0);R(107,y+14,85,14,0.3);doc.setLineDashPattern([],0);
   T('Stempel und Unterschrift',135,y+22,7,'normal',[160,160,160]);y+=32;
 
+  // Was placed via a fixed "y-28" offset that assumed ~28mm of whitespace
+  // already sat above this line -- but the line is drawn right where the
+  // fixed layout above happens to end, so that offset actually landed the
+  // images back up over the "Datum:"/dashed-box area from the PREVIOUS
+  // block instead of in fresh space here (same root cause as the
+  // Patientenbericht bug this was copied from -- see buildPatientReportPdf).
+  // Reserving the space and flowing the line below the images fixes both.
+  const sigY=y;
+  if(stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,sigY,28,20); }catch(e){} }
+  if(sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,sigY,48,20); }catch(e){} }
+  y=sigY+22;
   L(15,y,195,y,0.3);y+=4;
   T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
-  T('DSGVO-konform | '+d.datum,195,y,7,'normal',[150,150,150]);
-
-  // Add stempel image if available
-  if(stempelDataUrl){
-    try{ doc.addImage(stempelDataUrl,'PNG',107,y-28,28,20); }catch(e){}
-  }
-  // Add signature image if available
-  if(sigDataUrl){
-    try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){}
-  }
+  // Was x=195 -- overflows the A4 page's right edge for this string length.
+  T('DSGVO-konform | '+d.datum,150,y,7,'normal',[150,150,150]);
 
   return doc;
 }
