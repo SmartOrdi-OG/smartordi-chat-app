@@ -1596,10 +1596,15 @@ function renderTimeSlots(){
   // is rejected server-side instead, see bookTermin(). Demo/guardian
   // accounts keep the original local pre-check since their termine are
   // all local anyway.
-  const takenTimes=getPatientToken() ? new Set()
-    : new Set(loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt).map(t=>t.time));
+  // Compares real [start,end) ranges rather than exact start times -- a
+  // staff-booked appointment can run longer than this page's own fixed
+  // 20-minute slots (e.g. 09:00-09:45), and only checking the exact start
+  // would let a patient pick 09:15 or 09:30 as if they were free.
+  const busyRanges=getPatientToken() ? []
+    : loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt)
+      .map(t=>({start:t.time,end:t.endTime||addMinutesToTime(t.time,15)}));
   root.innerHTML=TIME_SLOTS.map(s=>{
-    const taken=takenTimes.has(s);
+    const taken=busyRanges.some(r=>s>=r.start&&s<r.end);
     const selected=selectedSlot===s;
     return `<div class="time-slot${taken?' taken':''}${selected?' selected':''}" ${taken?'':`onclick="selectSlot(this,'${s}')"`}>${s}</div>`;
   }).join('');
