@@ -7536,8 +7536,14 @@ async function dismissLabResultRow(labResultId){
   else showToast('✗ Fehlgeschlagen','error');
 }
 
+// Was window.history.back() -- for a home-screen-installed app the browser
+// history is whatever the user happened to navigate through, not
+// necessarily anything inside Smartordi, so this could land anywhere (or
+// nowhere). Kalender is the app's actual home screen, so go there directly
+// instead of guessing at history.
 function goBack() {
-  window.history.back();
+  showKalender();
+  mnavActive('mnav-kalender');
 }
 
 function scrollToSection(id) {
