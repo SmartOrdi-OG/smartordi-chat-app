@@ -73,9 +73,6 @@ test('without a saved signature/stamp, the certificate still shows the plain lab
     printAnwesenheitsbestaetigung('Maria Huber', '2026-08-15', '09:00', '09:30', 'Kontrolle', 'u2');
     return window.__lastPrintHtml;
   });
-  // The document header always has its own <img> (the Smartordi logo) --
-  // check the sig-line specifically stayed untouched (no image spliced in),
-  // not just "no <img> anywhere in the whole page".
   expect(html).toContain('<div class="sig-line">Unterschrift / Stempel</div>');
 });
 
@@ -88,4 +85,17 @@ test('a different doctor\'s signature is never shown for a termin treated by som
   expect(html, 'Dr. Ahmed (u1) has no saved signature of her own -- Dr. Berger\'s must never appear on her patient\'s certificate').not.toContain(FAKE_SIG);
   expect(html).not.toContain(FAKE_STEMPEL);
   expect(html).toContain('Dr. Sarah Ahmed');
+});
+
+// This document is issued on the doctor's own letterhead, in effect -- an
+// employer/school/insurer reading it has no business knowing which practice-
+// management software the doctor uses, and the doctor never asked for that
+// to be disclosed on their behalf.
+test('the certificate never discloses which software generated it', async ({ page }) => {
+  await setupPage(page, false);
+  const html = await page.evaluate(() => {
+    printAnwesenheitsbestaetigung('Maria Huber', '2026-08-15', '09:00', '09:30', 'Kontrolle', 'u2');
+    return window.__lastPrintHtml;
+  });
+  expect(html.toLowerCase()).not.toContain('smartordi');
 });
