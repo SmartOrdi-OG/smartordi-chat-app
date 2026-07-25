@@ -36,7 +36,13 @@ test('Woche view shows every work day\'s own appointments, and a busy day does n
   await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
   await page.waitForTimeout(1200);
 
-  await page.evaluate(() => { tuSetViewMode('woche'); });
+  // renderTagesuhr()'s own "auto-follow today" logic clamps FORWARD to next
+  // Monday whenever today itself is Sat/Sun (the practice is closed
+  // weekends), so relying on that default would show a different week than
+  // the one seeded below whenever this suite happens to run on a weekend.
+  // Selecting the Monday explicitly makes the test deterministic regardless
+  // of what day it's actually run on.
+  await page.evaluate((mondayStr) => { tuSelectDate(mondayStr); tuSetViewMode('woche'); }, ds(0));
 
   const cols = await page.evaluate(() => {
     const cols = [...document.querySelectorAll('#tuWeekGrid .tu-week-col')];
