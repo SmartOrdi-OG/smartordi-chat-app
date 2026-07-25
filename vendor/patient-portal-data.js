@@ -101,6 +101,16 @@ async function patientSetAnamnese(data){
   if(error){ console.error('patientSetAnamnese failed',error); return false; }
   return !!ok;
 }
+// supabase/phase29_practice_working_hours.sql -- the practice's own
+// configured Öffnungszeiten (patients have no direct table access to
+// `practices`, same reasoning as every other function here). Returns null
+// on any failure/no-token; the caller (patient.html) falls back to the same
+// DEFAULT_WORKING_HOURS a staff session uses when nothing's configured yet.
+async function patientGetWorkingHours(){
+  const {data,error}=await sb.rpc('patient_get_working_hours',{p_token:getPatientToken()});
+  if(error){ console.error('patientGetWorkingHours failed',error); return null; }
+  return data||null;
+}
 // Revokes the session token server-side (supabase/phase6_patient_logout.sql)
 // -- without this, "logging out" only ever cleared the token from this
 // device's sessionStorage while the token itself stayed valid (and usable

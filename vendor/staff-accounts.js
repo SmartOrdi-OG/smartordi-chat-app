@@ -52,38 +52,61 @@ function reportCriticalDataError(context,error){
   else _pendingCriticalDataErrors.push({context,error});
 }
 
-// Shared bookable-appointment-slot grid (08:00-11:30, 14:00-16:00, 15-minute
-// steps) -- both the patient-facing self-booking picker (patient.html) and
-// staff's own booking forms (secretary.html) generate their slot list from
-// this single source instead of three separately hand-typed option lists,
-// which had drifted inconsistent with each other (different intervals,
-// missing slots) before this existed.
-function buildTimeSlots(fromH,fromM,toH,toM,fromH2,fromM2,toH2,toM2){
+// Shared bookable-appointment-slot grid, now derived per weekday from the
+// practice's own configured Öffnungszeiten (supabase/phase29_practice_
+// working_hours.sql) instead of one hardcoded schedule -- both the patient-
+// facing self-booking picker (patient.html) and staff's own booking forms
+// (secretary.html) generate their slot list from this single source instead
+// of separately hand-typed option lists, which had drifted inconsistent
+// with each other (different intervals, missing slots) before this existed.
+const WEEKDAY_KEYS=['sun','mon','tue','wed','thu','fri','sat']; // matches Date.getDay()
+// Falls back to this whenever a practice hasn't configured its own hours
+// yet (practices.working_hours is null) -- the fixed Mon-Fri 08:00-11:30/
+// 14:00-16:00 schedule every practice used before Öffnungszeiten existed,
+// so nothing changes for a practice that never opens those settings.
+const DEFAULT_WORKING_HOURS={
+  mon:{open:true,blocks:[['08:00','11:30'],['14:00','16:00']]},
+  tue:{open:true,blocks:[['08:00','11:30'],['14:00','16:00']]},
+  wed:{open:true,blocks:[['08:00','11:30'],['14:00','16:00']]},
+  thu:{open:true,blocks:[['08:00','11:30'],['14:00','16:00']]},
+  fri:{open:true,blocks:[['08:00','11:30'],['14:00','16:00']]},
+  sat:{open:false,blocks:[]},
+  sun:{open:false,blocks:[]},
+};
+function workingHoursFor(dateStr,hours){
+  const key=WEEKDAY_KEYS[new Date(dateStr+'T00:00:00').getDay()];
+  return (hours&&hours[key])||{open:false,blocks:[]};
+}
+function isWorkDay(dateStr,hours){
+  return !!workingHoursFor(dateStr,hours).open;
+}
+// Steps every configured [start,end] block by 15 minutes -- one shared
+// generator instead of a separately hand-typed option list per block.
+function buildTimeSlotsFromBlocks(blocks){
   const slots=[];
-  const push=(fromH,fromM,toH,toM)=>{
-    let h=fromH,m=fromM;
+  (blocks||[]).forEach(function(block){
+    let [h,m]=block[0].split(':').map(Number);
+    const [toH,toM]=block[1].split(':').map(Number);
     while(h<toH||(h===toH&&m<=toM)){
       slots.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'));
       m+=15; if(m>=60){m=0;h++;}
     }
-  };
-  push(fromH,fromM,toH,toM);
-  push(fromH2,fromM2,toH2,toM2);
+  });
   return slots;
 }
-const PRACTICE_TIME_SLOTS=buildTimeSlots(8,0,11,30, 14,0,16,0);
-// "Bis" (end-time) selects need to offer something *after* the last bookable
-// start of each block -- otherwise picking that last start (11:30 or 16:00)
-// leaves no valid end option nearby, and syncEndTimeAfterStart's "first
-// option greater than start" search jumps all the way to the next block
-// (e.g. a 11:30 start defaulting its end to 14:00, spanning the whole lunch
-// break) instead of a sensible ~15-30 minutes later.
-const PRACTICE_TIME_SLOTS_END=buildTimeSlots(8,0,12,0, 14,0,16,30);
-function timeSlotOptionsHtml(){
-  return PRACTICE_TIME_SLOTS.map(s=>`<option>${s}</option>`).join('');
-}
-function timeSlotEndOptionsHtml(){
-  return PRACTICE_TIME_SLOTS_END.map(s=>`<option>${s}</option>`).join('');
+// "Bis" (end-time) options need something *after* the last bookable start of
+// each block -- otherwise picking that last start leaves no nearby valid end
+// option, and syncEndTimeAfterStart's "first option greater than start"
+// search would jump all the way to the next block (e.g. spanning a whole
+// lunch break) instead of a sensible ~15-30 minutes later. Extends every
+// block's own end by 30 minutes for that reason.
+function buildEndSlotsFromBlocks(blocks){
+  const extended=(blocks||[]).map(function(b){
+    const [h,m]=b[1].split(':').map(Number);
+    let total=((h*60+m+30)%1440+1440)%1440;
+    return [b[0], String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0')];
+  });
+  return buildTimeSlotsFromBlocks(extended);
 }
 // Real interval overlap (half-open [start,end)) instead of exact start-time
 // matching -- two appointments with different start times can still
@@ -167,6 +190,13 @@ async function refreshPracticeSettings(){
 }
 function getPracticeSettings(){
   return _practiceSettings;
+}
+// Staff-side accessor for the practice's own configured Öffnungszeiten --
+// patient.html can't use this (no direct table access under RLS), it fetches
+// the same data via patient_get_working_hours() instead (vendor/patient-
+// portal-data.js) and falls back to this same DEFAULT_WORKING_HOURS itself.
+function getWorkingHours(){
+  return (_practiceSettings&&_practiceSettings.working_hours)||DEFAULT_WORKING_HOURS;
 }
 async function savePracticeSettings(fields){
   if(!_practiceSettings||!_practiceSettings.id){ console.error('savePracticeSettings called before practice settings loaded'); return false; }

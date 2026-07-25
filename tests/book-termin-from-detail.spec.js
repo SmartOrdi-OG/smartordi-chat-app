@@ -43,8 +43,12 @@ test('books a real termin, shows success, and does not auto-open a print popup',
     window.open = () => { window.__windowOpenCalls++; return { document: { write() {}, close() {} }, focus() {}, print() {} }; };
     openPatientDetail('Maria Huber', '#999', 'ÖGK', 'Adresse', '0111', '123', '1985-01-01');
     document.getElementById('pd-termin-datum').value = '2026-08-20';
-    document.getElementById('pd-termin-zeit').value = '10:00';
-    document.getElementById('pd-termin-endzeit').value = '10:30';
+    // Set directly instead of relying on refreshTermineSlotOptions() having
+    // regenerated these <option> lists for 2026-08-20 -- that only happens
+    // on the date field's own onchange (a real date-picker interaction),
+    // which programmatically setting .value here doesn't fire.
+    document.getElementById('pd-termin-zeit').innerHTML = '<option value="10:00">10:00</option>';
+    document.getElementById('pd-termin-endzeit').innerHTML = '<option value="10:30">10:30</option>';
     document.getElementById('pd-termin-art').value = 'Kontrolle';
     document.getElementById('pd-termin-arzt').innerHTML = '<option value="u1">Dr. Sarah Ahmed</option>';
     bookTerminFromDetail();
@@ -71,8 +75,12 @@ test('refuses up-front when the slot conflicts, without creating a termin or pri
   const result = await page.evaluate(async () => {
     openPatientDetail('Maria Huber', '#999', 'ÖGK', 'Adresse', '0111', '123', '1985-01-01');
     document.getElementById('pd-termin-datum').value = '2026-08-20';
-    document.getElementById('pd-termin-zeit').value = '10:00';
-    document.getElementById('pd-termin-endzeit').value = '10:30';
+    // Set directly instead of relying on refreshTermineSlotOptions() having
+    // regenerated these <option> lists for 2026-08-20 -- that only happens
+    // on the date field's own onchange (a real date-picker interaction),
+    // which programmatically setting .value here doesn't fire.
+    document.getElementById('pd-termin-zeit').innerHTML = '<option value="10:00">10:00</option>';
+    document.getElementById('pd-termin-endzeit').innerHTML = '<option value="10:30">10:30</option>';
     document.getElementById('pd-termin-art').value = 'Kontrolle';
     document.getElementById('pd-termin-arzt').innerHTML = '<option value="u1">Dr. Sarah Ahmed</option>';
     const before = window.__store.termine.length;
@@ -94,8 +102,12 @@ test('a genuine insert failure still surfaces a real error toast afterward, not 
   const result = await page.evaluate(async () => {
     openPatientDetail('Maria Huber', '#999', 'ÖGK', 'Adresse', '0111', '123', '1985-01-01');
     document.getElementById('pd-termin-datum').value = '2026-08-20';
-    document.getElementById('pd-termin-zeit').value = '10:00';
-    document.getElementById('pd-termin-endzeit').value = '10:30';
+    // Set directly instead of relying on refreshTermineSlotOptions() having
+    // regenerated these <option> lists for 2026-08-20 -- that only happens
+    // on the date field's own onchange (a real date-picker interaction),
+    // which programmatically setting .value here doesn't fire.
+    document.getElementById('pd-termin-zeit').innerHTML = '<option value="10:00">10:00</option>';
+    document.getElementById('pd-termin-endzeit').innerHTML = '<option value="10:30">10:30</option>';
     document.getElementById('pd-termin-art').value = 'Kontrolle';
     document.getElementById('pd-termin-arzt').innerHTML = '<option value="u1">Dr. Sarah Ahmed</option>';
     window.__forceError = { termine: 'simulated DB error' };

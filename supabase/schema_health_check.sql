@@ -48,7 +48,8 @@ from unnest(array[
   'patient_change_password','patient_get_document_file','patient_get_documents',
   'patient_get_impfungen','patient_get_messages','patient_get_profile','patient_get_termine',
   'patient_login','patient_logout','patient_request_deletion','patient_send_message',
-  'patient_set_anamnese','patient_set_symptoms','request_patient_deletion','validate_staff_invite'
+  'patient_set_anamnese','patient_set_symptoms','patient_get_working_hours',
+  'request_patient_deletion','validate_staff_invite'
 ]) as f
 
 union all
@@ -91,6 +92,15 @@ select 'patient_impfungen column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'id','patient_id','vaccine_key','vaccine_name','dose_label','datum','next_due','charge','uploaded_by','created_at','practice_id'
+]) as c
+
+union all
+
+select 'practices column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='practices' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'working_hours'
 ]) as c
 
 order by check_type, name;
