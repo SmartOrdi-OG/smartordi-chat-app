@@ -3,15 +3,16 @@
 // opposed to the main "+ Neuer Termin" flow already covered by
 // double-booking.spec.js/confirmNewTermin()).
 //
-// Deliberate design note (documented in the function's own comment): the
-// print call (printTerminSlip) must run synchronously inside the click's
-// user gesture or the browser blocks the popup, so createTermin() is
-// fire-and-forget -- the "✓ Termin gebucht" toast and the printed slip
-// both happen optimistically, before the insert is confirmed. A genuine
-// insert failure is only surfaced afterward via .catch(). This test locks
-// in that this really does happen (the .catch() isn't silently dropped),
-// and that the up-front conflict pre-check still blocks a genuine
-// conflict before any of that optimistic behavior kicks in.
+// Deliberate design note: createTermin() is fire-and-forget -- the
+// "✓ Termin gebucht" toast happens optimistically, before the insert is
+// confirmed. A genuine insert failure is only surfaced afterward via
+// .catch(). This test locks in that this really does happen (the .catch()
+// isn't silently dropped), and that the up-front conflict pre-check still
+// blocks a genuine conflict before any of that optimistic behavior kicks
+// in. Printing the Termininformationen slip is no longer automatic here --
+// it stays a deliberate action via the slip's own print button in the
+// termine list, since practices already had a manual print workflow and an
+// unrequested popup after every booking was unwanted.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -25,9 +26,6 @@ function seed(extra) {
 }
 
 async function setupPage(page, extraSeed) {
-  await page.addInitScript(() => {
-    window.open = () => ({ document: { write() {}, close() {} }, focus() {}, print() {} });
-  });
   await installMockSupabase(page, seed(extraSeed), () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
@@ -38,9 +36,11 @@ async function setupPage(page, extraSeed) {
   await page.evaluate(async () => { await Promise.all([patientsReady, termineReady]); });
 }
 
-test('books a real termin, shows success and prints the slip', async ({ page }) => {
+test('books a real termin, shows success, and does not auto-open a print popup', async ({ page }) => {
   await setupPage(page);
   const result = await page.evaluate(async () => {
+    window.__windowOpenCalls = 0;
+    window.open = () => { window.__windowOpenCalls++; return { document: { write() {}, close() {} }, focus() {}, print() {} }; };
     openPatientDetail('Maria Huber', '#999', 'ÖGK', 'Adresse', '0111', '123', '1985-01-01');
     document.getElementById('pd-termin-datum').value = '2026-08-20';
     document.getElementById('pd-termin-zeit').value = '10:00';
@@ -53,6 +53,7 @@ test('books a real termin, shows success and prints the slip', async ({ page }) 
       toast: document.getElementById('toast')?.textContent || '',
       modalOpen: document.getElementById('patientDetailModal').classList.contains('show'),
       termine: window.__store.termine,
+      windowOpenCalls: window.__windowOpenCalls,
     };
   });
   expect(result.toast).toContain('Termin gebucht');
@@ -60,6 +61,7 @@ test('books a real termin, shows success and prints the slip', async ({ page }) 
   expect(result.termine.length).toBe(1);
   expect(result.termine[0].date).toBe('2026-08-20');
   expect(result.termine[0].time).toBe('10:00');
+  expect(result.windowOpenCalls, 'booking must not auto-open a print popup').toBe(0);
 });
 
 test('refuses up-front when the slot conflicts, without creating a termin or printing', async ({ page }) => {
