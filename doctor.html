@@ -2532,7 +2532,7 @@ body.windows-mode #karteiBtn{display:none;}
               <div>
                 <div style="font-size:8px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Datum</div>
                 <div style="font-size:11px;font-weight:700;" id="uwPreviewDatum"></div>
-                <div style="font-size:8px;color:#94a3b8;margin-top:6px;">Smartordi.eu ·  DSGVO</div>
+                <div style="font-size:8px;color:#94a3b8;margin-top:6px;">DSGVO-konform</div>
               </div>
             </div>
           </div>
@@ -4624,7 +4624,7 @@ async function buildPatientReportPdf(sections){
   y=ensureSpace(y,40);
   L(15,y,195,y,0.3);y+=4;
   T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
-  T('Smartordi.eu | DSGVO-konform | '+today,195,y,7,'normal',[150,150,150]);
+  T('DSGVO-konform | '+today,195,y,7,'normal',[150,150,150]);
   if(typeof stempelDataUrl!=='undefined'&&stempelDataUrl){ try{ doc.addImage(stempelDataUrl,'PNG',107,y-28,28,20); }catch(e){} }
   if(typeof sigDataUrl!=='undefined'&&sigDataUrl){ try{ doc.addImage(sigDataUrl,'PNG',140,y-28,48,20); }catch(e){} }
 
@@ -5119,7 +5119,7 @@ function buildUwA4(){
 
     <!-- Footer -->
     <div style="margin-top:6px;border-top:1px solid #ccc;padding-top:5px;font-size:7.5px;color:#777;text-align:center;">
-      Stempel und Unterschrift des Arztes/der Ärztin &nbsp;|&nbsp; Ausgestellt über <strong>Smartordi.eu</strong> &nbsp;|&nbsp;  DSGVO-konform &nbsp;|&nbsp; ${d.datum}
+      Stempel und Unterschrift des Arztes/der Ärztin &nbsp;|&nbsp; DSGVO-konform &nbsp;|&nbsp; ${d.datum}
     </div>
   `;
 }
@@ -5447,7 +5447,7 @@ function printImpfpass(){
     y+=14;if(y>270){doc.addPage();y=20;}
   });
   doc.setFontSize(8);doc.setTextColor(150,150,150);
-  doc.text('Erstellt via Smartordi.chat · DSGVO-konform',10,285);
+  doc.text('DSGVO-konform',10,285);
   const url=doc.output('bloburl');
   openPdfAndPrint(url);
 }
@@ -6486,7 +6486,7 @@ function buildRezeptPdf(){
 
   // Footer
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
-  T(' DSGVO-konform · Erstellt via Smartordi.chat',10,290,7,'normal',[150,150,150]);
+  T('DSGVO-konform',10,290,7,'normal',[150,150,150]);
   T('Datum: '+new Date().toLocaleDateString('de-AT'),170,290,7,'normal',[150,150,150]);
 
   doc._rezeptPatientName=p.name;
@@ -6622,7 +6622,7 @@ function buildUeberweisungPdf(){
 
   L(15,y,195,y,0.3);y+=4;
   T('Stempel und Unterschrift des Arztes/der Ärztin',15,y,7,'normal',[100,100,100]);
-  T('Smartordi.eu | DSGVO-konform | '+d.datum,195,y,7,'normal',[150,150,150]);
+  T('DSGVO-konform | '+d.datum,195,y,7,'normal',[150,150,150]);
 
   // Add stempel image if available
   if(stempelDataUrl){
