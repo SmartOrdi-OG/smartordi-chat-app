@@ -52,7 +52,8 @@ select 'table' as check_type, t as name,
 from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
-  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads'
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'guardian_active_child'
 ]) as t
 
 union all
@@ -70,7 +71,8 @@ from unnest(array[
   'patient_get_impfungen','patient_get_messages','patient_get_profile','patient_get_termine',
   'patient_login','patient_logout','patient_request_deletion','patient_send_message',
   'patient_set_anamnese','patient_set_symptoms','patient_get_working_hours',
-  'request_patient_deletion','validate_staff_invite','send_termine_reminders'
+  'request_patient_deletion','validate_staff_invite','send_termine_reminders',
+  'current_patient_id','current_guardian_id'
 ]) as f
 
 union all
@@ -109,7 +111,7 @@ select 'patients column', c,
 from unnest(array[
   'id','username','name','full_name','fach','dob','adresse','tel','email','versicherung','svnr',
   'anamnese','diagnosen','allergie','blutgruppe','legacy_history','join_status','join_note',
-  'practice_id','guardian_id'
+  'practice_id','guardian_id','auth_user_id'
 ]) as c
 
 union all
@@ -148,6 +150,15 @@ select 'practices column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'working_hours'
+]) as c
+
+union all
+
+select 'patient_guardians column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_guardians' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'id','practice_id','username','pw_hash','temp_password','first_login','name','full_name','created_at','auth_user_id'
 ]) as c
 
 order by check_type, name;
