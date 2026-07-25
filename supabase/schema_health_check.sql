@@ -70,7 +70,7 @@ from unnest(array[
   'patient_get_impfungen','patient_get_messages','patient_get_profile','patient_get_termine',
   'patient_login','patient_logout','patient_request_deletion','patient_send_message',
   'patient_set_anamnese','patient_set_symptoms','patient_get_working_hours',
-  'request_patient_deletion','validate_staff_invite'
+  'request_patient_deletion','validate_staff_invite','send_termine_reminders'
 ]) as f
 
 union all
@@ -119,7 +119,8 @@ select 'termine column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'id','legacy_id','patient_id','patient_name','art','date','time','end_time','status','arzt_id',
-  'versicherung','tel','svnr','dob','reason','reason_note','started_at','completed_at','created_at','practice_id'
+  'versicherung','tel','svnr','dob','reason','reason_note','started_at','completed_at','created_at','practice_id',
+  'reminder_sent_at'
 ]) as c
 
 union all
