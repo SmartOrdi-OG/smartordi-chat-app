@@ -482,6 +482,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .cal-day.empty{cursor:default;}
 .cal-day.past{opacity:0.3;cursor:not-allowed;}
 .cal-day.past:hover{background:none;color:inherit;}
+.cal-day.closed{opacity:0.3;cursor:not-allowed;}
+.cal-day.closed:hover{background:none;color:inherit;}
 
 /* Toast */
 .toast{
@@ -1374,6 +1376,7 @@ async function initPatientData(){
     await refreshRemoteTermine();
     await refreshRemoteDocuments();
     await refreshRemoteImpfungen();
+    _patientWorkingHours=await patientGetWorkingHours();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1498,9 +1501,17 @@ async function sendMsg(){
 
 // ── Termine (real appointment data, shared with secretary.html/doctor.html) ──
 const TERMINE_KEY='smartordi_termine';
-// 15-minute steps, shared with secretary.html's own booking forms -- see
-// PRACTICE_TIME_SLOTS in vendor/staff-accounts.js.
-const TIME_SLOTS=PRACTICE_TIME_SLOTS;
+// A real (token-backed) patient's own practice hours (supabase/phase29_
+// practice_working_hours.sql), fetched once during initPatientData() --
+// patients have no direct table access to `practices`, so this comes from
+// patient_get_working_hours() instead of getWorkingHours()'s direct table
+// read (staff-only). A local/demo account has no practice row to fetch at
+// all, so it always falls back to the same DEFAULT_WORKING_HOURS a staff
+// session uses when nothing's been configured yet.
+let _patientWorkingHours=null;
+function workingHoursForPatient(){
+  return _patientWorkingHours||DEFAULT_WORKING_HOURS;
+}
 function loadTermine(){
   try{ const list=JSON.parse(localStorage.getItem(TERMINE_KEY)); return Array.isArray(list)?list:[]; }catch(e){ return []; }
 }
@@ -1569,7 +1580,9 @@ function renderCalendar(){
     if(d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear())el.classList.add('today');
     if(terminDays.has(ds))el.classList.add('has-termin');
     if(selectedDay===d)el.classList.add('selected');
-    if(ds<todayFull){ el.classList.add('past'); } else { el.onclick=()=>selectDay(d); }
+    if(ds<todayFull){ el.classList.add('past'); }
+    else if(!isWorkDay(ds,workingHoursForPatient())){ el.classList.add('closed'); }
+    else { el.onclick=()=>selectDay(d); }
     grid.appendChild(el);
   }
 }
@@ -1588,6 +1601,12 @@ function renderTimeSlots(){
   const root=document.getElementById('timeSlots');
   if(!selectedDay){ root.innerHTML=''; return; }
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
+  const dayHours=workingHoursFor(d,workingHoursForPatient());
+  if(!dayHours.open){
+    root.innerHTML='<div style="padding:14px 4px;font-size:12.5px;color:#94a3b8;">Praxis an diesem Tag geschlossen</div>';
+    return;
+  }
+  const daySlots=buildTimeSlotsFromBlocks(dayHours.blocks);
   // Only a conflict if the SAME doctor already has an appointment then --
   // different doctors at the same practice can see different patients at
   // the same time. A real (Supabase-backed) patient can't see other
@@ -1603,7 +1622,7 @@ function renderTimeSlots(){
   const busyRanges=getPatientToken() ? []
     : loadTermine().filter(t=>t.date===d&&t.status!=='abgesagt'&&(t.arztUsername||'dr.ahmed')===selectedArzt)
       .map(t=>({start:t.time,end:t.endTime||addMinutesToTime(t.time,15)}));
-  root.innerHTML=TIME_SLOTS.map(s=>{
+  root.innerHTML=daySlots.map(s=>{
     const taken=busyRanges.some(r=>s>=r.start&&s<r.end);
     const selected=selectedSlot===s;
     return `<div class="time-slot${taken?' taken':''}${selected?' selected':''}" ${taken?'':`onclick="selectSlot(this,'${s}')"`}>${s}</div>`;
