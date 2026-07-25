@@ -68,7 +68,7 @@ test('Woche view shows every work day\'s own appointments, and a busy day does n
   expect(visibility.dayLayoutHidden).toBe(true);
 });
 
-test('clicking a day column header switches to Tag view for that exact day', async ({ page }) => {
+test('clicking a day column header selects that day but stays in Woche view', async ({ page }) => {
   const today = new Date();
   const day = today.getDay();
   const monday = new Date(today);
@@ -91,14 +91,14 @@ test('clicking a day column header switches to Tag view for that exact day', asy
 
   await page.evaluate((wedStr) => { tuWeekColClick(wedStr); }, wedStr);
 
-  const state = await page.evaluate(() => ({
+  const state = await page.evaluate((wedStr) => ({
     mode: tuViewMode,
     selected: tuSelectedDate,
-    dayListNames: [...document.querySelectorAll('#tuDayList .tu-appt-card-name')].map(n => n.textContent),
-    weekGridHidden: getComputedStyle(document.getElementById('tuWeekGrid')).display === 'none',
-  }));
-  expect(state.mode).toBe('tag');
+    weekGridVisible: getComputedStyle(document.getElementById('tuWeekGrid')).display !== 'none',
+    selectedColHighlighted: document.querySelector(`.tu-week-col-head.selected`)?.textContent.includes(new Date(wedStr + 'T00:00:00').getDate().toString()),
+  }), wedStr);
+  expect(state.mode, 'stays in Woche view -- does not jump to Tag').toBe('woche');
   expect(state.selected).toBe(wedStr);
-  expect(state.dayListNames).toContain('Maria Huber');
-  expect(state.weekGridHidden).toBe(true);
+  expect(state.weekGridVisible, 'the week grid stays visible').toBe(true);
+  expect(state.selectedColHighlighted, 'the clicked day\'s column header gets the selected highlight').toBe(true);
 });

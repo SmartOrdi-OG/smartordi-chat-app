@@ -3418,12 +3418,12 @@ function renderTuWeekGrid(mine,week){
     </div>`;
   }).join('');
 }
-// Clicking a column's day header jumps straight into that day's full Tag
-// view -- a week overview is for orientation ("which day looks busy"), the
-// actual work (opening a chat, starting a visit) still happens in Tag.
+// Clicking a column's day header selects/highlights that day but stays in
+// Woche view -- it used to also jump into Tag, but that meant looking at a
+// second day always bounced you out of the week overview you were just
+// using to compare days, which is exactly what Woche is for.
 function tuWeekColClick(dateStr){
   tuSelectDate(dateStr);
-  tuSetViewMode('tag');
 }
 // The Dashboard's top stat cards used to be permanently hardcoded numbers
 // (127 Nachrichten heute, 34 Aktive Patienten, 28 Weitergeleitet, 5
