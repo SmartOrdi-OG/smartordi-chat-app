@@ -69,6 +69,49 @@ test('saveWorkingHours() persists the edited schedule to the practices row', asy
   expect(result.liveGetter.sat.open, 'getWorkingHours() must reflect the just-saved value immediately').toBe(true);
 });
 
+// Regression test for a real reported bug: a day with only a morning
+// schedule saved successfully, but on some devices/browsers an untouched
+// <input type="time"> renders as "00:00" (indistinguishable from a real
+// value) instead of empty -- if the second (optional) time range's fields
+// are simply left enabled alongside the first, a stray "00:00" can end up
+// in its "Von" field with "Bis" still blank, and it looked like a second
+// work block was required. The second range now only exists when its own
+// "+ Pause/2. Zeitraum" checkbox is on; a stray value in its fields while
+// that checkbox is off must be completely ignored, not block the save.
+test('a day with only one time range saves cleanly even if the (unchecked) second range has a stray leftover value', async ({ page }) => {
+  await installMockSupabase(page, seed({ practices: [{ id: 'prac1', name: 'Test Praxis' }] }), () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1200);
+
+  const result = await page.evaluate(async () => {
+    openWorkingHoursModal();
+    // Mittwoch: only a single morning range is wanted.
+    document.getElementById('wh-wed-b1s').value = '08:00';
+    document.getElementById('wh-wed-b1e').value = '11:30';
+    // Wednesday's default schedule has a second (afternoon) range, so its
+    // "+ Pause/2. Zeitraum" checkbox starts checked -- the secretary
+    // unchecks it (no longer wants an afternoon range), but the field
+    // still carries a stray "00:00" left over (the exact browser quirk
+    // reported: an emptied/untouched <input type="time"> can render as
+    // "00:00" instead of blank), with "Bis" left blank.
+    document.getElementById('wh-wed-b2on').checked = false;
+    document.getElementById('wh-wed-b2s').value = '00:00';
+    const b2onCheckedBeforeSave = document.getElementById('wh-wed-b2on').checked;
+    await saveWorkingHours();
+    return {
+      b2onCheckedBeforeSave,
+      toast: document.getElementById('toast')?.textContent || '',
+      wed: window.__store.practices[0].working_hours.wed,
+    };
+  });
+  expect(result.b2onCheckedBeforeSave, 'the second range must default to off, not silently active').toBe(false);
+  expect(result.toast).toContain('gespeichert');
+  expect(result.wed).toEqual({ open: true, blocks: [['08:00', '11:30']] });
+});
+
 test('the Uhrzeit list respects a custom schedule: closed on the configured date, open with the configured block on another', async ({ page }) => {
   await installMockSupabase(page, seed({
     practices: [{ id: 'prac1', name: 'Test Praxis', working_hours: {
