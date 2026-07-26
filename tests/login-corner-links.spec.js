@@ -1,10 +1,18 @@
 // Regression test for reworking login.html's secondary actions: the
 // always-visible "Jetzt registrieren ->" link and the permanent
 // Datenschutz/AGB/Impressum footer row used to sit inline in the login
-// form, making it read like a marketing webpage rather than an app. Both
-// are now small links pinned to the viewport corners -- Registrieren still
-// links straight to register.html, and Rechtliches reveals the three legal
-// links in a small popover on click instead of always showing them.
+// form, making it read like a marketing webpage rather than an app.
+//
+// Desktop (>=1024px, where the branded green side panel is shown) now
+// shows "Jetzt registrieren ->" and a "Rechtliches" link under the
+// feature tiles in that panel -- Rechtliches reveals the three legal
+// links inline, right below it, on click.
+//
+// Mobile (<1024px, no side panel) groups the same two into one small
+// pinned corner instead ("Registrieren · Rechtliches"), with the legal
+// links revealed in a small popover on click -- same click-to-reveal
+// behavior as desktop, just positioned differently since there's no
+// green panel to anchor to.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -25,18 +33,49 @@ test('the login form itself only shows the login fields, not registration or leg
   expect(hasInlineLegalLinks).toBe(false);
 });
 
-test('Registrieren is a small corner link to register.html', async ({ page }) => {
+test('desktop: Registrieren + Rechtliches show under the feature tiles, legal links reveal on click', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await openLogin(page);
-  const href = await page.evaluate(() => document.querySelector('.corner-register')?.getAttribute('href'));
-  expect(href).toBe('register.html');
+
+  const mobileLinksHidden = await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.mobile-secondary-links')).display === 'none'
+  );
+  expect(mobileLinksHidden, 'the mobile pinned corner must not also show on desktop').toBe(true);
+
+  const registerHref = await page.evaluate(() =>
+    document.querySelector('.brand-secondary-links a[href="register.html"]')?.getAttribute('href')
+  );
+  expect(registerHref).toBe('register.html');
+
+  const hiddenBefore = await page.evaluate(() => !document.getElementById('brandLegalPopover').classList.contains('show'));
+  expect(hiddenBefore).toBe(true);
+
+  await page.click('.brand-secondary-links > a:last-of-type');
+  const state = await page.evaluate(() => ({
+    shown: document.getElementById('brandLegalPopover').classList.contains('show'),
+    links: Array.from(document.querySelectorAll('#brandLegalPopover a')).map(a => a.getAttribute('href')),
+  }));
+  expect(state.shown).toBe(true);
+  expect(state.links).toEqual(['datenschutz.html', 'agb.html', 'impressum.html']);
+
+  await page.click('#email');
+  const shownAfterOutsideClick = await page.evaluate(() => document.getElementById('brandLegalPopover').classList.contains('show'));
+  expect(shownAfterOutsideClick).toBe(false);
 });
 
-test('Rechtliches reveals the legal links on click and they stay hidden until then', async ({ page }) => {
+test('mobile: Registrieren + Rechtliches share one pinned corner, with legal links behind a popover', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await openLogin(page);
+
+  const registerHref = await page.evaluate(() =>
+    document.querySelector('.mobile-secondary-links a[href="register.html"]')?.getAttribute('href')
+  );
+  expect(registerHref).toBe('register.html');
+
   const hiddenBefore = await page.evaluate(() => !document.getElementById('legalPopover').classList.contains('show'));
   expect(hiddenBefore).toBe(true);
 
-  await page.click('.corner-legal');
+  await page.click('.mobile-secondary-links a:last-child');
   const state = await page.evaluate(() => ({
     shown: document.getElementById('legalPopover').classList.contains('show'),
     links: Array.from(document.querySelectorAll('#legalPopover a')).map(a => a.getAttribute('href')),
