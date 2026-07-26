@@ -23,11 +23,15 @@ test('a first-time real patient sees the Anamnese screen and submitting it saves
 
   await page.evaluate(() => {
     window.__rpcCalls = [];
+    sb.auth.signInWithPassword = () => Promise.resolve({ data: { user: { id: 'auth-p1' } }, error: null });
     sb.rpc = (name, args) => {
       window.__rpcCalls.push(name);
       const p = window.__store.patients.find(x => x.id === 'p1');
-      if (name === 'patient_login') {
-        return Promise.resolve({ data: [{ token: 'tok-p1', full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
+      if (name === 'patient_login_precheck') {
+        return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
+      }
+      if (name === 'patient_get_profile') {
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
       }
       if (name === 'patient_set_anamnese') {
         p.anamnese = args.p_data;

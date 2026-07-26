@@ -296,14 +296,15 @@ async function upsertPatientIdentity(username,fields){
 // Provisions (or repairs) a real Supabase Auth user for a patient/guardian
 // row -- supabase/functions/create-patient-auth-user, part of replacing
 // patient_sessions/guardian_sessions with real Supabase Auth (see
-// supabase/phase31_patient_auth.sql). Best-effort/non-blocking by design:
-// every caller of this fires it after its own identity upsert already
-// succeeded and never awaits it inline with the synchronous QR-credential
-// flow, same as identityPromise elsewhere in this file -- and until the
-// login screens themselves are cut over to real Supabase Auth (a later
-// phase), the OLD token-based patient_login/guardian_login RPCs still work
-// fully in parallel regardless of whether this call succeeds, so a
-// transient failure here isn't yet user-facing.
+// supabase/phase31_patient_auth.sql, phase33_patient_login_cutover.sql).
+// Best-effort/non-blocking by design: every caller of this fires it after
+// its own identity upsert already succeeded and never awaits it inline
+// with the synchronous QR-credential flow, same as identityPromise
+// elsewhere in this file. Login itself now requires this to have
+// succeeded (patient_login_precheck/guardian_login_precheck only return a
+// synthetic email once auth_user_id is set), so a transient failure here
+// blocks that account's next login until a retry (e.g. a password reset)
+// provisions it.
 async function ensurePatientAuthUser(kind,id,opts){
   const {error}=await sb.functions.invoke('create-patient-auth-user',{body:Object.assign({kind,id},opts)});
   if(error){ console.error('ensurePatientAuthUser failed for',kind,id,error); return false; }

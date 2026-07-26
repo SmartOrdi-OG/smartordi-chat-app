@@ -278,11 +278,15 @@ function savePatients(){
 
 const PATIENTS = loadPatients();
 let currentUser = null;
-// A real (Supabase-backed) guardian's own session token, set only while
-// they're logging in/picking a child -- see guardianLogin() in doLogin()
-// and supabase/phase28_guardian_child_accounts.sql. Never touches
-// PATIENT_TOKEN_KEY: a guardian isn't itself a patient.
-let currentGuardianToken=null;
+// True only while a real (Supabase Auth) guardian is logging in/picking a
+// child -- see guardianLogin() in doLogin() and
+// supabase/phase28_guardian_child_accounts.sql. The guardian's own
+// Supabase Auth session (not a separate token) is what authenticates every
+// guardian_*/patient_* RPC from here on -- this flag just distinguishes
+// "the signed-in Auth session is a guardian" from "...is a patient" for
+// the UI flow (never touches PATIENT_TOKEN_KEY: a guardian isn't itself a
+// patient).
+let currentUserIsGuardian=false;
 let currentGuardianChildren=[];
 
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
@@ -373,20 +377,20 @@ async function doLogin(){
 
   setTimeout(async ()=>{
     let acc=null;
-    // Clear any token left over from a previous session on this device
-    // (e.g. logging out of a real account and into the demo/a guardian
-    // one) -- otherwise a stale token would make patient.html think this
-    // new, local-only session is still the old Supabase-backed patient.
-    // Revoke it server-side too (not just locally) in case that previous
+    // End any session left over from a previous login on this device (e.g.
+    // logging out of a real account and into the demo/a guardian one) --
+    // otherwise a stale marker would make patient.html think this new,
+    // local-only session is still the old Supabase-backed patient. Real
+    // sb.auth.signOut() (not just a local clear) in case that previous
     // session was ended by closing the tab rather than the Abmelden button.
     await patientLogout();
     setPatientToken(null);
 
     // Real patient credentials are validated server-side (hashed password,
-    // via patient_login) -- try that first. Guardian accounts aren't
-    // migrated yet (no Supabase patients row for them at all), so a
-    // Supabase miss falls back to the original local password check, which
-    // still covers them.
+    // via patient_login_precheck + a real Supabase Auth sign-in) -- try
+    // that first. Guardian accounts and not-yet-migrated local/demo ones
+    // are tried below when this misses.
+    currentUserIsGuardian=false;
     let result;
     try{
       result=await patientLogin(u,p);
@@ -404,8 +408,8 @@ async function doLogin(){
       }
       throw err;
     }
-    if(result&&result.token){
-      setPatientToken(result.token);
+    if(result){
+      setPatientToken('1');
       // Real (server-side) answer to "has this patient already filled in
       // their Anamnese" -- supabase/phase8_anamnese.sql. Previously this
       // checked a browser-local record instead, which wrongly re-prompted
@@ -421,16 +425,16 @@ async function doLogin(){
       // below (same "prefer the real backend over the local shadow copy"
       // precedent as the patient check above).
       const guardianResult=await guardianLogin(u,p);
-      if(guardianResult&&guardianResult.token){
+      if(guardianResult){
         resetLoginBtn();
-        currentGuardianToken=guardianResult.token;
+        currentUserIsGuardian=true;
         currentUser={username:u, name:guardianResult.name, fullName:guardianResult.fullName};
         if(guardianResult.firstLogin){
           document.getElementById('screen-login').classList.remove('active');
           document.getElementById('screen-changepw').classList.add('active');
           document.getElementById('newPw').focus();
         }else{
-          await showChildPickerScreen(currentGuardianToken);
+          await showChildPickerScreen();
         }
         return;
       }
@@ -641,14 +645,14 @@ async function saveNewPw(){
   // doLogin()) -- handled first and returns early. A guardian isn't itself
   // a patient (no Anamnese, no direct patient.html session of their own),
   // so it always continues into the child picker instead.
-  if(currentGuardianToken){
-    const ok=await guardianChangePassword(currentGuardianToken,newPw);
+  if(currentUserIsGuardian){
+    const ok=await guardianChangePassword(newPw);
     if(!ok){
       errorText.textContent=tr('changepw.err.saveFailed');
       errorEl.classList.add('show');return;
     }
     document.getElementById('screen-changepw').classList.remove('active');
-    await showChildPickerScreen(currentGuardianToken);
+    await showChildPickerScreen();
     return;
   }
 
@@ -746,17 +750,18 @@ async function submitAnamnese(){
 // ── GUARDIAN: pick which child to view (supabase/phase28_guardian_child_
 // accounts.sql) -- shown right after a real guardian logs in (and, if it
 // was their first login, changes their temp password). Selecting a child
-// mints an ordinary patient session token for them -- from that point on
-// patient.html treats this exactly like any real patient login, no
-// guardian-specific code needed there at all. ──
-async function showChildPickerScreen(token){
+// records it as the child this guardian's own Auth session is "acting as"
+// (guardian_active_child, phase31) -- from that point on patient.html
+// treats this exactly like any real patient login, no guardian-specific
+// code needed there at all. ──
+async function showChildPickerScreen(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-child-picker').classList.add('active');
   const listEl=document.getElementById('childPickerList');
   const errorEl=document.getElementById('childPickerErrorMsg');
   errorEl.classList.remove('show');
   listEl.innerHTML='';
-  currentGuardianChildren=await guardianGetChildren(token);
+  currentGuardianChildren=await guardianGetChildren();
   if(!currentGuardianChildren.length){
     document.getElementById('childPickerErrorText').textContent=tr('childpicker.err.none');
     errorEl.classList.add('show');
@@ -770,14 +775,14 @@ async function selectChildProfile(childId){
   const errorEl=document.getElementById('childPickerErrorMsg');
   const errorText=document.getElementById('childPickerErrorText');
   errorEl.classList.remove('show');
-  const childToken=await guardianSelectChild(currentGuardianToken,childId);
-  if(!childToken){
+  const ok=await guardianSelectChild(childId);
+  if(!ok){
     errorText.textContent=tr('childpicker.err.selectFailed');
     errorEl.classList.add('show');
     return;
   }
   const child=currentGuardianChildren.find(c=>c.id===childId);
-  setPatientToken(childToken);
+  setPatientToken('1');
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient', name:(child&&child.name)||'', username:(child&&child.username)||childId}));
   window.location.href='patient.html';
 }
