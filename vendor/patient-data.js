@@ -154,6 +154,12 @@ async function insertTermin(fields){
     tel: fields.tel||null,
     svnr: fields.svnr||null,
     dob: fields.dob||null,
+    // CSV import (secretary.html's importTermineFromRow()) uses this for a
+    // past appointment carried over from the old system -- without it, a
+    // historical visit would show up as an outstanding, not-yet-happened
+    // appointment (same dot/status the calendar uses for anything with no
+    // completed_at), which is wrong for something that already happened.
+    completed_at: fields.completedAt||null,
   };
   const {data,error}=await sb.from('termine').insert(row).select().single();
   if(error){ console.error('insertTermin failed',error); throw error; }
