@@ -11,6 +11,7 @@
     { "src": "/doctor", "dest": "/doctor.html" },
     { "src": "/patient", "dest": "/patient.html" },
     { "src": "/patient-login", "dest": "/patient-login.html" },
+    { "src": "/patient-register", "dest": "/patient-login.html?patient-register=1" },
     { "src": "/secretary", "dest": "/secretary.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
