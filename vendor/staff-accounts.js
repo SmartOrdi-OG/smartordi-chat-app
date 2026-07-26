@@ -156,14 +156,19 @@ async function saveStaffSignature(staffId,fields){
   return true;
 }
 // Persists the doctor's own name/Fachrichtung from Einstellungen
-// (staff_profiles.full_name/fach) -- the settings form used to only update
-// the on-screen name and a localStorage shadow copy, so the edit silently
-// reverted to the old server value on reload or from any other device.
+// (staff_profiles.vorname/nachname/fach) -- the settings form used to only
+// update the on-screen name and a localStorage shadow copy, so the edit
+// silently reverted to the old server value on reload or from any other
+// device. `fields` must never include full_name -- it's a DB-generated
+// column (computed from vorname+nachname), and Postgres rejects any
+// direct write to it (error 428C9).
 async function saveStaffProfileFields(staffId,fields){
   const {data,error}=await sb.from('staff_profiles').update(fields).eq('id',staffId).select().single();
   if(error){ console.error('saveStaffProfileFields failed',error); return false; }
   if(_staffRoster[staffId]){
     _staffRoster[staffId].fullName=data.full_name;
+    _staffRoster[staffId].vorname=data.vorname;
+    _staffRoster[staffId].nachname=data.nachname;
     _staffRoster[staffId].fach=data.fach;
   }
   return true;

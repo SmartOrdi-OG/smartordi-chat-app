@@ -42,7 +42,12 @@ test('saveSettings() actually persists the edited name/Fachrichtung to staff_pro
   });
   expect(result.toast).toContain('gespeichert');
   expect(result.navName).toBe('Dr. Julia Neumann');
-  expect(result.serverRow.full_name, 'must actually reach the database, not just the on-screen text').toBe('Dr. Julia Neumann');
+  // full_name is a DB-generated column (computed from vorname+nachname) --
+  // Postgres rejects any direct write to it (error 428C9), so the real
+  // fix writes the source columns instead and lets full_name recompute
+  // on its own.
+  expect(result.serverRow.vorname, 'must actually reach the database, not just the on-screen text').toBe('Dr.');
+  expect(result.serverRow.nachname).toBe('Julia Neumann');
   expect(result.serverRow.fach).toBe('Kardiologie');
   expect(result.sessionName, 'the cached session name should stay in sync too').toBe('Dr. Julia Neumann');
 });
