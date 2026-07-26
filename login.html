@@ -83,8 +83,6 @@ body{
   .login-card .form-input{font-size:16px;padding:15px 16px 15px 46px;}
   .login-card .input-icon{font-size:17px;}
   .login-card .btn-login{font-size:16px;padding:15px 32px;min-width:240px;}
-  .login-card .patient-btn{font-size:15px;padding:14px;}
-  .login-card .divider{font-size:13px;}
   .login-card .footer-note{font-size:12px;}
   .login-card [style*="font-size:13px"]{font-size:14px !important;}
 }
@@ -121,16 +119,6 @@ body{
 .btn-login.loading{opacity:0.7;cursor:not-allowed;transform:none;}
 .spinner{display:none;width:18px;height:18px;border:2px solid rgba(14,94,86,0.25);border-top-color:#0E5E56;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
-
-.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted);font-size:12px;}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
-
-.patient-btn{
-  width:100%;padding:12px;border:1.5px solid var(--border);border-radius:12px;
-  background:white;color:#0f172a;font-family:inherit;font-size:14px;font-weight:600;
-  cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;
-}
-.patient-btn:hover{border-color:var(--teal);color:var(--teal);background:#EAF4F1;}
 
 .footer-note{margin-top:28px;text-align:center;font-size:11px;color:#0f172a;line-height:1.6;}
 .footer-note a{color:var(--teal);text-decoration:none;font-weight:600;}
@@ -193,12 +181,6 @@ body{
   <div style="margin-top:14px;text-align:center;">
     <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:var(--muted);font-weight:600;text-decoration:none;">Passwort vergessen?</a>
   </div>
-
-  <div class="divider">oder</div>
-
-  <button class="patient-btn" onclick="window.location.href='patient-login.html'">
-    Als Patient/in anmelden
-  </button>
 
   <div style="margin-top:16px;text-align:center;font-size:13px;">
     <a href="register.html" style="color:#0E5E56;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
