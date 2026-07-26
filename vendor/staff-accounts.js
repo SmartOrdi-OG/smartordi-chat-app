@@ -198,6 +198,15 @@ function getPracticeSettings(){
 function getWorkingHours(){
   return (_practiceSettings&&_practiceSettings.working_hours)||DEFAULT_WORKING_HOURS;
 }
+// supabase/phase34_chat_toggle.sql -- practice-wide "Chat aktivieren"
+// setting (doctor.html Einstellungen). Defaults to enabled (`!== false`,
+// not `=== true`) so every existing practice -- whose row predates this
+// column and therefore has chat_enabled null -- keeps chat working exactly
+// as before, rather than the feature silently going dark for everyone
+// until a doctor happens to open Einstellungen and re-save it.
+function isChatEnabled(){
+  return _practiceSettings?.chat_enabled!==false;
+}
 async function savePracticeSettings(fields){
   if(!_practiceSettings||!_practiceSettings.id){ console.error('savePracticeSettings called before practice settings loaded'); return false; }
   const {data,error}=await sb.from('practices').update(fields).eq('id',_practiceSettings.id).select().single();

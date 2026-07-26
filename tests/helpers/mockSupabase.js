@@ -22,6 +22,7 @@ const EMPTY_STORE = {
   mkp_untersuchungen: [], patient_impfungen: [], staff_invites: [],
   patient_join_requests: [], patient_sessions: [], audit_log: [],
   practice_vertretung: [], patient_visits: [], patient_guardians: [], guardian_sessions: [],
+  doctor_hidden_chats: [],
 };
 
 function mockScript(seed) {
@@ -123,11 +124,15 @@ function mockScript(seed) {
           return b;
         },
         update(v) { b._pendingUpdate = v; return b; },
-        delete() {
-          const matched = rows.filter(x => __matches(x, b._filters));
-          matched.forEach(x => { const i = rows.indexOf(x); if (i >= 0) rows.splice(i, 1); });
-          return Promise.resolve({ data: matched, error: null });
-        },
+        // Deferred to then(), same as insert()/upsert()/update() above --
+        // real supabase-js's delete() returns a further-chainable query
+        // builder (.delete().eq(...), used e.g. by vendor/patient-data.js's
+        // deletePatientDocument()), not a resolved promise. Executing
+        // eagerly here would run before any .eq() filters chained AFTER
+        // .delete() had a chance to be applied to b._filters, silently
+        // matching (and deleting) every row in the table instead of just
+        // the intended one.
+        delete() { b._pendingDelete = true; return b; },
         then(res, rej) {
           // Tests can set window.__forceError[table] = 'message' to make
           // the next write against that table resolve as a real Supabase
@@ -149,6 +154,11 @@ function mockScript(seed) {
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
+            return Promise.resolve({ data: matched, error: null }).then(res, rej);
+          }
+          if (b._pendingDelete) {
+            const matched = rows.filter(x => __matches(x, b._filters));
+            matched.forEach(x => { const i = rows.indexOf(x); if (i >= 0) rows.splice(i, 1); });
             return Promise.resolve({ data: matched, error: null }).then(res, rej);
           }
           const r = rows.filter(x => __matches(x, b._filters));

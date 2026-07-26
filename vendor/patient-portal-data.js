@@ -138,6 +138,16 @@ async function patientGetWorkingHours(){
   if(error){ console.error('patientGetWorkingHours failed',error); return null; }
   return data||null;
 }
+// supabase/phase34_chat_toggle.sql -- practice-wide "Chat aktivieren"
+// switch (doctor.html Einstellungen). Defaults to true on any failure --
+// same fail-open reasoning as every other best-effort read here: a
+// transient error must never be the reason a patient's chat access
+// disappears.
+async function patientGetChatEnabled(){
+  const {data,error}=await sb.rpc('patient_get_chat_enabled');
+  if(error){ console.error('patientGetChatEnabled failed',error); return true; }
+  return data!==false;
+}
 // Ends the real Supabase Auth session (server-side revocation of the
 // refresh token, not just a local clear) -- supabase-js's own signOut(),
 // replacing the old patient_logout RPC entirely.

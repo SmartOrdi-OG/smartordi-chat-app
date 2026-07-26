@@ -53,7 +53,7 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child'
+  'guardian_active_child','doctor_hidden_chats'
 ]) as t
 
 union all
@@ -74,7 +74,7 @@ from unnest(array[
   'request_patient_deletion','validate_staff_invite','send_termine_reminders',
   'current_patient_id','current_guardian_id',
   'patient_login_precheck','guardian_login_precheck','patient_mark_password_changed',
-  'guardian_mark_password_changed','guardian_get_profile'
+  'guardian_mark_password_changed','guardian_get_profile','patient_get_chat_enabled'
 ]) as f
 
 union all
@@ -151,7 +151,7 @@ select 'practices column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='practices' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'working_hours'
+  'working_hours','chat_enabled'
 ]) as c
 
 union all
