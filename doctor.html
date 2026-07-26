@@ -7092,7 +7092,18 @@ async function saveSettings(){
   const fach = document.getElementById('setFach')?.value||'Allgemeinmedizin';
   const session=currentStaffSession();
   if(session&&session.username){
-    const ok=await saveStaffProfileFields(session.username,{full_name:name,fach});
+    // staff_profiles.full_name is a DB-generated column (computed from
+    // vorname+nachname, set at invite-acceptance time -- see login.html's
+    // acceptStaffInvite()/consume_staff_invite) -- writing to it directly
+    // fails with Postgres error 428C9 ("can only be updated to DEFAULT").
+    // Splitting the single Name-field the same way this app's own patient
+    // CSV export already does (first word = vorname, the rest = nachname)
+    // updates the real source columns instead, and full_name recomputes
+    // on its own.
+    const nameParts=name.trim().split(/\s+/);
+    const vorname=nameParts[0]||'';
+    const nachname=nameParts.slice(1).join(' ')||'';
+    const ok=await saveStaffProfileFields(session.username,{vorname,nachname,fach});
     if(!ok){ showToastSettings('✗ Speichern fehlgeschlagen'); return; }
     session.name=name;
     sessionStorage.setItem('smartordi_user',JSON.stringify(session));
