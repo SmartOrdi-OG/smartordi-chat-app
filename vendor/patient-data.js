@@ -293,6 +293,23 @@ async function upsertPatientIdentity(username,fields){
   return data;
 }
 
+// Provisions (or repairs) a real Supabase Auth user for a patient/guardian
+// row -- supabase/functions/create-patient-auth-user, part of replacing
+// patient_sessions/guardian_sessions with real Supabase Auth (see
+// supabase/phase31_patient_auth.sql). Best-effort/non-blocking by design:
+// every caller of this fires it after its own identity upsert already
+// succeeded and never awaits it inline with the synchronous QR-credential
+// flow, same as identityPromise elsewhere in this file -- and until the
+// login screens themselves are cut over to real Supabase Auth (a later
+// phase), the OLD token-based patient_login/guardian_login RPCs still work
+// fully in parallel regardless of whether this call succeeds, so a
+// transient failure here isn't yet user-facing.
+async function ensurePatientAuthUser(kind,id,opts){
+  const {error}=await sb.functions.invoke('create-patient-auth-user',{body:Object.assign({kind,id},opts)});
+  if(error){ console.error('ensurePatientAuthUser failed for',kind,id,error); return false; }
+  return true;
+}
+
 // ── GUARDIANS (supabase/phase28_guardian_child_accounts.sql) -- a parent
 // logging in on behalf of a child patient too young for their own login.
 // Deliberately a separate cache/table from patients: a guardian has no
