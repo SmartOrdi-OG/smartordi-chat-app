@@ -136,3 +136,86 @@ test('a row whose patients-record saves fine but whose real login fails to provi
   expect(lukasResult.syncFailed, 'a failed login-provisioning step must be flagged, not silently reported as a full success').toBe(true);
   expect(result.warningIconShown).toBe(true);
 });
+
+// Regression test for a gap flagged by the user's "is this 100% ready?"
+// question: the "Kommende Termine" cell only ever produced upcoming,
+// outstanding appointments -- an old system's export naturally also
+// contains PAST visits, and importing one as a plain unqualified
+// "bestaetigt" appointment would misrepresent it as still awaiting the
+// patient. importTermineFromRow() now sets completed_at for any imported
+// date that's already in the past, same as a real visit doctor.html itself
+// marks done.
+test('a past date in the Termine cell imports as an already-completed visit, a future one does not', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practice_settings: [{ id: true }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+
+  const csv = 'Vorname,Nachname,Kommende Termine\n'
+    + 'Petra,Winter,"Altbehandlung|01.01.2020|09:00|Dr. Sarah Ahmed; Kontrolle|15.08.2030|10:00|Dr. Sarah Ahmed"';
+
+  const result = await page.evaluate(async (csvText) => {
+    await patientsReady;
+    document.getElementById('importCsvText').value = csvText;
+    proceedToMapping();
+    await confirmImport();
+    await new Promise(r => setTimeout(r, 100));
+    return { patients: window.__store.patients, termine: window.__store.termine };
+  }, csv);
+
+  const petra = result.patients.find(p => p.full_name === 'Petra Winter');
+  const petraTermine = result.termine.filter(t => t.patient_id === petra.id);
+  expect(petraTermine).toHaveLength(2);
+  const past = petraTermine.find(t => t.date === '2020-01-01');
+  const future = petraTermine.find(t => t.date === '2030-08-15');
+  expect(past.completed_at, 'a past imported appointment must be marked completed, not left as outstanding').toBeTruthy();
+  expect(future.completed_at, 'a future imported appointment must stay outstanding').toBeFalsy();
+});
+
+// Regression test for the second gap: past treatment/visit notes
+// (doctor.html's Kartei "Verlauf" tab, patient_visits) had no import path
+// at all -- only upcoming appointments and vaccinations did.
+test('imports past treatment history into patient_visits for both a new and an existing patient', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practice_settings: [{ id: true }],
+    patients: [{ id: 'existing-p2', username: 'thomas.klein', full_name: 'Thomas Klein', name: 'Thomas', versicherung: 'ÖGK', svnr: '9988770101', dob: '1970-01-01', join_status: 'approved' }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+
+  const csv = 'Vorname,Nachname,SVNr,Behandlungsverlauf\n'
+    + 'Elena,Roth,,"12.01.2023|Kontrolle|Grippe|Ausgeheilt nach 1 Woche"\n'
+    + 'Thomas,Klein,9988770101,"03.05.2021|Erstbehandlung|Bluthochdruck|Medikation eingestellt"';
+
+  const result = await page.evaluate(async (csvText) => {
+    await patientsReady;
+    document.getElementById('importCsvText').value = csvText;
+    proceedToMapping();
+    await confirmImport();
+    await new Promise(r => setTimeout(r, 100));
+    return { patients: window.__store.patients, visits: window.__store.patient_visits, summary: document.getElementById('importResultSummary').textContent };
+  }, csv);
+
+  const elena = result.patients.find(p => p.full_name === 'Elena Roth');
+  expect(elena, 'Elena Roth must have been created').toBeTruthy();
+  const elenaVisit = result.visits.find(v => v.patient_id === elena.id);
+  expect(elenaVisit, 'the new patient must have their imported visit in patient_visits').toBeTruthy();
+  expect(elenaVisit.visit_date).toBe('2023-01-12');
+  expect(elenaVisit.visit_type).toBe('Kontrolle');
+  expect(elenaVisit.diagnose).toBe('Grippe');
+  expect(elenaVisit.notes).toBe('Ausgeheilt nach 1 Woche');
+
+  const thomasVisit = result.visits.find(v => v.patient_id === 'existing-p2');
+  expect(thomasVisit, 'the existing (SVNr-matched) patient must also get their imported visit').toBeTruthy();
+  expect(thomasVisit.diagnose).toBe('Bluthochdruck');
+  expect(result.summary).toContain('2 Verlaufseintrag');
+});
