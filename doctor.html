@@ -761,7 +761,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
     <span id="doctorAvatarDisplay" style="display:none;"></span>
   </div>
   <div id="appNavBar">
-    <button class="nav-tab" onclick="openWindow('clinic',this)">
+    <button class="nav-tab" id="navTabPraxis" onclick="openWindow('clinic',this)">
       <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100"><path fill-rule="evenodd" fill="currentColor" d="M32 10 H78 A12 12 0 0 1 90 22 V64 A12 12 0 0 1 78 76 H42 L20 92 L26 76 H32 A12 12 0 0 1 20 64 V22 A12 12 0 0 1 32 10 Z M43 22 H57 V33 H76 V47 H57 V60 H43 V47 H24 V33 H43 Z"/></svg></span>
       <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
     </button>
@@ -778,7 +778,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
       <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100"><rect x="14" y="20" width="72" height="66" rx="10" fill="none" stroke="currentColor" stroke-width="6"/><path d="M14 38 H86" stroke="currentColor" stroke-width="6"/><path d="M32 12 V26 M68 12 V26" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><rect x="58" y="50" width="18" height="18" rx="4" fill="currentColor"/></svg></span>
       <span class="nav-tab-label">Kalender</span>
     </button>
-    <button class="nav-tab" onclick="openWindow('settings',this)">
+    <button class="nav-tab" id="navTabSettings" onclick="openWindow('settings',this)">
       <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100"><path d="M50,8 L86,20 V54 C86,74 70,88 50,96 C30,88 14,74 14,54 V20 Z" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 61 36 C 61 30, 39 30, 39 42 C 39 52, 61 48, 61 58 C 61 70, 39 70, 39 64" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/></svg></span>
       <span class="nav-tab-label">Einstellungen</span>
     </button>
@@ -969,6 +969,16 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 
 /* ══ CHAT ══ */
 .chat-area{flex:1;max-width:820px;display:flex;flex-direction:column;background:#f8fafc;}
+/* supabase/phase34_chat_toggle.sql -- practice-wide chat switch (nav-tab
+   gating, mirrors .kartei-tab-locked) and per-doctor "hide this patient's
+   chat from me". Both swap out #messages/the input area only -- never the
+   sidebar or chat-header -- since selecting a patient here is also the
+   only way to reach their Kartei (no separate top-level Kartei nav-tab),
+   so the patient list and Kartei access must keep working regardless of
+   chat's on/off state. */
+.nav-tab.nav-tab-locked{opacity:0.55;}
+.chat-disabled-notice,.chat-hidden-notice{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;text-align:center;color:var(--text-2);}
+.hide-chat-btn{background:#f8fafc;}
 .chat-header{background:white;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
 .chat-patient-name{font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:-0.3px;}
 .chat-patient-sub{font-size:12px;color:var(--text-2);}
@@ -1447,6 +1457,7 @@ body.windows-mode #karteiBtn{display:none;}
         <button class="mobile-action-icon" onclick="karteiPatientLoaded=true;toggleKartei()" title="Kartei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
         <button class="mobile-action-icon" onclick="showTransferModal()" title="Weiterleiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
         <button class="mobile-action-icon teal" onclick="showCall()" title="Anrufen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+        <button class="mobile-action-icon" id="hideChatBtnMobile" onclick="toggleHideChatForCurrentPatient()" title="Chat ausblenden" style="display:none;">🙈</button>
       </div>
     </div>
     <div class="chat-header" id="desktopChatHeader">
@@ -1461,10 +1472,32 @@ body.windows-mode #karteiBtn{display:none;}
         <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
         <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
         <button class="action-btn call" onclick="showCall()">Anrufen</button>
+        <button class="action-btn hide-chat-btn" id="hideChatBtn" onclick="toggleHideChatForCurrentPatient()" style="display:none;">Chat ausblenden</button>
       </div>
     </div>
     <div class="messages scrollbar" id="messages"></div>
-    <div class="chat-input-area">
+    <!-- supabase/phase34_chat_toggle.sql -- shown instead of #messages/the
+         input area when the currently-open patient is on this doctor's own
+         hidden list (toggleHideChatForCurrentPatient()). Kartei access and
+         everything else about this patient stays completely unaffected --
+         only this doctor's OWN view of the conversation is swapped out. -->
+    <div class="chat-hidden-notice" id="chatHiddenNotice" style="display:none;">
+      <div style="font-size:34px;">🙈</div>
+      <div style="font-size:14px;font-weight:800;color:var(--text-1);">Der Chat ist für diesen Patienten ausgeblendet</div>
+      <button class="action-btn" onclick="toggleHideChatForCurrentPatient()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Chat einblenden</button>
+    </div>
+    <!-- supabase/phase34_chat_toggle.sql -- practice-wide chat disabled
+         (Einstellungen). Takes priority over #chatHiddenNotice above --
+         once chat is off for the whole practice, per-patient hide/show no
+         longer matters. Sidebar and chat-header stay untouched (see the
+         CSS comment on .chat-disabled-notice for why). -->
+    <div class="chat-disabled-notice" id="chatDisabledNotice" style="display:none;">
+      <div style="font-size:34px;">🔒</div>
+      <div style="font-size:14px;font-weight:800;color:var(--text-1);">Chat ist deaktiviert</div>
+      <div style="font-size:12.5px;max-width:320px;">Der Praxis-Chat wurde in den Einstellungen deaktiviert. Patient:innen sehen aktuell "Chat derzeit nicht verfügbar".</div>
+      <button class="action-btn" onclick="openWindow('settings',document.getElementById('navTabSettings'))" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Zu den Einstellungen</button>
+    </div>
+    <div class="chat-input-area" id="clinicChatInputArea">
       <div class="input-row">
         <button class="input-btn" title="Emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
         <input type="file" id="clinicAttachFile" accept="application/pdf" style="display:none;" onchange="handleClinicAttach(event)">
@@ -2394,6 +2427,21 @@ body.windows-mode #karteiBtn{display:none;}
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Telefon</label>
           <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({tel:this.value})">
         </div>
+      </div>
+    </div>
+
+    <!-- Praxis-Chat: supabase/phase34_chat_toggle.sql -- practice-wide, not
+         per-doctor (the chat is one shared conversation per patient, not a
+         separate one per doctor -- see the migration file's own header
+         comment for why a per-doctor switch wouldn't make sense here). -->
+    <div class="dash-card" style="margin-bottom:20px;">
+      <div class="dash-card-header">Praxis-Chat</div>
+      <div class="dash-card-body">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;">
+          <input type="checkbox" id="setChatEnabled" checked onchange="savePracticeSettings({chat_enabled:this.checked}).then(applyChatGating)">
+          Chat aktivieren
+        </label>
+        <div style="font-size:11.5px;color:#64748b;margin-top:6px;line-height:1.5;">Wenn deaktiviert, sehen Patient:innen "Chat derzeit nicht verfügbar" und niemand in der Praxis (auch Sekretär:innen) kann darüber Nachrichten senden.</div>
       </div>
     </div>
 
@@ -3802,13 +3850,25 @@ function selectPatient(el,name,color,insurance){
   // patient is selected. Mobile keeps the lighter pre-fill above only,
   // since Kartei there is still a separate panel the doctor opens explicitly.
   if(isDesktopWidth()) openKarteiForPatient(name, rec&&rec.svnr, insurance, rec&&rec.dob, true);
+  // supabase/phase34_chat_toggle.sql -- swaps #messages/#clinicChatInputArea
+  // for the disabled/hidden notice as needed for THIS patient; deliberately
+  // independent of the renderMessages()/hydrateRealThreadFromSupabase() call
+  // above, which keep running normally in the background either way.
+  updateChatPaneState();
 }
 
 function getTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
 
 function sendClinicMsg(){
-  const inp=document.getElementById('clinicInput');const txt=inp.value.trim();if(!txt)return;
+  // supabase/phase34_chat_toggle.sql -- defense in depth alongside
+  // #clinicChatInputArea being hidden by updateChatPaneState(): a disabled/
+  // hidden chat must never actually send, even if something reached this
+  // function anyway.
+  if(!isChatEnabled()) return;
   const name=document.getElementById('chat-name')?.textContent;
+  const rec=name?findPatientRecord(name):null;
+  if(rec && rec.id && isChatHiddenForPatient(rec.id)) return;
+  const inp=document.getElementById('clinicInput');const txt=inp.value.trim();if(!txt)return;
   const msgs=document.getElementById('messages');
   if(msgs.children.length===1 && msgs.firstElementChild.style.textAlign==='center') msgs.innerHTML='';
   const outTime=getTime()+' ✓';
@@ -4137,6 +4197,96 @@ function applyPlanGating(){
     }
   });
 }
+
+// ── supabase/phase34_chat_toggle.sql -- practice-wide chat switch +
+// per-doctor "hide this patient's chat from me". See that file's own
+// header comment for why the practice-wide switch can't be per-doctor
+// (the chat is one shared conversation per patient, not one per doctor). ──
+function applyChatGating(){
+  const enabled=isChatEnabled();
+  ['navTabPraxis','mnav-clinic'].forEach(function(id){
+    const btn=document.getElementById(id);
+    if(!btn) return;
+    btn.classList.toggle('nav-tab-locked',!enabled);
+    let lock=btn.querySelector('.tab-lock');
+    if(!enabled && !lock){
+      lock=document.createElement('span');
+      lock.className='tab-lock';
+      lock.textContent='🔒';
+      lock.style.marginLeft='4px';
+      lock.style.fontSize='10px';
+      btn.appendChild(lock);
+    } else if(enabled && lock){
+      lock.remove();
+    }
+  });
+  updateChatPaneState();
+}
+
+let hiddenChatPatientIds=new Set();
+async function loadHiddenChatsForCurrentDoctor(){
+  const session=currentStaffSession();
+  if(!session || session.role!=='arzt') return;
+  const {data,error}=await sb.from('doctor_hidden_chats').select('patient_id').eq('arzt_id',session.username);
+  if(error){ console.error('loadHiddenChatsForCurrentDoctor failed',error); return; }
+  hiddenChatPatientIds=new Set((data||[]).map(function(r){ return r.patient_id; }));
+  updateChatPaneState();
+}
+function isChatHiddenForPatient(patientId){
+  return !!patientId && hiddenChatPatientIds.has(patientId);
+}
+// Only real, Supabase-backed patients (a real `id`) can be hidden -- the
+// row needs a real patients.id to reference (doctor_hidden_chats.patient_id
+// is a foreign key), so a local-only demo patient has nothing to attach to.
+async function toggleHideChatForCurrentPatient(){
+  const name=document.getElementById('chat-name')?.textContent;
+  const rec=name?findPatientRecord(name):null;
+  if(!rec || !rec.id) return;
+  const session=currentStaffSession();
+  if(!session) return;
+  const hidden=isChatHiddenForPatient(rec.id);
+  if(hidden){
+    const {error}=await sb.from('doctor_hidden_chats').delete().eq('arzt_id',session.username).eq('patient_id',rec.id);
+    if(error){ console.error('unhide chat failed',error); return; }
+    hiddenChatPatientIds.delete(rec.id);
+  } else {
+    const {error}=await sb.from('doctor_hidden_chats').insert({arzt_id:session.username,patient_id:rec.id});
+    if(error){ console.error('hide chat failed',error); return; }
+    hiddenChatPatientIds.add(rec.id);
+  }
+  updateChatPaneState();
+}
+// Single source of truth for which of #messages/#clinicChatInputArea vs.
+// #chatHiddenNotice/#chatDisabledNotice is shown for whichever patient is
+// currently open, and whether the ausblenden/einblenden buttons appear at
+// all -- called after every state change (gating toggle, hide/show, and
+// selectPatient()) instead of duplicating this branching at each call site.
+// Deliberately only toggles display: -- renderMessages()/
+// hydrateRealThreadFromSupabase() keep populating #messages in the
+// background regardless, same as before this feature existed.
+function updateChatPaneState(){
+  const messages=document.getElementById('messages');
+  const inputArea=document.getElementById('clinicChatInputArea');
+  const hiddenNotice=document.getElementById('chatHiddenNotice');
+  const disabledNotice=document.getElementById('chatDisabledNotice');
+  const hideBtn=document.getElementById('hideChatBtn');
+  const hideBtnMobile=document.getElementById('hideChatBtnMobile');
+  if(!messages || !inputArea || !hiddenNotice || !disabledNotice) return;
+  const name=document.getElementById('chat-name')?.textContent;
+  const rec=(name && name!=='Kein Patient ausgewählt')?findPatientRecord(name):null;
+  const enabled=isChatEnabled();
+  const hidden=!!(enabled && rec && rec.id && isChatHiddenForPatient(rec.id));
+  messages.style.display=(!enabled || hidden)?'none':'';
+  inputArea.style.display=(!enabled || hidden)?'none':'';
+  disabledNotice.style.display=!enabled?'flex':'none';
+  hiddenNotice.style.display=(enabled && hidden)?'flex':'none';
+  const canHide=!!(enabled && rec && rec.id);
+  [hideBtn,hideBtnMobile].forEach(function(btn){
+    if(!btn) return;
+    btn.style.display=(canHide && !hidden)?'':'none';
+  });
+}
+
 function renderPlanSettings(){
   const body=document.getElementById('planSettingsBody');
   if(!body) return;
@@ -4228,6 +4378,7 @@ function copyStaffInviteLink(){
 }
 
 applyPlanGating();
+applyChatGating();
 renderPlanSettings();
 applyTrialStatus();
 renderPatientList();
@@ -7470,11 +7621,15 @@ window.addEventListener('load', async function() {
     if(adresseInput && practiceInfo.adresse) adresseInput.value=practiceInfo.adresse;
     const telInput=document.getElementById('setTel');
     if(telInput && practiceInfo.tel) telInput.value=practiceInfo.tel;
+    const chatEnabledInput=document.getElementById('setChatEnabled');
+    if(chatEnabledInput) chatEnabledInput.checked=isChatEnabled();
   }
   applyPlanGating();
+  applyChatGating();
   renderPlanSettings();
   applyTrialStatus();
   handleStripeCheckoutReturn();
+  await loadHiddenChatsForCurrentDoctor();
   // Labor-E-Mail (supabase/phase24_lab_result_inbox.sql) -- generated once
   // per practice and shown read-only in Settings for copy/paste to a lab.
   const labAddrInput=document.getElementById('labEmailAddress');

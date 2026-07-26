@@ -584,7 +584,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
     <div class="messages" id="messages"></div>
 
-    <div class="chat-input-area">
+    <div class="chat-input-area" id="chatInputArea">
       <div class="chat-input-wrap">
         <button class="attach-btn" onclick="showToast('Datei anhängen...')" title="Anhang"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
         <textarea class="chat-input" id="chatInput" placeholder="Nachricht schreiben..." data-i18n-ph="chat.placeholder" rows="1"
@@ -1075,6 +1075,17 @@ function msgRowHtml(m){
 }
 function renderPatientMessages(){
   const msgs=document.getElementById('messages');
+  const inputArea=document.getElementById('chatInputArea');
+  // supabase/phase34_chat_toggle.sql -- practice-wide chat switch takes
+  // priority over the normal empty/populated states below: whether or not
+  // this patient has any messages doesn't matter if the practice turned
+  // chat off entirely.
+  if(!_patientChatEnabled){
+    if(inputArea) inputArea.style.display='none';
+    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">Chat derzeit nicht verfügbar</div><div class="empty-sub">Bitte kontaktieren Sie Ihre Ordination auf anderem Weg.</div></div>';
+    return;
+  }
+  if(inputArea) inputArea.style.display='';
   const account=getCurrentAccount();
   const items=(account&&account.messages)||[];
   if(!items.length){
@@ -1377,6 +1388,7 @@ async function initPatientData(){
     await refreshRemoteDocuments();
     await refreshRemoteImpfungen();
     _patientWorkingHours=await patientGetWorkingHours();
+    _patientChatEnabled=await patientGetChatEnabled();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1476,6 +1488,9 @@ async function renderProfilArztRows(){
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,80)+'px';}
 
 async function sendMsg(){
+  // Defense in depth alongside #chatInputArea being hidden by
+  // renderPatientMessages() when the practice has turned chat off.
+  if(!_patientChatEnabled) return;
   const inp=document.getElementById('chatInput');
   const txt=inp.value.trim();if(!txt)return;
   const msgs=document.getElementById('messages');
@@ -1512,6 +1527,12 @@ let _patientWorkingHours=null;
 function workingHoursForPatient(){
   return _patientWorkingHours||DEFAULT_WORKING_HOURS;
 }
+// supabase/phase34_chat_toggle.sql -- practice-wide "Chat aktivieren"
+// switch (doctor.html Einstellungen), fetched once during initPatientData()
+// same as _patientWorkingHours above. Defaults to true (chat available) so
+// a local/demo account with no practice row to check keeps working exactly
+// as before this feature existed.
+let _patientChatEnabled=true;
 function loadTermine(){
   try{ const list=JSON.parse(localStorage.getItem(TERMINE_KEY)); return Array.isArray(list)?list:[]; }catch(e){ return []; }
 }
