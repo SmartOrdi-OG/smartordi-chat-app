@@ -28,10 +28,14 @@ async function loginToAnamneseScreen(page) {
   await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html'));
   await page.waitForTimeout(800);
   await page.evaluate(() => {
+    sb.auth.signInWithPassword = () => Promise.resolve({ data: { user: { id: 'auth-p1' } }, error: null });
     sb.rpc = (name) => {
       const p = window.__store.patients.find(x => x.id === 'p1');
-      if (name === 'patient_login') {
-        return Promise.resolve({ data: [{ token: 'tok-p1', full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
+      if (name === 'patient_login_precheck') {
+        return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
+      }
+      if (name === 'patient_get_profile') {
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
       }
       if (name === 'check_join_request_status') return Promise.resolve({ data: [], error: null });
       return Promise.resolve({ data: null, error: null });

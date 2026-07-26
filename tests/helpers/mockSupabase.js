@@ -173,6 +173,15 @@ function mockScript(seed) {
         auth: {
           signUp: () => Promise.resolve({ data: { user: { id: 'new-user-uuid' } }, error: null }),
           signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'not mocked' } }),
+          // Added for supabase/phase33_patient_login_cutover.sql -- real
+          // patient/guardian login now drives sb.auth directly
+          // (patientLogout()/guardianChangePassword()/etc., see
+          // vendor/patient-portal-data.js), same reason functions.invoke
+          // had to be added above once staff-side Stripe code started
+          // calling it.
+          signOut: () => Promise.resolve({ error: null }),
+          updateUser: () => Promise.resolve({ data: {}, error: null }),
+          getUser: () => Promise.resolve({ data: { user: null }, error: null }),
           onAuthStateChange() {},
           getSession() { return Promise.resolve({ data: { session: null } }); },
         },

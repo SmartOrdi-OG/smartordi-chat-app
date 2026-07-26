@@ -21,7 +21,7 @@ for (const { label, rpcErrorMessage, expectSubstring } of scenarios) {
 
     await page.evaluate((errMsg) => {
       sb.rpc = (name) => {
-        if (name === 'patient_login') {
+        if (name === 'patient_login_precheck') {
           return Promise.resolve({ data: null, error: errMsg ? { message: errMsg } : null });
         }
         if (name === 'check_join_request_status') return Promise.resolve({ data: [], error: null });

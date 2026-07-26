@@ -65,14 +65,16 @@ select 'function', f,
     where n.nspname = 'public' and p.proname = f
   ) then 'OK' else 'MISSING -- find + rerun the phaseNN_*.sql that creates this function' end
 from unnest(array[
-  'check_join_request_status','consume_staff_invite','guardian_change_password',
-  'guardian_get_children','guardian_login','guardian_select_child','patient_book_termin',
-  'patient_change_password','patient_get_document_file','patient_get_documents',
+  'check_join_request_status','consume_staff_invite',
+  'guardian_get_children','guardian_select_child','patient_book_termin',
+  'patient_get_document_file','patient_get_documents',
   'patient_get_impfungen','patient_get_messages','patient_get_profile','patient_get_termine',
-  'patient_login','patient_logout','patient_request_deletion','patient_send_message',
+  'patient_request_deletion','patient_send_message',
   'patient_set_anamnese','patient_set_symptoms','patient_get_working_hours',
   'request_patient_deletion','validate_staff_invite','send_termine_reminders',
-  'current_patient_id','current_guardian_id'
+  'current_patient_id','current_guardian_id',
+  'patient_login_precheck','guardian_login_precheck','patient_mark_password_changed',
+  'guardian_mark_password_changed','guardian_get_profile'
 ]) as f
 
 union all
@@ -96,7 +98,7 @@ select 'function signature' as check_type, f.name,
     else 'STALE -- deployed version is missing "'||f.expect||'" from its return type; find + rerun the LATEST phaseNN_*.sql that redefines this function'
   end as status
 from (values
-  ('patient_login', 'anamnese jsonb'),
+  ('patient_get_profile', 'anamnese jsonb'),
   ('patient_get_documents', 'body_text text')
 ) as f(name, expect)
 
