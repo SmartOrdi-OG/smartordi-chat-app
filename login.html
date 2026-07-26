@@ -85,6 +85,17 @@ body{
   .login-card .btn-login{font-size:16px;padding:15px 32px;min-width:240px;}
   .login-card .footer-note{font-size:12px;}
   .login-card [style*="font-size:13px"]{font-size:14px !important;}
+  /* Registrieren/legal links move here from the fixed mobile corner --
+     the green panel has real unused space below the feature tiles, and
+     grouping them there (instead of hovering over the form) reads as part
+     of the panel's own content instead of loose links floating in a
+     corner. The mobile corner version has no equivalent space to move
+     into (the panel is display:none below 1024px), so it stays as-is. */
+  .brand-secondary-links{margin-top:32px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;}
+  .brand-secondary-links > a{color:rgba(255,255,255,0.85);font-weight:700;text-decoration:none;}
+  .brand-legal-popover{display:none;flex-direction:column;gap:8px;}
+  .brand-legal-popover.show{display:flex;}
+  .brand-legal-popover a{color:rgba(255,255,255,0.65);font-weight:600;text-decoration:none;}
 }
 
 .form-title{font-size:26px;font-weight:800;color:#0f172a;margin-bottom:6px;}
@@ -122,14 +133,19 @@ body{
 
 /* Registrieren + Rechtliches used to sit inline in the form (a full-width
    "Jetzt registrieren →" link plus a permanent Datenschutz/AGB/Impressum
-   row) -- reads like a marketing webpage footer. Pinned to the viewport
-   corners instead, both stay reachable (Impressum/AGB/Datenschutz must
-   remain accessible, just not prominent) without competing with the
-   actual login action for attention, closer to how a native app would
-   tuck secondary actions away. */
-.corner-link{position:fixed;font-size:12.5px;font-weight:700;text-decoration:none;z-index:30;}
-.corner-register{top:18px;right:20px;color:#0E5E56;}
-.corner-legal{bottom:18px;right:20px;color:var(--muted);font-weight:600;}
+   row) -- reads like a marketing webpage footer. Below 1024px (no room
+   for the branded side panel, see .brand-secondary-links) both are
+   grouped into one small pinned corner instead, so they stay reachable
+   (Impressum/AGB/Datenschutz must remain accessible, just not prominent)
+   without competing with the actual login action for attention. */
+.mobile-secondary-links{position:fixed;bottom:18px;right:20px;font-size:12.5px;font-weight:700;z-index:30;display:flex;align-items:center;gap:6px;}
+.mobile-secondary-links a{text-decoration:none;}
+.mobile-secondary-links a:first-child{color:#0E5E56;}
+.mobile-secondary-links a:last-child{color:var(--muted);font-weight:600;}
+.mobile-secondary-links span{color:var(--muted);}
+@media(min-width:1024px){
+  .mobile-secondary-links{display:none;}
+}
 .legal-popover{position:fixed;bottom:46px;right:20px;background:#fff;border:1px solid rgba(15,23,42,0.08);border-radius:12px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.28);padding:12px 16px;display:none;flex-direction:column;gap:8px;font-size:12.5px;z-index:30;}
 .legal-popover a{color:var(--teal);text-decoration:none;font-weight:600;white-space:nowrap;}
 .legal-popover.show{display:flex;}
@@ -157,6 +173,15 @@ body{
     <li><span class="brand-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg></span>Kalender</li>
     <li><span class="brand-feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Einstellungen</li>
   </ul>
+  <div class="brand-secondary-links">
+    <a href="register.html">Jetzt registrieren →</a>
+    <a href="#" onclick="toggleBrandLegalPopover(event)">Rechtliches</a>
+    <div class="brand-legal-popover" id="brandLegalPopover">
+      <a href="datenschutz.html" target="_blank">Datenschutz</a>
+      <a href="agb.html" target="_blank">AGB</a>
+      <a href="impressum.html" target="_blank">Impressum</a>
+    </div>
+  </div>
 </div>
 
 <!-- Form -->
@@ -193,8 +218,6 @@ body{
   <div style="margin-top:14px;text-align:center;">
     <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:var(--muted);font-weight:600;text-decoration:none;">Passwort vergessen?</a>
   </div>
-
-  <a href="register.html" class="corner-link corner-register">Registrieren</a>
   </div>
 
   <!-- Passwort vergessen: E-Mail anfordern -->
@@ -274,7 +297,11 @@ body{
   </div>
 </div>
 
-<a href="#" class="corner-link corner-legal" onclick="toggleLegalPopover(event)">Rechtliches</a>
+<div class="mobile-secondary-links">
+  <a href="register.html">Registrieren</a>
+  <span>·</span>
+  <a href="#" onclick="toggleLegalPopover(event)">Rechtliches</a>
+</div>
 <div class="legal-popover" id="legalPopover">
   <a href="datenschutz.html" target="_blank">Datenschutz</a>
   <a href="agb.html" target="_blank">AGB</a>
@@ -288,10 +315,19 @@ function toggleLegalPopover(e){
   e.stopPropagation();
   document.getElementById('legalPopover').classList.toggle('show');
 }
+function toggleBrandLegalPopover(e){
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('brandLegalPopover').classList.toggle('show');
+}
 document.addEventListener('click', (e) => {
   const popover = document.getElementById('legalPopover');
-  if (popover.classList.contains('show') && !e.target.closest('.corner-legal')) {
+  if (popover.classList.contains('show') && !e.target.closest('.mobile-secondary-links')) {
     popover.classList.remove('show');
+  }
+  const brandPopover = document.getElementById('brandLegalPopover');
+  if (brandPopover.classList.contains('show') && !e.target.closest('.brand-secondary-links')) {
+    brandPopover.classList.remove('show');
   }
 });
 
