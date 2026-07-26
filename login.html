@@ -120,13 +120,25 @@ body{
 .spinner{display:none;width:18px;height:18px;border:2px solid rgba(14,94,86,0.25);border-top-color:#0E5E56;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-.footer-note{margin-top:28px;text-align:center;font-size:11px;color:#0f172a;line-height:1.6;}
-.footer-note a{color:var(--teal);text-decoration:none;font-weight:600;}
+/* Registrieren + Rechtliches used to sit inline in the form (a full-width
+   "Jetzt registrieren →" link plus a permanent Datenschutz/AGB/Impressum
+   row) -- reads like a marketing webpage footer. Pinned to the viewport
+   corners instead, both stay reachable (Impressum/AGB/Datenschutz must
+   remain accessible, just not prominent) without competing with the
+   actual login action for attention, closer to how a native app would
+   tuck secondary actions away. */
+.corner-link{position:fixed;font-size:12.5px;font-weight:700;text-decoration:none;z-index:30;}
+.corner-register{top:18px;right:20px;color:#0E5E56;}
+.corner-legal{bottom:18px;right:20px;color:var(--muted);font-weight:600;}
+.legal-popover{position:fixed;bottom:46px;right:20px;background:#fff;border:1px solid rgba(15,23,42,0.08);border-radius:12px;box-shadow:0 12px 32px -12px rgba(15,23,42,0.28);padding:12px 16px;display:none;flex-direction:column;gap:8px;font-size:12.5px;z-index:30;}
+.legal-popover a{color:var(--teal);text-decoration:none;font-weight:600;white-space:nowrap;}
+.legal-popover.show{display:flex;}
 
 /* Dark mode — keep panel white with black text */
 @media(prefers-color-scheme:dark){
   body{background:radial-gradient(120% 100% at 50% 0%, #1A2F2A 0%, #12201D 55%);}
   .right{background:transparent;}
+  .legal-popover{background:#1A2F2A;border-color:rgba(255,255,255,0.14);}
 }
 </style>
 </head>
@@ -182,9 +194,7 @@ body{
     <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:var(--muted);font-weight:600;text-decoration:none;">Passwort vergessen?</a>
   </div>
 
-  <div style="margin-top:16px;text-align:center;font-size:13px;">
-    <a href="register.html" style="color:#0E5E56;font-weight:700;text-decoration:none;">Jetzt registrieren →</a>
-  </div>
+  <a href="register.html" class="corner-link corner-register">Registrieren</a>
   </div>
 
   <!-- Passwort vergessen: E-Mail anfordern -->
@@ -261,14 +271,30 @@ body{
     </div>
   </div>
 
-  <div class="footer-note">
-    <a href="datenschutz.html" target="_blank">Datenschutz</a> · <a href="agb.html" target="_blank">AGB</a> · <a href="impressum.html" target="_blank">Impressum</a>
   </div>
-  </div>
+</div>
+
+<a href="#" class="corner-link corner-legal" onclick="toggleLegalPopover(event)">Rechtliches</a>
+<div class="legal-popover" id="legalPopover">
+  <a href="datenschutz.html" target="_blank">Datenschutz</a>
+  <a href="agb.html" target="_blank">AGB</a>
+  <a href="impressum.html" target="_blank">Impressum</a>
 </div>
 </div>
 
 <script>
+function toggleLegalPopover(e){
+  e.preventDefault();
+  e.stopPropagation();
+  document.getElementById('legalPopover').classList.toggle('show');
+}
+document.addEventListener('click', (e) => {
+  const popover = document.getElementById('legalPopover');
+  if (popover.classList.contains('show') && !e.target.closest('.corner-legal')) {
+    popover.classList.remove('show');
+  }
+});
+
 function togglePw(){
   const i=document.getElementById('password');
   const b=document.getElementById('togglePwBtn');
