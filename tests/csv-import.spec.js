@@ -92,6 +92,44 @@ test('imports Diagnosen/Allergien/Blutgruppe and Impfungen for a new patient', a
   expect(annaImpfungen.map(i => i.vaccine_name).sort()).toEqual(['FSME', 'Grippe']);
 });
 
+// Regression test for patient search-on-demand PR5 (see TODO.md):
+// findExistingPatientForImportRow() now queries Supabase live per row
+// instead of scanning loadPatients()'s in-memory list -- this must not
+// silently break confirmImport()'s existing read-after-write requirement,
+// where a LATER row in the same import can match a patient an EARLIER row
+// in that same run just created (not one already in the seed data).
+test('a later row in the same import correctly matches (by SVNr) a patient an earlier row in that same import just created', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practice_settings: [{ id: true }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+
+  // Row 1 creates "Petra Wagner" fresh (SVNr 5551234567). Row 2 is the SAME
+  // real person (same SVNr, address update) -- must UPDATE the row-1-created
+  // record, not create a second "Petra Wagner" account.
+  const csv = 'Vorname,Nachname,SVNr,Adresse\n'
+    + 'Petra,Wagner,5551234567,Alte Gasse 1\n'
+    + 'Petra,Wagner,5551234567,Neue Gasse 5';
+
+  const result = await page.evaluate(async (csvText) => {
+    await patientsReady;
+    document.getElementById('importCsvText').value = csvText;
+    proceedToMapping();
+    await confirmImport();
+    await new Promise(r => setTimeout(r, 100));
+    return { patients: window.__store.patients };
+  }, csv);
+
+  const petras = result.patients.filter(p => p.full_name === 'Petra Wagner');
+  expect(petras, 'row 2 must update the patient row 1 just created, not create a duplicate').toHaveLength(1);
+  expect(petras[0].adresse).toBe('Neue Gasse 5');
+});
+
 // Regression test for a real gap: createPatientAccount()'s auth-user
 // provisioning (ensurePatientAuthUser -> create-patient-auth-user) is
 // fire-and-forget by design for the interactive "+ Neuer Patient" flow, so
