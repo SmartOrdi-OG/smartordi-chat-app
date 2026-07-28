@@ -1535,6 +1535,7 @@ body.windows-mode #karteiBtn{display:none;}
       <div style="flex:1;"></div>
       <button onclick="openKarteiReportModal()" title="Bericht zusammenstellen — Inhalte auswählen und per Chat senden oder herunterladen" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;">📄 PDF</button>
       <button onclick="exportPatientCsv()" title="Patientendaten als CSV — für den Import in ein anderes (Smartordi-)System" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;">📊 CSV</button>
+      <button onclick="exportPatientJson()" title="Vollständige, strukturierte Patientendaten als JSON — für Datenübertragbarkeit (DSGVO Art. 20) oder eigene Weiterverarbeitung" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;margin-left:6px;">📄 JSON</button>
     </div>
 
     <div class="kartei-tabs">
@@ -2453,6 +2454,27 @@ body.windows-mode #karteiBtn{display:none;}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input type="text" id="labEmailAddress" readonly value="Wird erstellt…" style="flex:1;min-width:220px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;background:#f8fafc;color:#0f172a;">
           <button type="button" onclick="copyLabEmailAddress()" style="background:#EAF4F1;border:1px solid #bfdbfe;color:#0E5E56;padding:9px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">Kopieren</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- e-card/ELGA-Pflicht (Wahlärzt/innen, seit 2026) -- siehe TODO.md
+         "تجهيز مستقبلي بخصوص إلزام e-card/ELGA" für die Recherche/Quellen.
+         Kein Smartordi-Feature/keine ELGA-Anbindung -- nur ein Hinweis,
+         damit ein Wahlarzt das gesetzlich verpflichtende e-card-Portal
+         nicht übersieht, plus ein Anhaltspunkt für die eigene Prüfung der
+         ~300-Patient/innen-Verhältnismäßigkeits-Ausnahme. -->
+    <div class="dash-card" style="margin-bottom:20px;">
+      <div class="dash-card-header">🏥 e-card/ELGA-Pflicht für Wahlärzt/innen <span style="font-size:11px;color:#64748b;font-weight:400;">— gesetzliche Information, kein Smartordi-Feature</span></div>
+      <div class="dash-card-body">
+        <div style="font-size:12.5px;color:#475569;margin-bottom:12px;line-height:1.6;">
+          Seit 1.7.2026 sind Wahlärzt/innen gesetzlich verpflichtet, Diagnose-/Leistungsdaten über das e-Wahlpartner-Webportal zu übermitteln — unabhängig von der genutzten Praxissoftware. Smartordi selbst hat (und braucht) keine ELGA-Anbindung; nutzen Sie einfach das offizielle Portal parallel zu Smartordi.
+        </div>
+        <a href="https://www.gesundheit.gv.at/e-card" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-bottom:14px;color:#0E5E56;font-weight:700;font-size:12.5px;">→ Zum e-card-Portal (gesundheit.gv.at)</a>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Behandelte Patient/innen (letzte 12 Monate)</div>
+          <div id="elgaPatientCount" style="font-size:22px;font-weight:800;color:#0f172a;">–</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Nur ein grober Anhaltspunkt für die ~300/Jahr-Verhältnismäßigkeits-Ausnahme — bitte im Zweifel rechtlich prüfen lassen, kein rechtsverbindlicher Nachweis.</div>
         </div>
       </div>
     </div>
@@ -4624,6 +4646,62 @@ async function exportPatientCsv(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('✓ Patientendaten exportiert');
+}
+
+// ══ Structured JSON export (DSGVO Art. 20 Datenübertragbarkeit + Vorbereitung
+// für eine mögliche künftige ELGA-Anbindung) ══
+// Same underlying data as exportPatientCsv() above, but as real nested JSON
+// instead of semicolon-crammed CSV cells -- also includes the Anamnese
+// (already structured jsonb, see phase8_anamnese.sql) and the full
+// Behandlungsverlauf as actual objects, neither of which fit meaningfully
+// into a single CSV cell.
+async function exportPatientJson(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  const rec=findPatientRecord(name);
+  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+  const found=findPatientAccountByFullName(name);
+  const account=found?found.accounts[found.username]:null;
+  await impfungenReady;
+  const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
+  await loadKarteiVisits(name);
+  const visits=VISITS.filter(v=>v.patient===name);
+  await termineReady;
+  const termine=loadTermine().filter(t=>rec.id?t.patientId===rec.id:t.patient===name);
+  const nameParts=name.trim().split(/\s+/);
+  const vorname=nameParts[0]||'';
+  const nachname=nameParts.slice(1).join(' ')||'';
+  const data={
+    exportiertAm: new Date().toISOString(),
+    stammdaten: {
+      vorname, nachname,
+      geburtsdatum: rec.dob||null,
+      svnr: rec.svnr==='—'?null:rec.svnr,
+      versicherung: rec.versicherung==='—'?null:rec.versicherung,
+      telefon: rec.tel==='—'?null:rec.tel,
+      adresse: rec.adresse==='—'?null:rec.adresse,
+      email: rec.email||null,
+    },
+    diagnosen: rec.diagnosen==='—'?null:rec.diagnosen,
+    allergien: rec.allergie||null,
+    blutgruppe: rec.blutgruppe==='—'?null:rec.blutgruppe,
+    krankengeschichteFreitext: rec.legacyHistory||null,
+    anamnese: (account&&account.anamnese)||null,
+    impfungen: impfungen.map(i=>({name:i.vaccineName,datum:i.datum,nextDue:i.nextDue||null})),
+    behandlungsverlauf: visits.map(v=>({datum:v.date,typ:v.type,beschwerde:v.beschwerde||null,temperatur:v.temp||null,blutdruck:v.bd||null,schmerz:v.schmerz||null,diagnose:v.diag||null,notizen:v.notes||null,therapie:v.therapy||null})),
+    termine: termine.map(t=>({datum:t.date,zeit:t.time,bis:t.endTime,art:t.art,status:t.status,abgeschlossen:!!t.completedAt})),
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=('Patient_'+nachname+'_'+vorname+'.json').replace(/\s+/g,'_');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ Patientendaten (JSON) exportiert');
 }
 
 // Human-readable counterpart to exportPatientCsv() -- for handing a patient's
@@ -7174,9 +7252,24 @@ function showToast(msg,type='success'){
 }
 function showToastSettings(msg){showToast(msg,'success');}
 
+// Rough, non-authoritative indicator for the ~300 patients/year
+// proportionality exemption mentioned in the e-card/ELGA research (see the
+// dash-card above) -- counts distinct patients with at least one COMPLETED
+// (not just booked/future) Termin in the last 365 days. TERMINE_PAST_WINDOW_DAYS
+// (vendor/patient-data.js) is 730 days, comfortably wider than the 365-day
+// window this needs, so loadTermine()'s already-cached data is accurate here
+// without a separate fetch.
+function updateElgaPatientCount(){
+  const el=document.getElementById('elgaPatientCount');
+  if(!el) return;
+  const cutoff=new Date(Date.now()-365*24*60*60*1000).toISOString().slice(0,10);
+  const ids=new Set(loadTermine().filter(t=>t.completedAt&&t.date>=cutoff).map(t=>t.patientId||t.patient));
+  el.textContent=String(ids.size);
+}
+
 // Init canvas when settings view opens
 document.addEventListener('smartordi-view-change', async function(e){
-  if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); renderCloudMigrationCard(); }
+  if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); renderCloudMigrationCard(); await termineReady; updateElgaPatientCount(); }
   if(e.detail === 'vertretung'){ await vertretungReady; renderVertretungView(); }
 });
 

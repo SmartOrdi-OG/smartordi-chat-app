@@ -183,6 +183,11 @@ function mockScript(seed) {
             on(event, filter, handler) {
               window.__realtimeHandlers = window.__realtimeHandlers || {};
               window.__realtimeHandlers[name] = handler;
+              // Also records the postgres_changes options object (table/
+              // event/filter) a test can inspect -- e.g. to assert a
+              // channel was scoped with a practice_id filter.
+              window.__realtimeFilters = window.__realtimeFilters || {};
+              window.__realtimeFilters[name] = filter;
               return ch;
             },
             subscribe() { return ch; },
