@@ -3004,8 +3004,7 @@ function getOrHydrateThread(name){
 // patients and not-yet-migrated real accounts (no id yet) keep using
 // whatever's already cached/local via getOrHydrateThread() above.
 async function hydrateRealThreadFromSupabase(name){
-  const found=findPatientAccountByFullName(name);
-  const patientId=found&&found.accounts[found.username].id;
+  const patientId=await findPatientIdByFullName(name);
   if(!patientId) return false;
   const rows=await getMessagesForPatient(patientId);
   MESSAGES[name]={date:'', items: rows.map(function(r){
@@ -3745,10 +3744,10 @@ function impfWarnRowHtml(d){
     <button onclick="openKarteiForVaccineCheck('${d.patient}')" style="padding:6px 10px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;color:#0E5E56;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">Kartei</button>
   </div>`;
 }
-function openKarteiForVaccineCheck(name){
+async function openKarteiForVaccineCheck(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
-  const found=demo?null:findPatientAccountByFullName(name);
-  const acc=demo || (found?found.accounts[found.username]:null);
+  const found=demo?null:await findPatientAccountAsync(name);
+  const acc=demo || found;
   openKarteiForPatientAndShow(name, acc?.svnr||'', acc?.versicherung||'', acc?.dob||'');
   setTimeout(()=>{
     const btn=document.getElementById('ktab-btn-impfung');
@@ -4281,7 +4280,7 @@ function isChatHiddenForPatient(patientId){
 // is a foreign key), so a local-only demo patient has nothing to attach to.
 async function toggleHideChatForCurrentPatient(){
   const name=document.getElementById('chat-name')?.textContent;
-  const rec=name?findPatientRecord(name):null;
+  const rec=name?await findPatientRecordAsync(name):null;
   if(!rec || !rec.id) return;
   const session=currentStaffSession();
   if(!session) return;
@@ -4581,17 +4580,36 @@ function updateKarteiChromeVisibility(){
   });
 }
 
-function findPatientRecord(name){
-  const demo=DEMO_PATIENTS.find(p=>p.name===name);
-  if(demo) return demo;
-  const found=findPatientAccountByFullName(name);
-  if(!found) return null;
-  const a=found.accounts[found.username];
+// Shared by findPatientRecord() (sync, cache/full-list) and
+// findPatientRecordAsync() (async, server-first) below -- same mapping
+// either way, just a different account lookup feeding into it.
+function accountToPatientRecord(a){
+  if(!a) return null;
   // Reads whatever a bulk import (secretary.html) or the doctor's own entry
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
   return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||''};
+}
+function findPatientRecord(name){
+  const demo=DEMO_PATIENTS.find(p=>p.name===name);
+  if(demo) return demo;
+  const found=findPatientAccountByFullName(name);
+  if(!found) return null;
+  return accountToPatientRecord(found.accounts[found.username]);
+}
+// Async counterpart -- for call sites that CAN await (already-async
+// functions, or a straightforward event handler) so they stop depending on
+// the full in-memory patient list (see supabase/phase36_patients_search_index.sql
+// and the search-on-demand rollout in TODO.md). Falls back to whatever the
+// sync path still has (see findPatientAccountAsync in vendor/patient-data.js)
+// on a genuine miss/network hiccup, so this never returns "less" than the
+// sync findPatientRecord() above would have.
+async function findPatientRecordAsync(name){
+  const demo=DEMO_PATIENTS.find(p=>p.name===name);
+  if(demo) return demo;
+  const a=await findPatientAccountAsync(name);
+  return accountToPatientRecord(a);
 }
 
 // The chat view's "Patientendaten" side panel (Name/Geburtsdatum/Telefon/
@@ -4620,7 +4638,7 @@ function csvEscape(val){
 async function exportPatientCsv(){
   const name=document.getElementById('kartei-name')?.textContent;
   if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
-  const rec=findPatientRecord(name);
+  const rec=await findPatientRecordAsync(name);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
   await impfungenReady;
   const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
@@ -4658,10 +4676,14 @@ async function exportPatientCsv(){
 async function exportPatientJson(){
   const name=document.getElementById('kartei-name')?.textContent;
   if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
-  const rec=findPatientRecord(name);
+  // One lookup covers both rec and account below (accountToPatientRecord()
+  // doesn't carry the raw anamnese jsonb, so this used to be two separate
+  // findPatientRecord()/findPatientAccountByFullName() calls for the same
+  // patient -- now a single findPatientAccountAsync() round-trip).
+  const demo=DEMO_PATIENTS.find(p=>p.name===name);
+  const account=demo?null:await findPatientAccountAsync(name);
+  const rec=demo||accountToPatientRecord(account);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
-  const found=findPatientAccountByFullName(name);
-  const account=found?found.accounts[found.username]:null;
   await impfungenReady;
   const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
   await loadKarteiVisits(name);
@@ -4716,7 +4738,7 @@ async function buildPatientReportPdf(sections){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return null; }
   const name=document.getElementById('kartei-name')?.textContent;
   if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return null; }
-  const rec=findPatientRecord(name);
+  const rec=await findPatientRecordAsync(name);
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return null; }
 
   let impfungenList=[], laborDocs=[], allDocs=[], anamneseLines=[], mkpRecords=[];
@@ -5019,7 +5041,7 @@ async function sendKarteiReport(){
     const doc=await buildPatientReportPdf(sections);
     if(!doc) return;
     const name=doc._reportPatientName;
-    const rec=findPatientRecord(name);
+    const rec=await findPatientRecordAsync(name);
     const today=new Date().toLocaleDateString('de-AT').replace(/\./g,'-');
     const recipientLabel=dest==='doctor'?(document.getElementById('rptDoctorName').value||'Arzt').trim():name;
     const filename=('Patientenbericht_'+recipientLabel+'_'+today).replace(/\s+/g,'_')+'.pdf';
@@ -5665,7 +5687,7 @@ function renderImpfEintrag(imp){
 async function populateKarteiImpfung(name){
   const list=document.getElementById('impfpass-liste');
   if(!list) return;
-  const rec=findPatientRecord(name);
+  const rec=await findPatientRecordAsync(name);
   await impfungenReady;
   const impfungen=rec?.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : [];
   list.innerHTML=impfungen.length
@@ -5698,7 +5720,7 @@ async function addImpfung(){
   if(!datum){alert('Bitte Datum eingeben.');return;}
   const currentName=document.getElementById('kartei-name')?.textContent;
   if(!currentName||currentName==='Kein Patient ausgewählt'){alert('Bitte zuerst einen Patienten auswählen.');return;}
-  const rec=findPatientRecord(currentName);
+  const rec=await findPatientRecordAsync(currentName);
   if(!rec?.id){alert('Dieser Patient hat noch kein Cloud-Konto -- Impfungen können nur für Patienten mit Konto gespeichert werden.');return;}
   const vaccine=VACCINE_SCHEDULE.find(v=>v.name===name);
   const session=currentStaffSession();
@@ -6681,7 +6703,7 @@ function openChatForPatient(name,color,insurance){
 // patient present in the office) and sendRezeptToChat() (uploads the same
 // PDF to the patient's chat instead), so a doctor can pick either action
 // separately rather than the old single button always doing both at once.
-function buildRezeptPdf(){
+async function buildRezeptPdf(){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return null; }
   const currentName=document.getElementById('kartei-name')?.textContent;
   if(!currentName||currentName==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return null; }
@@ -6692,7 +6714,7 @@ function buildRezeptPdf(){
   // that was never defined anywhere in this file, so every single call
   // threw a ReferenceError before generating anything: the Rezept tab's
   // only action was completely non-functional.
-  const rec=findPatientRecord(currentName)||{};
+  const rec=(await findPatientRecordAsync(currentName))||{};
   const p = {name:rec.name||currentName, svnr:rec.svnr, dob:rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):null};
   const med1 = document.getElementById('rz-med1').value || '';
   const med2 = document.getElementById('rz-med2').value || '';
@@ -6812,8 +6834,8 @@ function buildRezeptPdf(){
 
 // "Der Patient ist in der Ordination" -- print it now, on paper, for the
 // patient to take with them.
-function printRezept(){
-  const doc=buildRezeptPdf();
+async function printRezept(){
+  const doc=await buildRezeptPdf();
   if(!doc) return;
   openPdfAndPrint(doc.output('bloburl'));
 }
@@ -6822,7 +6844,7 @@ function printRezept(){
 // own chat/account instead of paper (kept separate from printRezept() since
 // a doctor picks exactly one of the two, not both every time).
 async function sendRezeptToChat(){
-  const doc=buildRezeptPdf();
+  const doc=await buildRezeptPdf();
   if(!doc) return;
   const name=doc._rezeptPatientName;
   try{

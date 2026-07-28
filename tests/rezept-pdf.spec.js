@@ -47,9 +47,9 @@ async function setupPage(page) {
 
 test('buildRezeptPdf() refuses to build anything when no patient is selected', async ({ page }) => {
   await setupPage(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     document.getElementById('kartei-name').textContent = 'Kein Patient ausgewählt';
-    const doc = buildRezeptPdf();
+    const doc = await buildRezeptPdf();
     return { doc, toastText: document.getElementById('toast')?.textContent || '' };
   });
   expect(result.doc).toBeNull();
@@ -62,8 +62,8 @@ test('buildRezeptPdf() includes the patient name and both medications, but omits
   await page.fill('#rz-dose1', '3x täglich');
   await page.fill('#rz-med2', 'Ibuprofen 400mg');
   await page.fill('#rz-dose2', '2x täglich');
-  const result = await page.evaluate(() => {
-    const doc = buildRezeptPdf();
+  const result = await page.evaluate(async () => {
+    const doc = await buildRezeptPdf();
     return { texts: doc._texts, medSummary: doc._rezeptMedSummary, patientName: doc._rezeptPatientName };
   });
   expect(result.patientName).toBe('Maria Huber');
@@ -79,7 +79,7 @@ test('buildRezeptPdf() adds the Rezeptgebührenbefreit banner when checked, and 
   await page.fill('#rz-med1', 'Paracetamol 500mg');
   await page.check('#rz-befreit');
   await page.fill('#rz-notes', 'Nach dem Essen einnehmen');
-  const result = await page.evaluate(() => buildRezeptPdf()._texts);
+  const result = await page.evaluate(async () => (await buildRezeptPdf())._texts);
   expect(result.join(' ')).toContain('REZEPTGEBÜHRENBEFREIT');
   expect(result).toContain('Nach dem Essen einnehmen');
 });

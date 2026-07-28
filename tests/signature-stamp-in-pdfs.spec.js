@@ -66,7 +66,7 @@ test('the signature and stamp appear on the Rezept PDF', async ({ page }) => {
   await setupPage(page);
   await page.evaluate(() => { switchView('clinic'); toggleKartei(); switchKarteiTab('rezept', document.getElementById('ktab-btn-rezept')); });
   await page.fill('#rz-med1', 'Amoxicillin 500mg');
-  const images = await page.evaluate(() => buildRezeptPdf()._images);
+  const images = await page.evaluate(async () => (await buildRezeptPdf())._images);
   expect(images).toContain(FAKE_SIG);
   expect(images).toContain(FAKE_STEMPEL);
 });
@@ -78,7 +78,7 @@ test('the stamp prints at a legible size on the Rezept PDF, not squeezed into a 
   await setupPage(page);
   await page.evaluate(() => { switchView('clinic'); toggleKartei(); switchKarteiTab('rezept', document.getElementById('ktab-btn-rezept')); });
   await page.fill('#rz-med1', 'Amoxicillin 500mg');
-  const stempelCall = await page.evaluate((stempelUrl) => buildRezeptPdf()._imageCalls.find(c => c.url === stempelUrl), FAKE_STEMPEL);
+  const stempelCall = await page.evaluate(async (stempelUrl) => (await buildRezeptPdf())._imageCalls.find(c => c.url === stempelUrl), FAKE_STEMPEL);
   expect(stempelCall.w).toBeGreaterThanOrEqual(38);
   expect(stempelCall.h).toBeGreaterThanOrEqual(28);
 });
@@ -148,7 +148,7 @@ test('without a saved signature/stamp, none of the three PDFs draw a broken/empt
   });
   await page.fill('#rz-med1', 'Amoxicillin 500mg');
   const images = await page.evaluate(async () => {
-    const rezeptImages = buildRezeptPdf()._images;
+    const rezeptImages = (await buildRezeptPdf())._images;
     const uwImages = buildUeberweisungPdf()._images;
     const reportImages = (await buildPatientReportPdf({}))._images;
     return { rezeptImages, uwImages, reportImages };

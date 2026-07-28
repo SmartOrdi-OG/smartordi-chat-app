@@ -1,5 +1,14 @@
 # Smartordi – قائمة المهام
 
+## 🔍 بحث المرضى (Search-on-Demand) — PR3 من 6: حوّلنا جزء من نقاط البحث عن مريض واحد بـdoctor.html للخادم
+استكمال الخطة (PR1+PR2 بالأسفل). راجعنا كل النقاط يلي بتستخدم `findPatientRecord()`/`findPatientAccountByFullName()` بـ`doctor.html` (أكتر من 20 نقطة) وحوّلنا المجموعة يلي فعليًا ممكن تستنى نتيجة (async) بأمان.
+
+- **`vendor/patient-data.js`**: دالة جديدة `findPatientAccountAsync(name)` — بتفحص الكاش (`_lookupCache` من PR1) أول شي، وإذا مو موجود فيها بتروح مباشرة عالخادم (`findPatientByFullNameServer`)، وإذا فشل الطلب أو ما لقت شي، بترجع لأي شي موجود بالقائمة المحلية (`findPatientByFullNameCached`) — نفس شبكة الأمان يلي وعدنا فيها المستخدم لو صار انقطاع مؤقت بالنت.
+- **`doctor.html`**: فصلنا منطق بناء "سجل المريض" (الكائن يلي فيه svnr/dob/versicherung...) لدالة مشتركة `accountToPatientRecord()`، وأضفنا `findPatientRecordAsync(name)` (النسخة async منها). حوّلنا 9 دوال فعليًا لتستخدمها: `exportPatientCsv()`، `exportPatientJson()` (صار طلب واحد بس بدل طلبين منفصلين لنفس المريض)، `buildPatientReportPdf()`، `toggleHideChatForCurrentPatient()`، `openKarteiForVaccineCheck()`، `sendKarteiReport()`، `populateKarteiImpfung()`، `addImpfung()`، و`buildRezeptPdf()` (صارت async، مع تحديث `printRezept()`/`sendRezeptToChat()` تبعاتها). كمان حوّلنا `hydrateRealThreadFromSupabase()` لتستخدم `findPatientIdByFullName()` (دالة موجودة أصلًا بنفس النمط، مستخدمة بأكتر من 15 مكان تاني) بدل قراءة القائمة الكاملة.
+- **قرار نطاق واعي**: تركنا نقاط تانية زي `selectPatient()`، `updateChatPaneState()`، `populateKarteiStamm()`، `loadAnamneseForPatient()`، `appendRealMessage()` بدون تحويل — هدول إما جزء من سلسلة render متزامنة (sync) بيصعب تحويلها بأمان بدون تغيير معماري أكبر، أو (`appendRealMessage`) بترجع كائن `{username, accounts}` حيث `accounts` هو القائمة **الكاملة** يلي بتنكتب فوق localStorage بالكامل — أي تغيير سطحي لشكل الإرجاع هون كان رح يمسح بيانات كل المرضى التانيين. هاي بالضبط النقاط يلي الخطة نفسها سمحت نتركها sync لهلق.
+- أثناء التحويل اكتشفنا 6 اختبارات موجودة (`tests/rezept-pdf.spec.js` x3، `tests/signature-stamp-in-pdfs.spec.js` x3) كانت بتنادي `buildRezeptPdf()` بدون `await` — لأنه صارت async هلق، النتيجة كانت Promise مش الـPDF نفسه. صلحناهم (أضفنا `await`).
+- شغّلنا كامل الـsuite (218 اختبار) مرتين (قبل وبعد تصليح الاختبارات القديمة) — كلهم عدّوا.
+
 ## 🔍 بحث المرضى (Search-on-Demand) — PR2 من 6: حوّلنا صندوق البحث الحقيقي الوحيد للخادم
 استكمال خطة الـ6 مراحل الموثّقة بالأسفل (PR1). حوّلنا `searchPatient()` بـ`doctor.html` (صندوق "Suche" بالكارتيه: اسم/SVNr/تاريخ ميلاد) من فلترة كل قائمة المرضى بالـJS بكل ضغطة مفتاح، لبحث حي حقيقي بالخادم.
 
