@@ -7589,6 +7589,10 @@ setInterval(function(){
 // A real patient's own messages (sent from their own device via
 // patient.html) never touch this device's localStorage at all, so the
 // only way this device learns about them live is Realtime.
+// renderPatientList() rebuilds the whole sidebar's DOM -- debounced (see
+// debounce()'s own comment in vendor/patient-data.js) so a burst of several
+// messages in quick succession triggers one rebuild, not one per message.
+const renderPatientListDebounced=debounce(renderPatientList,200);
 subscribeMessagesRealtime(()=>{
   const openName=document.getElementById('chat-name')?.textContent;
   if(openName){
@@ -7597,7 +7601,7 @@ subscribeMessagesRealtime(()=>{
       if(hydrated) renderMessages(openName,color);
     });
   }
-  renderPatientList();
+  renderPatientListDebounced();
   updateDashboardStats();
 });
 // Keeps the Dashboard/Kartei "fällige Impfungen" view in sync when a
