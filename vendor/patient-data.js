@@ -350,9 +350,9 @@ async function findPatientByFullNameServer(name){
   return account;
 }
 // Live substring search against the server (name OR SVNr contains the
-// query, case-insensitive) -- what every search box converts to. `%`/`_`
-// are escaped since they're ILIKE wildcards a typed query shouldn't get to
-// use as one.
+// query, case-insensitive) -- for a single unified search box. `%`/`_` are
+// escaped since they're ILIKE wildcards a typed query shouldn't get to use
+// as one.
 async function searchPatientsServer(query,limit){
   const q=(query||'').trim();
   if(!q) return [];
@@ -362,6 +362,28 @@ async function searchPatientsServer(query,limit){
     .order('full_name')
     .limit(limit||50);
   if(error){ console.error('searchPatientsServer failed',error); return []; }
+  const localAccounts=localPatientAccountsRaw();
+  const results=(data||[]).map(row=>patientRowToJs(row,localAccounts));
+  results.forEach(cachePatientLookup);
+  return results;
+}
+// Live search across up to 3 INDEPENDENT criteria, ANDed together (unlike
+// searchPatientsServer() above, which ORs a single query across two
+// columns) -- for doctor.html's "such-name"/"such-svnr"/"such-dob" form,
+// where each filled field must ALL match the same patient, and dob alone
+// (with no name/SVNr text at all) is itself a valid, common search ("find
+// this exact birth date"). name/svnr use substring match, dob exact.
+async function searchPatientsByCriteria(criteria,limit){
+  const name=(criteria&&criteria.name||'').trim();
+  const svnr=(criteria&&criteria.svnr||'').trim();
+  const dob=criteria&&criteria.dob;
+  if(!name&&!svnr&&!dob) return [];
+  let q=sb.from('patients').select(PATIENTS_COLUMNS);
+  if(name) q=q.ilike('full_name','%'+name.replace(/[%_]/g,'\\$&')+'%');
+  if(svnr) q=q.ilike('svnr','%'+svnr.replace(/[%_]/g,'\\$&')+'%');
+  if(dob) q=q.eq('dob',dob);
+  const {data,error}=await q.order('full_name').limit(limit||50);
+  if(error){ console.error('searchPatientsByCriteria failed',error); return []; }
   const localAccounts=localPatientAccountsRaw();
   const results=(data||[]).map(row=>patientRowToJs(row,localAccounts));
   results.forEach(cachePatientLookup);

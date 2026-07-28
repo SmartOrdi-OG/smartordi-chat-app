@@ -2144,15 +2144,15 @@ body.windows-mode #karteiBtn{display:none;}
           <div style="display:grid;grid-template-columns:1fr;gap:10px;">
             <div>
               <div class="k-form-label">Name</div>
-              <input class="k-form-input" id="such-name" placeholder="Vor- oder Nachname..." oninput="searchPatient()">
+              <input class="k-form-input" id="such-name" placeholder="Vor- oder Nachname..." oninput="searchPatientDebounced()">
             </div>
             <div>
               <div class="k-form-label">SV-Nummer</div>
-              <input class="k-form-input" id="such-svnr" placeholder="XXXX TTMMJJ..." oninput="searchPatient()">
+              <input class="k-form-input" id="such-svnr" placeholder="XXXX TTMMJJ..." oninput="searchPatientDebounced()">
             </div>
             <div>
               <div class="k-form-label">Geburtsdatum</div>
-              <input class="k-form-input" id="such-dob" type="date" oninput="searchPatient()">
+              <input class="k-form-input" id="such-dob" type="date" oninput="searchPatientDebounced()">
             </div>
           </div>
         </div>
@@ -6551,34 +6551,37 @@ async function uploadLocalDataToCloud(){
   }
 }
 
-// Patients onboarded via QR (secretary.html) live only in this browser's
-// localStorage (no real backend yet) -- surfaced here so a doctor can find
-// and open Kartei for a patient who registered on their own device too.
-function loadQrPatientAccounts(){
-  const accounts=loadPatients();
-  return Object.keys(accounts)
-    .map(u=>accounts[u])
-    .filter(a=>a && a.fullName && a.role!=='guardian' && !DEMO_PATIENTS.some(p=>p.name===a.fullName))
-    .map(a=>({name:a.fullName,svnr:a.svnr||'',dob:a.dob||'',versicherung:a.versicherung||'',tel:a.tel||'',adresse:a.adresse||''}));
-}
-
-function searchPatient(){
-  const name=(document.getElementById('such-name').value||'').toLowerCase();
-  const svnr=(document.getElementById('such-svnr').value||'').toLowerCase();
-  const dob=document.getElementById('such-dob').value;
-  if(!name&&!svnr&&!dob){
-    document.getElementById('such-ergebnisse').innerHTML='<div style="text-align:center;padding:30px;color:#94a3b8;"><div style="font-size:32px;margin-bottom:8px;"></div><div style="font-size:13px;">Suchbegriff eingeben...</div></div>';
+// Debounced so a fast typist doesn't fire a server round-trip on every
+// single keystroke -- see debounce()'s own comment in vendor/patient-data.js.
+const searchPatientDebounced=debounce(searchPatient,300);
+// Was a client-side filter over EVERY patient (loadQrPatientAccounts()
+// mapped the entire loadPatients() dict); now a live, server-side search
+// via searchPatientsByCriteria() (vendor/patient-data.js) -- this is the
+// only search box in doctor.html/secretary.html that queries independently
+// into its OWN results panel (#such-ergebnisse) rather than filtering an
+// already-rendered sidebar list, which is why it's the one converted here
+// (the sidebar-filtering search boxes still read whatever renderPatientList()/
+// renderRealPatientRows() already put on screen -- converting just the
+// filter, without also bounding that render, would make search results
+// inconsistent with what's visible in the list itself).
+async function searchPatient(){
+  const nameEl=document.getElementById('such-name');
+  const svnrEl=document.getElementById('such-svnr');
+  const dobEl=document.getElementById('such-dob');
+  const name=nameEl.value||'', svnr=svnrEl.value||'', dob=dobEl.value;
+  const resultsEl=document.getElementById('such-ergebnisse');
+  if(!name.trim()&&!svnr.trim()&&!dob){
+    resultsEl.innerHTML='<div style="text-align:center;padding:30px;color:#94a3b8;"><div style="font-size:32px;margin-bottom:8px;"></div><div style="font-size:13px;">Suchbegriff eingeben...</div></div>';
     return;
   }
-  const allPatients=DEMO_PATIENTS.concat(loadQrPatientAccounts());
-  const results=allPatients.filter(p=>{
-    const nameMatch=!name||p.name.toLowerCase().includes(name);
-    const svnrMatch=!svnr||(p.svnr||'').toLowerCase().includes(svnr);
-    const dobMatch=!dob||p.dob===dob;
-    return nameMatch&&svnrMatch&&dobMatch;
-  });
+  resultsEl.innerHTML='<div style="text-align:center;padding:30px;color:#94a3b8;"><div style="font-size:13px;">Suche läuft...</div></div>';
+  const results=await searchPatientsByCriteria({name,svnr,dob});
+  // A fast typist can trigger a newer search before an older, slower one's
+  // response lands -- discard a stale response instead of flashing
+  // outdated results over the current query.
+  if(nameEl.value!==name||svnrEl.value!==svnr||dobEl.value!==dob) return;
   if(!results.length){
-    document.getElementById('such-ergebnisse').innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;"><div style="font-size:24px;margin-bottom:6px;"></div><div style="font-size:13px;">Kein Patient gefunden</div></div>';
+    resultsEl.innerHTML='<div style="text-align:center;padding:20px;color:#94a3b8;"><div style="font-size:24px;margin-bottom:6px;"></div><div style="font-size:13px;">Kein Patient gefunden</div></div>';
     return;
   }
   const html=results.map(p=>{
@@ -6586,9 +6589,9 @@ function searchPatient(){
     return `
     <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div style="width:42px;height:42px;background:#EAF4F1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#0E5E56;">${escapeHtml(p.name[0])}</div>
+        <div style="width:42px;height:42px;background:#EAF4F1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#0E5E56;">${escapeHtml(p.fullName[0])}</div>
         <div>
-          <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(p.name)}</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;">${escapeHtml(p.fullName)}</div>
           <div style="font-size:11px;color:#64748b;">${escapeHtml(p.versicherung||'—')} · SV: ${escapeHtml(p.svnr||'—')}</div>
         </div>
       </div>
@@ -6597,12 +6600,12 @@ function searchPatient(){
         <div> ${escapeHtml(p.tel||'—')}</div>
       </div>
       <div style="display:flex;gap:8px;">
-        <button onclick="openKarteiForPatient('${jsArg(p.name)}','${jsArg(p.svnr)}','${jsArg(p.versicherung)}','${jsArg(p.dob)}')" style="flex:1;padding:8px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:8px;color:#0E5E56;font-size:12px;font-weight:700;cursor:pointer;">Kartei öffnen</button>
-        <button onclick="showToast('Termin für ${jsArg(p.name)} buchen')" style="flex:1;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-size:12px;font-weight:700;cursor:pointer;">Termin buchen</button>
+        <button onclick="openKarteiForPatient('${jsArg(p.fullName)}','${jsArg(p.svnr)}','${jsArg(p.versicherung)}','${jsArg(p.dob)}')" style="flex:1;padding:8px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:8px;color:#0E5E56;font-size:12px;font-weight:700;cursor:pointer;">Kartei öffnen</button>
+        <button onclick="showToast('Termin für ${jsArg(p.fullName)} buchen')" style="flex:1;padding:8px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;color:#16a34a;font-size:12px;font-weight:700;cursor:pointer;">Termin buchen</button>
       </div>
     </div>
   `;}).join('');
-  document.getElementById('such-ergebnisse').innerHTML=html;
+  resultsEl.innerHTML=html;
 }
 
 function openKarteiForPatient(name,svnr,versicherung,dob,silent){
