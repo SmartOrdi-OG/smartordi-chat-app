@@ -278,12 +278,26 @@ function patientRowToJs(row,localAccounts){
   });
 }
 let _patients={};
+// Patient search-on-demand PR6 (final phase, see TODO.md): this used to
+// fetch EVERY patient row unconditionally, with only a console.warn past
+// 3000 rows as a signal to eventually fix it -- now bounded outright to
+// the most recently active PATIENTS_LIST_LIMIT patients (requires
+// supabase/phase36_patients_search_index.sql's updated_at trigger to
+// actually be live; without it, this degrades gracefully to "most
+// recently created" instead of "most recently active", never a crash).
+// The sidebar list/dashboard aggregates/Termin patient picker only ever
+// see this bounded set from here on -- NOT yet real pagination for those
+// specific features (deliberately out of scope, see TODO.md/the plan) --
+// but any patient, including ones outside this bounded set, stays fully
+// reachable via searchPatientsServer()/searchPatientsByCriteria()/
+// findPatientRecordAsync(), which always query Supabase directly.
+const PATIENTS_LIST_LIMIT=500;
 async function refreshPatients(){
   const {data,error}=await selectWithColumnFallback(
-    cols=>sb.from('patients').select(cols),
+    cols=>sb.from('patients').select(cols).order('updated_at',{ascending:false}).limit(PATIENTS_LIST_LIMIT),
     PATIENTS_COLUMNS,'refreshPatients');
   if(error){ reportCriticalDataError('refreshPatients',error); return; }
-  if(data&&data.length>3000) console.warn('refreshPatients: '+data.length+' rows loaded in full -- this practice is approaching the point where fetching every patient on every page load will get noticeably slow; time to add real pagination/search-on-demand.');
+  if(data&&data.length>=PATIENTS_LIST_LIMIT) console.warn('refreshPatients: hit the '+PATIENTS_LIST_LIMIT+'-patient cap -- the sidebar/dashboard/Termin-picker only show the most recently active '+PATIENTS_LIST_LIMIT+' patients now. Every patient (including older/less-active ones not shown here) stays fully reachable via search.');
   const localAccounts=localPatientAccountsRaw();
   const merged={};
   (data||[]).forEach(function(row){
