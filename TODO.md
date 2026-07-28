@@ -1,5 +1,13 @@
 # Smartordi – قائمة المهام
 
+## 🔍 بحث المرضى (Search-on-Demand) — PR4 من 6: حوّلنا نقاط البحث عن مريض واحد بـsecretary.html، ولقينا بگ حقيقي بالطريق
+استكمال الخطة (نفس نمط PR3، بس لـ`secretary.html`). راجعنا كل النقاط يلي بتستخدم `findPatientByFullName()`/`findPatientAccountByFullName()` (أقل بكتير من doctor.html — ما في واجهة كارتيه سريرية بهالملف).
+
+- **حوّلنا 5 دوال** لتستخدم `findPatientIdByFullName()` (لما بدنا بس الـid، موجودة أصلًا) أو `findPatientAccountAsync()` (من PR3، لما بدنا الحساب كامل): `realThreadFromSupabase()`، الجزء يلي بيصفّر إشعار الرسايل الغير مقروءة بـ`openChat()`، `savePatientEdit()`، `resetPatientPassword()`، و`requestPatientDeletion()`.
+- **🐛 بگ حقيقي اكتشفناه أثناء التحويل، مش شي متعلق بالبحث أصلًا**: `requestPatientDeletion()` (زر "🗑️ Löschung beantragen"، طلب حذف بيانات المريض حسب المادة القانونية § 51 ÄrzteG) كان يقرأ `found.id` من نتيجة `findPatientByFullName()` — بس هاي الدالة بترجع شكل `{username, accounts}`، ما فيها أي خاصية `.id` إطلاقًا! يعني `p_patient_id` كان دايمًا `undefined` — الطلب كان يوصل للسيرفر بدون ما يحدد **أي مريض بالضبط**. الاختبار الموجود أصلًا (`tests/dsgvo-deletion.spec.js`) ما كان يكشف هالمشكلة لأنه كان يستبدل `sb.rpc` بدالة وهمية بتتجاهل الـargs تمامًا. صلحناها (`acc.id` الصحيح من `findPatientAccountAsync()`)، وأضفنا اختبار جديد يتحقق فعليًا إنه `p_patient_id` الصحيح ('p1') يوصل للـRPC، مش `undefined`.
+- **تركنا بدون تحويل عن قصد**: `realThreadFor()` (fallback بسيط بعد المحاولة الحية، ما في فايدة تحويله) و`sendPatientChatMessage()` (نفس خطر `appendRealMessage()` بـdoctor.html — بيرجع شكل `{username,accounts}` حيث `accounts` هو القائمة **الكاملة** يلي بتنكتب فوق localStorage، فأي تبسيط لشكل الإرجاع كان رح يمسح بيانات كل المرضى التانيين).
+- شغّلنا كامل الـsuite (219 اختبار، بعد إضافة اختبار البگ الجديد) — كلهم عدّوا.
+
 ## 🔍 بحث المرضى (Search-on-Demand) — PR3 من 6: حوّلنا جزء من نقاط البحث عن مريض واحد بـdoctor.html للخادم
 استكمال الخطة (PR1+PR2 بالأسفل). راجعنا كل النقاط يلي بتستخدم `findPatientRecord()`/`findPatientAccountByFullName()` بـ`doctor.html` (أكتر من 20 نقطة) وحوّلنا المجموعة يلي فعليًا ممكن تستنى نتيجة (async) بأمان.
 
