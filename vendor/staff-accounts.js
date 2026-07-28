@@ -220,6 +220,23 @@ async function savePracticeSettings(fields){
   return true;
 }
 const practiceSettingsReady=refreshPracticeSettings();
+// Without this, a practice's settings (Adresse/Telefon/"Chat aktivieren")
+// only ever refreshed on a full page reload -- one doctor toggling chat off
+// in Einstellungen left every OTHER already-open doctor.html/secretary.html
+// tab (their own or a colleague's) silently showing the old value, with
+// isChatEnabled()/getPracticeSettings() answering from stale cached data
+// until someone happened to reload. Staff already have a direct "view own
+// practice" RLS policy on `practices` (phase15_staff_practice_rls.sql), so
+// this needs no new SQL, unlike patient.html's chat-enabled flag (fetched
+// once via an RPC, since patients have no direct table access at all).
+function subscribePracticeSettingsRealtime(onChange){
+  sb.channel('practice-settings-changes')
+    .on('postgres_changes',{event:'*',schema:'public',table:'practices'},async function(){
+      await refreshPracticeSettings();
+      if(onChange) onChange();
+    })
+    .subscribe();
+}
 
 // ── Lab result inbox (supabase/phase24_lab_result_inbox.sql) ──
 // A lab's own LIS already e-mails results automatically to whatever

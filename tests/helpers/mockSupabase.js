@@ -170,7 +170,25 @@ function mockScript(seed) {
     window.supabase = {
       createClient: () => ({
         from: (t) => __builder(t),
-        channel: () => ({ on() { return this; }, subscribe() { return this; } }),
+        // Records each channel's registered postgres_changes handler (keyed
+        // by channel name) instead of just no-op'ing it, so a test can
+        // simulate a realtime event firing -- e.g.
+        // await window.__realtimeHandlers['practice-settings-changes']()
+        // -- without needing a real Postgres replication stream this
+        // sandbox has no network path to anyway. Chaining behavior (on()/
+        // subscribe() returning the same object) is unchanged for every
+        // existing caller that never looks at __realtimeHandlers.
+        channel: (name) => {
+          const ch = {
+            on(event, filter, handler) {
+              window.__realtimeHandlers = window.__realtimeHandlers || {};
+              window.__realtimeHandlers[name] = handler;
+              return ch;
+            },
+            subscribe() { return ch; },
+          };
+          return ch;
+        },
         rpc: () => Promise.resolve({ data: null, error: null }),
         // Reassignable per-test the same way sb.rpc already is (see
         // dsgvo-deletion.spec.js) -- e.g.

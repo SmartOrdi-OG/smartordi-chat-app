@@ -88,6 +88,47 @@ test('matches a patient by exact Vor-/Nachname when no SVNr is given', async ({ 
   expect(result.docs[0].category).toBe('ueberweisung');
 });
 
+// Regression test for a real bug shipped in the very first version of this
+// feature: findPatientForDocRow() used to just return the FIRST same-named
+// patient when no SVNr was given -- two different real people sharing an
+// exact full name (not rare in Austria) meant a document could silently
+// attach to the wrong person's chart. It must now refuse to guess unless a
+// Geburtsdatum column narrows the ambiguous match down to exactly one.
+test('refuses to guess between two same-named patients without a disambiguating Geburtsdatum, but matches correctly once one is given', async ({ page }) => {
+  const s = seed();
+  s.patients.push({ id: 'p3', username: 'julia.fuerst2', full_name: 'Julia Fürst', name: 'Julia', versicherung: 'ÖGK', svnr: '', dob: '1985-11-20', join_status: 'approved' });
+  await installMockSupabase(page, s, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+
+  const csv = 'Dateiname,Vorname,Nachname,Geburtsdatum\n'
+    + 'ambiguous.pdf,Julia,Fürst,\n'
+    + 'disambiguated.pdf,Julia,Fürst,05.05.1990';
+
+  const result = await page.evaluate(async (csvText) => {
+    await patientsReady;
+    docImportZipEntries = {
+      'ambiguous.pdf': { dir: false, async: async () => 'YW1iaWd1b3Vz' },
+      'disambiguated.pdf': { dir: false, async: async () => 'ZGlzYW1iaWd1YXRlZA==' },
+    };
+    document.getElementById('docImportCsvText').value = csvText;
+    proceedToDocMapping();
+    await confirmDocImport();
+    return {
+      docs: window.__store.patient_documents,
+      rowsHtml: document.getElementById('docImportResultRows').innerHTML,
+    };
+  }, csv);
+
+  expect(result.docs, 'only the disambiguated row should have been uploaded').toHaveLength(1);
+  expect(result.docs[0].patient_id).toBe('p1');
+  expect(result.docs[0].filename).toBe('disambiguated.pdf');
+  expect(result.rowsHtml).toContain('Kein passender Patient gefunden');
+});
+
 test('flags an unmatched patient, a missing ZIP entry, an oversized file and a disallowed MIME type, without uploading them', async ({ page }) => {
   await installMockSupabase(page, seed(), () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));

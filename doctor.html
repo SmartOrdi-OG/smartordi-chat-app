@@ -2419,13 +2419,13 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Adresse der Ordination</label>
-          <input type="text" id="setAdresse" value="Steingasse 6A, 4020 Linz" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({adresse:this.value})">
+          <input type="text" id="setAdresse" value="Steingasse 6A, 4020 Linz" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="saveSinglePracticeField(this,'adresse')">
           <button type="button" onclick="sendAddressChangeBroadcast()" style="margin-top:8px;padding:7px 12px;background:#f1f5f9;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;color:#0E5E56;cursor:pointer;">📍 Patient/innen über neue Adresse informieren</button>
           <div id="addressBroadcastNote" style="font-size:11px;color:#94a3b8;margin-top:6px;"></div>
         </div>
         <div>
           <label style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;display:block;margin-bottom:5px;">Telefon</label>
-          <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="savePracticeSettings({tel:this.value})">
+          <input type="text" id="setTel" value="+43 677 62439293" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:13px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="saveSinglePracticeField(this,'tel')">
         </div>
       </div>
     </div>
@@ -2438,7 +2438,7 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="dash-card-header">Praxis-Chat</div>
       <div class="dash-card-body">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#0f172a;cursor:pointer;">
-          <input type="checkbox" id="setChatEnabled" checked onchange="savePracticeSettings({chat_enabled:this.checked}).then(applyChatGating)">
+          <input type="checkbox" id="setChatEnabled" checked onchange="toggleChatEnabledSetting(this)">
           Chat aktivieren
         </label>
         <div style="font-size:11.5px;color:#64748b;margin-top:6px;line-height:1.5;">Wenn deaktiviert, sehen Patient:innen "Chat derzeit nicht verfügbar" und niemand in der Praxis (auch Sekretär:innen) kann darüber Nachrichten senden.</div>
@@ -4222,6 +4222,25 @@ function applyChatGating(){
   });
   updateChatPaneState();
 }
+// Re-applies whatever's currently in _practiceSettings (vendor/staff-
+// accounts.js) to the Einstellungen inputs + chat gating -- called once at
+// load, and again on every subscribePracticeSettingsRealtime() event so a
+// colleague's save (or this doctor's own save from another open tab) shows
+// up here without needing a manual reload. Skips overwriting Adresse/
+// Telefon while the doctor has that exact field focused, so an incoming
+// realtime update can't clobber an edit still in progress.
+function syncPracticeSettingsUI(){
+  const practiceInfo=getPracticeSettings();
+  if(practiceInfo){
+    const adresseInput=document.getElementById('setAdresse');
+    if(adresseInput && practiceInfo.adresse && document.activeElement!==adresseInput) adresseInput.value=practiceInfo.adresse;
+    const telInput=document.getElementById('setTel');
+    if(telInput && practiceInfo.tel && document.activeElement!==telInput) telInput.value=practiceInfo.tel;
+    const chatEnabledInput=document.getElementById('setChatEnabled');
+    if(chatEnabledInput) chatEnabledInput.checked=isChatEnabled();
+  }
+  applyChatGating();
+}
 
 let hiddenChatPatientIds=new Set();
 async function loadHiddenChatsForCurrentDoctor(){
@@ -4566,7 +4585,14 @@ function findPatientRecord(name){
 // exported here can be handed to another Smartordi practice and re-imported
 // directly, or just opened in Excel by any other system.
 function csvEscape(val){
-  const s=(val===null||val===undefined)?'':String(val);
+  let s=(val===null||val===undefined)?'':String(val);
+  // CSV/formula-injection mitigation (OWASP): a cell starting with =, +, -
+  // or @ is read as a formula, not text, by Excel/Sheets -- dangerous for
+  // free-text fields (Diagnosen, Krankengeschichte) that can themselves
+  // originate from an old system's CSV import, i.e. attacker-controlled
+  // text this doctor never typed. A leading single quote is the standard
+  // fix: Excel treats it as "force text" and never displays it.
+  if(/^[=+\-@]/.test(s)) s="'"+s;
   return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
 async function exportPatientCsv(){
@@ -7117,6 +7143,29 @@ async function saveSettings(){
   showToastSettings('✓ Einstellungen gespeichert');
 }
 
+// Adresse/Telefon used to call savePracticeSettings() straight from onchange
+// with no feedback at all -- a genuine save failure (e.g. a dropped
+// connection) left the input showing the doctor's new value while the
+// server still had the old one, with nothing on screen to say so.
+async function saveSinglePracticeField(inputEl,field){
+  const ok=await savePracticeSettings({[field]:inputEl.value});
+  showToast(ok?'✓ Gespeichert':'✗ Speichern fehlgeschlagen',ok?'success':'error');
+}
+// Same silent-failure gap as saveSinglePracticeField() above, plus one more:
+// the checkbox's own checked state is set by the click before this even
+// runs, so a failed save used to leave it showing the NEW (wrong, unsaved)
+// state indefinitely -- revert it back to what's actually persisted.
+async function toggleChatEnabledSetting(checkbox){
+  const ok=await savePracticeSettings({chat_enabled:checkbox.checked});
+  if(!ok){
+    checkbox.checked=!checkbox.checked;
+    showToast('✗ Speichern fehlgeschlagen','error');
+    return;
+  }
+  applyChatGating();
+  showToast('✓ Gespeichert');
+}
+
 function showToast(msg,type='success'){
   let t=document.getElementById('toast');
   if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
@@ -7525,6 +7574,7 @@ subscribeTermineRealtime(()=>{
   const allModal=document.getElementById('allTermineModal');
   if(allModal && allModal.classList.contains('show')) renderAlleTermine();
 });
+subscribePracticeSettingsRealtime(syncPracticeSettingsUI);
 // Catches a browser tab left open across midnight -- without this,
 // tuSelectedDate/the Termine-heute stat would keep showing yesterday's
 // date and count until something else happened to trigger a re-render
@@ -7626,17 +7676,8 @@ window.addEventListener('load', async function() {
   // Supabase row now, not per-device localStorage -- wait for the fetch
   // kicked off by vendor/staff-accounts.js before reading it.
   await practiceSettingsReady;
-  const practiceInfo=getPracticeSettings();
-  if(practiceInfo){
-    const adresseInput=document.getElementById('setAdresse');
-    if(adresseInput && practiceInfo.adresse) adresseInput.value=practiceInfo.adresse;
-    const telInput=document.getElementById('setTel');
-    if(telInput && practiceInfo.tel) telInput.value=practiceInfo.tel;
-    const chatEnabledInput=document.getElementById('setChatEnabled');
-    if(chatEnabledInput) chatEnabledInput.checked=isChatEnabled();
-  }
+  syncPracticeSettingsUI();
   applyPlanGating();
-  applyChatGating();
   renderPlanSettings();
   applyTrialStatus();
   handleStripeCheckoutReturn();
