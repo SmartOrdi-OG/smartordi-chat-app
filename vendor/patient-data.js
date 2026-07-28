@@ -349,6 +349,22 @@ async function findPatientByFullNameServer(name){
   cachePatientLookup(account);
   return account;
 }
+// Cache-first async lookup -- the real point of PR3/4 (see TODO.md): a call
+// site using this instead of findPatientByFullNameCached() stops depending
+// on _patients holding everyone, since a true cache miss goes live to the
+// server instead of scanning whatever _patients still has. findPatientByFull
+// NameServer() above logs-and-swallows its own errors (returns null for both
+// "genuinely no such patient" and "the request itself failed"), so falling
+// back to the cached/full-list path on any null here is always safe today --
+// _patients is still complete until a later PR bounds it, so a real
+// not-found stays not-found either way, while a masked network hiccup
+// recovers whatever this session already has instead of coming back empty.
+async function findPatientAccountAsync(name){
+  if(_lookupCache.has(name)) return _lookupCache.get(name);
+  const found=await findPatientByFullNameServer(name);
+  if(found) return found;
+  return findPatientByFullNameCached(name);
+}
 // Live substring search against the server (name OR SVNr contains the
 // query, case-insensitive) -- for a single unified search box. `%`/`_` are
 // escaped since they're ILIKE wildcards a typed query shouldn't get to use
