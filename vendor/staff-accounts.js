@@ -229,9 +229,19 @@ const practiceSettingsReady=refreshPracticeSettings();
 // practice" RLS policy on `practices` (phase15_staff_practice_rls.sql), so
 // this needs no new SQL, unlike patient.html's chat-enabled flag (fetched
 // once via an RPC, since patients have no direct table access at all).
-function subscribePracticeSettingsRealtime(onChange){
+// Filtered to this practice's own row (once known) so a multi-practice
+// deployment doesn't have every open tab, in every practice, re-fetch on
+// every OTHER practice's settings change. `practices` IS the practice row
+// (no separate practice_id column -- filter on its own `id` instead, unlike
+// every other subscribeXRealtime() here which filters a child table's
+// practice_id foreign key).
+async function subscribePracticeSettingsRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'practices'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='id=eq.'+practiceId;
   sb.channel('practice-settings-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'practices'},async function(){
+    .on('postgres_changes',opts,async function(){
       await refreshPracticeSettings();
       if(onChange) onChange();
     })
@@ -306,9 +316,15 @@ async function dismissLabResult(labResultId){
   if(error){ console.error('dismissLabResult failed',error); return false; }
   return true;
 }
-function subscribeLabResultsRealtime(onChange){
+// Practice-scoped filter -- see subscribePracticeSettingsRealtime()'s own
+// comment above.
+async function subscribeLabResultsRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'lab_result_uploads'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='practice_id=eq.'+practiceId;
   sb.channel('lab-result-uploads-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'lab_result_uploads'},function(){ if(onChange) onChange(); })
+    .on('postgres_changes',opts,function(){ if(onChange) onChange(); })
     .subscribe();
 }
 

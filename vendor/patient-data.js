@@ -211,9 +211,22 @@ async function bulkReassignTermine(patientName,fromArzt,toArzt,fromDate){
 // the one that made the write), so onChange may run once more than a
 // storage event would have; every render function this calls is a cheap,
 // idempotent full re-draw, so the extra call is harmless.
-function subscribeTermineRealtime(onChange){
+//
+// Filtered to this practice's own practice_id (once known -- see
+// practiceSettingsReady below) so a busy multi-practice deployment doesn't
+// have every open tab, in every practice, re-fetch on every OTHER
+// practice's row change in this table. termine/patient_messages/
+// patient_impfungen/lab_result_uploads all carry a real practice_id column
+// (phase12_multi_tenant_rls.sql onward) an RLS policy already scopes
+// reads/writes by -- this filter just avoids the wasted round-trip, it
+// changes no access control (RLS still applies regardless).
+async function subscribeTermineRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'termine'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='practice_id=eq.'+practiceId;
   sb.channel('termine-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'termine'},async function(){
+    .on('postgres_changes',opts,async function(){
       await refreshTermine();
       if(onChange) onChange();
     })
@@ -435,9 +448,14 @@ function debounce(fn,ms){
 // patient's own message (sent from their own device via patient.html) can
 // only ever reach a staff device through this, since it never touches
 // localStorage at all.
-function subscribeMessagesRealtime(onChange){
+// Practice-scoped filter -- see subscribeTermineRealtime()'s own comment above.
+async function subscribeMessagesRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'patient_messages'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='practice_id=eq.'+practiceId;
   sb.channel('patient-messages-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'patient_messages'},async function(){
+    .on('postgres_changes',opts,async function(){
       await refreshAllMessages();
       if(onChange) onChange();
     })
@@ -586,9 +604,14 @@ async function addImpfungEntry(patientId,entry,uploadedBy){
   (_impfungen[patientId]=_impfungen[patientId]||[]).unshift(data);
   return data;
 }
-function subscribeImpfungenRealtime(onChange){
+// Practice-scoped filter -- see subscribeTermineRealtime()'s own comment above.
+async function subscribeImpfungenRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'patient_impfungen'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='practice_id=eq.'+practiceId;
   sb.channel('patient-impfungen-changes')
-    .on('postgres_changes',{event:'*',schema:'public',table:'patient_impfungen'},async function(){
+    .on('postgres_changes',opts,async function(){
       await refreshImpfungen();
       if(onChange) onChange();
     })
