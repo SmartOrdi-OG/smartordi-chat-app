@@ -247,6 +247,36 @@ function localPatientAccountsRaw(){
 // even though RLS already keeps them within the same practice's own staff)
 // and practice_id/guardian_id (server-side/RPC-only bookkeeping).
 const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note';
+// Factored out of refreshPatients() so searchPatientsServer()/
+// findPatientByFullNameServer() below (and refreshPatients() itself) share
+// exactly one row->JS mapping instead of drifting out of sync with each other.
+function patientRowToJs(row,localAccounts){
+  const local=(localAccounts||{})[row.username]||{};
+  return Object.assign({},local,{
+    id: row.id,
+    username: row.username,
+    name: row.name,
+    fullName: row.full_name,
+    fach: row.fach||local.fach,
+    dob: row.dob||local.dob,
+    adresse: row.adresse||local.adresse,
+    tel: row.tel||local.tel,
+    email: row.email||local.email,
+    versicherung: row.versicherung||local.versicherung,
+    svnr: row.svnr||local.svnr,
+    anamnese: row.anamnese||local.anamnese,
+    // supabase/phase10_clinical_fields.sql -- these used to be local-only
+    // (set once at account creation/CSV import and never synced), so a
+    // diagnosis entered/imported on one device was invisible on any other
+    // staff device viewing the same patient's Kartei.
+    diagnosen: row.diagnosen||local.diagnosen,
+    allergie: row.allergie||local.allergie,
+    blutgruppe: row.blutgruppe||local.blutgruppe,
+    legacyHistory: row.legacy_history||local.legacyHistory,
+    joinStatus: row.join_status,
+    joinNote: row.join_note,
+  });
+}
 let _patients={};
 async function refreshPatients(){
   const {data,error}=await selectWithColumnFallback(
@@ -257,31 +287,7 @@ async function refreshPatients(){
   const localAccounts=localPatientAccountsRaw();
   const merged={};
   (data||[]).forEach(function(row){
-    const local=localAccounts[row.username]||{};
-    merged[row.username]=Object.assign({},local,{
-      id: row.id,
-      username: row.username,
-      name: row.name,
-      fullName: row.full_name,
-      fach: row.fach||local.fach,
-      dob: row.dob||local.dob,
-      adresse: row.adresse||local.adresse,
-      tel: row.tel||local.tel,
-      email: row.email||local.email,
-      versicherung: row.versicherung||local.versicherung,
-      svnr: row.svnr||local.svnr,
-      anamnese: row.anamnese||local.anamnese,
-      // supabase/phase10_clinical_fields.sql -- these used to be local-only
-      // (set once at account creation/CSV import and never synced), so a
-      // diagnosis entered/imported on one device was invisible on any other
-      // staff device viewing the same patient's Kartei.
-      diagnosen: row.diagnosen||local.diagnosen,
-      allergie: row.allergie||local.allergie,
-      blutgruppe: row.blutgruppe||local.blutgruppe,
-      legacyHistory: row.legacy_history||local.legacyHistory,
-      joinStatus: row.join_status,
-      joinNote: row.join_note,
-    });
+    merged[row.username]=patientRowToJs(row,localAccounts);
   });
   // Accounts that only exist locally so far (not yet uploaded/created in
   // Supabase -- e.g. a not-yet-migrated legacy guardian/child pair from
@@ -299,6 +305,67 @@ const patientsReady=refreshPatients();
 function findPatientByFullName(name){
   const username=Object.keys(_patients).find(function(u){ return _patients[u]&&_patients[u].fullName===name; });
   return username?{username,accounts:_patients}:null;
+}
+
+// ── Search-on-demand (supabase/phase36_patients_search_index.sql) --
+// replaces scanning the full in-memory _patients dict for search boxes/
+// single-patient lookups, which is what gets noticeably slow past ~3000
+// patients (see the console.warn above). Not yet called anywhere in this
+// PR -- purely additive, existing behavior is unchanged until later PRs
+// convert real call sites over to these. ──
+// Session-scoped cache of patients looked up individually (via search or a
+// direct name lookup) this session -- lets most existing
+// findPatientByFullName()/findPatientRecord() call sites stay SYNCHRONOUS:
+// a patient already opened/searched once resolves instantly from here on
+// every later call, only a true first-touch needs the async server
+// round-trip below. Capped so a long session doesn't grow this
+// unboundedly -- a plain Map preserves insertion order, which is all an
+// LRU-ish "drop the oldest" cap needs here.
+const _lookupCache=new Map();
+const LOOKUP_CACHE_MAX=200;
+function cachePatientLookup(account){
+  if(!account||!account.fullName) return;
+  _lookupCache.delete(account.fullName);
+  _lookupCache.set(account.fullName,account);
+  if(_lookupCache.size>LOOKUP_CACHE_MAX) _lookupCache.delete(_lookupCache.keys().next().value);
+}
+// Synchronous -- checks the session cache first, then whatever _patients
+// (today: the full list; after a later PR: a bounded recent set) still
+// holds. Returns the plain merged account object directly (or null), NOT
+// the {username,accounts} shape findPatientByFullName() above returns --
+// deliberately simpler, since nothing consumes this yet in this PR.
+function findPatientByFullNameCached(name){
+  if(_lookupCache.has(name)) return _lookupCache.get(name);
+  const found=findPatientByFullName(name);
+  return found?found.accounts[found.username]:null;
+}
+// Live exact-name lookup against the server -- the async fallback for a
+// true first-touch cache miss.
+async function findPatientByFullNameServer(name){
+  const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS).eq('full_name',name).maybeSingle();
+  if(error){ console.error('findPatientByFullNameServer failed',error); return null; }
+  if(!data) return null;
+  const account=patientRowToJs(data,localPatientAccountsRaw());
+  cachePatientLookup(account);
+  return account;
+}
+// Live substring search against the server (name OR SVNr contains the
+// query, case-insensitive) -- what every search box converts to. `%`/`_`
+// are escaped since they're ILIKE wildcards a typed query shouldn't get to
+// use as one.
+async function searchPatientsServer(query,limit){
+  const q=(query||'').trim();
+  if(!q) return [];
+  const escaped=q.replace(/[%_]/g,'\\$&');
+  const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS)
+    .or('full_name.ilike.%'+escaped+'%,svnr.ilike.%'+escaped+'%')
+    .order('full_name')
+    .limit(limit||50);
+  if(error){ console.error('searchPatientsServer failed',error); return []; }
+  const localAccounts=localPatientAccountsRaw();
+  const results=(data||[]).map(row=>patientRowToJs(row,localAccounts));
+  results.forEach(cachePatientLookup);
+  return results;
 }
 // Staff-side identity create/update -- inserts or updates just the
 // identity/contact columns; never touches temp_password/pw_hash unless

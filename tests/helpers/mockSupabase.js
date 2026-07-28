@@ -29,14 +29,60 @@ function mockScript(seed) {
   const store = Object.assign({}, EMPTY_STORE, seed);
   return `
     window.__store = ${JSON.stringify(store)};
-    function __matches(x, filters) {
-      return filters.every(([op, k, v]) => {
-        if (op === 'eq') return x[k] === v;
-        if (op === 'neq') return x[k] !== v;
-        if (op === 'gte') return x[k] >= v;
-        if (op === 'lte') return x[k] <= v;
-        return true;
-      });
+    // Turns a Postgres ILIKE pattern into a match against one value. Only
+    // handles the % wildcard the way this app actually uses it (always a
+    // simple '%term%'/'term%'/'%term' contains/starts/ends search, never a
+    // general ILIKE pattern language) and unescapes the \\% / \\_ this app's
+    // own searchPatientsServer() (vendor/patient-data.js) applies to user
+    // input before building the pattern.
+    function __ilikeMatch(val, pattern) {
+      if (val === null || val === undefined) return false;
+      let p = String(pattern);
+      const lead = p.startsWith('%'); if (lead) p = p.slice(1);
+      const trail = p.endsWith('%'); if (trail) p = p.slice(0, -1);
+      p = p.replace(/\\\\%/g, '%').replace(/\\\\_/g, '_');
+      const hay = String(val).toLowerCase(), needle = p.toLowerCase();
+      if (lead && trail) return hay.includes(needle);
+      if (trail) return hay.startsWith(needle);
+      if (lead) return hay.endsWith(needle);
+      return hay === needle;
+    }
+    function __matchesOne(x, [op, k, v]) {
+      if (op === 'eq') return x[k] === v;
+      if (op === 'neq') return x[k] !== v;
+      if (op === 'gte') return x[k] >= v;
+      if (op === 'lte') return x[k] <= v;
+      if (op === 'ilike') return __ilikeMatch(x[k], v);
+      return true;
+    }
+    // filters (from .eq()/.neq()/.../.ilike()) are ANDed together, same as
+    // real Supabase chaining. orGroup (from a single .or('a.op.b,c.op.d')
+    // call) is a separate OR-group checked on top -- a row must satisfy
+    // every AND filter AND at least one OR clause, matching how
+    // searchPatientsServer() combines a base filter set with a name-or-svnr
+    // search.
+    function __matches(x, filters, orGroup) {
+      if (!filters.every(f => __matchesOne(x, f))) return false;
+      if (orGroup && orGroup.length) return orGroup.some(f => __matchesOne(x, f));
+      return true;
+    }
+    // Applies real ordering/limiting to a result set -- previously both
+    // were silent no-ops, which was fine while nothing depended on actual
+    // row order/truncation, but a live search needs both to behave for
+    // real (limit() genuinely bounding a large table, order() genuinely
+    // surfacing the most relevant/recent matches first).
+    function __applyOrderLimit(rows, b) {
+      let out = rows;
+      if (b._orderCol) {
+        out = out.slice().sort((a, c) => {
+          const av = a[b._orderCol], cv = c[b._orderCol];
+          if (av === cv) return 0;
+          const cmp = av < cv ? -1 : 1;
+          return b._orderAsc ? cmp : -cmp;
+        });
+      }
+      if (b._limit != null) out = out.slice(0, b._limit);
+      return out;
     }
     function __builder(table) {
       const rows = window.__store[table] || (window.__store[table] = []);
@@ -47,8 +93,21 @@ function mockScript(seed) {
         neq(k, v) { b._filters.push(['neq', k, v]); return b; },
         gte(k, v) { b._filters.push(['gte', k, v]); return b; },
         lte(k, v) { b._filters.push(['lte', k, v]); return b; },
-        order() { return b; },
-        limit() { return b; },
+        ilike(k, v) { b._filters.push(['ilike', k, v]); return b; },
+        // Parses Supabase's "col.op.val,col2.op.val2" string format into an
+        // OR-group of [op,col,val] triples (searchPatientsServer()'s
+        // 'full_name.ilike.%x%,svnr.ilike.%x%' being the one real caller in
+        // this codebase). A row matches if it satisfies every AND filter
+        // above AND at least one clause here -- see __matches()'s own comment.
+        or(exprString) {
+          b._orGroup = String(exprString).split(',').map(part => {
+            const m = part.match(/^([^.]+)\.([^.]+)\.(.*)$/);
+            return m ? [m[2], m[1], m[3]] : null;
+          }).filter(Boolean);
+          return b;
+        },
+        order(col, opts) { b._orderCol = col; b._orderAsc = !(opts && opts.ascending === false); return b; },
+        limit(n) { b._limit = n; return b; },
         maybeSingle() {
           // Same window.__forceError escape hatch then() supports (see its
           // own comment below) -- previously missing here, so an
@@ -59,12 +118,12 @@ function mockScript(seed) {
             return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
           }
           if (b._pendingUpdate) {
-            const matched = rows.filter(x => __matches(x, b._filters));
+            const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
           if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
-          const r = rows.filter(x => __matches(x, b._filters));
+          const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
           return Promise.resolve({ data: r[0] || null, error: null });
         },
         single() {
@@ -72,12 +131,12 @@ function mockScript(seed) {
             return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
           }
           if (b._pendingUpdate) {
-            const matched = rows.filter(x => __matches(x, b._filters));
+            const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
           if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
-          const r = rows.filter(x => __matches(x, b._filters));
+          const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
           return Promise.resolve({ data: r[0] || null, error: null });
         },
         insert(v) {
@@ -152,16 +211,16 @@ function mockScript(seed) {
           }
           if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej); }
           if (b._pendingUpdate) {
-            const matched = rows.filter(x => __matches(x, b._filters));
+            const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched, error: null }).then(res, rej);
           }
           if (b._pendingDelete) {
-            const matched = rows.filter(x => __matches(x, b._filters));
+            const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
             matched.forEach(x => { const i = rows.indexOf(x); if (i >= 0) rows.splice(i, 1); });
             return Promise.resolve({ data: matched, error: null }).then(res, rej);
           }
-          const r = rows.filter(x => __matches(x, b._filters));
+          const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
           return Promise.resolve({ data: r, error: null }).then(res, rej);
         },
       };
