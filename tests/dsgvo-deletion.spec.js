@@ -41,6 +41,28 @@ test('immediate anonymization: server says retention already expired', async ({ 
   expect(result.modalStillOpen, 'the modal should close once anonymization is done').toBe(false);
 });
 
+test('actually passes the real patient id to the RPC, not undefined', async ({ page }) => {
+  // Regression: requestPatientDeletion() used to read found.id off
+  // findPatientByFullName()'s own {username,accounts} return shape, which
+  // has no .id property at all -- p_patient_id was silently always
+  // undefined, so this RPC never told the server WHICH patient to check.
+  // The other two tests above stub sb.rpc without asserting on its
+  // arguments at all, so they'd have passed either way.
+  await setup(page);
+  const result = await page.evaluate(async () => {
+    await patientsReady;
+    let capturedArgs = null;
+    sb.rpc = async (name, args) => {
+      if (name === 'request_patient_deletion') capturedArgs = args;
+      return { data: [{ anonymized_immediately: true, effective_or_scheduled_date: '2026-07-19' }], error: null };
+    };
+    openPatientDetail('Maria Huber', '#000', 'ÖGK', 'Addr 1', '+43 1', 'SVNR1', '1985-01-01');
+    await requestPatientDeletion();
+    return capturedArgs;
+  });
+  expect(result).toEqual({ p_patient_id: 'p1' });
+});
+
 test('scheduled deletion: server says retention is still running', async ({ page }) => {
   await setup(page);
   const result = await page.evaluate(async () => {
