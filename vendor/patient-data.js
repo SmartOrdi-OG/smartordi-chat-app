@@ -415,6 +415,22 @@ function loadMessagesForPatientCached(patientId){
   });
 }
 const allMessagesReady=refreshAllMessages();
+// Coalesces a burst of realtime events into a single call of `fn` -- a busy
+// multi-staff practice can get many patient_messages inserts within a few
+// seconds (several patients messaging around the same time), and both
+// doctor.html's renderPatientList() and secretary.html's
+// renderRealPatientRows() rebuild the ENTIRE patient list DOM from scratch
+// on every single call. Not used for a doctor/secretary's OWN direct
+// actions (sending a message should still re-render immediately) -- only
+// for realtime-triggered re-renders, where a couple hundred ms of delay is
+// invisible but skipping N-1 redundant full rebuilds during a burst isn't.
+function debounce(fn,ms){
+  let t=null;
+  return function(){
+    clearTimeout(t);
+    t=setTimeout(fn,ms);
+  };
+}
 // Replaces the old same-browser-only 'storage' event for chat -- a real
 // patient's own message (sent from their own device via patient.html) can
 // only ever reach a staff device through this, since it never touches
