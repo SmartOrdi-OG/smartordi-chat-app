@@ -1212,6 +1212,14 @@ body.windows-mode #karteiBtn{display:none;}
    practice data below the fold on mobile. A greeting still earns its
    keep, but not a quarter of the screen for it. */
 .dash-header{background:linear-gradient(135deg,#0E5E56,#12746A);padding:14px 20px;display:flex;align-items:center;gap:12px;}
+/* Einstellungen's own .dashboard wrapper has real padding on every side
+   (unlike the main Dashboard view, where .dash-header intentionally sits
+   flush edge-to-edge as a full-bleed hero banner) -- so here it reads as
+   a plain hard-cornered rectangle floating inside the page, clashing with
+   every rounded .dash-card below it. Rounded + shadowed to match those
+   cards exactly, scoped to this view only so the real Dashboard's banner
+   is untouched. */
+#view-settings .dash-header{border-radius:18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);}
 .dash-logo{width:36px;height:36px;object-fit:contain;border-radius:9px;flex-shrink:0;display:block;}
 .dash-title{font-size:11px;color:rgba(255,255,255,0.65);font-weight:600;letter-spacing:0.4px;text-transform:uppercase;line-height:1.3;}
 .dash-title span{font-family:'Fraunces',serif;color:white;font-size:16px;font-weight:700;display:block;letter-spacing:-0.3px;}
