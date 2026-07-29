@@ -11,7 +11,23 @@
 const JSZIP_CDN_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 
 function installJsZipStub() {
-  function FakeJSZip() {}
+  // The constructor-based instance API (new JSZip(); .file(name, content);
+  // .generateAsync(...)) -- used by doctor.html's exportPracticeDataZip()
+  // to WRITE a zip, the inverse of loadAsync's read path above. Records
+  // added files on window.__lastZipFiles (name -> content string) instead
+  // of producing a real zip binary, so a test can assert on exactly what
+  // was written without needing real zip compression.
+  function FakeJSZip() {
+    this._files = {};
+  }
+  FakeJSZip.prototype.file = function (name, content) {
+    this._files[name] = content;
+    window.__lastZipFiles = this._files;
+    return this;
+  };
+  FakeJSZip.prototype.generateAsync = function () {
+    return Promise.resolve(new Blob([JSON.stringify(this._files)], { type: 'application/zip' }));
+  };
   FakeJSZip.loadAsync = function () {
     const map = window.__fakeZipFiles || {};
     const files = {};

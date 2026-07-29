@@ -13,6 +13,7 @@
 <title>Smartordi.chat.eu</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
@@ -2584,6 +2585,15 @@ body.windows-mode #karteiBtn{display:none;}
       </div>
     </div>
 
+    <!-- Praxisdatenexport (Admin only) -->
+    <div class="dash-card" style="margin-bottom:20px;" id="practiceExportCard">
+      <div class="dash-card-header">Datenexport <span style="font-size:11px;color:#64748b;font-weight:400;">— alle Patientendaten dieser Ordination, strukturiert (DSGVO Art. 20)</span></div>
+      <div class="dash-card-body">
+        <p style="font-size:12px;color:#64748b;margin-bottom:12px;line-height:1.6;">Exportiert jeden Patienten dieser Ordination als eigene JSON-Datei (Stammdaten, Diagnosen, Impfungen, Behandlungsverlauf, Termine) in einem ZIP-Archiv — z.B. zur Migration in ein anderes System oder vor einer Vertragsbeendigung (siehe AGB § 6).</p>
+        <button id="exportPracticeBtn" onclick="exportPracticeDataZip()" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">📦 Alle Patientendaten exportieren (ZIP)</button>
+      </div>
+    </div>
+
     <!-- Stempel -->
     <div class="dash-card" style="margin-bottom:20px;">
       <div class="dash-card-header">Praxisstempel <span style="font-size:11px;color:#64748b;font-weight:400;">— wird automatisch auf jede Überweisung gedruckt</span></div>
@@ -4538,8 +4548,17 @@ function isCurrentUserAdmin(){
 }
 function renderTeamCard(){
   const card=document.getElementById('teamCard');
+  // Datenexport (exportPracticeDataZip()) exposes every patient's full
+  // clinical data at once -- gated to admins only, same condition/lifecycle
+  // as the Team card right above it, so both toggle together here.
+  const exportCard=document.getElementById('practiceExportCard');
+  if(!isCurrentUserAdmin()){
+    if(card) card.style.display='none';
+    if(exportCard) exportCard.style.display='none';
+    return;
+  }
+  if(exportCard) exportCard.style.display='block';
   if(!card) return;
-  if(!isCurrentUserAdmin()){ card.style.display='none'; return; }
   card.style.display='block';
   const accounts=loadStaffAccounts();
   document.getElementById('teamList').innerHTML=Object.keys(accounts).map(u=>{
@@ -4844,27 +4863,12 @@ async function exportPatientCsv(){
 // (already structured jsonb, see phase8_anamnese.sql) and the full
 // Behandlungsverlauf as actual objects, neither of which fit meaningfully
 // into a single CSV cell.
-async function exportPatientJson(){
-  const name=document.getElementById('kartei-name')?.textContent;
-  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
-  // One lookup covers both rec and account below (accountToPatientRecord()
-  // doesn't carry the raw anamnese jsonb, so this used to be two separate
-  // findPatientRecord()/findPatientAccountByFullName() calls for the same
-  // patient -- now a single findPatientAccountAsync() round-trip).
-  const demo=DEMO_PATIENTS.find(p=>p.name===name);
-  const account=demo?null:await findPatientAccountAsync(name);
-  const rec=demo||accountToPatientRecord(account);
-  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
-  await impfungenReady;
-  const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
-  await loadKarteiVisits(name);
-  const visits=VISITS.filter(v=>v.patient===name);
-  await termineReady;
-  const termine=loadTermine().filter(t=>rec.id?t.patientId===rec.id:t.patient===name);
-  const nameParts=name.trim().split(/\s+/);
-  const vorname=nameParts[0]||'';
-  const nachname=nameParts.slice(1).join(' ')||'';
-  const data={
+// Shared shape-builder -- used by exportPatientJson() (one patient at a
+// time, below) and exportPracticeDataZip() (every patient in the practice,
+// admin-only, see the Datenexport card in Einstellungen) so the two can
+// never drift out of sync with each other.
+function buildPatientExportData(rec,account,vorname,nachname,impfungen,visitRows,termine){
+  return {
     exportiertAm: new Date().toISOString(),
     stammdaten: {
       vorname, nachname,
@@ -4881,9 +4885,25 @@ async function exportPatientJson(){
     krankengeschichteFreitext: rec.legacyHistory||null,
     anamnese: (account&&account.anamnese)||null,
     impfungen: impfungen.map(i=>({name:i.vaccineName,datum:i.datum,nextDue:i.nextDue||null})),
-    behandlungsverlauf: visits.map(v=>({datum:v.date,typ:v.type,beschwerde:v.beschwerde||null,temperatur:v.temp||null,blutdruck:v.bd||null,schmerz:v.schmerz||null,diagnose:v.diag||null,notizen:v.notes||null,therapie:v.therapy||null})),
+    behandlungsverlauf: visitRows.map(r=>({datum:r.visit_date,typ:r.visit_type,beschwerde:r.beschwerde||null,temperatur:r.temperature||null,blutdruck:r.blutdruck||null,schmerz:r.schmerz||null,diagnose:r.diagnose||null,notizen:r.notes||null,therapie:r.therapy||null})),
     termine: termine.map(t=>({datum:t.date,zeit:t.time,bis:t.endTime,art:t.art,status:t.status,abgeschlossen:!!t.completedAt})),
   };
+}
+async function exportPatientJson(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.'); return; }
+  const account=await findPatientAccountAsync(name);
+  const rec=accountToPatientRecord(account);
+  if(!rec){ showToast('Patientendaten nicht gefunden.'); return; }
+  await impfungenReady;
+  const impfungen=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : [];
+  const visitRows=rec.id ? await getVisitsForPatient(rec.id) : [];
+  await termineReady;
+  const termine=loadTermine().filter(t=>rec.id?t.patientId===rec.id:t.patient===name);
+  const nameParts=name.trim().split(/\s+/);
+  const vorname=nameParts[0]||'';
+  const nachname=nameParts.slice(1).join(' ')||'';
+  const data=buildPatientExportData(rec,account,vorname,nachname,impfungen,visitRows,termine);
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -4895,6 +4915,63 @@ async function exportPatientJson(){
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('✓ Patientendaten (JSON) exportiert');
+}
+
+// Admin-only: exports EVERY patient in this practice as one ZIP (one JSON
+// file per patient, same shape as exportPatientJson() above via
+// buildPatientExportData(), plus a manifest.json) -- for DSGVO Art. 20
+// portability at practice scale, and so a practice that decides not to
+// continue with SmartOrdi has a real, complete way to take their data with
+// them within the 60-day post-termination window (see agb.html § 6).
+// Queries every patient row directly rather than loadPatients()'s bounded
+// recent-500 cache (see TODO.md's patient search-on-demand rollout) --
+// this is a rare, admin-triggered bulk action, not the hot path that
+// bound was built for, so the full unbounded fetch is appropriate here.
+async function exportPracticeDataZip(){
+  if(!isCurrentUserAdmin()){ showToast('Nur für Admins verfügbar.','error'); return; }
+  const btn=document.getElementById('exportPracticeBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Exportiere...'; }
+  try{
+    const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS);
+    if(error){ showToast('✗ Export fehlgeschlagen: '+error.message,'error'); return; }
+    await impfungenReady;
+    await termineReady;
+    const localAccounts=localPatientAccountsRaw();
+    const allTermine=loadTermine();
+    const zip=new JSZip();
+    let count=0;
+    await Promise.all((data||[]).map(async row=>{
+      const account=patientRowToJs(row,localAccounts);
+      const rec=accountToPatientRecord(account);
+      const nameParts=(rec.name||'').trim().split(/\s+/);
+      const vorname=nameParts[0]||'';
+      const nachname=nameParts.slice(1).join(' ')||'';
+      const impfungen=rec.id?loadImpfungenFor(rec.id).map(impfRowToJs):[];
+      const visitRows=rec.id?await getVisitsForPatient(rec.id):[];
+      const termine=allTermine.filter(t=>t.patientId===rec.id);
+      const exportData=buildPatientExportData(rec,account,vorname,nachname,impfungen,visitRows,termine);
+      const filename=('Patient_'+nachname+'_'+vorname+'_'+(rec.id||'')+'.json').replace(/\s+/g,'_');
+      zip.file(filename,JSON.stringify(exportData,null,2));
+      count++;
+    }));
+    const practiceName=(getPracticeSettings()&&getPracticeSettings().name)||'Praxis';
+    zip.file('manifest.json',JSON.stringify({praxis:practiceName,exportiertAm:new Date().toISOString(),anzahlPatienten:count},null,2));
+    const blob=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='Praxisdaten_Export_'+new Date().toISOString().slice(0,10)+'.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ '+count+' Patient(en) exportiert');
+  }catch(err){
+    console.error('exportPracticeDataZip failed',err);
+    showToast('✗ Export fehlgeschlagen','error');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent='📦 Alle Patientendaten exportieren (ZIP)'; }
+  }
 }
 
 // Human-readable counterpart to exportPatientCsv() -- for handing a patient's
