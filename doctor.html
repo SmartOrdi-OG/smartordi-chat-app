@@ -1888,40 +1888,25 @@ body.windows-mode #karteiBtn{display:none;}
              Tippen (datalist, kein festes <select> wie bei Impfstoffen):
              anders als bei Impfungen gibt es keine kurze, feste Liste --
              der Arzt kann trotzdem jederzeit frei jeden anderen Namen/jede
-             andere Dosierung eintippen. -->
-        <datalist id="commonMedikamente">
-          <option value="Paracetamol 500mg">
-          <option value="Ibuprofen 400mg">
-          <option value="Ibuprofen 600mg">
-          <option value="Novalgin 500mg">
-          <option value="Aspirin 100mg">
-          <option value="Amoxicillin 500mg">
-          <option value="Amoxicillin/Clavulansäure 875/125mg">
-          <option value="Cefuroxim 500mg">
-          <option value="Pantoprazol 40mg">
-          <option value="Omeprazol 20mg">
-          <option value="Metformin 850mg">
-          <option value="Ramipril 5mg">
-          <option value="Bisoprolol 5mg">
-          <option value="Simvastatin 20mg">
-          <option value="Atorvastatin 20mg">
-          <option value="L-Thyroxin 50mcg">
-          <option value="L-Thyroxin 100mcg">
-          <option value="Pregabalin 75mg">
-          <option value="Sertralin 50mg">
-          <option value="Mirtazapin 30mg">
-          <option value="Cetirizin 10mg">
-          <option value="Prednisolon 5mg">
-          <option value="Diclofenac 50mg">
-          <option value="Pantoprazol 20mg">
-          <option value="Xylometazolin Nasenspray">
-        </datalist>
+             andere Dosierung eintippen. Jedes Feld hat einen eigenen
+             Kategorie-Filter (renderMedikamentOptions()) -- die beiden
+             Datalists starten leer und werden beim Laden per JS aus
+             MEDIKAMENTE_LIST befüllt, siehe dort. -->
+        <datalist id="commonMedikamente1"></datalist>
+        <datalist id="commonMedikamente2"></datalist>
         <!-- Medikament 1 -->
         <div style="background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">Medikament 1</div>
           <div class="k-form-section">
             <div class="k-form-label">Medikament / Wirkstoff</div>
-            <input class="k-form-input" id="rz-med1" list="commonMedikamente" placeholder="z.B. Amoxicillin 500mg">
+            <select class="k-form-input" id="rz-med1-kategorie" onchange="renderMedikamentOptions('commonMedikamente1', this.value)" style="margin-bottom:6px;">
+              <option value="alle">Alle Kategorien</option>
+              <option value="schmerz">Schmerzmittel</option>
+              <option value="entzuendung">Entzündungshemmer</option>
+              <option value="allergie">Antihistaminika (Allergie)</option>
+              <option value="sonstige">Sonstige</option>
+            </select>
+            <input class="k-form-input" id="rz-med1" list="commonMedikamente1" placeholder="z.B. Amoxicillin 500mg">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1940,7 +1925,14 @@ body.windows-mode #karteiBtn{display:none;}
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 2 (optional)</div>
           <div class="k-form-section">
             <div class="k-form-label">Medikament / Wirkstoff</div>
-            <input class="k-form-input" id="rz-med2" list="commonMedikamente" placeholder="z.B. Ibuprofen 400mg">
+            <select class="k-form-input" id="rz-med2-kategorie" onchange="renderMedikamentOptions('commonMedikamente2', this.value)" style="margin-bottom:6px;">
+              <option value="alle">Alle Kategorien</option>
+              <option value="schmerz">Schmerzmittel</option>
+              <option value="entzuendung">Entzündungshemmer</option>
+              <option value="allergie">Antihistaminika (Allergie)</option>
+              <option value="sonstige">Sonstige</option>
+            </select>
+            <input class="k-form-input" id="rz-med2" list="commonMedikamente2" placeholder="z.B. Ibuprofen 400mg">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -4058,7 +4050,52 @@ document.addEventListener('DOMContentLoaded', function(){
   // actually evaluated and just printed that raw text to the page.
   var uwDate = document.getElementById('uwPreviewDatum');
   if(uwDate) uwDate.textContent = new Date().toLocaleDateString('de-AT');
+  renderMedikamentOptions('commonMedikamente1', 'alle');
+  renderMedikamentOptions('commonMedikamente2', 'alle');
 });
+
+// Rezept autocomplete list, grouped by Wirkungsklasse so the Kategorie-Filter
+// next to each Medikament-Feld can narrow it down (user request: "قائمة
+// الادوية حسب الوظيفة" -- mesken/entzündungshemmer/antihistaminika). A
+// medication can belong to more than one Kategorie (e.g. Ibuprofen is both
+// Schmerzmittel and Entzündungshemmer); 'sonstige' covers everything that
+// doesn't fit those three (antibiotics, blood pressure/cholesterol/thyroid
+// meds, etc.) so the filter still covers the full original list.
+const MEDIKAMENTE_LIST = [
+  { name:'Paracetamol 500mg', cats:['schmerz'] },
+  { name:'Ibuprofen 400mg', cats:['schmerz','entzuendung'] },
+  { name:'Ibuprofen 600mg', cats:['schmerz','entzuendung'] },
+  { name:'Novalgin 500mg', cats:['schmerz'] },
+  { name:'Diclofenac 50mg', cats:['schmerz','entzuendung'] },
+  { name:'Prednisolon 5mg', cats:['entzuendung'] },
+  { name:'Cetirizin 10mg', cats:['allergie'] },
+  { name:'Loratadin 10mg', cats:['allergie'] },
+  { name:'Desloratadin 5mg', cats:['allergie'] },
+  { name:'Aspirin 100mg', cats:['sonstige'] },
+  { name:'Amoxicillin 500mg', cats:['sonstige'] },
+  { name:'Amoxicillin/Clavulansäure 875/125mg', cats:['sonstige'] },
+  { name:'Cefuroxim 500mg', cats:['sonstige'] },
+  { name:'Pantoprazol 40mg', cats:['sonstige'] },
+  { name:'Pantoprazol 20mg', cats:['sonstige'] },
+  { name:'Omeprazol 20mg', cats:['sonstige'] },
+  { name:'Metformin 850mg', cats:['sonstige'] },
+  { name:'Ramipril 5mg', cats:['sonstige'] },
+  { name:'Bisoprolol 5mg', cats:['sonstige'] },
+  { name:'Simvastatin 20mg', cats:['sonstige'] },
+  { name:'Atorvastatin 20mg', cats:['sonstige'] },
+  { name:'L-Thyroxin 50mcg', cats:['sonstige'] },
+  { name:'L-Thyroxin 100mcg', cats:['sonstige'] },
+  { name:'Pregabalin 75mg', cats:['sonstige'] },
+  { name:'Sertralin 50mg', cats:['sonstige'] },
+  { name:'Mirtazapin 30mg', cats:['sonstige'] },
+  { name:'Xylometazolin Nasenspray', cats:['sonstige'] },
+];
+function renderMedikamentOptions(datalistId, kategorie){
+  const dl = document.getElementById(datalistId);
+  if(!dl) return;
+  const list = kategorie==='alle' ? MEDIKAMENTE_LIST : MEDIKAMENTE_LIST.filter(m=>m.cats.includes(kategorie));
+  dl.innerHTML = list.map(m=>`<option value="${m.name}">`).join('');
+}
 
 // ══ KARTEI FUNCTIONS ══
 
@@ -6910,6 +6947,10 @@ function clearRezeptForm(){
   document.getElementById('rz-dose2').value='';
   document.getElementById('rz-notes').value='';
   document.getElementById('rz-befreit').checked=false;
+  document.getElementById('rz-med1-kategorie').value='alle';
+  document.getElementById('rz-med2-kategorie').value='alle';
+  renderMedikamentOptions('commonMedikamente1','alle');
+  renderMedikamentOptions('commonMedikamente2','alle');
 }
 
 // "Der Patient ist in der Ordination" -- print it now, on paper, for the
