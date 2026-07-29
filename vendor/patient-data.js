@@ -662,23 +662,26 @@ async function getVisitsForPatient(patientId){
 // generation time and was never persisted structured. These insert
 // alongside (not instead of) that existing PDF upload, linked via
 // documentId when one was actually generated/sent that same call.
+const REZEPT_COLUMNS='id,datum,med1,packungen1,dosierung1,med2,packungen2,dosierung2,med3,packungen3,dosierung3,med4,packungen4,dosierung4,notizen,rezeptgebuehrenbefreit,document_id,created_at';
 async function createPatientRezept(patientId,fields,createdBy,documentId){
   const row={
     patient_id: patientId,
     datum: fields.datum||new Date().toISOString().slice(0,10),
     med1: fields.med1||null, packungen1: fields.pack1||null, dosierung1: fields.dose1||null,
     med2: fields.med2||null, packungen2: fields.pack2||null, dosierung2: fields.dose2||null,
+    med3: fields.med3||null, packungen3: fields.pack3||null, dosierung3: fields.dose3||null,
+    med4: fields.med4||null, packungen4: fields.pack4||null, dosierung4: fields.dose4||null,
     notizen: fields.notes||null,
     rezeptgebuehrenbefreit: !!fields.befreit,
     document_id: documentId||null,
     created_by: createdBy||null,
   };
-  const {data,error}=await sb.from('patient_rezepte').insert(row).select('id,datum,med1,packungen1,dosierung1,med2,packungen2,dosierung2,notizen,rezeptgebuehrenbefreit,document_id,created_at').single();
+  const {data,error}=await sb.from('patient_rezepte').insert(row).select(REZEPT_COLUMNS).single();
   if(error){ console.error('createPatientRezept failed',error); throw error; }
   return data;
 }
 async function getRezepteForPatient(patientId){
-  const {data,error}=await sb.from('patient_rezepte').select('id,datum,med1,packungen1,dosierung1,med2,packungen2,dosierung2,notizen,rezeptgebuehrenbefreit,document_id,created_at').eq('patient_id',patientId).order('datum',{ascending:false});
+  const {data,error}=await sb.from('patient_rezepte').select(REZEPT_COLUMNS).eq('patient_id',patientId).order('datum',{ascending:false});
   if(error){ console.error('getRezepteForPatient failed',error); return []; }
   return data||[];
 }

@@ -1894,6 +1894,8 @@ body.windows-mode #karteiBtn{display:none;}
              MEDIKAMENTE_LIST befüllt, siehe dort. -->
         <datalist id="commonMedikamente1"></datalist>
         <datalist id="commonMedikamente2"></datalist>
+        <datalist id="commonMedikamente3"></datalist>
+        <datalist id="commonMedikamente4"></datalist>
         <!-- Medikament 1 -->
         <div style="background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">Medikament 1</div>
@@ -1945,6 +1947,62 @@ body.windows-mode #karteiBtn{display:none;}
             </div>
           </div>
         </div>
+
+        <!-- Medikament 3 (optional, hidden until "+ Medikament hinzufügen") -->
+        <div id="rz-med3-block" style="display:none;background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 3 (optional)</div>
+          <div class="k-form-section">
+            <div class="k-form-label">Medikament / Wirkstoff</div>
+            <select class="k-form-input" id="rz-med3-kategorie" onchange="renderMedikamentOptions('commonMedikamente3', this.value)" style="margin-bottom:6px;">
+              <option value="alle">Alle Kategorien</option>
+              <option value="schmerz">Schmerzmittel</option>
+              <option value="entzuendung">Entzündungshemmer</option>
+              <option value="allergie">Antihistaminika (Allergie)</option>
+              <option value="sonstige">Sonstige</option>
+            </select>
+            <input class="k-form-input" id="rz-med3" list="commonMedikamente3" placeholder="z.B. Pantoprazol 40mg">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="k-form-section">
+              <div class="k-form-label">Packungsanzahl</div>
+              <input class="k-form-input" id="rz-pack3" placeholder="1" type="number" min="1" max="10" value="1">
+            </div>
+            <div class="k-form-section">
+              <div class="k-form-label">Dosierung</div>
+              <input class="k-form-input" id="rz-dose3" placeholder="1x täglich">
+            </div>
+          </div>
+        </div>
+
+        <!-- Medikament 4 (optional, hidden until "+ Medikament hinzufügen") -->
+        <div id="rz-med4-block" style="display:none;background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 4 (optional)</div>
+          <div class="k-form-section">
+            <div class="k-form-label">Medikament / Wirkstoff</div>
+            <select class="k-form-input" id="rz-med4-kategorie" onchange="renderMedikamentOptions('commonMedikamente4', this.value)" style="margin-bottom:6px;">
+              <option value="alle">Alle Kategorien</option>
+              <option value="schmerz">Schmerzmittel</option>
+              <option value="entzuendung">Entzündungshemmer</option>
+              <option value="allergie">Antihistaminika (Allergie)</option>
+              <option value="sonstige">Sonstige</option>
+            </select>
+            <input class="k-form-input" id="rz-med4" list="commonMedikamente4" placeholder="z.B. Omeprazol 20mg">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="k-form-section">
+              <div class="k-form-label">Packungsanzahl</div>
+              <input class="k-form-input" id="rz-pack4" placeholder="1" type="number" min="1" max="10" value="1">
+            </div>
+            <div class="k-form-section">
+              <div class="k-form-label">Dosierung</div>
+              <input class="k-form-input" id="rz-dose4" placeholder="1x täglich">
+            </div>
+          </div>
+        </div>
+
+        <!-- Reveals Medikament 3, then Medikament 4, then hides itself --
+             addMedikamentSlot() in doctor.html's script. -->
+        <button type="button" id="rz-add-med-btn" onclick="addMedikamentSlot()" style="width:100%;background:#f0fdf4;border:1px dashed #0E5E56;border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:#0E5E56;cursor:pointer;margin-bottom:12px;">+ Medikament hinzufügen</button>
 
         <!-- Anmerkungen -->
         <div class="k-form-section">
@@ -4052,7 +4110,21 @@ document.addEventListener('DOMContentLoaded', function(){
   if(uwDate) uwDate.textContent = new Date().toLocaleDateString('de-AT');
   renderMedikamentOptions('commonMedikamente1', 'alle');
   renderMedikamentOptions('commonMedikamente2', 'alle');
+  renderMedikamentOptions('commonMedikamente3', 'alle');
+  renderMedikamentOptions('commonMedikamente4', 'alle');
 });
+
+// "+ Medikament hinzufügen" -- Rezept only ever had 2 fixed Medikament
+// blocks; reveals Medikament 3 first, then Medikament 4, then hides itself
+// since there's no Medikament 5 slot (patient_rezepte, phase39_rezept_med3_
+// med4.sql, only has columns up to med4).
+function addMedikamentSlot(){
+  const block3=document.getElementById('rz-med3-block');
+  const block4=document.getElementById('rz-med4-block');
+  const btn=document.getElementById('rz-add-med-btn');
+  if(block3.style.display==='none'){ block3.style.display='block'; return; }
+  if(block4.style.display==='none'){ block4.style.display='block'; btn.style.display='none'; return; }
+}
 
 // Rezept autocomplete list, grouped by Wirkungsklasse so the Kategorie-Filter
 // next to each Medikament-Feld can narrow it down (user request: "قائمة
@@ -6820,10 +6892,16 @@ async function buildRezeptPdf(){
   const p = {name:rec.name||currentName, svnr:rec.svnr, dob:rec.dob?new Date(rec.dob).toLocaleDateString('de-AT'):null};
   const med1 = document.getElementById('rz-med1').value || '';
   const med2 = document.getElementById('rz-med2').value || '';
+  const med3 = document.getElementById('rz-med3').value || '';
+  const med4 = document.getElementById('rz-med4').value || '';
   const pack1 = document.getElementById('rz-pack1').value || '1';
   const pack2 = document.getElementById('rz-pack2').value || '1';
+  const pack3 = document.getElementById('rz-pack3').value || '1';
+  const pack4 = document.getElementById('rz-pack4').value || '1';
   const dose1 = document.getElementById('rz-dose1').value || '';
   const dose2 = document.getElementById('rz-dose2').value || '';
+  const dose3 = document.getElementById('rz-dose3').value || '';
+  const dose4 = document.getElementById('rz-dose4').value || '';
   const notes = document.getElementById('rz-notes').value || '';
   const befreit = document.getElementById('rz-befreit').checked;
 
@@ -6871,23 +6949,26 @@ async function buildRezeptPdf(){
   L(10,y,200,y);
   y+=4;
 
-  if(med1){
+  // Loop over all 4 possible Medikament slots (rz-med3/4 added alongside
+  // the "+ Medikament hinzufügen" button -- see addMedikamentSlot()) instead
+  // of two hardcoded blocks, so a filled-in 3rd/4th medication prints the
+  // same way as 1/2 without duplicating this block again.
+  const medikamente=[
+    {med:med1,pack:pack1,dose:dose1},
+    {med:med2,pack:pack2,dose:dose2},
+    {med:med3,pack:pack3,dose:dose3},
+    {med:med4,pack:pack4,dose:dose4},
+  ];
+  let medNum=0;
+  for(const m of medikamente){
+    if(!m.med) continue;
+    medNum++;
     doc.setFillColor(248,250,252);doc.rect(10,y,190,18,'F');
     R(10,y,190,18);
-    T('1.',13,y+7,10,'bold');
-    T(med1,20,y+7,12,'bold');
-    T('Packungen: '+pack1,20,y+14,9,'normal',[80,80,80]);
-    T('Dosierung: '+dose1,80,y+14,9,'normal',[80,80,80]);
-    y+=24;
-  }
-
-  if(med2){
-    doc.setFillColor(248,250,252);doc.rect(10,y,190,18,'F');
-    R(10,y,190,18);
-    T('2.',13,y+7,10,'bold');
-    T(med2,20,y+7,12,'bold');
-    T('Packungen: '+pack2,20,y+14,9,'normal',[80,80,80]);
-    T('Dosierung: '+dose2,80,y+14,9,'normal',[80,80,80]);
+    T(medNum+'.',13,y+7,10,'bold');
+    T(m.med,20,y+7,12,'bold');
+    T('Packungen: '+m.pack,20,y+14,9,'normal',[80,80,80]);
+    T('Dosierung: '+m.dose,80,y+14,9,'normal',[80,80,80]);
     y+=24;
   }
 
@@ -6930,12 +7011,13 @@ async function buildRezeptPdf(){
   T('Datum: '+new Date().toLocaleDateString('de-AT'),170,290,7,'normal',[150,150,150]);
 
   doc._rezeptPatientName=p.name;
-  doc._rezeptMedSummary=[med1,med2].filter(Boolean).join(', ')||'Rezept';
+  doc._rezeptMedSummary=[med1,med2,med3,med4].filter(Boolean).join(', ')||'Rezept';
   // Structured fields for createPatientRezept() (supabase/phase38_rezepte_
-  // ueberweisungen.sql) -- attached to the returned doc the same way
-  // _rezeptPatientName/_rezeptMedSummary already are, so printRezept()/
-  // sendRezeptToChat() don't need to re-read the DOM a second time.
-  doc._rezeptFields={med1,pack1,dose1,med2,pack2,dose2,notes,befreit};
+  // ueberweisungen.sql + phase39_rezept_med3_med4.sql) -- attached to the
+  // returned doc the same way _rezeptPatientName/_rezeptMedSummary already
+  // are, so printRezept()/sendRezeptToChat() don't need to re-read the DOM
+  // a second time.
+  doc._rezeptFields={med1,pack1,dose1,med2,pack2,dose2,med3,pack3,dose3,med4,pack4,dose4,notes,befreit};
   return doc;
 }
 function clearRezeptForm(){
@@ -6945,12 +7027,25 @@ function clearRezeptForm(){
   document.getElementById('rz-med2').value='';
   document.getElementById('rz-pack2').value='1';
   document.getElementById('rz-dose2').value='';
+  document.getElementById('rz-med3').value='';
+  document.getElementById('rz-pack3').value='1';
+  document.getElementById('rz-dose3').value='';
+  document.getElementById('rz-med4').value='';
+  document.getElementById('rz-pack4').value='1';
+  document.getElementById('rz-dose4').value='';
   document.getElementById('rz-notes').value='';
   document.getElementById('rz-befreit').checked=false;
   document.getElementById('rz-med1-kategorie').value='alle';
   document.getElementById('rz-med2-kategorie').value='alle';
+  document.getElementById('rz-med3-kategorie').value='alle';
+  document.getElementById('rz-med4-kategorie').value='alle';
   renderMedikamentOptions('commonMedikamente1','alle');
   renderMedikamentOptions('commonMedikamente2','alle');
+  renderMedikamentOptions('commonMedikamente3','alle');
+  renderMedikamentOptions('commonMedikamente4','alle');
+  document.getElementById('rz-med3-block').style.display='none';
+  document.getElementById('rz-med4-block').style.display='none';
+  document.getElementById('rz-add-med-btn').style.display='block';
 }
 
 // "Der Patient ist in der Ordination" -- print it now, on paper, for the

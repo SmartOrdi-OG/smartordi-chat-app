@@ -163,4 +163,14 @@ from unnest(array[
   'id','practice_id','username','pw_hash','temp_password','first_login','name','full_name','created_at','auth_user_id'
 ]) as c
 
+union all
+
+select 'patient_rezepte column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_rezepte' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'med1','packungen1','dosierung1','med2','packungen2','dosierung2',
+  'med3','packungen3','dosierung3','med4','packungen4','dosierung4'
+]) as c
+
 order by check_type, name;
