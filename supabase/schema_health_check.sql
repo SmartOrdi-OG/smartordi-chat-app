@@ -74,7 +74,9 @@ from unnest(array[
   'request_patient_deletion','validate_staff_invite','send_termine_reminders',
   'current_patient_id','current_guardian_id',
   'patient_login_precheck','guardian_login_precheck','patient_mark_password_changed',
-  'guardian_mark_password_changed','guardian_get_profile','patient_get_chat_enabled'
+  'guardian_mark_password_changed','guardian_get_profile','patient_get_chat_enabled',
+  'anonymize_patient','run_scheduled_patient_deletions',
+  'anonymize_practice','run_scheduled_practice_deletions'
 ]) as f
 
 union all
@@ -151,7 +153,7 @@ select 'practices column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='practices' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'working_hours','chat_enabled'
+  'working_hours','chat_enabled','retention_status','churn_confirmed_at','scheduled_data_deletion_date'
 ]) as c
 
 union all
