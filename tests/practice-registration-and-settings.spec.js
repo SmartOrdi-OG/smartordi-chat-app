@@ -44,6 +44,45 @@ test('register.html creates one practice with the real typed name and every fiel
   expect(after.practiceSettingsRows, 'practice_settings must never be written to').toHaveLength(0);
 });
 
+// Regression test for a gap found in the 2026-07-29 pricing restructure:
+// register.html's own "Paket wählen" plan cards were never updated when
+// PLAN_FEATURES was renamed from basic/pro/enterprise to standard/
+// enterprise/enterprise_annual -- a brand-new practice registering today
+// would have gotten a stale plan:'pro' value written to its row, a key
+// that no longer exists anywhere else in the app.
+test('register.html writes the current plan keys (standard by default, or whichever card was clicked)', async ({ page }) => {
+  await installMockSupabase(page, {});
+  await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
+  await page.waitForTimeout(1000);
+
+  const defaultPlan = await page.evaluate(() => {
+    document.getElementById('f-vorname').value = 'Sarah';
+    document.getElementById('f-nachname').value = 'Ahmed';
+    document.getElementById('f-fach').value = document.getElementById('f-fach').options[1]?.value || 'Allgemeinmedizin';
+    document.getElementById('f-ordination').value = 'Test Ordination';
+    document.getElementById('f-adresse').value = 'Teststraße 1, Linz';
+    document.getElementById('f-email').value = 'sarah@example.com';
+    document.getElementById('f-tel').value = '+43 660 1234567';
+    document.getElementById('f-password').value = 'sicheres-passwort-123';
+    document.getElementById('f-password-confirm').value = 'sicheres-passwort-123';
+    document.getElementById('cb-dsgvo').checked = true;
+    document.getElementById('cb-agb').checked = true;
+    return selectedPlan;
+  });
+  expect(defaultPlan).toBe('standard');
+
+  await page.evaluate(() => { selectPlan('enterprise_annual'); });
+  const cardSelected = await page.evaluate(() => document.getElementById('plan-enterprise_annual').classList.contains('selected'));
+  expect(cardSelected).toBe(true);
+
+  await page.evaluate(async () => {
+    await doRegister();
+    await new Promise(r => setTimeout(r, 300));
+  });
+  const savedPlan = await page.evaluate(() => window.__store.practices[0].plan);
+  expect(savedPlan).toBe('enterprise_annual');
+});
+
 test("doctor.html's practice settings read/write resolve to the caller's own practice row, in place", async ({ page }) => {
   await installMockSupabase(page, {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed', practice_id: 'prac1' }],
