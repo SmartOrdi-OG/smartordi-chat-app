@@ -157,6 +157,26 @@ async function patientGetBookingEnabled(){
   if(error){ console.error('patientGetBookingEnabled failed',error); return true; }
   return data!==false;
 }
+// supabase/phase45_patient_staff_roster.sql -- vendor/staff-accounts.js's
+// refreshStaffRoster() does a direct sb.from('staff_profiles').select('*'),
+// which relies on RLS scoping to a STAFF session (current_practice_id()
+// reads FROM staff_profiles, so it resolves to null for a real patient/
+// guardian, whose own auth.uid() has no row there at all) -- that left the
+// "Termin buchen" Arzt dropdown, and the Profil tab's "Behandelnde Ärzte"
+// row, silently empty for every real patient/guardian session (found via
+// a user report). Overwrites the SAME _staffRoster module variable
+// staff-accounts.js declares (this file loads after it, in the same page)
+// via a real SECURITY DEFINER RPC instead, so loadStaffAccounts()/
+// arztAccounts()/arztDisplayName() all keep working unchanged.
+async function patientRefreshStaffRoster(){
+  const {data,error}=await sb.rpc('patient_get_staff_roster');
+  if(error){ console.error('patientRefreshStaffRoster failed',error); return; }
+  const next={};
+  (data||[]).forEach(p=>{
+    next[p.id]={ vorname:p.vorname, nachname:p.nachname, fullName:p.full_name, role:p.role, fach:p.fach };
+  });
+  _staffRoster=next;
+}
 // Ends the real Supabase Auth session (server-side revocation of the
 // refresh token, not just a local clear) -- supabase-js's own signOut(),
 // replacing the old patient_logout RPC entirely.
