@@ -90,11 +90,30 @@ test('the signature and stamp appear on the Überweisung PDF', async ({ page }) 
   expect(images).toContain(FAKE_STEMPEL);
 });
 
+// Regression: buildRezeptPdf() got the "stamp too small/squished" fix (see
+// the test above), but buildUeberweisungPdf()/buildPatientReportPdf() were
+// never updated to match -- both still placed the stamp in the same tiny
+// 28x20mm box the Rezept fix specifically moved away from (real user
+// report: "التوقيع والختم مو بمكانهم" on a generated Überweisung).
+test('the stamp prints at a legible size on the Überweisung PDF too, not squeezed into a tiny box', async ({ page }) => {
+  await setupPage(page);
+  const stempelCall = await page.evaluate((stempelUrl) => buildUeberweisungPdf()._imageCalls.find(c => c.url === stempelUrl), FAKE_STEMPEL);
+  expect(stempelCall.w).toBeGreaterThanOrEqual(38);
+  expect(stempelCall.h).toBeGreaterThanOrEqual(28);
+});
+
 test('the signature and stamp appear on the Patientenbericht PDF', async ({ page }) => {
   await setupPage(page);
   const images = await page.evaluate(async () => (await buildPatientReportPdf({}))._images);
   expect(images).toContain(FAKE_SIG);
   expect(images).toContain(FAKE_STEMPEL);
+});
+
+test('the stamp prints at a legible size on the Patientenbericht PDF too, not squeezed into a tiny box', async ({ page }) => {
+  await setupPage(page);
+  const stempelCall = await page.evaluate(async (stempelUrl) => (await buildPatientReportPdf({}))._imageCalls.find(c => c.url === stempelUrl), FAKE_STEMPEL);
+  expect(stempelCall.w).toBeGreaterThanOrEqual(38);
+  expect(stempelCall.h).toBeGreaterThanOrEqual(28);
 });
 
 test('the signature/stamp sit above the divider line on the Patientenbericht, not overlapping earlier content (real user report: they overlapped "Verlauf")', async ({ page }) => {
