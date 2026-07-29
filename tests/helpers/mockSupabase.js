@@ -88,7 +88,11 @@ function mockScript(seed) {
       const rows = window.__store[table] || (window.__store[table] = []);
       const b = {
         _filters: [], _pendingUpdate: null, _insertedRows: null, _selectCols: null,
-        select(cols) { b._selectCols = cols; return b; },
+        // opts is Supabase's second select() argument, {count:'exact',head:true}
+        // -- used by isPatientLimitReached() (vendor/staff-accounts.js) and
+        // doctor.html's patient_messages count query. head:true means the
+        // caller only wants the count, not the actual rows.
+        select(cols, opts) { b._selectCols = cols; if (opts && opts.count) { b._countMode = opts.count; b._head = !!opts.head; } return b; },
         eq(k, v) { b._filters.push(['eq', k, v]); return b; },
         neq(k, v) { b._filters.push(['neq', k, v]); return b; },
         gte(k, v) { b._filters.push(['gte', k, v]); return b; },
@@ -220,7 +224,14 @@ function mockScript(seed) {
             matched.forEach(x => { const i = rows.indexOf(x); if (i >= 0) rows.splice(i, 1); });
             return Promise.resolve({ data: matched, error: null }).then(res, rej);
           }
-          const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
+          const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
+          const r = __applyOrderLimit(matched, b);
+          // Real Postgrest's exact count reflects every matching row
+          // regardless of limit/range, so it's taken from the pre-limit
+          // matched set, not the (possibly limit()-truncated) r.
+          if (b._countMode) {
+            return Promise.resolve({ data: b._head ? null : r, error: null, count: matched.length }).then(res, rej);
+          }
           return Promise.resolve({ data: r, error: null }).then(res, rej);
         },
       };

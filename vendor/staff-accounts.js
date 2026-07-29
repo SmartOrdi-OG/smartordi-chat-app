@@ -196,6 +196,65 @@ async function refreshPracticeSettings(){
 function getPracticeSettings(){
   return _practiceSettings;
 }
+// ══ PLAN / PAKET ══ (2026-07-29 repricing: 2 tiers -- Standard and
+// Enterprise -- plus an Enterprise-only annual billing option with a
+// discount, replacing the old Basic/Pro/Enterprise 3-tier lineup. Moved
+// here from doctor.html so secretary.html can also enforce the
+// per-plan patient-count cap and upload-size limit below, not just show
+// the plan in Einstellungen -- doctor.html and secretary.html both
+// already load this file via <script src="vendor/staff-accounts.js">.
+// patientLimit:null means unlimited. uploadMaxBytes gates every PDF/ZIP
+// upload check in doctor.html and secretary.html.
+const PLAN_FEATURES = {
+  standard: {
+    label:'Standard', price:'€149', billingPeriod:'Monat',
+    patientLimit:500, uploadMaxBytes:8*1024*1024,
+    rezeptImpfung:true, sekretaerin:true, apiIntegration:false,
+    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 500 Patienten','Chat, Kartei, Rezept & Impfpass','Uploads bis 8 MB'],
+  },
+  enterprise: {
+    label:'Enterprise', price:'€349', billingPeriod:'Monat',
+    patientLimit:null, uploadMaxBytes:25*1024*1024,
+    rezeptImpfung:true, sekretaerin:true, apiIntegration:true,
+    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Standard','Uploads bis 25 MB','API & Integration'],
+  },
+  enterprise_annual: {
+    label:'Enterprise (jährlich)', price:'€3.490', billingPeriod:'Jahr',
+    patientLimit:null, uploadMaxBytes:25*1024*1024,
+    rezeptImpfung:true, sekretaerin:true, apiIntegration:true,
+    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Enterprise','2 Monate gratis (jährliche Abrechnung)'],
+  },
+};
+function getPlan(){
+  const p=getPracticeSettings()?.plan;
+  return PLAN_FEATURES[p]?p:'standard';
+}
+function planHasFeature(feature){
+  return !!PLAN_FEATURES[getPlan()][feature];
+}
+// null means unlimited (Enterprise/Enterprise-annual).
+function getPlanPatientLimit(){
+  return PLAN_FEATURES[getPlan()].patientLimit;
+}
+function getPlanUploadMaxBytes(){
+  return PLAN_FEATURES[getPlan()].uploadMaxBytes;
+}
+function formatUploadMaxLabel(){
+  return Math.round(getPlanUploadMaxBytes()/(1024*1024))+' MB';
+}
+// Live count against the actual `patients` table (RLS already scopes this
+// to the caller's own practice, same pattern as patient_messages' own
+// count query in doctor.html) -- checked at every patient-creation entry
+// point in secretary.html before the row is actually created, since the
+// bullet-point "Bis 500 Patienten" text alone never blocked anything
+// (found in the 2026-07-29 pricing audit: no cap was enforced anywhere).
+async function isPatientLimitReached(){
+  const limit=getPlanPatientLimit();
+  if(limit===null||limit===undefined) return false;
+  const {count,error}=await sb.from('patients').select('id',{count:'exact',head:true});
+  if(error){ console.error('isPatientLimitReached: count query failed',error); return false; }
+  return (count||0)>=limit;
+}
 // Staff-side accessor for the practice's own configured Öffnungszeiten --
 // patient.html can't use this (no direct table access under RLS), it fetches
 // the same data via patient_get_working_hours() instead (vendor/patient-
