@@ -655,6 +655,61 @@ async function getVisitsForPatient(patientId){
   return data||[];
 }
 
+// ── REZEPTE / ÜBERWEISUNGEN (structured storage), supabase/
+// phase38_rezepte_ueberweisungen.sql -- until this, Rezept/Überweisung
+// existed ONLY as a generated PDF (patient_documents); the actual
+// medication/referral data lived only in doctor.html's form fields at
+// generation time and was never persisted structured. These insert
+// alongside (not instead of) that existing PDF upload, linked via
+// documentId when one was actually generated/sent that same call.
+async function createPatientRezept(patientId,fields,createdBy,documentId){
+  const row={
+    patient_id: patientId,
+    datum: fields.datum||new Date().toISOString().slice(0,10),
+    med1: fields.med1||null, packungen1: fields.pack1||null, dosierung1: fields.dose1||null,
+    med2: fields.med2||null, packungen2: fields.pack2||null, dosierung2: fields.dose2||null,
+    notizen: fields.notes||null,
+    rezeptgebuehrenbefreit: !!fields.befreit,
+    document_id: documentId||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_rezepte').insert(row).select('id,datum,med1,packungen1,dosierung1,med2,packungen2,dosierung2,notizen,rezeptgebuehrenbefreit,document_id,created_at').single();
+  if(error){ console.error('createPatientRezept failed',error); throw error; }
+  return data;
+}
+async function getRezepteForPatient(patientId){
+  const {data,error}=await sb.from('patient_rezepte').select('id,datum,med1,packungen1,dosierung1,med2,packungen2,dosierung2,notizen,rezeptgebuehrenbefreit,document_id,created_at').eq('patient_id',patientId).order('datum',{ascending:false});
+  if(error){ console.error('getRezepteForPatient failed',error); return []; }
+  return data||[];
+}
+async function createPatientUeberweisung(patientId,fields,createdBy,documentId){
+  const row={
+    patient_id: patientId,
+    datum: fields.datumIso||new Date().toISOString().slice(0,10),
+    kostentraeger: fields.kt||null,
+    status_code: fields.status||null,
+    von: fields.von||null,
+    an: fields.an||'',
+    fachrichtung: fields.fach||null,
+    dringlichkeit: fields.dring||null,
+    diagnose: fields.diag||null,
+    wegen: fields.wegen||null,
+    notizen: fields.notes||null,
+    arbeitsunfaehig: !!fields.au,
+    rezeptgebuehrenbefreit: !!fields.rez,
+    document_id: documentId||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_ueberweisungen').insert(row).select('id,datum,kostentraeger,status_code,von,an,fachrichtung,dringlichkeit,diagnose,wegen,notizen,arbeitsunfaehig,rezeptgebuehrenbefreit,document_id,created_at').single();
+  if(error){ console.error('createPatientUeberweisung failed',error); throw error; }
+  return data;
+}
+async function getUeberweisungenForPatient(patientId){
+  const {data,error}=await sb.from('patient_ueberweisungen').select('id,datum,kostentraeger,status_code,von,an,fachrichtung,dringlichkeit,diagnose,wegen,notizen,arbeitsunfaehig,rezeptgebuehrenbefreit,document_id,created_at').eq('patient_id',patientId).order('datum',{ascending:false});
+  if(error){ console.error('getUeberweisungenForPatient failed',error); return []; }
+  return data||[];
+}
+
 // ── MKP (Mutter-Kind-Pass) UNTERSUCHUNGEN -- staff-only,
 // supabase/phase4_mkp_untersuchungen.sql. Never read by patient.html: the
 // parents already carry the official physical booklet, this is just the
