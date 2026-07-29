@@ -53,7 +53,7 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child','doctor_hidden_chats'
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
 ]) as t
 
 union all
