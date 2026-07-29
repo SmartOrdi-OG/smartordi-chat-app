@@ -3823,11 +3823,27 @@ function setVaccinePrice(vaccine,value){
 function impfWarnRowHtml(d){
   const color=d.status==='ueberfaellig'?'#dc2626':'#d97706';
   const bg=d.status==='ueberfaellig'?'#fef2f2':'#fffbeb';
+  // d.patient/d.vaccine are free text (patient full_name is patient-
+  // self-registration-controlled; vaccine_name comes from CSV import or
+  // manual Kartei entry) -- this used to interpolate both straight into
+  // innerHTML AND into the unquoted-context onchange attribute below with
+  // no escaping at all, a stored-XSS hole that fires the moment any
+  // vaccination is due, on the default landing view. Found in a full
+  // app-wide security audit (2026-07-29).
   const price=loadImpfPreise()[d.vaccine]||'';
+  // jsArg (same helper other renderers in this file already use for
+  // exactly this shape of "value goes both into HTML text AND into a
+  // single-quoted JS-string argument of an inline onXXX attribute") --
+  // order matters: backslash/quote-escape FIRST for the inner JS-string
+  // context, THEN escapeHtml for the outer HTML-attribute context, so the
+  // browser's HTML-entity-decode-then-JS-eval two-step can't reconstruct a
+  // raw quote that breaks out of the JS string.
+  const jsArg=s=>escapeHtml(String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  const safeVaccine=jsArg(d.vaccine);
   return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f8fafc;">
     <div style="width:32px;height:32px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"></div>
-    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${d.patient}</div><div style="font-size:11px;color:${color};font-weight:600;">${d.vaccine} · ${d.detail}</div></div>
-    <input type="text" value="${price}" placeholder="Preis" onchange="setVaccinePrice('${d.vaccine}',this.value)" style="width:80px;padding:5px 7px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:inherit;font-size:11px;outline:none;text-align:right;flex-shrink:0;">
+    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.patient)}</div><div style="font-size:11px;color:${color};font-weight:600;">${escapeHtml(d.vaccine)} · ${escapeHtml(d.detail)}</div></div>
+    <input type="text" value="${escapeHtml(price)}" placeholder="Preis" onchange="setVaccinePrice('${safeVaccine}',this.value)" style="width:80px;padding:5px 7px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:inherit;font-size:11px;outline:none;text-align:right;flex-shrink:0;">
     <button onclick="openKarteiForVaccineCheck('${d.patient}')" style="padding:6px 10px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;color:#0E5E56;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">Kartei</button>
   </div>`;
 }
@@ -3862,7 +3878,7 @@ function patientListEntries(){
     const last=thread?thread.items[thread.items.length-1]:null;
     entries.push({
       name:a.fullName,color:'#0E5E56',
-      versicherung:a.versicherung||'',
+      versicherung:a.versicherung||'',svnr:a.svnr||'',dob:a.dob||'',
       preview:last?(last.type==='text'?last.text:last.type==='voice'?'🎤 Sprachnachricht':'📄 Dokument'):'Noch keine Nachrichten',
       time:'',badge:0,dynamic:!last,
     });
@@ -3897,7 +3913,16 @@ function patientItemHtml(p,activeName,todayTermin){
     const dotTitle=dotClass==='now'?'Behandlung läuft':dotClass==='done'?'Behandlung abgeschlossen':'Wartet auf Behandlung heute';
     dotHtml=`<span class="patient-status-dot ${dotClass}" title="${dotTitle}"></span>`;
   }
-  return `<div class="patient-item${activeClass}${transferClass}" onclick="selectPatient(this,'${nameEsc}','${p.color}','${p.versicherung}')">
+  // data-svnr/data-dob/data-versicherung: advSearch() (Erweiterte Suche)
+  // used to scrape .patient-meta's own visible textContent for a SVNr/
+  // Versicherung match -- but that div only ever holds the appointment
+  // time and unread badge, never SVNr/Versicherung, and the DOB field
+  // wasn't read by advSearch() at all -- so the whole filter panel was a
+  // silent no-op. Found in a full app-wide bug audit (2026-07-29). Kept as
+  // hidden data-* attributes rather than visible text (unlike secretary.
+  // html's mirrored feature) to match this sidebar's existing compact
+  // layout.
+  return `<div class="patient-item${activeClass}${transferClass}" data-svnr="${escapeHtml(p.svnr||'')}" data-dob="${escapeHtml(p.dob||'')}" data-versicherung="${escapeHtml(p.versicherung||'')}" onclick="selectPatient(this,'${nameEsc}','${p.color}','${p.versicherung}')">
     <div class="avatar" style="background:${p.color};">${escapeHtml(p.name[0])}${dotHtml}</div>
     <div class="patient-info"><div class="patient-name">${escapeHtml(p.name)}</div><div class="patient-preview"${p.dynamic?' style="font-style:italic;color:#94a3b8;"':''}>${escapeHtml(p.preview)}</div></div>
     <div class="patient-meta">${metaHtml}</div>
@@ -5361,7 +5386,14 @@ function switchKarteiTab(tab,btn){
     const uwa=document.getElementById('uw-patient-adresse');
     if(uwn)uwn.textContent=n;
     if(uwm)uwm.textContent=m;
-    if(uwa)uwa.textContent=DEMO_PATIENTS.find(p=>p.name===n)?.adresse||'';
+    // DEMO_PATIENTS has been a permanently empty array since the demo-
+    // patient feature was removed (line ~6600) -- this .find() always
+    // returned undefined, so every real Überweisung's "Anschrift" field
+    // silently rendered blank regardless of what's actually on file. Every
+    // other DEMO_PATIENTS.find() call site in this file already falls back
+    // to the real patient lookup; this one never did. Found in a full
+    // app-wide security/bug audit (2026-07-29).
+    if(uwa)uwa.textContent=findPatientRecord(n)?.adresse||'';
     const dt=document.getElementById('uwDatum');
     if(dt&&!dt.value)dt.value=new Date().toISOString().split('T')[0];
     // sync KT from meta
@@ -5713,10 +5745,15 @@ function advSearch(){
   const vers=(document.getElementById('adv-versicherung').value||'').toLowerCase();
   const items=document.querySelectorAll('.patient-item');
   items.forEach(item=>{
-    const meta=(item.querySelector('.patient-meta')?.textContent||'').toLowerCase();
-    const svMatch=!svnr||meta.includes(svnr);
-    const versMatch=!vers||meta.includes(vers);
-    item.style.display=(svMatch&&versMatch)?'':'none';
+    // Reads the data-svnr/data-dob/data-versicherung attributes
+    // patientItemHtml() now sets -- .patient-meta's own visible text never
+    // held this data (only the appointment time/unread badge), so this
+    // filter was previously a silent no-op. Found in a full app-wide bug
+    // audit (2026-07-29).
+    const svMatch=!svnr||(item.dataset.svnr||'').toLowerCase().includes(svnr);
+    const dobMatch=!dob||item.dataset.dob===dob;
+    const versMatch=!vers||(item.dataset.versicherung||'').toLowerCase().includes(vers);
+    item.style.display=(svMatch&&dobMatch&&versMatch)?'':'none';
   });
 }
 
@@ -7968,8 +8005,15 @@ subscribeMessagesRealtime(()=>{
   const openName=document.getElementById('chat-name')?.textContent;
   if(openName){
     const color=document.getElementById('chat-avatar')?.style.background;
+    // Same guard selectPatient() already uses for this identical hydrate-
+    // then-render race: the doctor can switch to a different patient's
+    // chat while this hydrate is still in flight, and this must not then
+    // overwrite that OTHER patient's now-open #messages with openName's
+    // content just because openName is what was open when the fetch
+    // started. Missing here was a real bug -- found in a full app-wide
+    // security/bug audit (2026-07-29).
     hydrateRealThreadFromSupabase(openName).then(function(hydrated){
-      if(hydrated) renderMessages(openName,color);
+      if(hydrated && document.getElementById('chat-name')?.textContent===openName) renderMessages(openName,color);
     });
   }
   renderPatientListDebounced();

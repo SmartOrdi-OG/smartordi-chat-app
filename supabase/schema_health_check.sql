@@ -173,4 +173,18 @@ from unnest(array[
   'med3','packungen3','dosierung3','med4','packungen4','dosierung4'
 ]) as c
 
+union all
+
+-- patient_rezepte's own sibling table (phase38) never got the same column
+-- check -- found in a full app-wide bug audit (2026-07-29). Every one of
+-- these is explicitly selected/inserted by createPatientUeberweisung()/
+-- getUeberweisungenForPatient() in vendor/patient-data.js.
+select 'patient_ueberweisungen column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_ueberweisungen' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'kostentraeger','status_code','von','an','fachrichtung','dringlichkeit',
+  'diagnose','wegen','notizen','arbeitsunfaehig','rezeptgebuehrenbefreit','document_id'
+]) as c
+
 order by check_type, name;
