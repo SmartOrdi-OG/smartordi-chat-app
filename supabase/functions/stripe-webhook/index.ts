@@ -25,7 +25,7 @@
 //                               customer.subscription.updated
 //                               customer.subscription.deleted
 //   SUPABASE_SERVICE_ROLE_KEY -- Project Settings -> API -> service_role.
-//   STRIPE_PRICE_BASIC / STRIPE_PRICE_PRO / STRIPE_PRICE_ENTERPRISE
+//   STRIPE_PRICE_STANDARD / STRIPE_PRICE_ENTERPRISE / STRIPE_PRICE_ENTERPRISE_ANNUAL
 //                          -- same values as create-checkout-session, used
 //                             here only as a fallback to infer the plan
 //                             from a session's price if metadata.plan is
@@ -45,7 +45,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const PRICE_TO_PLAN: Record<string, string> = {};
-for (const plan of ["basic", "pro", "enterprise"]) {
+for (const plan of ["standard", "enterprise", "enterprise_annual"]) {
   const priceId = Deno.env.get(`STRIPE_PRICE_${plan.toUpperCase()}`);
   if (priceId) PRICE_TO_PLAN[priceId] = plan;
 }

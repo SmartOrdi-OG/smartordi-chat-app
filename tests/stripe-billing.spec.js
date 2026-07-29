@@ -16,7 +16,7 @@ const { installMockSupabase } = require('./helpers/mockSupabase');
 function seed(practiceOverrides) {
   return {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed', practice_id: 'prac1' }],
-    practices: [Object.assign({ id: 'prac1', name: 'Musterordination', plan: 'basic', trial_start: null }, practiceOverrides)],
+    practices: [Object.assign({ id: 'prac1', name: 'Musterordination', plan: 'standard', trial_start: null }, practiceOverrides)],
   };
 }
 
@@ -32,7 +32,7 @@ async function setupPage(page, practiceOverrides) {
 }
 
 test('confirmPlanChange() redirects to the checkout URL create-checkout-session returns', async ({ page }) => {
-  await setupPage(page, { plan: 'basic' });
+  await setupPage(page, { plan: 'standard' });
   await page.route('https://checkout.stripe.com/test-session', (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: '<html>stripe checkout stub</html>' }));
 
@@ -42,33 +42,33 @@ test('confirmPlanChange() redirects to the checkout URL create-checkout-session 
   // assertion, confirming the redirect actually happened.
   await page.evaluate(() => {
     sb.functions.invoke = async () => ({ data: { url: 'https://checkout.stripe.com/test-session' }, error: null });
-    openPlanChangeModal('pro');
+    openPlanChangeModal('enterprise');
     confirmPlanChange();
   });
   await page.waitForURL('https://checkout.stripe.com/test-session');
 });
 
 test('confirmPlanChange() sends the selected plan and a same-origin return URL to create-checkout-session', async ({ page }) => {
-  await setupPage(page, { plan: 'basic' });
+  await setupPage(page, { plan: 'standard' });
   // No url in the response -> confirmPlanChange() shows an error and never
   // navigates, so it's safe to read the captured args back afterwards.
   const invokeArgs = await page.evaluate(async () => {
     let captured = null;
     sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: null, error: { message: 'no session for this test' } }; };
-    openPlanChangeModal('pro');
+    openPlanChangeModal('enterprise');
     await confirmPlanChange();
     return captured;
   });
   expect(invokeArgs.name).toBe('create-checkout-session');
-  expect(invokeArgs.opts.body.plan).toBe('pro');
+  expect(invokeArgs.opts.body.plan).toBe('enterprise');
   expect(invokeArgs.opts.body.returnUrl).toContain('doctor.html');
 });
 
 test('confirmPlanChange() shows an error and stays on the page if the Edge Function fails', async ({ page }) => {
-  await setupPage(page, { plan: 'basic' });
+  await setupPage(page, { plan: 'standard' });
   const result = await page.evaluate(async () => {
     sb.functions.invoke = async () => ({ data: null, error: { message: 'network error' } });
-    openPlanChangeModal('pro');
+    openPlanChangeModal('enterprise');
     await confirmPlanChange();
     return {
       errorVisible: document.getElementById('pcErrorMsg').style.display !== 'none',
@@ -83,7 +83,7 @@ test('confirmPlanChange() shows an error and stays on the page if the Edge Funct
 });
 
 test('manageBilling() redirects to the Billing Portal URL for an already-subscribed practice', async ({ page }) => {
-  await setupPage(page, { plan: 'pro', stripe_customer_id: 'cus_123', payment_method: { method: 'card', brand: 'visa', last4: '4242' } });
+  await setupPage(page, { plan: 'enterprise', stripe_customer_id: 'cus_123', payment_method: { method: 'card', brand: 'visa', last4: '4242' } });
   await page.route('https://billing.stripe.com/test-portal', (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: '<html>stripe portal stub</html>' }));
 
@@ -95,7 +95,7 @@ test('manageBilling() redirects to the Billing Portal URL for an already-subscri
 });
 
 test('renderPlanSettings() only offers "Zahlungsmethode verwalten" once a real Stripe customer exists', async ({ page }) => {
-  await setupPage(page, { plan: 'basic', stripe_customer_id: null, payment_method: null });
+  await setupPage(page, { plan: 'standard', stripe_customer_id: null, payment_method: null });
   const before = await page.evaluate(() => { renderPlanSettings(); return document.getElementById('planSettingsBody').innerHTML.includes('manageBilling()'); });
   expect(before, 'no Stripe customer yet -- nothing to manage').toBe(false);
 
@@ -112,12 +112,12 @@ test('renderPlanSettings() only offers "Zahlungsmethode verwalten" once a real S
 });
 
 test('handleStripeCheckoutReturn(): a successful return refreshes practice settings, shows a toast, and cleans the URL', async ({ page }) => {
-  await setupPage(page, { plan: 'basic', stripe_customer_id: null, payment_method: null });
+  await setupPage(page, { plan: 'standard', stripe_customer_id: null, payment_method: null });
   // Simulate stripe-webhook having already landed by the time the browser
   // gets redirected back -- the point of this function is to pick that up,
   // not to assume it, so seed the store as if the webhook already ran.
   await page.evaluate(() => {
-    window.__store.practices[0].plan = 'pro';
+    window.__store.practices[0].plan = 'enterprise';
     window.__store.practices[0].stripe_customer_id = 'cus_123';
     window.__store.practices[0].payment_method = { method: 'card', brand: 'visa', last4: '4242' };
     const url = new URL(window.location.href);
@@ -133,12 +133,12 @@ test('handleStripeCheckoutReturn(): a successful return refreshes practice setti
     };
   });
   expect(result.toastText).toContain('erfolgreich');
-  expect(result.plan).toBe('pro');
+  expect(result.plan).toBe('enterprise');
   expect(result.urlHasCheckoutParam, 'the ?checkout= param must be stripped so a refresh does not re-trigger this').toBe(false);
 });
 
 test('handleStripeCheckoutReturn(): a cancelled return shows a plain cancellation toast without touching practice data', async ({ page }) => {
-  await setupPage(page, { plan: 'basic' });
+  await setupPage(page, { plan: 'standard' });
   await page.evaluate(() => {
     const url = new URL(window.location.href);
     url.searchParams.set('checkout', 'cancelled');
@@ -149,5 +149,5 @@ test('handleStripeCheckoutReturn(): a cancelled return shows a plain cancellatio
     return { toastText: document.getElementById('toast')?.textContent || '', plan: getPlan() };
   });
   expect(result.toastText).toContain('abgebrochen');
-  expect(result.plan).toBe('basic');
+  expect(result.plan).toBe('standard');
 });

@@ -18,11 +18,14 @@
 //
 // Required secrets (set once via `supabase secrets set`):
 //   STRIPE_SECRET_KEY -- Stripe dashboard -> Developers -> API keys.
-//   STRIPE_PRICE_BASIC / STRIPE_PRICE_PRO / STRIPE_PRICE_ENTERPRISE
+//   STRIPE_PRICE_STANDARD / STRIPE_PRICE_ENTERPRISE / STRIPE_PRICE_ENTERPRISE_ANNUAL
 //     -- the recurring Price IDs (price_...) created for each plan in the
-//        Stripe dashboard's Product catalog. A plan with no configured
-//        price ID is rejected below rather than silently charging the
-//        wrong amount.
+//        Stripe dashboard's Product catalog (2026-07-29 repricing: the old
+//        3-tier Basic/Pro/Enterprise lineup became 2 tiers -- Standard and
+//        Enterprise -- plus an Enterprise-only annual billing option; see
+//        vendor/staff-accounts.js's PLAN_FEATURES for the matching keys).
+//        A plan with no configured price ID is rejected below rather than
+//        silently charging the wrong amount.
 // SUPABASE_URL / SUPABASE_ANON_KEY are already present in every Edge
 // Function's environment by default -- nothing to set for those.
 
@@ -30,9 +33,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY");
 const PRICE_IDS: Record<string, string | undefined> = {
-  basic: Deno.env.get("STRIPE_PRICE_BASIC"),
-  pro: Deno.env.get("STRIPE_PRICE_PRO"),
+  standard: Deno.env.get("STRIPE_PRICE_STANDARD"),
   enterprise: Deno.env.get("STRIPE_PRICE_ENTERPRISE"),
+  enterprise_annual: Deno.env.get("STRIPE_PRICE_ENTERPRISE_ANNUAL"),
 };
 
 const CORS_HEADERS = {
