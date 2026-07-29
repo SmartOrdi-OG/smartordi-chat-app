@@ -84,6 +84,65 @@ test('buildRezeptPdf() adds the Rezeptgebührenbefreit banner when checked, and 
   expect(result).toContain('Nach dem Essen einnehmen');
 });
 
+// Regression for the "+ Medikament hinzufügen" button: Medikament 3/4 are
+// hidden by default (rz-med3-block/rz-med4-block, display:none) since most
+// prescriptions only need 1-2 meds -- addMedikamentSlot() reveals them one
+// at a time, hiding the button itself once both are shown (no Medikament 5
+// slot exists).
+test('the "+ Medikament hinzufügen" button reveals Medikament 3, then 4, then hides itself', async ({ page }) => {
+  await setupPage(page);
+  const before = await page.evaluate(() => ({
+    block3: getComputedStyle(document.getElementById('rz-med3-block')).display,
+    block4: getComputedStyle(document.getElementById('rz-med4-block')).display,
+  }));
+  expect(before.block3).toBe('none');
+  expect(before.block4).toBe('none');
+
+  await page.click('#rz-add-med-btn');
+  const afterFirst = await page.evaluate(() => ({
+    block3: getComputedStyle(document.getElementById('rz-med3-block')).display,
+    block4: getComputedStyle(document.getElementById('rz-med4-block')).display,
+    btn: getComputedStyle(document.getElementById('rz-add-med-btn')).display,
+  }));
+  expect(afterFirst.block3).not.toBe('none');
+  expect(afterFirst.block4).toBe('none');
+  expect(afterFirst.btn).not.toBe('none');
+
+  await page.click('#rz-add-med-btn');
+  const afterSecond = await page.evaluate(() => ({
+    block4: getComputedStyle(document.getElementById('rz-med4-block')).display,
+    btn: getComputedStyle(document.getElementById('rz-add-med-btn')).display,
+  }));
+  expect(afterSecond.block4).not.toBe('none');
+  expect(afterSecond.btn).toBe('none');
+});
+
+test('buildRezeptPdf() includes a 3rd and 4th medication once revealed and filled in, numbered correctly', async ({ page }) => {
+  await setupPage(page);
+  await page.fill('#rz-med1', 'Amoxicillin 500mg');
+  await page.click('#rz-add-med-btn');
+  await page.click('#rz-add-med-btn');
+  await page.fill('#rz-med3', 'Pantoprazol 40mg');
+  await page.fill('#rz-dose3', '1x täglich');
+  await page.fill('#rz-med4', 'Omeprazol 20mg');
+  await page.fill('#rz-dose4', '1x täglich');
+  const result = await page.evaluate(async () => {
+    const doc = await buildRezeptPdf();
+    return { texts: doc._texts, medSummary: doc._rezeptMedSummary };
+  });
+  expect(result.medSummary).toBe('Amoxicillin 500mg, Pantoprazol 40mg, Omeprazol 20mg');
+  expect(result.texts).toContain('Amoxicillin 500mg');
+  expect(result.texts).toContain('Pantoprazol 40mg');
+  expect(result.texts).toContain('Omeprazol 20mg');
+  // Med2 was left empty (skipped) -- the printed numbering must count only
+  // filled-in slots ("1.", "2.", "3."), not the original field index
+  // ("1.", "3.", "4."), or a doctor would wonder where "2." went.
+  expect(result.texts).toContain('1.');
+  expect(result.texts).toContain('2.');
+  expect(result.texts).toContain('3.');
+  expect(result.texts).not.toContain('4.');
+});
+
 test('sendRezeptToChat() uploads the PDF as a real patient_documents row and sends a chat message referencing it', async ({ page }) => {
   await setupPage(page);
   await page.fill('#rz-med1', 'Amoxicillin 500mg');
