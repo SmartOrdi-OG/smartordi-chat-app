@@ -5459,6 +5459,19 @@ function buildUwA4(){
   `;
 }
 
+function clearUeberweisungForm(){
+  document.getElementById('uwAn').value='';
+  document.getElementById('uwDiag').value='';
+  document.getElementById('uwWegen').value='';
+  document.getElementById('uwNotes').value='';
+  document.getElementById('uwEmail').value='';
+  document.getElementById('uwDatum').value='';
+  const auNein=document.querySelector('input[name="uwAU"][value="Nein"]');
+  if(auNein) auNein.checked=true;
+  const rezNein=document.querySelector('input[name="uwRez"][value="Nein"]');
+  if(rezNein) rezNein.checked=true;
+}
+
 // "Per Chat senden" used to be a pure DOM-only animation (fake chat bubble
 // appended via setTimeout, never actually saved anywhere) -- see
 // supabase/phase9_chat_documents.sql. It now really: builds the same PDF
@@ -5497,6 +5510,15 @@ async function handleUwSend(){
         category:'ueberweisung', title:'Überweisung an '+d.an, filename, mimeType:'application/pdf', sizeBytes, base64Data,
       },session?session.username:null);
       docId=saved.id;
+      // Structured storage (supabase/phase38_rezepte_ueberweisungen.sql) --
+      // alongside the PDF upload above, not instead of it.
+      try{
+        await createPatientUeberweisung(patientId,{
+          kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+          diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
+          datumIso:uwVal('uwDatum'),
+        },session?session.username:null,docId);
+      }catch(e){ console.error('Failed to persist structured Überweisung record',e); }
     }
     const msg={dir:'out', type:'uw', text:`Überweisung → ${d.an} (${d.fach}) · ${d.dring}`,
       filename, sub:`${d.fach} · ${d.dring}`, docId, time:getTime()+' ✓'};
@@ -5507,6 +5529,7 @@ async function handleUwSend(){
     if(chatNameEl && chatNameEl.textContent===d.pName){
       renderMessages(d.pName,colorForName(d.pName));
     }
+    clearUeberweisungForm();
   }catch(e){
     console.error('Failed to send Überweisung via chat',e);
     showToast('✗ Senden über Chat fehlgeschlagen','error');
@@ -6829,15 +6852,40 @@ async function buildRezeptPdf(){
 
   doc._rezeptPatientName=p.name;
   doc._rezeptMedSummary=[med1,med2].filter(Boolean).join(', ')||'Rezept';
+  // Structured fields for createPatientRezept() (supabase/phase38_rezepte_
+  // ueberweisungen.sql) -- attached to the returned doc the same way
+  // _rezeptPatientName/_rezeptMedSummary already are, so printRezept()/
+  // sendRezeptToChat() don't need to re-read the DOM a second time.
+  doc._rezeptFields={med1,pack1,dose1,med2,pack2,dose2,notes,befreit};
   return doc;
+}
+function clearRezeptForm(){
+  document.getElementById('rz-med1').value='';
+  document.getElementById('rz-pack1').value='1';
+  document.getElementById('rz-dose1').value='';
+  document.getElementById('rz-med2').value='';
+  document.getElementById('rz-pack2').value='1';
+  document.getElementById('rz-dose2').value='';
+  document.getElementById('rz-notes').value='';
+  document.getElementById('rz-befreit').checked=false;
 }
 
 // "Der Patient ist in der Ordination" -- print it now, on paper, for the
-// patient to take with them.
+// patient to take with them. Printing a real Rezept is just as much a real
+// prescribing event as sending it via chat, so it persists the same
+// structured record (createPatientRezept()) -- just without a document_id,
+// since no PDF gets uploaded on this path.
 async function printRezept(){
   const doc=await buildRezeptPdf();
   if(!doc) return;
   openPdfAndPrint(doc.output('bloburl'));
+  const patientId=await findPatientIdByFullName(doc._rezeptPatientName);
+  if(patientId){
+    const session=currentStaffSession();
+    try{ await createPatientRezept(patientId,doc._rezeptFields,session?session.username:null,null); }
+    catch(e){ console.error('Failed to persist structured Rezept record after print',e); }
+  }
+  clearRezeptForm();
 }
 
 // "Als PDF an den Chat senden" -- same document, delivered to the patient's
@@ -6859,6 +6907,8 @@ async function sendRezeptToChat(){
         category:'rezept', title:doc._rezeptMedSummary, filename, mimeType:'application/pdf', sizeBytes, base64Data,
       },session?session.username:null);
       docId=saved.id;
+      try{ await createPatientRezept(patientId,doc._rezeptFields,session?session.username:null,docId); }
+      catch(e){ console.error('Failed to persist structured Rezept record',e); }
     }
     const msg={dir:'out', type:'uw', text:`Rezept ausgestellt · ${doc._rezeptMedSummary}`,
       filename, sub:'Kassenrezept', docId, time:getTime()+' ✓'};
@@ -6867,6 +6917,7 @@ async function sendRezeptToChat(){
     if(chatNameEl && chatNameEl.textContent===name){
       renderMessages(name,colorForName(name));
     }
+    clearRezeptForm();
     showToast('✓ Rezept per Chat gesendet');
   }catch(e){
     console.error('Failed to send Rezept via chat',e);
@@ -6976,11 +7027,27 @@ function buildUeberweisungPdf(){
 
   return doc;
 }
-function downloadUwPDF(){
+// Downloading is just as much a real referral event as sending via chat
+// (a doctor handing the printed/downloaded PDF directly to the patient),
+// so it persists the same structured record -- just without a document_id,
+// since no PDF gets uploaded to patient_documents on this path.
+async function downloadUwPDF(){
   if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
   const d = getUwData();
   const doc = buildUeberweisungPdf();
   doc.save(`Überweisung_${d.pNachname}_${d.datum.replace(/\./g,'-')}.pdf`);
+  const patientId=await findPatientIdByFullName(d.pName);
+  if(patientId){
+    const session=currentStaffSession();
+    try{
+      await createPatientUeberweisung(patientId,{
+        kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+        diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
+        datumIso:uwVal('uwDatum'),
+      },session?session.username:null,null);
+    }catch(e){ console.error('Failed to persist structured Überweisung record after download',e); }
+  }
+  clearUeberweisungForm();
 }
 
 // Real bug this used to have: nothing here ever reached Supabase -- every

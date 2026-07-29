@@ -32,6 +32,10 @@ function installJsPdfStub() {
     if (type === 'datauristring') return 'data:application/pdf;base64,ZmFrZS1wZGY=';
     return 'blob:fake-pdf-url';
   };
+  // doc.save(filename) (a real client-side download trigger) is a no-op
+  // here beyond recording what would have been downloaded -- used by
+  // downloadUwPDF().
+  FakeJsPDF.prototype.save = function (filename) { this._savedFilename = filename; return this; };
   window.jspdf = { jsPDF: FakeJsPDF };
 }
 

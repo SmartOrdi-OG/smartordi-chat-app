@@ -22,7 +22,7 @@ const EMPTY_STORE = {
   mkp_untersuchungen: [], patient_impfungen: [], staff_invites: [],
   patient_join_requests: [], patient_sessions: [], audit_log: [],
   practice_vertretung: [], patient_visits: [], patient_guardians: [], guardian_sessions: [],
-  doctor_hidden_chats: [],
+  doctor_hidden_chats: [], patient_rezepte: [], patient_ueberweisungen: [],
 };
 
 function mockScript(seed) {
