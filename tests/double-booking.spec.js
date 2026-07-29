@@ -62,7 +62,7 @@ test("confirmNewTermin() refuses to create a duplicate booking when there's a co
 
   const counts = await page.evaluate(async () => {
     await Promise.all([patientsReady, termineReady]);
-    document.getElementById('ntPatient').innerHTML = '<option>Maria Huber</option>';
+    document.getElementById('ntPatient').value = 'Maria Huber';
     document.getElementById('ntArzt').innerHTML = '<option value="u2">Dr. Jonas Berger</option>';
     document.getElementById('newTerminDate').value = '2026-08-15';
     document.getElementById('ntTime').value = '09:30';
