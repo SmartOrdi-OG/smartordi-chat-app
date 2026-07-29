@@ -76,7 +76,8 @@ from unnest(array[
   'patient_login_precheck','guardian_login_precheck','patient_mark_password_changed',
   'guardian_mark_password_changed','guardian_get_profile','patient_get_chat_enabled',
   'anonymize_patient','run_scheduled_patient_deletions',
-  'anonymize_practice','run_scheduled_practice_deletions'
+  'anonymize_practice','run_scheduled_practice_deletions',
+  'patient_get_booking_enabled'
 ]) as f
 
 union all
@@ -153,7 +154,8 @@ select 'practices column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='practices' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'working_hours','chat_enabled','retention_status','churn_confirmed_at','scheduled_data_deletion_date'
+  'working_hours','chat_enabled','retention_status','churn_confirmed_at','scheduled_data_deletion_date',
+  'online_booking_enabled'
 ]) as c
 
 union all

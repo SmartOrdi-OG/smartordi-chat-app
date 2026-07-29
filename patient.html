@@ -623,11 +623,22 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
       <div class="booking-card">
         <div class="booking-card-title" data-i18n="termine.bookTitle">Termin buchen</div>
         <div class="booking-card-sub" id="bookingDate" data-i18n="termine.chooseDay">Wählen Sie einen Tag im Kalender</div>
-        <div style="margin:10px 0;">
-          <select id="terminArzt" onchange="onArztChange()" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;"></select>
+        <!-- supabase/phase44_online_booking_toggle.sql -- practice-wide switch,
+             hides the actual booking controls in favor of this notice when
+             the practice has turned online booking off. Mirrors how
+             renderPatientMessages() handles chat_enabled. -->
+        <div id="bookingDisabledNotice" style="display:none;text-align:center;padding:14px 4px;">
+          <div style="font-size:22px;margin-bottom:6px;">🔒</div>
+          <div style="font-size:13px;font-weight:700;" data-i18n="termine.bookingDisabled">Online-Terminbuchung derzeit nicht verfügbar</div>
+          <div style="font-size:11.5px;opacity:0.85;margin-top:4px;" data-i18n="termine.bookingDisabledSub">Bitte kontaktieren Sie Ihre Ordination telefonisch.</div>
         </div>
-        <div class="time-slots" id="timeSlots"></div>
-        <button class="btn-book" onclick="bookTermin()" data-i18n="termine.confirmBtn">✓ Termin bestätigen</button>
+        <div id="bookingControls">
+          <div style="margin:10px 0;">
+            <select id="terminArzt" onchange="onArztChange()" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;"></select>
+          </div>
+          <div class="time-slots" id="timeSlots"></div>
+          <button class="btn-book" onclick="bookTermin()" data-i18n="termine.confirmBtn">✓ Termin bestätigen</button>
+        </div>
       </div>
 
       <!-- Upcoming -->
@@ -1437,6 +1448,7 @@ async function initPatientData(){
     await refreshRemoteImpfungen();
     _patientWorkingHours=await patientGetWorkingHours();
     _patientChatEnabled=await patientGetChatEnabled();
+    _patientBookingEnabled=await patientGetBookingEnabled();
   }
   const account=getCurrentAccount();
   if(!account){
@@ -1590,6 +1602,18 @@ function workingHoursForPatient(){
 // a local/demo account with no practice row to check keeps working exactly
 // as before this feature existed.
 let _patientChatEnabled=true;
+// supabase/phase44_online_booking_toggle.sql -- practice-wide "Online-
+// Terminbuchung" switch (secretary.html Terminverwaltung), fetched once
+// during initPatientData() same as _patientChatEnabled above. Defaults to
+// true for the same reason.
+let _patientBookingEnabled=true;
+function applyBookingGating(){
+  const controls=document.getElementById('bookingControls');
+  const notice=document.getElementById('bookingDisabledNotice');
+  if(!controls||!notice) return;
+  controls.style.display=_patientBookingEnabled?'':'none';
+  notice.style.display=_patientBookingEnabled?'none':'';
+}
 function loadTermine(){
   try{ const list=JSON.parse(localStorage.getItem(TERMINE_KEY)); return Array.isArray(list)?list:[]; }catch(e){ return []; }
 }
@@ -1674,6 +1698,7 @@ function renderCalendar(){
     else { el.onclick=()=>selectDay(d); }
     grid.appendChild(el);
   }
+  applyBookingGating();
 }
 
 function selectDay(d){
@@ -1724,6 +1749,9 @@ function selectSlot(el,time){
 }
 
 async function bookTermin(){
+  // Defense in depth alongside #bookingControls being hidden by
+  // applyBookingGating() when the practice has turned online booking off.
+  if(!_patientBookingEnabled){showToast(tr('termine.bookingDisabled'),'error');return;}
   if(!selectedDay){showToast(tr('termine.toast.chooseDay'));return;}
   if(!selectedArzt){showToast(tr('termine.toast.chooseArzt'));return;}
   if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
@@ -1750,9 +1778,17 @@ async function bookTermin(){
       // since only the first one means "pick a different slot," the second
       // means "you're already booked, check your own appointments."
       const isPatientAlreadyBooked=err&&err.message&&err.message.indexOf('patient_already_booked')!==-1;
-      const key=isSlotTaken?'termine.toast.slotTaken':isPatientAlreadyBooked?'termine.toast.patientAlreadyBooked':'termine.toast.noAccount';
+      // supabase/phase44_online_booking_toggle.sql -- the practice could
+      // have turned booking off in the moment between this page loading
+      // and this specific click (applyBookingGating() normally hides the
+      // controls before this is ever reachable, this is the race-condition
+      // fallback). Re-hide the controls immediately rather than leave them
+      // showing as if the click just needs retrying.
+      const isBookingDisabled=err&&err.message&&err.message.indexOf('booking_disabled')!==-1;
+      const key=isSlotTaken?'termine.toast.slotTaken':isPatientAlreadyBooked?'termine.toast.patientAlreadyBooked':isBookingDisabled?'termine.bookingDisabled':'termine.toast.noAccount';
       showToast(tr(key),'error');
       if(isSlotTaken) renderTimeSlots();
+      if(isBookingDisabled){ _patientBookingEnabled=false; applyBookingGating(); }
     }
     return;
   }

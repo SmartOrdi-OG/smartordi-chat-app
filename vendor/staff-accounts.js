@@ -271,6 +271,14 @@ function getWorkingHours(){
 function isChatEnabled(){
   return _practiceSettings?.chat_enabled!==false;
 }
+// supabase/phase44_online_booking_toggle.sql -- practice-wide "Online-
+// Terminbuchung" switch (secretary.html Terminverwaltung). Same fail-open
+// default reasoning as isChatEnabled() above: a practice row predating
+// this column has online_booking_enabled null, which must keep booking
+// working exactly as before rather than silently blocking every patient.
+function isOnlineBookingEnabled(){
+  return _practiceSettings?.online_booking_enabled!==false;
+}
 async function savePracticeSettings(fields){
   if(!_practiceSettings||!_practiceSettings.id){ console.error('savePracticeSettings called before practice settings loaded'); return false; }
   const {data,error}=await sb.from('practices').update(fields).eq('id',_practiceSettings.id).select().single();
