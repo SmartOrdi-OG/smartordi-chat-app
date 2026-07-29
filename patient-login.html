@@ -694,6 +694,11 @@ async function saveNewPw(){
   // medical history for a specific patient, so it doesn't apply to them;
   // go straight in and let them pick which child to view.
   if(local&&local.role==='guardian'){
+    // This is the LEGACY local-only guardian shadow account, not a real
+    // multi-child Supabase guardian session -- must not carry over a stale
+    // smartordi_guardian_session flag from an earlier real-guardian login
+    // in this same browser tab.
+    sessionStorage.removeItem('smartordi_guardian_session');
     sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
     window.location.href='patient.html';
     return;
@@ -743,6 +748,9 @@ async function submitAnamnese(){
     savePatients();
   }
 
+  // A real patient logging in as themselves, never a guardian -- same
+  // stale-flag defense as the local-guardian branch in saveNewPw() above.
+  sessionStorage.removeItem('smartordi_guardian_session');
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
   window.location.href='patient.html';
 }
@@ -783,6 +791,16 @@ async function selectChildProfile(childId){
   }
   const child=currentGuardianChildren.find(c=>c.id===childId);
   setPatientToken('1');
+  // Marks this browser tab's session as guardian-backed (distinct from the
+  // legacy local-only guardian shadow-account check patient.html's
+  // switchChild() already handled) -- a real guardian's own Supabase Auth
+  // session stays active the whole time (guardian_select_child() just
+  // updates which child it currently resolves to), so patient.html can use
+  // this flag to offer a REAL "Kind wechseln" that calls
+  // guardianGetChildren()/guardianSelectChild() again, instead of silently
+  // having no way to switch at all. Found in a full app-wide bug audit
+  // (2026-07-29).
+  sessionStorage.setItem('smartordi_guardian_session','1');
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient', name:(child&&child.name)||'', username:(child&&child.username)||childId}));
   window.location.href='patient.html';
 }
