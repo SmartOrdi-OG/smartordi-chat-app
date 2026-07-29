@@ -147,33 +147,33 @@ select.form-input{cursor:pointer;}
   <div class="plan-section">
     <div class="section-title">Paket wählen <span style="font-size:11px;font-weight:500;color:#64748b;">— 30 Tage kostenlos testen</span></div>
     <div class="plans">
-      <div class="plan" id="plan-basic" onclick="selectPlan('basic')">
-        <div class="plan-name">Basic</div>
-        <div class="plan-price">€49<span>/Monat</span></div>
-        <div class="plan-features">
-          <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
-          <div class="plan-feature">✓ Bis 100 Patienten</div>
-          <div class="plan-feature">✓ Chat & Kartei</div>
-          <div class="plan-feature">✓ Überweisung PDF</div>
-        </div>
-      </div>
-      <div class="plan popular selected" id="plan-pro" onclick="selectPlan('pro')">
-        <div class="plan-name">Pro</div>
-        <div class="plan-price">€99<span>/Monat</span></div>
+      <div class="plan popular selected" id="plan-standard" onclick="selectPlan('standard')">
+        <div class="plan-name">Standard</div>
+        <div class="plan-price">€149<span>/Monat</span></div>
         <div class="plan-features">
           <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
           <div class="plan-feature">✓ Bis 500 Patienten</div>
-          <div class="plan-feature">✓ Alles in Basic</div>
-          <div class="plan-feature">✓ Rezept & Impfpass</div>
+          <div class="plan-feature">✓ Chat, Kartei, Rezept & Impfpass</div>
+          <div class="plan-feature">✓ Uploads bis 8 MB</div>
         </div>
       </div>
       <div class="plan" id="plan-enterprise" onclick="selectPlan('enterprise')">
         <div class="plan-name">Enterprise</div>
-        <div class="plan-price">€249<span>/Monat</span></div>
+        <div class="plan-price">€349<span>/Monat</span></div>
         <div class="plan-features">
           <div class="plan-feature">✓ Ärzte & Sekretär/innen: unbegrenzt</div>
           <div class="plan-feature">✓ Unbegrenzte Patienten</div>
-          <div class="plan-feature">✓ Alles in Pro</div>
+          <div class="plan-feature">✓ Uploads bis 25 MB</div>
+          <div class="plan-feature">✓ API & Integration</div>
+        </div>
+      </div>
+      <div class="plan" id="plan-enterprise_annual" onclick="selectPlan('enterprise_annual')">
+        <div class="plan-name">Enterprise <span style="font-weight:600;font-size:11px;">(jährlich)</span></div>
+        <div class="plan-price">€3.490<span>/Jahr</span></div>
+        <div class="plan-features">
+          <div class="plan-feature">✓ Alles in Enterprise</div>
+          <div class="plan-feature">✓ 2 Monate gratis</div>
+          <div class="plan-feature">✓ Unbegrenzte Patienten</div>
           <div class="plan-feature">✓ API & Integration</div>
         </div>
       </div>
@@ -325,7 +325,7 @@ select.form-input{cursor:pointer;}
 </div>
 
 <script>
-let selectedPlan = 'pro';
+let selectedPlan = 'standard';
 
 function selectPlan(plan){
   selectedPlan = plan;
