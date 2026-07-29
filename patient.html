@@ -1446,6 +1446,11 @@ async function initPatientData(){
     await refreshRemoteTermine();
     await refreshRemoteDocuments();
     await refreshRemoteImpfungen();
+    // Must resolve before populateArztSelect()/renderProfilArztRows() run
+    // below -- see patientRefreshStaffRoster()'s own comment for why the
+    // plain staffRosterReady (from vendor/staff-accounts.js) always
+    // resolves to an empty roster for a real patient/guardian session.
+    await patientRefreshStaffRoster();
     _patientWorkingHours=await patientGetWorkingHours();
     _patientChatEnabled=await patientGetChatEnabled();
     _patientBookingEnabled=await patientGetBookingEnabled();
