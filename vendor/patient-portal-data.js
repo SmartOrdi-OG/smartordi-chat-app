@@ -148,6 +148,15 @@ async function patientGetChatEnabled(){
   if(error){ console.error('patientGetChatEnabled failed',error); return true; }
   return data!==false;
 }
+// supabase/phase44_online_booking_toggle.sql -- practice-wide "Online-
+// Terminbuchung" switch (secretary.html Terminverwaltung). Same fail-open
+// reasoning as patientGetChatEnabled() above: a transient read error must
+// never be the reason booking disappears for a patient.
+async function patientGetBookingEnabled(){
+  const {data,error}=await sb.rpc('patient_get_booking_enabled');
+  if(error){ console.error('patientGetBookingEnabled failed',error); return true; }
+  return data!==false;
+}
 // Ends the real Supabase Auth session (server-side revocation of the
 // refresh token, not just a local clear) -- supabase-js's own signOut(),
 // replacing the old patient_logout RPC entirely.
