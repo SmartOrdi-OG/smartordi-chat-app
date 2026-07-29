@@ -1481,7 +1481,11 @@ async function renderProfilArztRows(){
   await staffRosterReady;
   const root=document.getElementById('profilArztRows');
   if(!root) return;
-  root.innerHTML=arztAccounts().map(a=>`<div class="info-row"><span class="info-label">${tr('profil.arzt')}</span><span class="info-value">${a.fullName}${a.fach?' ('+a.fach+')':''}</span></div>`).join('');
+  // a.fullName/a.fach trace back to free-text staff-invite-acceptance
+  // fields (login.html) -- unlike every other dynamic string in this file,
+  // these went into innerHTML unescaped. Found in a full app-wide security
+  // audit (2026-07-29).
+  root.innerHTML=arztAccounts().map(a=>`<div class="info-row"><span class="info-label">${tr('profil.arzt')}</span><span class="info-value">${escapeHtml(a.fullName)}${a.fach?' ('+escapeHtml(a.fach)+')':''}</span></div>`).join('');
 }
 
 // ── Chat ──
@@ -1563,7 +1567,9 @@ async function populateArztSelect(){
   await staffRosterReady;
   const sel=document.getElementById('terminArzt');
   const doctors=arztAccounts();
-  sel.innerHTML=doctors.map(a=>`<option value="${a.username}">${a.fullName}${a.fach?' · '+a.fach:''}</option>`).join('');
+  // Same gap as renderProfilArztRows() above -- found in a full app-wide
+  // security audit (2026-07-29).
+  sel.innerHTML=doctors.map(a=>`<option value="${escapeHtml(a.username)}">${escapeHtml(a.fullName)}${a.fach?' · '+escapeHtml(a.fach):''}</option>`).join('');
   if(!selectedArzt||!doctors.some(a=>a.username===selectedArzt)) selectedArzt=doctors[0]&&doctors[0].username;
   sel.value=selectedArzt||'';
 }

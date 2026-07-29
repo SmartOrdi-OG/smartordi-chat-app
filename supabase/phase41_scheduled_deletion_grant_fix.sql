@@ -1,0 +1,33 @@
+-- ══════════════════════════════════════════════════════════════
+-- Phase 41: revoke authenticated's execute grant on
+-- run_scheduled_patient_deletions()
+--
+-- phase17_data_retention.sql granted this SECURITY DEFINER function to
+-- `authenticated` so it could be "called manually from a staff admin
+-- action until pg_cron is set up" (per its own header comment). The
+-- function itself loops over EVERY patient across EVERY practice whose
+-- scheduled_deletion_date has arrived, with no practice_id filter at all --
+-- unlike send_termine_reminders() (phase30_termine_reminders.sql), which
+-- correctly revokes all access from public/anon/authenticated since it's
+-- cron-only. Confirmed via grep across every *.html/vendor/*.js file that
+-- no in-app "admin sweep" button/call site was ever actually built -- so
+-- that grant was never used by the app, only left exposed. Any staff
+-- member at ANY practice could call
+-- sb.rpc('run_scheduled_patient_deletions') directly and irreversibly
+-- anonymize a different practice's overdue patients. Found in a full
+-- app-wide security audit (2026-07-29).
+--
+-- Revoking `authenticated` does NOT break the documented manual fallback:
+-- running this directly in the Supabase SQL editor (or via psql) executes
+-- as the database owner/operator role, not as `authenticated` -- the same
+-- way send_termine_reminders() has always been operated. pg_cron
+-- (cron.schedule(...)) also runs as the database owner and is likewise
+-- unaffected. If a future "let a practice admin trigger this from the app"
+-- feature is ever built, it needs its OWN wrapper function that
+-- re-validates the caller is an admin AND scopes the sweep to that
+-- caller's own practice_id -- not a re-grant of this function as-is.
+--
+-- Run this in the Supabase SQL editor, after phase17_data_retention.sql.
+-- ══════════════════════════════════════════════════════════════
+
+revoke all on function public.run_scheduled_patient_deletions() from public, anon, authenticated;
