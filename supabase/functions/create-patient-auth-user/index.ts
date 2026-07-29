@@ -76,15 +76,25 @@ Deno.serve(async (req: Request) => {
   const { data: userData, error: userErr } = await callerClient.auth.getUser();
   if (userErr || !userData?.user) return json({ error: "not_authenticated" }, 401);
   const { data: staff, error: staffErr } = await callerClient
-    .from("staff_profiles").select("id").eq("id", userData.user.id).maybeSingle();
+    .from("staff_profiles").select("id, practice_id").eq("id", userData.user.id).maybeSingle();
   if (staffErr || !staff) return json({ error: "caller_is_not_staff" }, 403);
 
   const table = kind === "guardian" ? "patient_guardians" : "patients";
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
   const { data: row, error: rowErr } = await admin
-    .from(table).select("auth_user_id").eq("id", id).maybeSingle();
+    .from(table).select("auth_user_id, practice_id").eq("id", id).maybeSingle();
   if (rowErr || !row) return json({ error: "row_not_found" }, 404);
+  // The service-role client bypasses RLS entirely, so this is the ONLY
+  // check standing between a staff member at Practice A and resetting the
+  // login password of a patient/guardian at Practice B -- without it,
+  // knowing/guessing a target row's id alone was enough for full account
+  // takeover (create-patient-auth-user was found, during a full app-wide
+  // security audit on 2026-07-29, to have skipped the practice_id
+  // comparison every other service-role Edge Function in this project
+  // already does -- e.g. create-checkout-session's own staff.practice_id
+  // check).
+  if (row.practice_id !== staff.practice_id) return json({ error: "forbidden" }, 403);
 
   let authUserId: string | null = row.auth_user_id;
 
