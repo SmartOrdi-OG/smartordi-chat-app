@@ -1463,7 +1463,6 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="mobile-chat-back-actions">
         <button class="mobile-action-icon" onclick="karteiPatientLoaded=true;toggleKartei()" title="Kartei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
         <button class="mobile-action-icon" onclick="showTransferModal()" title="Weiterleiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
-        <button class="mobile-action-icon teal" onclick="showCall()" title="Anrufen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
         <button class="mobile-action-icon" id="hideChatBtnMobile" onclick="toggleHideChatForCurrentPatient()" title="Chat ausblenden" style="display:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
       </div>
     </div>
@@ -1478,7 +1477,6 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="chat-actions">
         <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
         <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
-        <button class="action-btn call" onclick="showCall()">Anrufen</button>
         <button class="action-btn hide-chat-btn" id="hideChatBtn" onclick="toggleHideChatForCurrentPatient()" style="display:none;">Chat ausblenden</button>
       </div>
     </div>
@@ -1886,12 +1884,44 @@ body.windows-mode #karteiBtn{display:none;}
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;font-weight:600;" id="rz-patient-info">— Patient wählen —</div>
         </div>
 
+        <!-- Häufig verordnete Medikamente -- Autocomplete-Vorschläge beim
+             Tippen (datalist, kein festes <select> wie bei Impfstoffen):
+             anders als bei Impfungen gibt es keine kurze, feste Liste --
+             der Arzt kann trotzdem jederzeit frei jeden anderen Namen/jede
+             andere Dosierung eintippen. -->
+        <datalist id="commonMedikamente">
+          <option value="Paracetamol 500mg">
+          <option value="Ibuprofen 400mg">
+          <option value="Ibuprofen 600mg">
+          <option value="Novalgin 500mg">
+          <option value="Aspirin 100mg">
+          <option value="Amoxicillin 500mg">
+          <option value="Amoxicillin/Clavulansäure 875/125mg">
+          <option value="Cefuroxim 500mg">
+          <option value="Pantoprazol 40mg">
+          <option value="Omeprazol 20mg">
+          <option value="Metformin 850mg">
+          <option value="Ramipril 5mg">
+          <option value="Bisoprolol 5mg">
+          <option value="Simvastatin 20mg">
+          <option value="Atorvastatin 20mg">
+          <option value="L-Thyroxin 50mcg">
+          <option value="L-Thyroxin 100mcg">
+          <option value="Pregabalin 75mg">
+          <option value="Sertralin 50mg">
+          <option value="Mirtazapin 30mg">
+          <option value="Cetirizin 10mg">
+          <option value="Prednisolon 5mg">
+          <option value="Diclofenac 50mg">
+          <option value="Pantoprazol 20mg">
+          <option value="Xylometazolin Nasenspray">
+        </datalist>
         <!-- Medikament 1 -->
         <div style="background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">Medikament 1</div>
           <div class="k-form-section">
             <div class="k-form-label">Medikament / Wirkstoff</div>
-            <input class="k-form-input" id="rz-med1" placeholder="z.B. Amoxicillin 500mg">
+            <input class="k-form-input" id="rz-med1" list="commonMedikamente" placeholder="z.B. Amoxicillin 500mg">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1910,7 +1940,7 @@ body.windows-mode #karteiBtn{display:none;}
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 2 (optional)</div>
           <div class="k-form-section">
             <div class="k-form-label">Medikament / Wirkstoff</div>
-            <input class="k-form-input" id="rz-med2" placeholder="z.B. Ibuprofen 400mg">
+            <input class="k-form-input" id="rz-med2" list="commonMedikamente" placeholder="z.B. Ibuprofen 400mg">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
