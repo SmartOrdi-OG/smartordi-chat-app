@@ -353,6 +353,20 @@ function findPatientByFullNameCached(name){
   const found=findPatientByFullName(name);
   return found?found.accounts[found.username]:null;
 }
+// A cache entry is keyed by fullName, but an identity EDIT is keyed by
+// username -- and full_name itself might be exactly what's being
+// corrected. Without this, a patient looked up once this session (search,
+// Kartei open, ...) before an edit kept returning the STALE pre-edit
+// identity (SVNR/insurance/etc.) for the rest of the session from every
+// findPatientByFullNameCached()/findPatientAccountAsync() call site --
+// including onto a freshly generated Rezept/Überweisung/Patientenbericht
+// after the mistake it was meant to fix was supposedly already corrected.
+// Found in a full app-wide bug audit (2026-07-29).
+function invalidateLookupCacheForUsername(username){
+  for(const [key,account] of _lookupCache){
+    if(account&&account.username===username) _lookupCache.delete(key);
+  }
+}
 // Live exact-name lookup against the server -- the async fallback for a
 // true first-touch cache miss.
 async function findPatientByFullNameServer(name){
@@ -427,7 +441,9 @@ async function upsertPatientIdentity(username,fields){
   const row=Object.assign({username},fields);
   const {data,error}=await sb.from('patients').upsert(row,{onConflict:'username'}).select().single();
   if(error){ console.error('upsertPatientIdentity failed',error); throw error; }
+  invalidateLookupCacheForUsername(username);
   await refreshPatients();
+  cachePatientLookup(patientRowToJs(data,localPatientAccountsRaw()));
   return data;
 }
 
