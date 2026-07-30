@@ -310,9 +310,19 @@ function tryQrLogin(){
 // patient staff already created an account for). Jumps straight to
 // "Anmeldung beantragen" instead of making a brand-new patient find and
 // click that link on the normal login screen first.
+// supabase/phase19_patient_join_requests_rls.sql's insert trigger only
+// falls back to "the oldest practice in the database" when practice_id is
+// left null -- this captures the real practice id secretary.html's QR code
+// now embeds (/patient-register/<practiceId>, see vercel.json's matching
+// rewrite) so submitJoinRequest() below can send it explicitly instead of
+// silently falling through to that placeholder. Stays null for an older,
+// already-printed QR code with no id in it -- same fallback as before for
+// those, not a regression.
+let joinRequestPracticeId=null;
 function tryPatientRegisterDeepLink(){
   const params=new URLSearchParams(window.location.search);
   if(!params.has('patient-register')) return;
+  joinRequestPracticeId=params.get('practice')||null;
   history.replaceState(null,'',window.location.pathname);
   showRequestScreen();
 }
@@ -605,6 +615,7 @@ async function submitJoinRequest(){
   // validate this patient's own chosen password once approved.
   const {error}=await sb.from('patient_join_requests').insert({
     username, vorname, nachname, full_name:fullName, adresse, svnr, temp_password:pw,
+    practice_id:joinRequestPracticeId,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){

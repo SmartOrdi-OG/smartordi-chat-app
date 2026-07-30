@@ -41,3 +41,44 @@ test('the dashboard QR code and its printable poster both encode the /patient-re
   expect(state.printSrc, 'print poster QR must be dynamically rendered, not the stale static PNG').toMatch(/^data:image/);
   expect(state.printUrlText).toContain('/patient-register');
 });
+
+// Regression test for the practice_id-misrouting bug found in a
+// launch-readiness review (2026-07-30): the QR/deep link used to be the
+// exact same bare /patient-register URL for every practice, so
+// patient_join_requests's insert trigger always fell back to "the oldest
+// practice in the whole database" (supabase/phase19_patient_join_requests_
+// rls.sql) regardless of which practice's poster/QR a patient actually
+// scanned. The URL must now embed this practice's own real id as a path
+// segment (/patient-register/<id>, matching vercel.json's rewrite). The
+// encoded QR image itself isn't a recoverable string, so this re-renders a
+// throwaway image with the URL this test independently expects and
+// compares the resulting data: URL -- qrcode.js is deterministic, so an
+// identical string always produces an identical image.
+test('the QR codes embed this practice\'s own real id, not just the bare /patient-register link', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practices: [{ id: 'practice-real-uuid-42', name: 'Test Praxis' }],
+    practice_settings: [{ id: true }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+  const state = await page.evaluate(() => {
+    const practiceId = getPracticeSettings()?.id;
+    const expectedUrl = PATIENT_PORTAL_ORIGIN + '/patient-register' + (practiceId ? ('/' + practiceId) : '');
+    const tmp = document.createElement('img');
+    renderQrInto(tmp, expectedUrl);
+    return {
+      practiceId,
+      expectedSrc: tmp.src,
+      dashSrc: document.getElementById('generalQrImg')?.getAttribute('src'),
+      printSrc: document.getElementById('generalPrintQrImg')?.getAttribute('src'),
+    };
+  });
+  expect(state.practiceId, 'practice settings must actually be loaded for this to be a meaningful test').toBe('practice-real-uuid-42');
+  expect(state.dashSrc).toBe(state.expectedSrc);
+  expect(state.printSrc).toBe(state.expectedSrc);
+});
