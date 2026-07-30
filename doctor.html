@@ -4229,6 +4229,22 @@ function getPaymentMethod(){
 // client-side "just set the plan" path anymore (there used to be one,
 // setPlan(), which this replaces; keeping it around would have let anyone
 // with devtools grant themselves a paid plan for free).
+//
+// Real bug found in a launch-readiness review (2026-07-30): Checkout's
+// `mode: "subscription"` ALWAYS creates a brand-new subscription, even for
+// a customer who already has one -- confirmPlanChange() used to call
+// create-checkout-session unconditionally for every plan change, so a
+// practice's SECOND (or later) plan switch silently left it with two
+// active Stripe subscriptions, both billing. An already-subscribed
+// practice must go through the Billing Portal's own "confirm subscription
+// update" flow instead (supabase/functions/create-billing-portal-session),
+// which changes its one existing subscription's price directly. A
+// brand-new subscriber (no subscription yet) still goes through Checkout
+// exactly as before.
+function hasActiveStripeSubscription(){
+  const s=getPracticeSettings();
+  return !!(s?.stripe_subscription_id) && s?.subscription_status!=='canceled' && s?.subscription_status!=='incomplete_expired';
+}
 let pendingPlan=null;
 function openPlanChangeModal(plan,force){
   if(!force && plan===getPlan()){ showToast('Dieses Paket ist bereits aktiv.'); return; }
@@ -4245,8 +4261,9 @@ async function confirmPlanChange(){
   errEl.style.display='none';
   btn.disabled=true;
   btn.textContent='Wird weitergeleitet...';
+  const fnName=hasActiveStripeSubscription()?'create-billing-portal-session':'create-checkout-session';
   try{
-    const {data,error}=await sb.functions.invoke('create-checkout-session',{
+    const {data,error}=await sb.functions.invoke(fnName,{
       body:{plan:pendingPlan, returnUrl:window.location.origin+window.location.pathname},
     });
     if(error||!data?.url){
@@ -4258,7 +4275,7 @@ async function confirmPlanChange(){
     }
     window.location.href=data.url;
   }catch(e){
-    console.error('create-checkout-session failed',e);
+    console.error(fnName+' failed',e);
     errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.';
     errEl.style.display='block';
     btn.disabled=false;

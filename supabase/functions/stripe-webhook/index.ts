@@ -134,8 +134,20 @@ Deno.serve(async (req: Request) => {
     if (error) console.error("Failed to apply checkout.session.completed", error);
   } else if (event.type === "customer.subscription.updated") {
     const sub = event.data.object;
+    // deno-lint-ignore no-explicit-any
+    const update: Record<string, any> = { subscription_status: sub.status };
+    // A plan switch for an already-subscribed practice goes through the
+    // Billing Portal's "confirm subscription update" flow (see
+    // create-billing-portal-session), not checkout.session.completed --
+    // this event is the ONLY place that switch is ever reported back, so it
+    // must also update `plan`, not just subscription_status, or the app
+    // would keep enforcing the OLD plan's patient-count/upload-size limits
+    // after a real, successfully-billed switch.
+    const priceId = sub.items?.data?.[0]?.price?.id;
+    const plan = priceId && PRICE_TO_PLAN[priceId];
+    if (plan) update.plan = plan;
     const { error } = await supabase.from("practices")
-      .update({ subscription_status: sub.status }).eq("stripe_subscription_id", sub.id);
+      .update(update).eq("stripe_subscription_id", sub.id);
     if (error) console.error("Failed to apply customer.subscription.updated", error);
   } else if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object;
