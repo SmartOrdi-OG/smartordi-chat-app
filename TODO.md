@@ -1,5 +1,15 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — تالت جزء: تبويب المستندات (Dokumente) صار ملف مستقل
+
+استمرار لنفس الجهد (بعد `vendor/kartei-visits.js` و`vendor/kartei-mkp.js`).
+
+- **`vendor/kartei-documents.js`** (جديد): نقلنا `DOK_KATEGORIE_LABEL`, `renderKarteiDocuments`, `karteiDokRowHtml`, `uploadKarteiDocument`, `downloadKarteiDocument`, `deleteKarteiDocument` — بدون أي تغيير بالمنطق.
+- **`fileToBase64()`/`formatFileSize()` ضلوا بـ`doctor.html`** — مو جزء من هالتبويب تحديدًا، مستخدمين كمان بمرفقات الشات وبإرسال تقرير الكارتيه وبرفع مستندات المخبر.
+- `doctor.html`: صار أصغر بحوالي 115 سطر، وضفنا `<script src="vendor/kartei-documents.js">`.
+- تأكدنا عبر `node --check`، واختبارات مستهدفة (`kartei-document-upload.spec.js`, `kartei-report-send.spec.js`, `plan-based-pricing-limits.spec.js` — 28/28)، وكامل الـsuite (302 اختبار) بعدها.
+- **التالي**: المخبر (Labor).
+
 ## 🧹 تفكيك `doctor.html` — ثاني جزء: فحوصات MKP صارت ملف مستقل
 
 استمرار لنفس الجهد التدريجي (بعد `vendor/kartei-visits.js`). هالمرة تبويب MKP (مرضى الأطفال) بالكامل.
