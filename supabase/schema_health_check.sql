@@ -53,7 +53,8 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
+  'client_error_log'
 ]) as t
 
 union all
@@ -225,7 +226,8 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
+  'client_error_log'
 ]) as t
 
 union all
@@ -246,7 +248,8 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
+  'client_error_log'
 ]) as t
 
 union all
@@ -259,10 +262,16 @@ union all
 -- since a self-registering visitor has no session at all to scope by) as
 -- long as ANOTHER policy on the same table (its staff SELECT/UPDATE) does
 -- scope -- this checks per-TABLE ("does at least one policy scope"), not
--- per-policy, for exactly that reason.
+-- per-policy, for exactly that reason. client_error_log is a second,
+-- different kind of exception: it's INSERT-only, and its one policy is
+-- deliberately `with check (true)` (phase46_client_error_log.sql) since an
+-- insert can't be trusted to supply its own correct practice_id anyway --
+-- scoping there is enforced by the trg_set_practice_id trigger server-side,
+-- not by the policy's own with_check text, which this heuristic can't see.
 select 'RLS actually scopes access' as check_type, t as name,
   case
     when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
+    when t='client_error_log' then 'N/A -- insert-only with a deliberately unscoped with_check; scoping is enforced by the trg_set_practice_id trigger, not this policy (see phase46_client_error_log.sql)'
     when not exists (select 1 from pg_policies where schemaname='public' and tablename=t)
       then 'MISSING (see the RLS policy exists check above)'
     when exists (
@@ -276,7 +285,8 @@ from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
-  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
+  'client_error_log'
 ]) as t
 
 order by check_type, name;
