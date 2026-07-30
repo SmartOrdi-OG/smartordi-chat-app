@@ -109,6 +109,35 @@ from (values
 
 union all
 
+-- 2c) Deployed function BODY, not just its signature -- closes the gap 2b's
+-- own comment admits it can't ("cannot detect a function whose signature
+-- never changed but whose internal logic is still an older version").
+-- Found a live need for this the same day it was written: phase49's fix to
+-- patient_book_termin() (a real cross-practice booking bug found during the
+-- RLS audit) keeps the exact same argument list and return type as phase44's
+-- version, so 2b's return-type check can't tell the two apart -- only the
+-- function's actual source (pg_get_functiondef) can. Each row's "expect" is
+-- a fragment that must appear in the function's real body per its LATEST
+-- phaseNN_*.sql definition.
+select 'function body' as check_type, f.name,
+  case
+    when not exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = f.name
+    ) then 'MISSING (see the plain function-existence check above)'
+    when exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = f.name
+        and pg_get_functiondef(p.oid) ilike '%'||f.expect||'%'
+    ) then 'OK'
+    else 'STALE -- deployed version is missing "'||f.expect||'" from its body; find + rerun the LATEST phaseNN_*.sql that redefines this function'
+  end as status
+from (values
+  ('patient_book_termin', 'invalid_arzt')
+) as f(name, expect)
+
+union all
+
 -- 3) Columns the app's own performance-optimized explicit select() lists
 -- depend on (vendor/patient-data.js's *_COLUMNS constants) -- this is
 -- exactly the class of column that broke silently on 2026-07-24.
