@@ -191,4 +191,92 @@ from unnest(array[
   'diagnose','wegen','notizen','arbeitsunfaehig','rezeptgebuehrenbefreit','document_id'
 ]) as c
 
+union all
+
+-- ══════════════════════════════════════════════════════════════
+-- 4/5/6) RLS (row-level security) health -- added 2026-07-30, after the
+-- user asked whether this whole script already covers everything before
+-- selling the product to real practices. It didn't: every check above only
+-- catches a missing/stale TABLE, FUNCTION, or COLUMN -- none of it notices
+-- if a table's actual access-control policies are missing, disabled, or
+-- (the real class of bug this session's launch-readiness audit found more
+-- than once, e.g. the patient/guardian staff-roster bug) fully unscoped, so
+-- every practice can see every OTHER practice's rows. RLS is the single
+-- most consequential thing in this whole database to get right and the
+-- one this old health check never actually looked at.
+--
+-- These 3 checks are a heuristic safety net, not a substitute for reading
+-- the actual policy definitions -- they catch the "structurally obviously
+-- wrong" cases (RLS off entirely; RLS on with zero policies, meaning the
+-- table is 100% inaccessible to every real user; every existing policy's
+-- condition text contains no scoping function at all) but can't verify a
+-- policy's LOGIC is actually correct, only that it isn't glaringly absent.
+-- ══════════════════════════════════════════════════════════════
+
+-- 4) RLS actually turned on. A table with RLS disabled has NO row-level
+-- access control at all -- any authenticated (or even anon, depending on
+-- grants) caller sees every row from every practice, unconditionally.
+select 'RLS enabled' as check_type, t as name,
+  case when exists (
+    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relname=t and c.relrowsecurity=true
+  ) then 'OK' else 'MISSING -- RLS is not enabled on this table -- every row is visible/writable with no access control at all' end as status
+from unnest(array[
+  'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
+  'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+]) as t
+
+union all
+
+-- 5) At least one policy exists. RLS enabled + zero policies means Postgres
+-- denies EVERY row to EVERY non-superuser caller -- not a leak, but it
+-- silently breaks every feature that touches this table. guardian_active_
+-- child is a deliberate, documented exception (phase31_patient_auth.sql):
+-- it's reachable ONLY from inside SECURITY DEFINER functions, by design,
+-- with zero policies on purpose.
+select 'RLS policy exists' as check_type, t as name,
+  case
+    when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
+    when exists (select 1 from pg_policies where schemaname='public' and tablename=t) then 'OK'
+    else 'MISSING -- RLS is enabled but has zero policies -- this table is completely inaccessible to every real caller, likely breaking whatever feature reads/writes it'
+  end as status
+from unnest(array[
+  'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
+  'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+]) as t
+
+union all
+
+-- 6) At least one policy actually scopes access to something (this
+-- practice/this user/this patient), rather than every policy being a bare
+-- `using (true)` -- exactly the multi-tenant leak pattern phase12/15/18/19
+-- closed one table at a time earlier this project. A table can legitimately
+-- have ONE unscoped policy on purpose (patient_join_requests' anon INSERT,
+-- since a self-registering visitor has no session at all to scope by) as
+-- long as ANOTHER policy on the same table (its staff SELECT/UPDATE) does
+-- scope -- this checks per-TABLE ("does at least one policy scope"), not
+-- per-policy, for exactly that reason.
+select 'RLS actually scopes access' as check_type, t as name,
+  case
+    when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
+    when not exists (select 1 from pg_policies where schemaname='public' and tablename=t)
+      then 'MISSING (see the RLS policy exists check above)'
+    when exists (
+      select 1 from pg_policies where schemaname='public' and tablename=t
+        and (coalesce(qual,'') ~* 'current_practice_id\(\)|auth\.uid\(\)|current_patient_id\(\)|current_guardian_id\(\)'
+          or coalesce(with_check,'') ~* 'current_practice_id\(\)|auth\.uid\(\)|current_patient_id\(\)|current_guardian_id\(\)')
+    ) then 'OK'
+    else 'WARNING -- every policy on this table looks fully unscoped (no practice/user/patient scoping function found in any qual/with_check) -- verify manually, this may leak rows across every practice'
+  end as status
+from unnest(array[
+  'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
+  'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen'
+]) as t
+
 order by check_type, name;
