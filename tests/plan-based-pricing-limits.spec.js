@@ -190,6 +190,10 @@ test.describe('Plan-dependent upload size limits', () => {
   });
 
   test('Enterprise plan raises the Kartei upload cap to 25 MB (a file over 8 MB but under 25 MB is accepted)', async ({ page }) => {
+    // A 20 MB buffer's setInputFiles()/base64 round-trip is genuinely slow
+    // under CI/sandbox load -- the default 30s timeout is comfortable
+    // locally but flaky there. Bumped for these two large-buffer tests only.
+    test.setTimeout(90000);
     await setupDoctorPage(page, 'enterprise');
     const midBuffer = Buffer.alloc(20 * 1024 * 1024);
     await page.fill('#kDokTitel', 'Großer Befund');
@@ -204,6 +208,7 @@ test.describe('Plan-dependent upload size limits', () => {
   });
 
   test('Enterprise plan still rejects a file over its own 25 MB cap', async ({ page }) => {
+    test.setTimeout(90000);
     await setupDoctorPage(page, 'enterprise');
     const tooBig = Buffer.alloc(25 * 1024 * 1024 + 1);
     await page.fill('#kDokTitel', 'Zu groß');
