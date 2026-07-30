@@ -64,6 +64,52 @@ test('confirmPlanChange() sends the selected plan and a same-origin return URL t
   expect(invokeArgs.opts.body.returnUrl).toContain('doctor.html');
 });
 
+// Regression test for a real billing bug found in a launch-readiness
+// review (2026-07-30): create-checkout-session's `mode: "subscription"`
+// always starts a brand-new Stripe subscription, even for a customer who
+// already has one -- confirmPlanChange() used to call it unconditionally
+// for every plan change, so a practice's SECOND (or later) plan switch
+// silently doubled their real Stripe subscriptions/billing. An already-
+// subscribed practice must go through create-billing-portal-session's
+// plan-switch flow instead (see hasActiveStripeSubscription()).
+test('confirmPlanChange() routes an already-subscribed practice through the Billing Portal, not a new Checkout session', async ({ page }) => {
+  await setupPage(page, { plan: 'standard', stripe_customer_id: 'cus_123', stripe_subscription_id: 'sub_123', subscription_status: 'active' });
+  const invokeArgs = await page.evaluate(async () => {
+    let captured = null;
+    sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: null, error: { message: 'no session for this test' } }; };
+    openPlanChangeModal('enterprise');
+    await confirmPlanChange();
+    return captured;
+  });
+  expect(invokeArgs.name, 'must go through the Billing Portal\'s subscription-update flow, not open a second Checkout subscription').toBe('create-billing-portal-session');
+  expect(invokeArgs.opts.body.plan).toBe('enterprise');
+  expect(invokeArgs.opts.body.returnUrl).toContain('doctor.html');
+});
+
+test('confirmPlanChange() still uses Checkout for a practice with no active Stripe subscription yet', async ({ page }) => {
+  await setupPage(page, { plan: 'standard', stripe_customer_id: null, stripe_subscription_id: null, subscription_status: null });
+  const invokeArgs = await page.evaluate(async () => {
+    let captured = null;
+    sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: null, error: { message: 'no session for this test' } }; };
+    openPlanChangeModal('enterprise');
+    await confirmPlanChange();
+    return captured;
+  });
+  expect(invokeArgs.name).toBe('create-checkout-session');
+});
+
+test('confirmPlanChange() uses Checkout again (not the Portal) once a previous subscription was cancelled', async ({ page }) => {
+  await setupPage(page, { plan: 'standard', stripe_customer_id: 'cus_123', stripe_subscription_id: 'sub_old', subscription_status: 'canceled' });
+  const invokeArgs = await page.evaluate(async () => {
+    let captured = null;
+    sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: null, error: { message: 'no session for this test' } }; };
+    openPlanChangeModal('enterprise');
+    await confirmPlanChange();
+    return captured;
+  });
+  expect(invokeArgs.name, 'a cancelled subscription has nothing left for the Portal to update -- must start a fresh Checkout subscription').toBe('create-checkout-session');
+});
+
 test('confirmPlanChange() shows an error and stays on the page if the Edge Function fails', async ({ page }) => {
   await setupPage(page, { plan: 'standard' });
   const result = await page.evaluate(async () => {
