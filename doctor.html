@@ -4672,12 +4672,24 @@ const VISITS = [];
 // vanished on reload and never reached a second device. Clears any stale
 // entries for this patient name first so repeated tab switches don't pile
 // up duplicates of the same rows.
+// Guards against two overlapping calls both landing rows for the same
+// patient -- each call only clears out that patient's PREVIOUS rows at its
+// own start, before its own await, which doesn't help if a second call
+// starts while the first is still in flight (its splice runs before the
+// first call's push, finds nothing to remove, and both then push their own
+// copy of the same rows). This request-id check discards a call's own
+// results once a newer call has superseded it, so only the latest call's
+// rows ever actually land, regardless of how many overlapping calls happen.
+let _karteiVisitsRequestId=0;
 async function loadKarteiVisits(name){
+  const requestId=++_karteiVisitsRequestId;
   for(let i=VISITS.length-1;i>=0;i--){ if(VISITS[i].patient===name) VISITS.splice(i,1); }
   if(!name||name==='Kein Patient ausgewählt'){ renderYearPills();filterVisits(); return; }
   const patientId=await findPatientIdByFullName(name);
+  if(requestId!==_karteiVisitsRequestId) return;
   if(!patientId){ renderYearPills();filterVisits(); return; }
   const rows=await getVisitsForPatient(patientId);
+  if(requestId!==_karteiVisitsRequestId) return;
   rows.forEach(r=>{
     VISITS.push({patient:name,date:r.visit_date,type:r.visit_type,beschwerde:r.beschwerde||'',temp:r.temperature||'',bd:r.blutdruck||'',schmerz:r.schmerz||'',diag:r.diagnose||'Keine Diagnose',notes:r.notes||'–',therapy:r.therapy||''});
   });
@@ -7019,13 +7031,29 @@ function openKarteiForPatientAndShow(name,svnr,versicherung,dob){
   document.getElementById('allTermineModal').classList.remove('show');
   karteiPatientLoaded=true;
   const item=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
+  // On desktop, selectPatient() below already calls openKarteiForPatient()
+  // itself (see its own isDesktopWidth() branch) -- calling it AGAIN right
+  // after used to race with that first call's still-in-flight
+  // loadKarteiVisits() fetch and silently duplicate every Verlauf entry,
+  // since loadKarteiVisits() only clears out a patient's own previous rows
+  // at the very start of the function, before its own await -- not safe
+  // against a second, overlapping call landing while the first is still in
+  // flight. Found via a user report (2026-07-30): opening Kartei from the
+  // Kalender row's "⋮" menu showed every visit doubled, while opening the
+  // exact same patient's Kartei by clicking their name in Praxis (a single
+  // selectPatient() call, no second explicit one) never did. Only skip the
+  // explicit call when selectPatient() actually ran AND was the desktop
+  // branch that calls openKarteiForPatient() itself -- if no matching
+  // .patient-item exists (patient not currently in the sidebar list),
+  // selectPatient() never runs at all and Kartei still needs this call.
+  const alreadyLoadedBySelectPatient=!!item&&isDesktopWidth();
   if(item) selectPatient(item,name,colorForName(name),versicherung||'');
   if(isDesktopWidth()){
     openWindow('clinic');
   }else if(!karteiOpen){
     toggleKartei();
   }
-  openKarteiForPatient(name,svnr,versicherung,dob);
+  if(!alreadyLoadedBySelectPatient) openKarteiForPatient(name,svnr,versicherung,dob);
 }
 
 // Used by "Alle Termine": jumps straight to that patient's Praxis chat.
