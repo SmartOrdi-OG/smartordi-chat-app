@@ -78,7 +78,8 @@ from unnest(array[
   'guardian_mark_password_changed','guardian_get_profile','patient_get_chat_enabled',
   'anonymize_patient','run_scheduled_patient_deletions',
   'anonymize_practice','run_scheduled_practice_deletions',
-  'patient_get_booking_enabled','patient_get_staff_roster'
+  'patient_get_booking_enabled','patient_get_staff_roster',
+  'public_get_practice_join_info'
 ]) as f
 
 union all

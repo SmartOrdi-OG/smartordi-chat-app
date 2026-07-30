@@ -95,3 +95,61 @@ test('a join request with no practice param in the link still sends practice_id:
   expect(requests).toHaveLength(1);
   expect(requests[0].practice_id).toBe(null);
 });
+
+// Regression test for supabase/phase48_public_practice_join_info.sql: the
+// join-request screen's clinic-name/address notice used to be permanently
+// stuck on "—" for every real (Supabase-backed) practice, since it read
+// staffRosterReady/practiceSettingsReady -- both staff-only RLS-gated reads
+// that always resolve to nothing for this always-anonymous visitor. Fixed
+// via a dedicated anon-callable RPC, scoped by the practice id captured
+// from the deep link. Since the RPC call happens inside the automatic
+// window 'load' handler (not a separately re-callable function), the mock
+// override has to be wired into the createClient() factory itself via
+// installMockSupabase's extraInit, so it's in place before that handler
+// ever fires -- patching sb.rpc afterwards (page.evaluate post-navigation)
+// would always be too late.
+test('a ?practice=<id> deep link fills in the real clinic name/address, not "—"', async ({ page }) => {
+  // installMockSupabase's extraInit runs via page.addInitScript(), which
+  // stringifies the function -- Node-side closures don't survive that, so
+  // the mock response has to be a literal written directly in the function
+  // body, not a variable captured from outside it.
+  await installMockSupabase(page, { practice_settings: [{ id: true }] }, () => {
+    const origCreateClient = window.supabase.createClient;
+    window.supabase.createClient = (...args) => {
+      const client = origCreateClient(...args);
+      const origRpc = client.rpc.bind(client);
+      client.rpc = (name, params) => {
+        if (name === 'public_get_practice_join_info') {
+          return Promise.resolve({
+            data: [{ practice_name: 'Ordination Dr Test', adresse: 'Steingasse 6A, 4020 Linz', admin_full_name: 'Dr. Sarah Ahmed', admin_fach: 'Allgemeinmedizin' }],
+            error: null,
+          });
+        }
+        return origRpc(name, params);
+      };
+      return client;
+    };
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html') + '?patient-register=1&practice=practice-real-uuid-1');
+  await page.waitForTimeout(800);
+  const state = await page.evaluate(() => ({
+    name: document.getElementById('reqClinicName').textContent,
+    sub: document.getElementById('reqClinicSub').textContent,
+  }));
+  expect(state.name).toBe('Ordination Dr Test');
+  expect(state.sub).toBe('Allgemeinmedizin · Steingasse 6A, 4020 Linz');
+});
+
+test('an old link with no practice param still shows "—" (unchanged, no regression)', async ({ page }) => {
+  await installMockSupabase(page, { practice_settings: [{ id: true }] }, () => {
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html') + '?patient-register=1');
+  await page.waitForTimeout(800);
+  const state = await page.evaluate(() => ({
+    name: document.getElementById('reqClinicName').textContent,
+    sub: document.getElementById('reqClinicSub').textContent,
+  }));
+  expect(state.name).toBe('—');
+  expect(state.sub).toBe('—');
+});
