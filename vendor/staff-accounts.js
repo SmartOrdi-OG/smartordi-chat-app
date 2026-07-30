@@ -50,6 +50,24 @@ function reportCriticalDataError(context,error){
   console.error(context+' failed',error);
   if(_onCriticalDataError) _onCriticalDataError(context,error);
   else _pendingCriticalDataErrors.push({context,error});
+  logClientErrorRemotely(context,error);
+}
+// supabase/phase46_client_error_log.sql -- the banner above is 100% local to
+// whichever browser tab happened to be open the moment a critical refresh()
+// failed; this is what lets the practice owner see "this practice hit a
+// data-load failure" from the Supabase dashboard/SQL editor without being
+// physically at that device when it happened. Fire-and-forget on purpose --
+// never awaited, and any failure here is swallowed rather than surfaced,
+// since logging the error must never itself become a new source of errors
+// or delay the local banner above.
+function logClientErrorRemotely(context,error){
+  try{
+    sb.from('client_error_log').insert({
+      context,
+      error_message:(error&&error.message)?String(error.message).slice(0,2000):null,
+      page:(window.location.pathname.split('/').pop()||null),
+    }).then(function(){},function(){});
+  }catch(e){ /* swallow -- see comment above */ }
 }
 
 // Shared bookable-appointment-slot grid, now derived per weekday from the
