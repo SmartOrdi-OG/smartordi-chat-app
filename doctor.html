@@ -936,7 +936,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .mobile-nav-item .chat-nav-badge.show{display:flex;}
 
 /* ══ PATIENT SIDEBAR ══ */
-.clinic-sidebar{width:300px;background:#fafbfc;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+.clinic-sidebar{width:300px;background:#fafbfc;border-right:2px solid #cbd5e1;display:flex;flex-direction:column;flex-shrink:0;}
 .sidebar-header{padding:16px;border-bottom:1px solid var(--border);background:white;}
 .sidebar-title{font-size:15px;font-weight:800;color:var(--text-1);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;letter-spacing:-0.3px;}
 .search-box{position:relative;}
@@ -949,7 +949,10 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .patient-item.active{background:#EAF4F1;border-left:3px solid #0E5E56;}
 .patient-item.transferred{border-left:3px solid #f59e0b;}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:white;flex-shrink:0;position:relative;}
-.patient-list-section-title{padding:10px 16px 6px;font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;background:#fafbfc;}
+.patient-list-section-title{padding:10px 16px 6px;font-size:10.5px;font-weight:800;color:var(--text-1);text-transform:uppercase;letter-spacing:0.6px;background:#fafbfc;}
+.patient-list-section-title.toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+.patient-list-section-title.toggle .plst-chevron{transition:transform 0.2s;flex-shrink:0;color:var(--text-2);}
+.patient-list-section-title.toggle.collapsed .plst-chevron{transform:rotate(-90deg);}
 .patient-status-dot{position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;}
 /* Bright lime-green trial for "Behandlung läuft" specifically -- matches
    how lab/medical equipment (e.g. an Alinity analyzer's "Läuft" status)
@@ -1106,7 +1109,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .tp-status.accepted{background:#DCEAE6;color:#12746A;}
 .network-map{background:white;border-radius:20px;border:1px solid var(--border);padding:24px;margin-bottom:24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);}
 /* ══ KARTEI PANEL ══ */
-.kartei-panel{width:0;overflow:hidden;background:white;border-left:1px solid var(--border);}
+.kartei-panel{width:0;overflow:hidden;background:white;border-right:2px solid #cbd5e1;}
 body.windows-mode .kartei-header{display:none;}
 /* Kartei is now permanently visible alongside chat on desktop -- a real
    column, not the collapsed (width:0) mobile slide-in form above -- so it
@@ -3939,6 +3942,32 @@ function patientItemHtml(p,activeName,todayTermin){
     <div class="patient-meta">${metaHtml}</div>
   </div>`;
 }
+// "Alle Patienten" collapse state -- collapsed by default (every doctor's
+// first visit sees only "Heute", with the full list one click away) rather
+// than defaulting to open, per the user's choice. Remembered per device via
+// localStorage once a doctor actually toggles it, same pattern as every
+// other per-device UI preference in this app (e.g. doctor_hidden_chats'
+// client-side counterpart). null (never toggled) reads as collapsed.
+function isAllPatientsCollapsed(){
+  const v=localStorage.getItem('smartordi_all_patients_collapsed');
+  return v===null?true:v==='1';
+}
+// Applies the collapsed/expanded visual state without touching the stored
+// preference -- used both by toggleAllPatientsSection() (which also writes
+// the preference) and by the search functions below (which need to force
+// the section open so a match isn't hidden behind a still-collapsed
+// section, WITHOUT overwriting what the doctor actually chose).
+function applyAllPatientsCollapsedState(collapsed){
+  const group=document.getElementById('allPatientsGroup');
+  const title=document.getElementById('allPatientsTitle');
+  if(group) group.style.display=collapsed?'none':'';
+  if(title) title.classList.toggle('collapsed',collapsed);
+}
+function toggleAllPatientsSection(){
+  const next=!isAllPatientsCollapsed();
+  localStorage.setItem('smartordi_all_patients_collapsed',next?'1':'0');
+  applyAllPatientsCollapsedState(next);
+}
 // Keeps whichever patient is currently open highlighted across re-renders
 // (e.g. after sendClinicMsg() refreshes the sidebar preview text) instead of
 // resetting back to the default patient every time the list redraws.
@@ -3952,9 +3981,12 @@ function renderPatientList(){
   const otherEntries=entries.filter(p=>!todayMap[p.name]);
   const todayHtml=todayEntries.map(p=>patientItemHtml(p,activeName,todayMap[p.name])).join('');
   const otherHtml=otherEntries.map(p=>patientItemHtml(p,activeName,null)).join('');
+  const collapsed=isAllPatientsCollapsed();
+  const chevronSvg='<svg class="plst-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>';
   list.innerHTML=
     (todayEntries.length?`<div class="patient-list-section-title">Heute (${todayEntries.length})</div>${todayHtml}`:'')+
-    `<div class="patient-list-section-title">Alle Patienten</div>${otherHtml}`;
+    `<div class="patient-list-section-title toggle${collapsed?' collapsed':''}" id="allPatientsTitle" onclick="toggleAllPatientsSection()">Alle Patienten (${otherEntries.length})${chevronSvg}</div>`+
+    `<div id="allPatientsGroup" style="display:${collapsed?'none':''};">${otherHtml}</div>`;
 }
 
 function selectPatient(el,name,color,insurance){
@@ -5823,12 +5855,20 @@ function toggleAdvSearch(){
   btn.style.borderColor=open?'#fecaca':'#bfdbfe';
 }
 
+// filterPatientsList()/advSearch() toggle individual .patient-item elements'
+// own display style, but a MATCH inside "Alle Patienten" would stay
+// invisible if that whole section is still collapsed (see
+// applyAllPatientsCollapsedState() above) -- these force the section open
+// for the duration of an active search, WITHOUT touching the doctor's
+// actual stored collapse preference, which clearAdvSearch() (no active
+// filter left) restores.
 function filterPatientsList(val){
   const items=document.querySelectorAll('.patient-item');
   items.forEach(item=>{
     const name=item.querySelector('.patient-name')?.textContent?.toLowerCase()||'';
     item.style.display=name.includes(val.toLowerCase())?'':'none';
   });
+  applyAllPatientsCollapsedState(val?false:isAllPatientsCollapsed());
 }
 
 function advSearch(){
@@ -5847,6 +5887,7 @@ function advSearch(){
     const versMatch=!vers||(item.dataset.versicherung||'').toLowerCase().includes(vers);
     item.style.display=(svMatch&&dobMatch&&versMatch)?'':'none';
   });
+  applyAllPatientsCollapsedState(false);
 }
 
 function clearAdvSearch(){
@@ -5854,6 +5895,7 @@ function clearAdvSearch(){
   document.getElementById('adv-dob').value='';
   document.getElementById('adv-versicherung').value='';
   document.querySelectorAll('.patient-item').forEach(i=>i.style.display='');
+  applyAllPatientsCollapsedState(isAllPatientsCollapsed());
 }
 
 // Patient accounts created via secretary.html's QR flow are stored keyed by
