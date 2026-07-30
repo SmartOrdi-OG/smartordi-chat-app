@@ -825,18 +825,25 @@ window.addEventListener('load',async ()=>{
 
   // The join-request notice used to show a hardcoded "Dr. Sarah Ahmed" /
   // Steingasse 6A demo placeholder no matter which real practice a patient
-  // was requesting to join -- fill it in from the real Supabase data
-  // (same admin-name/address lookup already used on the secretary/doctor
-  // sides) once it's loaded.
-  await staffRosterReady;
-  await practiceSettingsReady;
-  const accounts=loadStaffAccounts();
-  const admin=Object.values(accounts).find(a=>a.role==='arzt'&&a.isAdmin);
-  const practiceInfo=getPracticeSettings();
+  // was requesting to join -- tried filling it in via staffRosterReady/
+  // practiceSettingsReady (same lookup the secretary/doctor sides use), but
+  // both are staff-only RLS-gated reads that always resolve to nothing for
+  // this always-anonymous visitor (current_practice_id() has no session to
+  // resolve), so this silently stayed "—" forever instead. Found in the
+  // 2026-07-30 launch-readiness RLS audit (supabase/phase48_public_practice_
+  // join_info.sql) -- fixed via a dedicated anon-callable RPC, scoped by the
+  // practice id captured from the QR/deep link itself (joinRequestPracticeId,
+  // see tryPatientRegisterDeepLink() above). An OLD link with no id still
+  // can't know which practice to show info for, so it's left as "—" exactly
+  // as before -- not a regression, just an unchanged known limitation.
   const nameEl=document.getElementById('reqClinicName');
   const subEl=document.getElementById('reqClinicSub');
-  if(nameEl) nameEl.textContent=admin?('Ordination '+admin.fullName):'—';
-  if(subEl) subEl.textContent=(admin&&admin.fach||'—')+((practiceInfo&&practiceInfo.adresse)?(' · '+practiceInfo.adresse):'');
+  if(joinRequestPracticeId){
+    const {data}=await sb.rpc('public_get_practice_join_info',{p_practice_id:joinRequestPracticeId});
+    const info=data&&data[0];
+    if(nameEl) nameEl.textContent=(info&&(info.practice_name||(info.admin_full_name&&('Ordination '+info.admin_full_name))))||'—';
+    if(subEl) subEl.textContent=(info&&info.admin_fach||'—')+((info&&info.adresse)?(' · '+info.adresse):'');
+  }
 });
 // Coming back via the browser's back/forward cache (e.g. after logging out
 // and navigating back) restores the exact DOM as it was frozen mid-submit --
