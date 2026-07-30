@@ -1,5 +1,14 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — ثاني جزء: فحوصات MKP صارت ملف مستقل
+
+استمرار لنفس الجهد التدريجي (بعد `vendor/kartei-visits.js`). هالمرة تبويب MKP (مرضى الأطفال) بالكامل.
+
+- **`vendor/kartei-mkp.js`** (جديد): نقلنا `MKP_EXAMS` (بيانات الفحوصات الـ13 الرسمية) و`renderKarteiMkp`, `mkpFieldHtml`, `mkpOpenExam`, `mkpBackToList`, `mkpSaveCurrentExam`, `mkpAgeDays`, `mkpStatusFor` وحالتها (`mkpCurrentPatientId`, `mkpCurrentRecords`, `mkpCurrentExamKey`) من `doctor.html` — بدون أي تغيير بالمنطق، نفس الكود حرفيًا.
+- `doctor.html`: صار أصغر بحوالي 390 سطر، وضفنا `<script src="vendor/kartei-mkp.js">`.
+- تأكدنا عبر `node --check`، واختبارات مستهدفة (`mkp-exam.spec.js`, `kartei-report-send.spec.js`, `kartei-visit-persistence.spec.js` — 19/19)، وكامل الـsuite (302 اختبار) بعدها.
+- **التالي**: المستندات (Dokumente).
+
 ## 🧹 بلّشنا نفكّك `doctor.html` تدريجيًا — أول جزء: تبويب Verlauf بالكارتيه صار ملف مستقل
 
 المستخدم لاحظ إنه `doctor.html`/`secretary.html`/`patient.html` صارت ملفات ضخمة جدًا (كل شي بملف واحد)، وإنه هاد سبب جزئي ليه بگات متل تكرار الكارتيه بتصير أصعب تنكشف بدري. اتفقنا نبلّش نطلّع منطق كل ميزة لملف `vendor/*.js` منفصل، تدريجيًا وبدون أي build step أو إطار عمل جديد — نفس نمط `vendor/patient-data.js`/`vendor/staff-accounts.js` الموجود أصلاً.
