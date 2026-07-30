@@ -209,19 +209,19 @@ const PLAN_FEATURES = {
   standard: {
     label:'Standard', price:'€149', billingPeriod:'Monat',
     patientLimit:500, uploadMaxBytes:8*1024*1024,
-    rezeptImpfung:true, sekretaerin:true, apiIntegration:false,
+    rezeptImpfung:true, sekretaerin:true,
     bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 500 Patienten','Chat, Kartei, Rezept & Impfpass','Uploads bis 8 MB'],
   },
   enterprise: {
     label:'Enterprise', price:'€349', billingPeriod:'Monat',
     patientLimit:null, uploadMaxBytes:25*1024*1024,
-    rezeptImpfung:true, sekretaerin:true, apiIntegration:true,
-    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Standard','Uploads bis 25 MB','API & Integration'],
+    rezeptImpfung:true, sekretaerin:true,
+    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Standard','Uploads bis 25 MB'],
   },
   enterprise_annual: {
     label:'Enterprise (jährlich)', price:'€3.490', billingPeriod:'Jahr',
     patientLimit:null, uploadMaxBytes:25*1024*1024,
-    rezeptImpfung:true, sekretaerin:true, apiIntegration:true,
+    rezeptImpfung:true, sekretaerin:true,
     bullets:['Ärzte & Sekretär/innen: unbegrenzt','Unbegrenzte Patienten','Alles in Enterprise','2 Monate gratis (jährliche Abrechnung)'],
   },
 };
