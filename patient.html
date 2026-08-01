@@ -1073,7 +1073,13 @@ function msgRowHtml(m){
   // download, with no real file behind them at all. Only wire up a real
   // click when a docId actually exists (older/local-only message shapes
   // never had one and would otherwise 404).
-  const filenameEsc=escapeHtml(m.filename||'').replace(/'/g,"\\'");
+  // jsArg-style order (same as docCardHtml() below): quote-escape FIRST for
+  // the inner JS-string context, THEN escapeHtml for the outer HTML-attribute
+  // context -- doing escapeHtml() first (the previous bug here) turns ' into
+  // &#39; before the quote-replace ever runs, so the replace matches nothing
+  // and the browser's entity-decode-then-JS-eval reconstructs a raw quote
+  // that breaks out of the onclick string.
+  const filenameEsc=escapeHtml(String(m.filename||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
   const downloadAttr=m.docId?` onclick="downloadPatientDocument('${m.docId}','${filenameEsc}')"`:'';
   if(m.type==='doc'){
     bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;max-width:240px;"${downloadAttr}><span style="font-size:22px;flex-shrink:0;">📄</span><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size||'')}</div></div></div></div>`;
