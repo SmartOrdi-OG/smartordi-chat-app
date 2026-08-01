@@ -1,5 +1,15 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — رابع جزء: تبويب المخبر (Labor) صار ملف مستقل
+
+استمرار لنفس الجهد (بعد `vendor/kartei-visits.js`, `vendor/kartei-mkp.js`, `vendor/kartei-documents.js`).
+
+- **`vendor/kartei-labor.js`** (جديد): نقلنا `renderKarteiLabor`, `karteiLaborRowHtml`, `saveKarteiLaborNote`, `uploadKarteiLaborDoc` — بدون أي تغيير بالمنطق. المخبر أصلاً عدسة مفلترة (category='befund') على نفس جدول `patient_documents` يلي تبويب المستندات بيستخدمه، فبيستعير `deleteKarteiDocument`/`downloadKarteiDocument` منه و`fileToBase64`/`formatFileSize` من `doctor.html`.
+- `doctor.html`: صار أصغر بحوالي 115 سطر، وضفنا `<script src="vendor/kartei-labor.js">`.
+- **ملاحظة اكتشفناها أثناء الشغل، مش سببها هالتغيير**: تبويب المخبر هاد ما عندو أي اختبار Playwright مخصص إطلاقًا (بعكس Verlauf/MKP/المستندات) — فجوة اختبارات موجودة من قبل. سجّلناها هون، ممكن نسدها بمرحلة لاحقة لو بدك.
+- تأكدنا عبر `node --check` وكامل الـsuite (302 اختبار).
+- **التالي**: التوقيع/الختم (منفصل تمامًا عن أي مريض محدد) — آخر جزء واضح بالخطة الأصلية.
+
 ## 🧹 تفكيك `doctor.html` — تالت جزء: تبويب المستندات (Dokumente) صار ملف مستقل
 
 استمرار لنفس الجهد (بعد `vendor/kartei-visits.js` و`vendor/kartei-mkp.js`).
