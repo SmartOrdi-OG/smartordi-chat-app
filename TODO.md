@@ -1,5 +1,16 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — سادس جزء: تبويب التطعيمات (Impfung) صار ملف مستقل
+
+استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم).
+
+- **`vendor/kartei-impfung.js`** (جديد): نقلنا `toggleSonstigeImpf`, `renderImpfEintrag`, `populateKarteiImpfung`, `addImpfung`, `printImpfpass` — بدون أي تغيير بالمنطق.
+- **`openPdfAndPrint()` ضلت بـ`doctor.html`** — أداة مشتركة تستخدمها ميزات طباعة PDF تانية (الوصفة) مش خاصة بس بالتطعيمات. **`VACCINE_SCHEDULE`/`dueVaccinationsForPatient`/`setVaccinePrice`/`loadImpfPreise` ضلت كمان بـ`doctor.html`** — مشتركة مع بطاقة "تطعيمات مستحقة" بالداشبورد، ومكررة بـ`secretary.html` بنفس نمط التكرار المعروف بهالمشروع.
+- `doctor.html`: صار أصغر بحوالي 105 سطر، وضفنا `<script src="vendor/kartei-impfung.js">`.
+- **ملاحظة داخلية**: أثناء القص أخطأت بحدود دالة `printImpfpass` (قصصتها ناقصة سطرين)، وهيك كان بيترك استدعاء `openPdfAndPrint(url)` معلّق خارج أي دالة بـ`doctor.html` — كان يسبب خطأ فوري عند تحميل الصفحة. لقيتها فورًا عبر `node --check` قبل الشحن، رجّعت وصلّحت القص من الأول قبل ما أكمل.
+- تأكدنا عبر `node --check`، واختبارات مستهدفة (`impfungen.spec.js`, `audit-2026-07-29-fixes-batch2.spec.js` — 13/13)، وكامل الـsuite (311 اختبار) بعدها.
+- **التالي**: Anamnese أو Rezept/Überweisung (الأكبر والأعقد المتبقي بـ`doctor.html`).
+
 ## 🔒 تدقيق شامل جديد (٢٠٢٦-٠٨-٠١) — ثغرة أمنية حقيقية خطيرة انلقت وانصلحت، مع بگ تاني
 
 طلبتي تقييم شامل مع تدقيق وبحث عن أخطاء وإصلاحات — استخدمنا بحث موسّع بمساعدة agent مستقل لفحص أنماط بگات معروفة (تكرار منطق بين doctor.html/secretary.html، سباقات TOCTOU، أخطاء غير معالجة، حقن بالسمات onclick).
