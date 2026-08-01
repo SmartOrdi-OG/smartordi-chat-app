@@ -3230,10 +3230,18 @@ function renderDashTermine(){
 // specifically), leaving this card stale until Dashboard happens to
 // re-render on its own.
 function dashApptCardHtml(t){
-  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  const versEsc=escapeHtml(t.versicherung||'');
-  const svnrEsc=escapeHtml(t.svnr||'');
-  const dobEsc=escapeHtml(t.dob||'');
+  // jsArg-style order (same as impfWarnRowHtml()/patientItemHtml() above):
+  // quote-escape FIRST for the inner JS-string context, THEN escapeHtml for
+  // the outer HTML-attribute context -- doing escapeHtml() first (the
+  // previous bug here) turns ' into &#39; before the quote-replace ever
+  // runs, so the replace matches nothing and the browser's entity-decode-
+  // then-JS-eval reconstructs a raw quote that breaks out of the onclick
+  // string. versEsc/svnrEsc/dobEsc had no quote-escaping at all.
+  const jsArg=s=>escapeHtml(String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  const nameEsc=jsArg(t.patient);
+  const versEsc=jsArg(t.versicherung);
+  const svnrEsc=jsArg(t.svnr);
+  const dobEsc=jsArg(t.dob);
   const visitState=tuVisitState(t);
   const cardClass='tu-appt-card'+(visitState?' '+visitState:'');
   const initial=escapeHtml((t.patient||'?')[0]||'?');
@@ -3401,10 +3409,18 @@ document.addEventListener('click',e=>{
 });
 function tuApptRowHtml(t){
   const statusClass=t.status==='abgesagt'?'cancelled':(t.status==='bestaetigt'?'':'pending');
-  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  const versEsc=escapeHtml(t.versicherung||'');
-  const svnrEsc=escapeHtml(t.svnr||'');
-  const dobEsc=escapeHtml(t.dob||'');
+  // jsArg-style order (same as impfWarnRowHtml()/patientItemHtml() above):
+  // quote-escape FIRST for the inner JS-string context, THEN escapeHtml for
+  // the outer HTML-attribute context -- doing escapeHtml() first (the
+  // previous bug here) turns ' into &#39; before the quote-replace ever
+  // runs, so the replace matches nothing and the browser's entity-decode-
+  // then-JS-eval reconstructs a raw quote that breaks out of the onclick
+  // string. versEsc/svnrEsc/dobEsc had no quote-escaping at all.
+  const jsArg=s=>escapeHtml(String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  const nameEsc=jsArg(t.patient);
+  const versEsc=jsArg(t.versicherung);
+  const svnrEsc=jsArg(t.svnr);
+  const dobEsc=jsArg(t.dob);
   const visitState=tuVisitState(t);
   const rowClass='tu-appt-row'+(visitState?' '+visitState:'');
   return `<div class="${rowClass}" onclick="openChatForPatient('${nameEsc}','${colorForName(t.patient)}','${versEsc}')">
@@ -3425,10 +3441,18 @@ function tuApptRowHtml(t){
 // card so several fit side-by-side on a wide screen instead of one row
 // stretching edge-to-edge with a big gap between the name and the button.
 function tuApptCardHtml(t){
-  const nameEsc=escapeHtml(t.patient).replace(/'/g,"\\'");
-  const versEsc=escapeHtml(t.versicherung||'');
-  const svnrEsc=escapeHtml(t.svnr||'');
-  const dobEsc=escapeHtml(t.dob||'');
+  // jsArg-style order (same as impfWarnRowHtml()/patientItemHtml() above):
+  // quote-escape FIRST for the inner JS-string context, THEN escapeHtml for
+  // the outer HTML-attribute context -- doing escapeHtml() first (the
+  // previous bug here) turns ' into &#39; before the quote-replace ever
+  // runs, so the replace matches nothing and the browser's entity-decode-
+  // then-JS-eval reconstructs a raw quote that breaks out of the onclick
+  // string. versEsc/svnrEsc/dobEsc had no quote-escaping at all.
+  const jsArg=s=>escapeHtml(String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
+  const nameEsc=jsArg(t.patient);
+  const versEsc=jsArg(t.versicherung);
+  const svnrEsc=jsArg(t.svnr);
+  const dobEsc=jsArg(t.dob);
   const visitState=tuVisitState(t);
   const cardClass='tu-appt-card'+(visitState?' '+visitState:'');
   const initial=escapeHtml((t.patient||'?')[0]||'?');
@@ -3863,7 +3887,7 @@ function impfWarnRowHtml(d){
     <div style="width:32px;height:32px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"></div>
     <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.patient)}</div><div style="font-size:11px;color:${color};font-weight:600;">${escapeHtml(d.vaccine)} · ${escapeHtml(d.detail)}</div></div>
     <input type="text" value="${escapeHtml(price)}" placeholder="Preis" onchange="setVaccinePrice('${safeVaccine}',this.value)" style="width:80px;padding:5px 7px;border:1.5px solid #e2e8f0;border-radius:7px;font-family:inherit;font-size:11px;outline:none;text-align:right;flex-shrink:0;">
-    <button onclick="openKarteiForVaccineCheck('${d.patient}')" style="padding:6px 10px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;color:#0E5E56;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">Kartei</button>
+    <button onclick="openKarteiForVaccineCheck('${jsArg(d.patient)}')" style="padding:6px 10px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;color:#0E5E56;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">Kartei</button>
   </div>`;
 }
 async function openKarteiForVaccineCheck(name){

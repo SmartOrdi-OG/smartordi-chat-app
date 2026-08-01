@@ -108,6 +108,57 @@ test('confirmMove() rejects an end time at or before the new start time without 
   expect(result.modalStillOpen, 'the modal should stay open so the secretary can correct the input').toBe(true);
 });
 
+// Regression tests for a real bug found in a full app-wide audit
+// (2026-08-01): all three functions called updateTermin(), which returns
+// null on any real Supabase failure, but only ever checked `if(!t) return;`
+// with no toast at all -- confirmTermin()/cancelTermin() looked like the
+// button silently did nothing; confirmMove() was worse, since it showed a
+// SUCCESS toast ("✓ Termin verschoben") and closed the modal regardless of
+// whether `t` was ever set.
+test('confirmTermin() shows a real failure toast (not silence) when the update actually fails', async ({ page }) => {
+  await setupPage(page);
+  await page.evaluate(() => { window.__forceError = { termine: 'simulated db error' }; });
+  const result = await page.evaluate(async () => {
+    await confirmTermin('t1');
+    const t = loadTermine().find(x => x.id === 't1');
+    return { status: t.status, toastText: document.getElementById('toast').textContent };
+  });
+  expect(result.status, 'the appointment must stay untouched when the update fails').toBe('neu');
+  expect(result.toastText).toBe('✗ Bestätigen fehlgeschlagen');
+});
+
+test('cancelTermin() shows a real failure toast (not silence) when the update actually fails', async ({ page }) => {
+  await setupPage(page, { status: 'bestaetigt' });
+  await page.evaluate(() => { window.__forceError = { termine: 'simulated db error' }; });
+  const result = await page.evaluate(async () => {
+    await cancelTermin('t1');
+    const t = loadTermine().find(x => x.id === 't1');
+    return { status: t.status, toastText: document.getElementById('toast').textContent };
+  });
+  expect(result.status, 'the appointment must stay untouched when the update fails').toBe('bestaetigt');
+  expect(result.toastText).toBe('✗ Absagen fehlgeschlagen');
+});
+
+test('confirmMove() shows a real failure toast (not a false success) and leaves the modal open when the update actually fails', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    openMoveModal('t1');
+    document.getElementById('moveNewTime').value = '14:00';
+    document.getElementById('moveNewEndTime').value = '14:30';
+    window.__forceError = { termine: 'simulated db error' };
+    await confirmMove();
+    const t = loadTermine().find(x => x.id === 't1');
+    return {
+      time: t.time,
+      toastText: document.getElementById('toast').textContent,
+      modalStillOpen: document.getElementById('moveModal').classList.contains('show'),
+    };
+  });
+  expect(result.time, 'the original time must be untouched when the update fails').toBe('09:30');
+  expect(result.toastText, 'must never claim success when the update actually failed').toBe('✗ Verschieben fehlgeschlagen');
+  expect(result.modalStillOpen, 'the modal should stay open so the secretary can retry').toBe(true);
+});
+
 test('confirmMove() reschedules the appointment, messages the patient with the new time, and closes the modal', async ({ page }) => {
   await setupPage(page);
   const result = await page.evaluate(async () => {
