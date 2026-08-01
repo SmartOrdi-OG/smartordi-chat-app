@@ -1,5 +1,14 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — خامس جزء: "التوقيع والختم" صار ملف مستقل
+
+استمرار لنفس الجهد (بعد `vendor/kartei-visits.js`, `vendor/kartei-mkp.js`, `vendor/kartei-documents.js`, `vendor/kartei-labor.js`).
+
+- **`vendor/kartei-signature.js`** (جديد): نقلنا `initSigCanvas`, `clearSig`, `persistSignature`, `saveSig`, `loadSigFromFile`, `showSigPreview`, `deleteSig`, `removeStempelBackground`, `loadStempel`, `handleStempelDrop`, `showStempelPreview`, `deleteStempel` وحالتها (`sigDataUrl`, `stempelDataUrl`, ...) — بدون أي تغيير بالمنطق. هاي الميزة مستقلة تمامًا عن أي مريض محدد (إعداد على مستوى الحساب)، بس مستخدمة من دوال بناء PDF كتير (Rezept، Überweisung، تقرير المريض).
+- `doctor.html`: صار أصغر بحوالي 180 سطر، وضفنا `<script src="vendor/kartei-signature.js">`.
+- تأكدنا عبر `node --check`، واختبارات مستهدفة (`signature-stamp-in-pdfs.spec.js`, `signature-stamp-save-toast.spec.js`, `stempel-background-removal.spec.js` — 15/15)، وكامل الـsuite (302 اختبار) بعدها.
+- **بهيك خلصت كل الأجزاء الواضحة المخطط لها بالكارتيه** (Verlauf، MKP، المستندات، المخبر، التوقيع/الختم). الباقي بـ`doctor.html` أكبر وأكتر تشابك (الرزنامة، الشات، الفوترة، Vertretung...) — أي تكملة محتاجة تخطيط جديد لو بدنا نستمر.
+
 ## 🧹 تفكيك `doctor.html` — رابع جزء: تبويب المخبر (Labor) صار ملف مستقل
 
 استمرار لنفس الجهد (بعد `vendor/kartei-visits.js`, `vendor/kartei-mkp.js`, `vendor/kartei-documents.js`).
