@@ -65,10 +65,15 @@ test('zero upcoming appointments is reported honestly, not as a blanket success'
 
 test('real upcoming appointments are actually reassigned and the count is stated', async ({ page }) => {
   await setup(page);
-  const result = await page.evaluate(async () => {
+  // Both dates must actually be in the future relative to whenever this
+  // suite runs -- a hardcoded date silently ages into the past and
+  // confirmTransfer()'s own "upcoming only" filter then correctly (but
+  // confusingly, from this test's perspective) excludes it, undercounting.
+  const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+  const result = await page.evaluate(async ([d1, d2]) => {
     window.__store.termine = [
-      { id: 't1', patient_name: 'Maria Huber', arzt_id: 'dr.ahmed', status: 'bestaetigt', date: '2026-08-01', time: '09:00' },
-      { id: 't2', patient_name: 'Maria Huber', arzt_id: 'dr.ahmed', status: 'bestaetigt', date: '2026-08-05', time: '10:00' },
+      { id: 't1', patient_name: 'Maria Huber', arzt_id: 'dr.ahmed', status: 'bestaetigt', date: d1, time: '09:00' },
+      { id: 't2', patient_name: 'Maria Huber', arzt_id: 'dr.ahmed', status: 'bestaetigt', date: d2, time: '10:00' },
     ];
     transferPatientForModal = 'Maria Huber';
     transferSelectedDoctor = 'dr.berger';
@@ -79,7 +84,7 @@ test('real upcoming appointments are actually reassigned and the count is stated
       toastText: document.getElementById('toast')?.textContent || '',
       reassigned: window.__store.termine.every(t => t.arzt_id === 'dr.berger'),
     };
-  });
+  }, [inDays(1), inDays(5)]);
   expect(result.toastText).toContain('2 Termine übertragen');
   expect(result.reassigned, 'both appointments must actually move to the colleague').toBe(true);
 });
