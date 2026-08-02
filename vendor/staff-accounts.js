@@ -19,6 +19,38 @@ const SUPABASE_URL='https://ewilgwndhpxibkogxqbk.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3aWxnd25kaHB4aWJrb2d4cWJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM5NjEyMjUsImV4cCI6MjA5OTUzNzIyNX0.hZeILrp_GmOzZUImEtWhdbURLqDcvr5kB8KbhLPZvVM';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
+// A real production incident: sessionStorage.smartordi_user (this app's own
+// "am I logged in" flag, read by currentStaffSession()) can outlive the
+// actual Supabase Auth session it was created from. The observed symptom
+// was a doctor.html that LOOKED normally logged in (name/menu rendered
+// fine) while every refresh*() call below silently returned zero rows --
+// an unauthenticated/invalid request just doesn't match any "to
+// authenticated" RLS policy, which is a legitimate empty result, not a
+// Postgres *error*, so the existing critical-data-error banner
+// (reportCriticalDataError()) never fired either. The doctor saw an empty
+// calendar/patient list and a Praxisprofil save that failed with no clear
+// reason, with nothing telling them their LOGIN was the actual problem.
+// Logging out and back in (which always re-derives everything fresh from a
+// real sb.auth call) fixed it completely -- confirming exactly this.
+//
+// Scoped to staff roles only (arzt/sekretaerin) -- this file is also
+// loaded by patient.html, where a cached session can legitimately be a
+// local-only/demo/guardian account with no real sb.auth session behind it
+// at all, and by login.html/register.html, where there is no cached
+// session yet. Runs once per page load, before any page-specific script
+// has a chance to read currentStaffSession() or rely on a refresh*() call
+// that silently came back empty.
+(async function guardAgainstStaleLoginSession(){
+  let cached=null;
+  try{ cached=JSON.parse(sessionStorage.getItem('smartordi_user')); }catch(e){}
+  if(!cached||(cached.role!=='arzt'&&cached.role!=='sekretaerin')) return;
+  const { data }=await sb.auth.getSession();
+  if(!data||!data.session){
+    sessionStorage.removeItem('smartordi_user');
+    window.location.href='login.html?expired=1';
+  }
+})();
+
 // Shared XSS-safety helper -- every page renders user-controlled text
 // (chat messages, patient/staff names, filenames, free-text form answers)
 // via innerHTML template literals rather than textContent, so any such
