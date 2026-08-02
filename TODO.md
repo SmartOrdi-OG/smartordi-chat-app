@@ -1,5 +1,17 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — ثامن جزء (الأكبر لحد هلق): تبويبي الوصفة (Rezept) والتحويل (Überweisung) صاروا ملف مستقل
+
+استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم، التطعيمات، الأنامنيز) — وهاد الجزء كان الأكبر والأعقد المتبقي بـ`doctor.html`، لأنه منطق التبويبين ما كان متجمّع بمكان واحد متتالي متل الأجزاء السابقة، إنما موزّع على مجموعتين منفصلتين وسط كود Kartei عام ما بيخصهم.
+
+- **`vendor/kartei-rezept-ueberweisung.js`** (جديد): نقلنا مجموعتين من الأسطر بدون أي تغيير بالمنطق:
+  - مجموعة نموذج/معاينة التحويل: `openUwPreview`, `closeUwModal`, `uwVal`, `uwRadio`, `uwFmtDate`, `getUwData`, `buildUwA4`, `clearUeberweisungForm`, `handleUwSend`.
+  - مجموعة بناء ملفات PDF: `buildRezeptPdf`, `clearRezeptForm`, `printRezept`, `sendRezeptToChat`, `buildUeberweisungPdf`, `downloadUwPDF`.
+- **ضلّت بـ`doctor.html` كأدوات مشتركة** (مستخدمة بأماكن كتير غير هالتبويبين): `escapeHtml`, `findPatientRecord`/`findPatientRecordAsync`/`findPatientIdByFullName`/`uploadPatientDocument`/`createPatientRezept`/`createPatientUeberweisung` (أصلاً بـ`vendor/patient-data.js`)، `renderMedikamentOptions`, `showToast`, `currentStaffSession`, `getTime`, `colorForName`, `appendRealMessage`, `renderMessages`, `openPdfAndPrint`, و`switchKarteiTab()` نفسها (بتتعامل مع كل تبويبات Kartei مش بس هالاثنين). `sigDataUrl`/`stempelDataUrl` (من `vendor/kartei-signature.js`) بيتقروا هون بس، مش بينكتبوا.
+- `doctor.html`: صار أصغر بحوالي 638 سطر، وضفنا `<script src="vendor/kartei-rezept-ueberweisung.js">`.
+- تأكدنا عبر `node --check` (الملف الجديد + كل الـ`<script>` الداخلية بـ`doctor.html`)، وتأكدنا إنه كل دالة انتقلت مرة وحدة بالظبط وما ضلّت نسخة بـ`doctor.html`، وإنه كل أداة مشتركة ضلّت نسخة وحدة بس بمكانها الأصلي. اختبارات مستهدفة (`rezept-pdf.spec.js`, `signature-stamp-in-pdfs.spec.js`, `structured-rezept-ueberweisung.spec.js` — 23/23)، وبعدها كامل الـsuite (311 اختبار).
+- **هيك خلصت كل أجزاء تفكيك تبويبات Kartei المخطط لها بهالجهد.**
+
 ## 🧹 تفكيك `doctor.html` — سابع جزء: تبويب الأنامنيز (Anamnese) صار ملف مستقل + إصلاح اختبار كان بيفشل بسبب التاريخ
 
 استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم، التطعيمات).
