@@ -38,10 +38,11 @@ test('refuses (no false success) for a patient with no real Supabase account', a
     await savePatientEdit();
     return {
       toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
       modalOpen: document.getElementById('patientDetailModal').classList.contains('show'),
     };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('Cloud-Konto');
   expect(result.modalOpen).toBe(true);
 });
@@ -75,12 +76,13 @@ test('shows a failure toast (not a false success) when the save call itself fail
     delete window.__forceError;
     return {
       toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
       modalOpen: document.getElementById('patientDetailModal').classList.contains('show'),
       saved: window.__store.patients.find(p => p.username === 'maria.huber'),
     };
   });
   expect(result.toast).toContain('fehlgeschlagen');
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.modalOpen).toBe(true);
   expect(result.saved.adresse).toBe('Alte Adresse 1');
 });

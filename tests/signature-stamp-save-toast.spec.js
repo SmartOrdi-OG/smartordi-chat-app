@@ -58,10 +58,11 @@ test('saveSig() shows only a failure toast (no premature false success) when the
     ctx.fillStyle = '#000'; ctx.fillRect(10, 10, 50, 20);
     await saveSig();
     const toast = document.getElementById('toast')?.textContent || '';
+    const toastClass = document.getElementById('toast')?.className || '';
     delete window.__forceError;
-    return { toast, persisted: window.__store.staff_profiles.find(p => p.id === 'u1').sig_data_url };
+    return { toast, toastClass, persisted: window.__store.staff_profiles.find(p => p.id === 'u1').sig_data_url };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('fehlgeschlagen');
   expect(result.persisted).toBeFalsy();
 });
@@ -77,10 +78,11 @@ test('loadStempel() shows only a failure toast (no premature false success) when
     await loadStempel({ target: { files: dt.files } });
     await new Promise(r => setTimeout(r, 300));
     const toast = document.getElementById('toast')?.textContent || '';
+    const toastClass = document.getElementById('toast')?.className || '';
     delete window.__forceError;
-    return { toast, persisted: window.__store.staff_profiles.find(p => p.id === 'u1').stempel_data_url };
+    return { toast, toastClass, persisted: window.__store.staff_profiles.find(p => p.id === 'u1').stempel_data_url };
   }, base64);
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('fehlgeschlagen');
   expect(result.persisted).toBeFalsy();
 });

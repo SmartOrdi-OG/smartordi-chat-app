@@ -53,7 +53,7 @@ test('a failed document upload shows the real error toast instead of silently do
     text: document.getElementById('toast')?.textContent || '',
     isError: document.getElementById('toast')?.className.includes('error'),
   }));
-  expect(toast.text, 'a failed upload must show the real error toast, not stay silent').toBe('✗ Zuordnung fehlgeschlagen');
+  expect(toast.text, 'a failed upload must show the real error toast, not stay silent').toBe('Zuordnung fehlgeschlagen');
   expect(toast.isError).toBe(true);
 
   const row = await page.evaluate(() => window.__store.lab_result_uploads.find(r => r.id === 'lr1'));
@@ -68,7 +68,7 @@ test('a successful attach shows the success toast and marks the row attached', a
     await assignLabResult('lr1');
   });
   const toast = await page.evaluate(() => document.getElementById('toast')?.textContent || '');
-  expect(toast).toBe('✓ Befund zur Akte hinzugefügt');
+  expect(toast).toBe('Befund zur Akte hinzugefügt');
 
   const state = await page.evaluate(() => ({
     row: window.__store.lab_result_uploads.find(r => r.id === 'lr1'),

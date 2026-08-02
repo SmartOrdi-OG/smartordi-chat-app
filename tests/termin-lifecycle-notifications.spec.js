@@ -68,7 +68,7 @@ test('confirmTermin() does not claim to have messaged a patient with no real acc
     return { status: t.status, toastText: document.getElementById('toast').textContent };
   });
   expect(result.status).toBe('bestaetigt');
-  expect(result.toastText).toBe('✓ Bestätigt');
+  expect(result.toastText).toBe('Bestätigt');
   expect(result.toastText).not.toContain('informiert');
 });
 
@@ -124,7 +124,7 @@ test('confirmTermin() shows a real failure toast (not silence) when the update a
     return { status: t.status, toastText: document.getElementById('toast').textContent };
   });
   expect(result.status, 'the appointment must stay untouched when the update fails').toBe('neu');
-  expect(result.toastText).toBe('✗ Bestätigen fehlgeschlagen');
+  expect(result.toastText).toBe('Bestätigen fehlgeschlagen');
 });
 
 test('cancelTermin() shows a real failure toast (not silence) when the update actually fails', async ({ page }) => {
@@ -136,7 +136,7 @@ test('cancelTermin() shows a real failure toast (not silence) when the update ac
     return { status: t.status, toastText: document.getElementById('toast').textContent };
   });
   expect(result.status, 'the appointment must stay untouched when the update fails').toBe('bestaetigt');
-  expect(result.toastText).toBe('✗ Absagen fehlgeschlagen');
+  expect(result.toastText).toBe('Absagen fehlgeschlagen');
 });
 
 test('confirmMove() shows a real failure toast (not a false success) and leaves the modal open when the update actually fails', async ({ page }) => {
@@ -155,7 +155,7 @@ test('confirmMove() shows a real failure toast (not a false success) and leaves 
     };
   });
   expect(result.time, 'the original time must be untouched when the update fails').toBe('09:30');
-  expect(result.toastText, 'must never claim success when the update actually failed').toBe('✗ Verschieben fehlgeschlagen');
+  expect(result.toastText, 'must never claim success when the update actually failed').toBe('Verschieben fehlgeschlagen');
   expect(result.modalStillOpen, 'the modal should stay open so the secretary can retry').toBe(true);
 });
 
