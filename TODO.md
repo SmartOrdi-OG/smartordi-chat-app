@@ -1,5 +1,15 @@
 # Smartordi – قائمة المهام
 
+## 🧹 تفكيك `doctor.html` — سابع جزء: تبويب الأنامنيز (Anamnese) صار ملف مستقل + إصلاح اختبار كان بيفشل بسبب التاريخ
+
+استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم، التطعيمات).
+
+- **`vendor/kartei-anamnese.js`** (جديد): نقلنا `toggleAnamneseSection`, `saveAnamnese`, `loadAnamneseForPatient`, `updateAnamneseByFach`, `collectAnamneseSummaryLines` — بدون أي تغيير بالمنطق. منطق جمع البيانات المشترك (`collectAnamneseData`/`applyAnamneseData`/`SPECIALTY_ANAMNESE`) كان أصلاً بملف مستقل (`vendor/anamnese-shared.js`) من قبل هالجلسة، ما لمسناه. `findPatientAccountByFullName` ضلت بـ`doctor.html` — مستخدمة بأماكن كتير غير الأنامنيز.
+- `doctor.html`: صار أصغر بحوالي 100 سطر، وضفنا `<script src="vendor/kartei-anamnese.js">`.
+- **اكتشفنا بالصدفة أثناء تشغيل كامل الاختبارات**: `tests/confirm-transfer.spec.js` كان فيه اختبار بيفشل — مش بسبب تعديلنا، إنما لأنه كان يستخدم تاريخ ثابت (`2026-08-01`) صار بالماضي فعليًا هلق. صلحناه ليستخدم تواريخ نسبية لليوم الحالي (نفس نمط اختبارات تانية بالمشروع).
+- تأكدنا عبر `node --check`، واختبارات مستهدفة (`anamnese-save.spec.js`, `patient-edit-save.spec.js` — 7/7)، وكامل الـsuite (311 اختبار) بعدها.
+- **التالي**: Rezept/Überweisung (الأكبر والأعقد المتبقي بـ`doctor.html`).
+
 ## 🧹 تفكيك `doctor.html` — سادس جزء: تبويب التطعيمات (Impfung) صار ملف مستقل
 
 استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم).
