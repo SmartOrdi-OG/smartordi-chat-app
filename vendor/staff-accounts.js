@@ -160,13 +160,27 @@ function loadStaffAccounts(){
 // wants to gate its first render on it via: await staffRosterReady
 const staffRosterReady=refreshStaffRoster();
 
+// Every "✗ Speichern fehlgeschlagen" toast in Einstellungen used to show
+// that exact same generic text no matter what actually went wrong -- a
+// real production report (a practice's Praxisprofil save failing every
+// time) had nothing more specific to go on than that one line, and the
+// actual Postgres/PostgREST error (RLS rejection, a missing column, a
+// stale id, ...) was only ever visible in the browser console, which most
+// users never open. Every save*() below now stashes its own failure here
+// so the caller's toast can show the real reason inline instead.
+let _lastSaveError=null;
+function getLastSaveError(){ return _lastSaveError; }
+function saveErrorMessage(error){
+  return (error&&(error.message||error.hint||error.details))||'Unbekannter Fehler';
+}
+
 // Persists a doctor's own signature/stamp (supabase/phase23_staff_
 // signature_stamp.sql) -- staffId is always the CALLER's own id in every
 // real call site (doctor.html only ever saves its own logged-in doctor's
 // signature), never another staff member's.
 async function saveStaffSignature(staffId,fields){
   const {data,error}=await sb.from('staff_profiles').update(fields).eq('id',staffId).select().single();
-  if(error){ console.error('saveStaffSignature failed',error); return false; }
+  if(error){ console.error('saveStaffSignature failed',error); _lastSaveError=error; return false; }
   if(_staffRoster[staffId]){
     _staffRoster[staffId].stempelDataUrl=data.stempel_data_url||'';
     _staffRoster[staffId].sigDataUrl=data.sig_data_url||'';
@@ -182,7 +196,7 @@ async function saveStaffSignature(staffId,fields){
 // direct write to it (error 428C9).
 async function saveStaffProfileFields(staffId,fields){
   const {data,error}=await sb.from('staff_profiles').update(fields).eq('id',staffId).select().single();
-  if(error){ console.error('saveStaffProfileFields failed',error); return false; }
+  if(error){ console.error('saveStaffProfileFields failed',error); _lastSaveError=error; return false; }
   if(_staffRoster[staffId]){
     _staffRoster[staffId].fullName=data.full_name;
     _staffRoster[staffId].vorname=data.vorname;
@@ -298,9 +312,13 @@ function isOnlineBookingEnabled(){
   return _practiceSettings?.online_booking_enabled!==false;
 }
 async function savePracticeSettings(fields){
-  if(!_practiceSettings||!_practiceSettings.id){ console.error('savePracticeSettings called before practice settings loaded'); return false; }
+  if(!_practiceSettings||!_practiceSettings.id){
+    console.error('savePracticeSettings called before practice settings loaded');
+    _lastSaveError={message:'Praxis-Einstellungen sind noch nicht geladen -- bitte kurz warten und erneut versuchen.'};
+    return false;
+  }
   const {data,error}=await sb.from('practices').update(fields).eq('id',_practiceSettings.id).select().single();
-  if(error){ console.error('savePracticeSettings failed',error); return false; }
+  if(error){ console.error('savePracticeSettings failed',error); _lastSaveError=error; return false; }
   _practiceSettings=data;
   return true;
 }

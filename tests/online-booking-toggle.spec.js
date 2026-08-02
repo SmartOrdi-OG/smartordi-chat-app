@@ -61,7 +61,7 @@ test('secretary.html: a failed save shows an error toast and leaves the actual s
   });
   expect(result.stillEnabled, 'a failed save must not leave the app believing the setting actually changed').toBe(true);
   expect(result.btnText).toContain('aktiv');
-  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen');
+  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen: simulated db error');
 });
 
 test('secretary.html: an existing appointment stays untouched by disabling online booking', async ({ page }) => {

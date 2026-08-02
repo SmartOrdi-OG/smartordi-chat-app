@@ -1,5 +1,15 @@
 # Smartordi – قائمة المهام
 
+## 🐛 تحسين رسائل "Speichern fehlgeschlagen" لتوضيح السبب الحقيقي
+
+بلاغ حقيقي من الإنتاج (٢٠٢٦-٠٨-٠٢، سكرين شوت): حفظ "Praxisprofil" بالإعدادات فشل مع رسالة عامة "✗ Speichern fehlgeschlagen" بدون أي تفصيل، والسبب الحقيقي (خطأ Postgres/PostgREST الفعلي) كان يظهر فقط بـconsole المتصفح يلي أغلب المستخدمين ما بيفتحوه.
+
+- **`vendor/staff-accounts.js`**: أضفنا `_lastSaveError`/`getLastSaveError()`/`saveErrorMessage(error)` — كل دالة حفظ (`saveStaffProfileFields`, `saveStaffSignature`, `savePracticeSettings`) هلق بتخزن الخطأ الحقيقي لما تفشل.
+- كل توست "Speichern fehlgeschlagen" بـ`doctor.html` (`saveSettings`, `saveSinglePracticeField`, `toggleChatEnabledSetting`)، `vendor/kartei-signature.js` (`persistSignature`)، و`secretary.html` (`toggleOnlineBooking`، حفظ ساعات العمل) هلق بيضيف رسالة الخطأ الحقيقية بالنص، مش بس النص العام.
+- ما في تغيير بالمنطق (نفس نجاح/فشل الحفظ تمامًا) — بس التوست هلق يقول السبب الفعلي.
+- عدّلنا اختبارين موجودين كانوا يتأكدوا من نص التوست بالضبط (`online-booking-toggle.spec.js`, `practice-settings-live-sync.spec.js`)، وضفنا اختبار جديد (`save-settings-persist.spec.js`) يتأكد إنه رسالة الخطأ الحقيقية (مش بس "fehlgeschlagen") توصل للمستخدم.
+- **تحقيق منفصل ولا يزال مفتوح**: بنفس البلاغ، لقينا حالة حساب اختبار ("Dr test") حيث ظهرت "Praxis —" بدل اسم حقيقي، اختفت المواعيد بالكامل، واختفت بيانات كل مريض (MKP/إلخ) وكأنه ما عنده حساب سحابي — رغم إنه `practice_id` الحساب مرتبط صح بجدول `practices` (تأكدنا بالـSQL). تسجيل خروج ثم دخول من جديد حلّ المشكلة بالكامل، ما يرجّح إنه جلسة Supabase الحقيقية بالمتصفح كانت منتهية/غير متطابقة بينما العلامة المحلية (`sessionStorage.smartordi_user`) ضلت تقول "مسجل دخول" — فصار التطبيق يعرض الواجهة الطبيعية لكن كل القراءات بترجع فاضية بصمت تحت RLS (بدون أي خطأ ملموس، عكس الكتابة يلي فعلاً رجعت خطأ حقيقي). **التالي**: إضافة فحص عند فتح `doctor.html`/`secretary.html` يتحقق إنه جلسة Supabase الحقيقية (`sb.auth.getSession()`) لسا صالحة، وإذا لأ يسجل خروج تلقائي برسالة واضحة بدل ما يضل يعرض تطبيق فاضي بصمت.
+
 ## 🧹 تفكيك `doctor.html` — ثامن جزء (الأكبر لحد هلق): تبويبي الوصفة (Rezept) والتحويل (Überweisung) صاروا ملف مستقل
 
 استمرار لنفس الجهد (بعد Verlauf، MKP، المستندات، المخبر، التوقيع/الختم، التطعيمات، الأنامنيز) — وهاد الجزء كان الأكبر والأعقد المتبقي بـ`doctor.html`، لأنه منطق التبويبين ما كان متجمّع بمكان واحد متتالي متل الأجزاء السابقة، إنما موزّع على مجموعتين منفصلتين وسط كود Kartei عام ما بيخصهم.

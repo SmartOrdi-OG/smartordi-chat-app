@@ -5976,7 +5976,7 @@ async function saveSettings(){
     const vorname=nameParts[0]||'';
     const nachname=nameParts.slice(1).join(' ')||'';
     const ok=await saveStaffProfileFields(session.username,{vorname,nachname,fach});
-    if(!ok){ showToastSettings('✗ Speichern fehlgeschlagen'); return; }
+    if(!ok){ showToastSettings('✗ Speichern fehlgeschlagen: '+saveErrorMessage(getLastSaveError())); return; }
     session.name=name;
     sessionStorage.setItem('smartordi_user',JSON.stringify(session));
   }
@@ -5995,7 +5995,7 @@ async function saveSettings(){
 // server still had the old one, with nothing on screen to say so.
 async function saveSinglePracticeField(inputEl,field){
   const ok=await savePracticeSettings({[field]:inputEl.value});
-  showToast(ok?'✓ Gespeichert':'✗ Speichern fehlgeschlagen',ok?'success':'error');
+  showToast(ok?'✓ Gespeichert':'✗ Speichern fehlgeschlagen: '+saveErrorMessage(getLastSaveError()),ok?'success':'error');
 }
 // Same silent-failure gap as saveSinglePracticeField() above, plus one more:
 // the checkbox's own checked state is set by the click before this even
@@ -6005,7 +6005,7 @@ async function toggleChatEnabledSetting(checkbox){
   const ok=await savePracticeSettings({chat_enabled:checkbox.checked});
   if(!ok){
     checkbox.checked=!checkbox.checked;
-    showToast('✗ Speichern fehlgeschlagen','error');
+    showToast('✗ Speichern fehlgeschlagen: '+saveErrorMessage(getLastSaveError()),'error');
     return;
   }
   applyChatGating();
