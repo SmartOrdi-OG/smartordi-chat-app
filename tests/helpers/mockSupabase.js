@@ -287,7 +287,24 @@ function mockScript(seed) {
           updateUser: () => Promise.resolve({ data: {}, error: null }),
           getUser: () => Promise.resolve({ data: { user: null }, error: null }),
           onAuthStateChange() {},
-          getSession() { return Promise.resolve({ data: { session: null } }); },
+          // Mirrors whatever sessionStorage.smartordi_user the test itself
+          // set up (read lazily, at call time, since installMockSupabase's
+          // extraInit callback -- which is what actually sets that key --
+          // runs as a separate addInitScript AFTER this factory function is
+          // defined but BEFORE the real page code that calls getSession()
+          // ever runs). This is what lets every existing test's "already
+          // logged in" setup keep looking like a genuinely valid session to
+          // guardAgainstStaleLoginSession() (vendor/staff-accounts.js)
+          // without each test having to fake one explicitly. A test can
+          // still simulate the real stale-session bug this guards against
+          // by setting window.__forceNoSession = true.
+          getSession() {
+            if (window.__forceNoSession) return Promise.resolve({ data: { session: null } });
+            let cached = null;
+            try { cached = JSON.parse(sessionStorage.getItem('smartordi_user')); } catch (e) {}
+            if (!cached || !cached.username) return Promise.resolve({ data: { session: null } });
+            return Promise.resolve({ data: { session: { user: { id: cached.username } } } });
+          },
         },
       }),
     };

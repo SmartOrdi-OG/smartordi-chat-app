@@ -549,8 +549,21 @@ async function acceptStaffInvite(){
   window.location.href=staffInviteInfo.role==='arzt'?'doctor.html':'secretary.html';
 }
 
+// ?expired=1 -- doctor.html/secretary.html redirect here when they detect
+// the cached "logged in" flag no longer matches a real Supabase Auth
+// session (see guardAgainstStaleLoginSession() in vendor/staff-accounts.js).
+// Without this, that redirect would just look like an unexplained bounce
+// back to a blank login form.
+function showExpiredSessionNotice(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('expired')!=='1') return;
+  document.getElementById('errorText').textContent='Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.';
+  document.getElementById('errorMsg').classList.add('show');
+}
+
 window.addEventListener('load',()=>{
   tryStaffInviteScreen();
+  showExpiredSessionNotice();
   document.getElementById('email').focus();
 });
 // Coming back via the browser's back/forward cache (e.g. after logging out
