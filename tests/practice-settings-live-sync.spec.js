@@ -49,7 +49,7 @@ test('saveSinglePracticeField() shows a failure toast (not silence) when the sav
     input.value = '+43 660 000000';
     await saveSinglePracticeField(input, 'tel');
   });
-  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen');
+  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen: simulated db error');
 });
 
 test('toggleChatEnabledSetting() reverts the checkbox and shows a failure toast when the save fails', async ({ page }) => {
@@ -66,7 +66,7 @@ test('toggleChatEnabledSetting() reverts the checkbox and shows a failure toast 
   });
   expect(result.checkedAfter, 'a failed save must revert the checkbox back to the persisted value').toBe(true);
   expect(result.stillEnabled).toBe(true);
-  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen');
+  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen: simulated db error');
 });
 
 test('toggleChatEnabledSetting() persists and re-applies chat gating on success', async ({ page }) => {

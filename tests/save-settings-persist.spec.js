@@ -69,3 +69,21 @@ test('a real save failure shows an error toast instead of a false success, and t
   expect(result.toast).toContain('fehlgeschlagen');
   expect(result.serverRow.full_name, 'the old name must still be on file after a failed save').toBe('Dr. Sarah Ahmed');
 });
+
+// A production report showed this exact toast with no more detail than
+// "fehlgeschlagen" -- the real Postgres/PostgREST error was only ever
+// visible in the browser console, which most users never open. The toast
+// now includes the real error message inline so it's diagnosable without
+// DevTools.
+test('a real save failure names the actual underlying error, not just a generic message', async ({ page }) => {
+  await setup(page);
+  const toast = await page.evaluate(async () => {
+    window.__forceError = { staff_profiles: 'permission denied for table staff_profiles' };
+    document.getElementById('setArztName').value = 'Dr. Julia Neumann';
+    document.getElementById('setFach').value = 'Kardiologie';
+    await saveSettings();
+    delete window.__forceError;
+    return document.getElementById('toast')?.textContent || '';
+  });
+  expect(toast).toContain('permission denied for table staff_profiles');
+});

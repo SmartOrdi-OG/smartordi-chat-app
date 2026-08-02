@@ -60,7 +60,7 @@ async function persistSignature(fields){
   const me=currentDoctorUsername();
   if(!me) return false;
   const ok=await saveStaffSignature(me,fields);
-  if(!ok) showToast('✗ Speichern fehlgeschlagen — bleibt nur für diese Sitzung aktiv','error');
+  if(!ok) showToast('✗ Speichern fehlgeschlagen — bleibt nur für diese Sitzung aktiv: '+saveErrorMessage(getLastSaveError()),'error');
   return ok;
 }
 async function saveSig(){
