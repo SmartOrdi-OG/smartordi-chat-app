@@ -1438,7 +1438,7 @@ body.windows-mode #karteiBtn{display:none;}
         <div class="sidebar-title" style="margin-bottom:0;">Patienten</div>
         <button onclick="toggleAdvSearch()" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;" id="adv-search-btn">Filter</button>
       </div>
-      <div class="search-box"><span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input type="text" placeholder="Patient suchen..." oninput="filterPatientsList(this.value)"></div>
+      <div class="search-box"><span class="search-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input type="text" id="patientSearchInput" placeholder="Patient suchen..." oninput="filterPatientsListDebounced(this.value)"></div>
 
       <!-- Advanced Search Panel -->
       <div id="adv-search-panel" style="display:none;margin-top:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
@@ -3633,7 +3633,14 @@ function updateDashboardStats(){
   const patEl=document.getElementById('statDashPatients');
   const terEl=document.getElementById('statDashTermineHeute');
   const impfEl=document.getElementById('statDashImpfFaellig');
-  if(patEl) patEl.textContent=patients.length;
+  if(patEl){
+    // Real total (countAllPatients(), vendor/patient-data.js), not
+    // patients.length off patientListEntries()'s ≤500-most-recently-active
+    // cache -- that silently capped at 500 forever once a practice passed
+    // it, with no error or warning. Async, so this fills in a moment after
+    // the rest of the dashboard's synchronous stats.
+    countAllPatients().then(n=>{ if(n!=null) patEl.textContent=n; });
+  }
   if(msgEl){
     // loadMessagesForPatientCached() only covers the last
     // ALL_MESSAGES_WINDOW_DAYS (vendor/patient-data.js) -- this stat is
@@ -5519,21 +5526,52 @@ function toggleAdvSearch(){
   btn.style.borderColor=open?'#fecaca':'#bfdbfe';
 }
 
-// filterPatientsList()/advSearch() toggle individual .patient-item elements'
-// own display style, but a MATCH inside "Alle Patienten" would stay
-// invisible if that whole section is still collapsed (see
-// applyAllPatientsCollapsedState() above) -- these force the section open
-// for the duration of an active search, WITHOUT touching the doctor's
-// actual stored collapse preference, which clearAdvSearch() (no active
-// filter left) restores.
-function filterPatientsList(val){
-  const items=document.querySelectorAll('.patient-item');
-  items.forEach(item=>{
-    const name=item.querySelector('.patient-name')?.textContent?.toLowerCase()||'';
-    item.style.display=name.includes(val.toLowerCase())?'':'none';
-  });
-  applyAllPatientsCollapsedState(val?false:isAllPatientsCollapsed());
+// advSearch() (below) still toggles individual .patient-item elements' own
+// display style, but a MATCH inside "Alle Patienten" would stay invisible
+// if that whole section is still collapsed (see
+// applyAllPatientsCollapsedState() above) -- both this function and
+// advSearch() force the section open for the duration of an active search,
+// WITHOUT touching the doctor's actual stored collapse preference, which
+// clearAdvSearch() (no active filter left)/an empty query here restores.
+//
+// Real live search (searchPatientsServer(), vendor/patient-data.js) instead
+// of hiding/showing whatever .patient-item rows renderPatientList() already
+// put on screen -- that only ever covered the ≤500-most-recently-active
+// patients loadPatients() itself is bounded to, so a patient outside that
+// window was invisible to the one search box a doctor actually uses day to
+// day, even though this same live search already existed and was used
+// elsewhere (Termin booking, CSV-import matching). Matches by name OR SV-
+// Nummer now too, which the old plain substring-over-name match didn't.
+// "Erweiterte Suche" (advSearch() below) still filters the already-rendered
+// list only -- same limitation, left for a follow-up (see TODO.md).
+async function filterPatientsList(val){
+  const q=(val||'').trim();
+  if(!q){
+    renderPatientList(); // restores the normal Heute/Alle-Patienten split
+    return;
+  }
+  // Force the section open immediately (before the round-trip resolves) so
+  // it doesn't sit collapsed while a result is already on its way.
+  applyAllPatientsCollapsedState(false);
+  const activeName=document.getElementById('chat-name')?.textContent||'';
+  const todayMap=todaysTerminByPatient();
+  const results=await searchPatientsServer(q,50);
+  // A fast typist can trigger a newer search before an older, slower one's
+  // response lands -- discard a stale response instead of flashing
+  // outdated results over whatever's currently typed.
+  const input=document.getElementById('patientSearchInput');
+  if(input&&input.value.trim()!==q) return;
+  const group=document.getElementById('allPatientsGroup');
+  if(!group) return;
+  // Excludes anyone already shown in "Heute" so a match with today's
+  // appointment doesn't appear twice (once there, once here).
+  const filtered=results.filter(r=>!todayMap[r.fullName]);
+  group.innerHTML=filtered.map(r=>patientItemHtml({
+    name:r.fullName,color:'#0E5E56',versicherung:r.versicherung||'',svnr:r.svnr||'',dob:r.dob||'',
+    preview:'',time:'',badge:0,dynamic:false,
+  },activeName,null)).join('');
 }
+const filterPatientsListDebounced=debounce(filterPatientsList,300);
 
 function advSearch(){
   const svnr=(document.getElementById('adv-svnr').value||'').toLowerCase();

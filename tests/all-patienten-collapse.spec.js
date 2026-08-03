@@ -80,8 +80,14 @@ test('clicking again re-collapses it and persists that too', async ({ page }) =>
 
 test('typing in the main search box force-expands the section so a match is actually visible, then restores collapse when cleared', async ({ page }) => {
   await setupPage(page);
-  const whileSearching = await page.evaluate(() => {
-    filterPatientsList('Peter');
+  const whileSearching = await page.evaluate(async () => {
+    // filterPatientsList() is now a real live search (searchPatientsServer())
+    // that discards a stale response if #patientSearchInput's value has
+    // since changed -- set it here too, matching what real typing does via
+    // the debounced oninput handler, or the awaited call below would be
+    // discarded as "stale" against the input's still-empty value.
+    document.getElementById('patientSearchInput').value = 'Peter';
+    await filterPatientsList('Peter');
     const peter = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Peter Gruber'));
     return {
       groupDisplay: document.getElementById('allPatientsGroup').style.display,
@@ -91,8 +97,9 @@ test('typing in the main search box force-expands the section so a match is actu
   expect(whileSearching.groupDisplay, 'section must force-open during an active search, or a match would be invisible').toBe('');
   expect(whileSearching.peterVisible).toBe(true);
 
-  const afterClearing = await page.evaluate(() => {
-    filterPatientsList('');
+  const afterClearing = await page.evaluate(async () => {
+    document.getElementById('patientSearchInput').value = '';
+    await filterPatientsList('');
     return document.getElementById('allPatientsGroup').style.display;
   });
   expect(afterClearing, 'clearing the search restores the actual (collapsed-by-default) preference').toBe('none');

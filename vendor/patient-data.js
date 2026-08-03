@@ -652,9 +652,9 @@ const allMessagesReady=refreshAllMessages();
 // invisible but skipping N-1 redundant full rebuilds during a burst isn't.
 function debounce(fn,ms){
   let t=null;
-  return function(){
+  return function(...args){
     clearTimeout(t);
-    t=setTimeout(fn,ms);
+    t=setTimeout(()=>fn(...args),ms);
   };
 }
 // Replaces the old same-browser-only 'storage' event for chat -- a real
