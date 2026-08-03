@@ -164,7 +164,7 @@ test('a row whose patients-record saves fine but whose real login fails to provi
     return {
       patients: window.__store.patients,
       lastResults: window._lastImportResults,
-      warningIconShown: document.getElementById('importResultRows').innerHTML.includes('⚠'),
+      warningIconShown: document.getElementById('importResultRows').innerHTML.includes('title="Serverabgleich fehlgeschlagen"'),
     };
   }, csv);
 
