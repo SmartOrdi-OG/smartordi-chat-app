@@ -479,6 +479,35 @@ function clearRezeptForm(){
   document.getElementById('rz-med3-block').style.display='none';
   document.getElementById('rz-med4-block').style.display='none';
   document.getElementById('rz-add-med-btn').style.display='block';
+  checkMedicationAlerts();
+}
+
+// CDSS first slice (see vendor/cdss-medication-alerts.js): non-blocking
+// alerts for known drug-drug interactions / drug-allergy-class matches
+// among whatever's currently typed into rz-med1..4. _rzCurrentAllergie is
+// refreshed once per Rezept-tab activation (openRezeptTabForCurrentPatient()
+// below) rather than re-fetched on every keystroke.
+let _rzCurrentAllergie='';
+async function openRezeptTabForCurrentPatient(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  _rzCurrentAllergie = name && name!=='Kein Patient ausgewählt' ? ((await findPatientRecordAsync(name))?.allergie||'') : '';
+  checkMedicationAlerts();
+}
+function checkMedicationAlerts(){
+  const box=document.getElementById('rzMedAlerts');
+  if(!box) return;
+  const drugTexts=['rz-med1','rz-med2','rz-med3','rz-med4'].map(id=>document.getElementById(id)?.value||'');
+  const alerts=detectMedicationAlerts(drugTexts,_rzCurrentAllergie);
+  if(!alerts.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  box.innerHTML=alerts.map(a=>{
+    const isAllergy=a.type==='allergy';
+    const bg=isAllergy?'#fef2f2':'#fffbeb', border=isAllergy?'#dc2626':'#d97706', text=isAllergy?'#991b1b':'#92400e', label=isAllergy?'⚠ Mögliche Allergie':'⚠ Mögliche Wechselwirkung';
+    return `<div style="background:${bg};border-left:4px solid ${border};border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:12px;color:${text};">
+      <div style="font-weight:800;margin-bottom:2px;">${label}</div>
+      ${escapeHtml(a.text)}
+    </div>`;
+  }).join('') + `<div style="font-size:10px;color:#94a3b8;margin-bottom:10px;">Automatischer Hinweis auf Basis einer begrenzten, nicht vollständigen Liste bekannter Wechselwirkungen — ersetzt nicht die fachliche Beurteilung. Sie können trotzdem wie gewohnt speichern/drucken/senden.</div>`;
 }
 
 // "Der Patient ist in der Ordination" -- print it now, on paper, for the

@@ -19,6 +19,8 @@
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-data.js"></script>
 <script src="vendor/kartei-visits.js"></script>
+<script src="vendor/icd10-data.js"></script>
+<script src="vendor/icd10.js"></script>
 <script src="vendor/kartei-mkp.js"></script>
 <script src="vendor/kartei-documents.js"></script>
 <script src="vendor/kartei-labor.js"></script>
@@ -26,6 +28,7 @@
 <script src="vendor/kartei-impfung.js"></script>
 <script src="vendor/kartei-anamnese.js"></script>
 <script src="vendor/kartei-rezept-ueberweisung.js"></script>
+<script src="vendor/cdss-medication-alerts.js"></script>
 <style>
 @font-face{
   font-family:'IBM Plex Sans';
@@ -1655,7 +1658,14 @@ body.windows-mode #karteiBtn{display:none;}
 
           <div class="k-form-group">
             <label class="k-form-label">Diagnose / ICD</label>
-            <input type="text" class="k-form-input" id="kDiag" placeholder="z.B. J06.9 – Akute Infektion">
+            <!-- Free text, unchanged in what's saved (still just #kDiag's
+                 plain value, see saveKarteiVisit() in vendor/kartei-visits.js)
+                 -- searchIcd10()/vendor/icd10.js only adds suggestions on top,
+                 it never requires picking one. -->
+            <div style="position:relative;">
+              <input type="text" class="k-form-input" id="kDiag" placeholder="z.B. J06.9 – Akute Infektion" autocomplete="off" oninput="icdDiagSearch()" onfocus="icdDiagSearch()" onblur="setTimeout(()=>{document.getElementById('kDiagResults').style.display='none';},150)">
+              <div id="kDiagResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e2e8f0;border-radius:10px;margin-top:4px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:20;"></div>
+            </div>
           </div>
           <div class="k-form-group">
             <label class="k-form-label">Befund & Notizen</label>
@@ -1860,7 +1870,7 @@ body.windows-mode #karteiBtn{display:none;}
               <option value="allergie">Antihistaminika (Allergie)</option>
               <option value="sonstige">Sonstige</option>
             </select>
-            <input class="k-form-input" id="rz-med1" list="commonMedikamente1" placeholder="z.B. Amoxicillin 500mg">
+            <input class="k-form-input" id="rz-med1" list="commonMedikamente1" placeholder="z.B. Amoxicillin 500mg" oninput="checkMedicationAlerts()">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1886,7 +1896,7 @@ body.windows-mode #karteiBtn{display:none;}
               <option value="allergie">Antihistaminika (Allergie)</option>
               <option value="sonstige">Sonstige</option>
             </select>
-            <input class="k-form-input" id="rz-med2" list="commonMedikamente2" placeholder="z.B. Ibuprofen 400mg">
+            <input class="k-form-input" id="rz-med2" list="commonMedikamente2" placeholder="z.B. Ibuprofen 400mg" oninput="checkMedicationAlerts()">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1912,7 +1922,7 @@ body.windows-mode #karteiBtn{display:none;}
               <option value="allergie">Antihistaminika (Allergie)</option>
               <option value="sonstige">Sonstige</option>
             </select>
-            <input class="k-form-input" id="rz-med3" list="commonMedikamente3" placeholder="z.B. Pantoprazol 40mg">
+            <input class="k-form-input" id="rz-med3" list="commonMedikamente3" placeholder="z.B. Pantoprazol 40mg" oninput="checkMedicationAlerts()">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1938,7 +1948,7 @@ body.windows-mode #karteiBtn{display:none;}
               <option value="allergie">Antihistaminika (Allergie)</option>
               <option value="sonstige">Sonstige</option>
             </select>
-            <input class="k-form-input" id="rz-med4" list="commonMedikamente4" placeholder="z.B. Omeprazol 20mg">
+            <input class="k-form-input" id="rz-med4" list="commonMedikamente4" placeholder="z.B. Omeprazol 20mg" oninput="checkMedicationAlerts()">
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="k-form-section">
@@ -1955,6 +1965,12 @@ body.windows-mode #karteiBtn{display:none;}
         <!-- Reveals Medikament 3, then Medikament 4, then hides itself --
              addMedikamentSlot() in doctor.html's script. -->
         <button type="button" id="rz-add-med-btn" onclick="addMedikamentSlot()" style="width:100%;background:#f0fdf4;border:1px dashed #0E5E56;border-radius:10px;padding:10px;font-size:13px;font-weight:600;color:#0E5E56;cursor:pointer;margin-bottom:12px;">+ Medikament hinzufügen</button>
+
+        <!-- Nicht-blockierende Hinweise auf bekannte Wechselwirkungen/
+             Allergien (checkMedicationAlerts(), vendor/cdss-medication-alerts.js)
+             -- rein informativ, der Arzt kann jederzeit trotzdem speichern/
+             drucken/senden. Begrenzte, nicht vollständige Liste. -->
+        <div id="rzMedAlerts" style="display:none;"></div>
 
         <!-- Anmerkungen -->
         <div class="k-form-section">
@@ -5440,6 +5456,7 @@ function switchKarteiTab(tab,btn){
     const m=document.getElementById('kartei-meta')?.textContent||'';
     const rzInfo=document.getElementById('rz-patient-info');
     if(rzInfo)rzInfo.textContent=n+(m?' · '+m:'');
+    openRezeptTabForCurrentPatient();
   }
   if(tab==='impfung'){
     document.getElementById('impf-datum').value=new Date().toISOString().split('T')[0];
