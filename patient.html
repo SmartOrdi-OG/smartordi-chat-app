@@ -1089,7 +1089,7 @@ function msgRowHtml(m){
   }else{
     bubble=`<div class="msg-bubble">${escapeHtml(m.text)}</div>`;
   }
-  return `<div class="msg-row${outClass}"><div>${bubble}<span class="msg-time"${timeStyle}>${m.time}</span></div></div>`;
+  return `<div class="msg-row${outClass}"><div>${bubble}<span class="msg-time"${timeStyle}>${m.time}${m.dir==='in'?' <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;display:inline-block;"><polyline points="1 9 6 14 12 4"/><polyline points="9 9 14 14 22 2"/></svg>':''}</span></div></div>`;
 }
 function renderPatientMessages(){
   const msgs=document.getElementById('messages');
@@ -1577,7 +1577,7 @@ async function sendMsg(){
   const msgs=document.getElementById('messages');
   if(msgs.querySelector('.empty-state')) msgs.innerHTML='';
   const time=new Date().toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'});
-  const outMsg={dir:'in',type:'text',text:txt,time:time+' ✓✓'}; // dir:'in' = written by the patient (see msgRowHtml)
+  const outMsg={dir:'in',type:'text',text:txt,time}; // dir:'in' = written by the patient (see msgRowHtml)
   msgs.insertAdjacentHTML('beforeend',msgRowHtml(outMsg));
   appendPatientMessage(outMsg);
   inp.value='';inp.style.height='auto';
