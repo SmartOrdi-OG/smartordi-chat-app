@@ -35,7 +35,7 @@ test('uploads a real ZIP file via JSZip and matches the patient by SVNr, tolerat
 
   await page.evaluate(() => { openDocImportModal(); });
   await page.setInputFiles('#docImportZipInput', { name: 'export.zip', mimeType: 'application/zip', buffer: Buffer.from('dummy zip bytes') });
-  await page.waitForFunction(() => document.getElementById('docImportZipStatus').textContent.includes('✓'));
+  await page.waitForFunction(() => document.getElementById('docImportZipStatus').textContent.includes('Datei(en) im ZIP gefunden'));
 
   const zipStatus = await page.locator('#docImportZipStatus').textContent();
   expect(zipStatus).toContain('1 Datei(en)');

@@ -72,7 +72,7 @@ test('secretary.html: bulk document import finds a patient outside the bounded 5
   await page.waitForTimeout(1000);
   await page.evaluate(() => { openDocImportModal(); });
   await page.setInputFiles('#docImportZipInput', { name: 'export.zip', mimeType: 'application/zip', buffer: Buffer.from('dummy zip bytes') });
-  await page.waitForFunction(() => document.getElementById('docImportZipStatus').textContent.includes('✓'));
+  await page.waitForFunction(() => document.getElementById('docImportZipStatus').textContent.includes('Datei(en) im ZIP gefunden'));
 
   // Patient Number0000 is the OLDEST -- guaranteed outside the 500 bound.
   const csv = 'Dateiname,SV-Nummer,Titel,Kategorie\nbefund_0000.pdf,1000000000,Laborbefund,befund';
