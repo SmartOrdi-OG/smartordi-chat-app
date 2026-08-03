@@ -515,9 +515,31 @@ async function searchPatientsByCriteria(criteria,limit){
 // identity/contact columns; never touches temp_password/pw_hash unless
 // explicitly asked to (same "never clobber a real password on update" rule
 // as the one-time upload migration).
+//
+// A real INSERT ... ON CONFLICT(username) DO UPDATE (the old single
+// .upsert() call this used to be) validates NOT NULL constraints (name/
+// full_name have no default) against the attempted INSERT tuple BEFORE
+// Postgres even checks whether a conflict exists -- so a caller updating
+// just ONE field on an already-existing patient (saveAnamnese() sending
+// only {anamnese}, resetPatientPassword() sending only {temp_password,
+// first_login}, a plain SVNr correction sending only {svnr}, ...) failed
+// with a real "null value in column \"name\" ... violates not-null
+// constraint" error, even though the row already had a real name and was
+// never actually going to be inserted. Found live in production
+// (2026-08-03) via a genuine Anamnese-save failure report. Splitting into
+// a real UPDATE (existing row: only ever touches the columns actually
+// passed in, never re-validates untouched columns) or a real INSERT (new
+// row: still correctly requires name/full_name from the caller, exactly
+// as before) avoids this Postgres upsert gotcha entirely.
 async function upsertPatientIdentity(username,fields){
-  const row=Object.assign({username},fields);
-  const {data,error}=await sb.from('patients').upsert(row,{onConflict:'username'}).select().single();
+  const {data:existing,error:lookupError}=await sb.from('patients').select('id').eq('username',username).maybeSingle();
+  if(lookupError){ console.error('upsertPatientIdentity failed',lookupError); throw lookupError; }
+  let data,error;
+  if(existing){
+    ({data,error}=await sb.from('patients').update(fields).eq('username',username).select().single());
+  }else{
+    ({data,error}=await sb.from('patients').insert(Object.assign({username},fields)).select().single());
+  }
   if(error){ console.error('upsertPatientIdentity failed',error); throw error; }
   invalidateLookupCacheForUsername(username);
   await refreshPatients();
@@ -563,10 +585,20 @@ function loadGuardians(){
 }
 const guardiansReady=refreshGuardians();
 // Never touches temp_password/pw_hash unless explicitly asked to, same rule
-// as upsertPatientIdentity above.
+// as upsertPatientIdentity above -- and the same real-UPDATE-vs-real-INSERT
+// split, for the exact same reason (see upsertPatientIdentity's own comment):
+// patient_guardians.name/full_name are NOT NULL with no default too, so a
+// partial-field upsert on an existing guardian hit the identical Postgres
+// ON-CONFLICT-still-validates-the-full-tuple gotcha.
 async function upsertGuardianIdentity(username,fields){
-  const row=Object.assign({username},fields);
-  const {data,error}=await sb.from('patient_guardians').upsert(row,{onConflict:'username'}).select().single();
+  const {data:existing,error:lookupError}=await sb.from('patient_guardians').select('id').eq('username',username).maybeSingle();
+  if(lookupError){ console.error('upsertGuardianIdentity failed',lookupError); throw lookupError; }
+  let data,error;
+  if(existing){
+    ({data,error}=await sb.from('patient_guardians').update(fields).eq('username',username).select().single());
+  }else{
+    ({data,error}=await sb.from('patient_guardians').insert(Object.assign({username},fields)).select().single());
+  }
   if(error){ console.error('upsertGuardianIdentity failed',error); throw error; }
   await refreshGuardians();
   return data;

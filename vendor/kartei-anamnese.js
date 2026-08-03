@@ -48,10 +48,10 @@ async function saveAnamnese(){
   try{
     await upsertPatientIdentity(found.username,{anamnese:data});
   }catch(e){
-    showToast('✗ Speichern fehlgeschlagen','error');
+    showToast('Speichern fehlgeschlagen: '+saveErrorMessage(e),'error');
     return;
   }
-  showToast('✓ Anamnese gespeichert!');
+  showToast('Anamnese gespeichert!');
 }
 
 // Loads whichever patient is currently shown in Kartei: renders the

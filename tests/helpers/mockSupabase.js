@@ -30,6 +30,23 @@ function mockScript(seed) {
   const store = Object.assign({}, EMPTY_STORE, seed);
   return `
     window.__store = ${JSON.stringify(store)};
+    // Columns with NOT NULL and no default, per table (patients.name/
+    // full_name, patient_guardians.name/full_name -- see phase1_patients_
+    // termine_messages.sql/phase28_guardian_child_accounts.sql). Used only
+    // by upsert() below: a real INSERT ... ON CONFLICT DO UPDATE validates
+    // NOT NULL constraints against the attempted INSERT tuple BEFORE
+    // Postgres even checks for a conflict -- so a partial-field upsert on
+    // an ALREADY-EXISTING row still fails if the payload alone is missing
+    // one of these, even though the row was never actually going to be
+    // inserted. Real incident this simulates: vendor/patient-data.js's
+    // upsertPatientIdentity()/upsertGuardianIdentity() (see their own
+    // comments) -- found live in production (2026-08-03) via a genuine
+    // Anamnese-save failure, invisible here until this mock modeled the
+    // same gotcha real Postgres has.
+    const __UPSERT_REQUIRED_COLUMNS = {
+      patients: ['username', 'name', 'full_name'],
+      patient_guardians: ['username', 'name', 'full_name'],
+    };
     // Turns a Postgres ILIKE pattern into a match against one value. Only
     // handles the % wildcard the way this app actually uses it (always a
     // simple '%term%'/'term%'/'%term' contains/starts/ends search, never a
@@ -143,7 +160,14 @@ function mockScript(seed) {
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
-          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
+          if (b._insertedRows) {
+            if (b._upsertRequiredCheck) {
+              const upsertErr = b._upsertRequiredCheck();
+              if (upsertErr) return Promise.resolve({ data: null, error: upsertErr });
+            }
+            b._commit();
+            return Promise.resolve({ data: b._insertedRows[0], error: null });
+          }
           const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
           return Promise.resolve({ data: r[0] || null, error: null });
         },
@@ -156,7 +180,14 @@ function mockScript(seed) {
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
             return Promise.resolve({ data: matched[0] || null, error: null });
           }
-          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows[0], error: null }); }
+          if (b._insertedRows) {
+            if (b._upsertRequiredCheck) {
+              const upsertErr = b._upsertRequiredCheck();
+              if (upsertErr) return Promise.resolve({ data: null, error: upsertErr });
+            }
+            b._commit();
+            return Promise.resolve({ data: b._insertedRows[0], error: null });
+          }
           const r = __applyOrderLimit(rows.filter(x => __matches(x, b._filters, b._orGroup)), b);
           return Promise.resolve({ data: r[0] || null, error: null });
         },
@@ -190,6 +221,21 @@ function mockScript(seed) {
           // every one to match (and be actually defined) instead.
           const conflictKeys = opts && opts.onConflict ? opts.onConflict.split(',').map(k => k.trim()) : null;
           const matches = (r, x) => conflictKeys.every(k => x[k] !== undefined && r[k] === x[k]);
+          // See __UPSERT_REQUIRED_COLUMNS's own comment above -- checked
+          // against the raw payload alone, regardless of whether a
+          // matching existing row will be found, same as real Postgres.
+          const required = __UPSERT_REQUIRED_COLUMNS[table];
+          b._upsertRequiredCheck = () => {
+            if (!required) return null;
+            for (const x of arr) {
+              for (const col of required) {
+                if (x[col] === undefined || x[col] === null) {
+                  return { code: '23502', details: null, hint: null, message: 'null value in column "' + col + '" of relation "' + table + '" violates not-null constraint' };
+                }
+              }
+            }
+            return null;
+          };
           // Same deferred-commit reasoning as insert() above.
           b._insertedRows = arr;
           b._commit = function () {
@@ -230,7 +276,14 @@ function mockScript(seed) {
           if (window.__forceErrorOnColumns && window.__forceErrorOnColumns[table] && b._selectCols !== '*') {
             return Promise.resolve({ data: null, error: { message: window.__forceErrorOnColumns[table] } }).then(res, rej);
           }
-          if (b._insertedRows) { b._commit(); return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej); }
+          if (b._insertedRows) {
+            if (b._upsertRequiredCheck) {
+              const upsertErr = b._upsertRequiredCheck();
+              if (upsertErr) return Promise.resolve({ data: null, error: upsertErr }).then(res, rej);
+            }
+            b._commit();
+            return Promise.resolve({ data: b._insertedRows, error: null }).then(res, rej);
+          }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
             matched.forEach(x => Object.assign(x, b._pendingUpdate));
