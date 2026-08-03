@@ -658,7 +658,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="modal">
       <div class="modal-header">
         <div class="modal-title" data-i18n="symptom.title">Grund für den Besuch</div>
-        <button class="modal-close" onclick="closeSymptomModal()">×</button>
+        <button class="modal-close" onclick="closeSymptomModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="symptom.hint">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
@@ -731,7 +731,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
     <div class="modal">
       <div class="modal-header">
         <div class="modal-title" data-i18n="changepw2.title">Passwort ändern</div>
-        <button class="modal-close" onclick="closeChangePasswordModal()">×</button>
+        <button class="modal-close" onclick="closeChangePasswordModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="changepw2.hint">Die Ordination hat keinen Zugriff auf Ihr Passwort.</div>
@@ -871,7 +871,7 @@ function ensureWindowChrome(){
       '<div class="app-window-controls">'+
       '<button class="app-window-btn" onclick="minimizeWindow(\''+id+'\')" title="'+tr('win.minimize')+'">–</button>'+
       '<button class="app-window-btn win-fs" onclick="toggleWindowFullscreen(\''+id+'\')" title="'+tr('win.fullscreen')+'"><svg viewBox="0 0 24 24">'+WIN_ICON_SHRINK+'</svg></button>'+
-      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="'+tr('win.close')+'">✕</button>'+
+      '<button class="app-window-btn win-close" onclick="closeWindow(\''+id+'\')" title="'+tr('win.close')+'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'+
       '</div>';
     const body=document.createElement('div');
     body.className='app-window-body';
