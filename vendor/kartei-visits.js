@@ -105,6 +105,28 @@ function renderVisitList(list){
   }).join('');
 }
 
+// ICD-10 autocomplete for #kDiag (see vendor/icd10.js for the data/search
+// itself) -- same results-dropdown pattern as secretary.html's
+// #ntPatientSearch/#ntPatientResults appointment-booking patient search.
+let _icd10DiagResults = [];
+function icdDiagSearch() {
+  const q = document.getElementById('kDiag').value;
+  const resultsEl = document.getElementById('kDiagResults');
+  const results = searchIcd10(q, 20);
+  _icd10DiagResults = results;
+  if (!results.length) { resultsEl.style.display = 'none'; resultsEl.innerHTML = ''; return; }
+  resultsEl.innerHTML = results.map((r, i) =>
+    `<div onmousedown="selectIcd10Diag(${i})" style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;"><b>${escapeHtml(r[0])}</b> – ${escapeHtml(r[1])}</div>`
+  ).join('');
+  resultsEl.style.display = 'block';
+}
+function selectIcd10Diag(i) {
+  const r = _icd10DiagResults[i];
+  if (!r) return;
+  document.getElementById('kDiag').value = r[0] + ' – ' + r[1];
+  document.getElementById('kDiagResults').style.display = 'none';
+}
+
 // Real bug this used to have: nothing here ever reached Supabase -- every
 // logged visit lived only in the in-memory VISITS array and vanished on
 // reload (supabase/phase27_patient_visits.sql). Now inserts a real row

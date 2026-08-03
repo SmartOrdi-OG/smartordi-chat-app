@@ -19,6 +19,8 @@
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-data.js"></script>
 <script src="vendor/kartei-visits.js"></script>
+<script src="vendor/icd10-data.js"></script>
+<script src="vendor/icd10.js"></script>
 <script src="vendor/kartei-mkp.js"></script>
 <script src="vendor/kartei-documents.js"></script>
 <script src="vendor/kartei-labor.js"></script>
@@ -1655,7 +1657,14 @@ body.windows-mode #karteiBtn{display:none;}
 
           <div class="k-form-group">
             <label class="k-form-label">Diagnose / ICD</label>
-            <input type="text" class="k-form-input" id="kDiag" placeholder="z.B. J06.9 – Akute Infektion">
+            <!-- Free text, unchanged in what's saved (still just #kDiag's
+                 plain value, see saveKarteiVisit() in vendor/kartei-visits.js)
+                 -- searchIcd10()/vendor/icd10.js only adds suggestions on top,
+                 it never requires picking one. -->
+            <div style="position:relative;">
+              <input type="text" class="k-form-input" id="kDiag" placeholder="z.B. J06.9 – Akute Infektion" autocomplete="off" oninput="icdDiagSearch()" onfocus="icdDiagSearch()" onblur="setTimeout(()=>{document.getElementById('kDiagResults').style.display='none';},150)">
+              <div id="kDiagResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e2e8f0;border-radius:10px;margin-top:4px;max-height:220px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:20;"></div>
+            </div>
           </div>
           <div class="k-form-group">
             <label class="k-form-label">Befund & Notizen</label>
