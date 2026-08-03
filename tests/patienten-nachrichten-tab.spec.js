@@ -42,8 +42,14 @@ test('there is no separate Nachrichten nav tab, and Patienten is the only entry 
 test('filterPatients() matches by SV-Nummer as well as by name', async ({ page }) => {
   await setupPage(page);
 
-  const visibleNamesFor = async (query) => page.evaluate((q) => {
-    filterPatients(q);
+  // filterPatients() is now a real live search (searchPatientsServer())
+  // that discards a stale response if #secPatientSearchInput's value has
+  // since changed -- set it here too, matching what real typing does via
+  // the debounced oninput handler, or the awaited call below would be
+  // discarded as "stale" against the input's still-empty value.
+  const visibleNamesFor = async (query) => page.evaluate(async (q) => {
+    document.getElementById('secPatientSearchInput').value = q;
+    await filterPatients(q);
     return [...document.querySelectorAll('#patientList .patient-row[data-real]')]
       .filter(r => r.style.display !== 'none')
       .map(r => r.querySelector('.p-name').textContent);
