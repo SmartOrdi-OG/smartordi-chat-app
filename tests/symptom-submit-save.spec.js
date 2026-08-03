@@ -66,9 +66,12 @@ test('a genuine RPC error (data:false) shows the failure toast, not the false su
     openSymptomModal('t1');
     document.getElementById('symptomNote').value = 'Kopfschmerzen seit gestern';
     await submitSymptoms();
-    return { toast: document.getElementById('toast')?.textContent || '' };
+    return {
+      toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
+    };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('konnten nicht gespeichert werden');
 });
 
@@ -83,8 +86,11 @@ test('a thrown exception from the RPC call also shows the failure toast', async 
     openSymptomModal('t1');
     document.getElementById('symptomNote').value = 'Kopfschmerzen seit gestern';
     await submitSymptoms();
-    return { toast: document.getElementById('toast')?.textContent || '' };
+    return {
+      toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
+    };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('konnten nicht gespeichert werden');
 });

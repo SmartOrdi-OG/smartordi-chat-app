@@ -49,9 +49,12 @@ test('refuses (no false success) when the patient has no real Supabase account',
   const result = await page.evaluate(async () => {
     document.getElementById('kartei-name').textContent = 'Ghost Patient';
     await saveAnamnese();
-    return { toast: document.getElementById('toast')?.textContent || '' };
+    return {
+      toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
+    };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('Cloud-Konto');
 });
 
@@ -83,8 +86,11 @@ test('shows a failure toast (not a false success) when the save call itself fail
     window.__forceError = { patients: 'simulated DB error' };
     await saveAnamnese();
     delete window.__forceError;
-    return document.getElementById('toast')?.textContent || '';
+    return {
+      toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
+    };
   });
-  expect(result).toContain('fehlgeschlagen');
-  expect(result).not.toContain('✓');
+  expect(result.toast).toContain('fehlgeschlagen');
+  expect(result.toastClass).not.toContain('success');
 });

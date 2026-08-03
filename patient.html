@@ -499,6 +499,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .toast.show{transform:translateX(-50%) translateY(0) scale(1);opacity:1;}
 .toast.success{background:linear-gradient(135deg,#0A4A44,#0E5E56);}
 .toast.error{background:linear-gradient(135deg,#7A2E29,#B23A34);}
+.toast.error::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");}
 
 ::-webkit-scrollbar{width:0;}
 
@@ -1168,7 +1169,7 @@ function renderDokumente(){
 }
 async function downloadPatientDocument(docId,filename){
   const file=await patientGetDocumentFile(docId);
-  if(!file){ showToast('✗ Datei konnte nicht geladen werden','error'); return; }
+  if(!file){ showToast('Datei konnte nicht geladen werden','error'); return; }
   const blob=await (await fetch('data:'+file.mimeType+';base64,'+file.base64)).blob();
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -2064,7 +2065,7 @@ async function submitChangePassword(){
     }
   }
   closeChangePasswordModal();
-  showToast('✓ '+tr('changepw2.save').replace('✓ ',''));
+  showToast(tr('changepw2.save').replace('✓ ',''));
 }
 
 // Init

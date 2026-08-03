@@ -62,10 +62,11 @@ test('a real save failure shows an error toast instead of a false success, and t
     delete window.__forceError;
     return {
       toast: document.getElementById('toast')?.textContent || '',
+      toastClass: document.getElementById('toast')?.className || '',
       serverRow: window.__store.staff_profiles.find(p => p.id === 'u1'),
     };
   });
-  expect(result.toast).not.toContain('✓');
+  expect(result.toastClass).not.toContain('success');
   expect(result.toast).toContain('fehlgeschlagen');
   expect(result.serverRow.full_name, 'the old name must still be on file after a failed save').toBe('Dr. Sarah Ahmed');
 });

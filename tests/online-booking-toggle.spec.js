@@ -48,7 +48,7 @@ test('secretary.html: toggleOnlineBooking() disables booking, persists it, and u
   expect(result.saved).toBe(false);
   expect(result.btnText).toContain('gesperrt');
   expect(result.stillEnabled).toBe(false);
-  await expect(page.locator('#toast')).toHaveText('✓ Online-Buchung für Patienten gesperrt');
+  await expect(page.locator('#toast')).toHaveText('Online-Buchung für Patienten gesperrt');
 });
 
 test('secretary.html: a failed save shows an error toast and leaves the actual setting untouched', async ({ page }) => {
@@ -61,7 +61,7 @@ test('secretary.html: a failed save shows an error toast and leaves the actual s
   });
   expect(result.stillEnabled, 'a failed save must not leave the app believing the setting actually changed').toBe(true);
   expect(result.btnText).toContain('aktiv');
-  await expect(page.locator('#toast')).toHaveText('✗ Speichern fehlgeschlagen: simulated db error');
+  await expect(page.locator('#toast')).toHaveText('Speichern fehlgeschlagen: simulated db error');
 });
 
 test('secretary.html: an existing appointment stays untouched by disabling online booking', async ({ page }) => {
