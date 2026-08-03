@@ -731,7 +731,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
     <div class="lp-modal" onclick="event.stopPropagation()">
       <div class="lp-modal-header">
         <h2 class="lp-modal-title" id="modalTitle"></h2>
-        <button class="lp-modal-close" onclick="closeModal()">✕</button>
+        <button class="lp-modal-close" onclick="closeModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="lp-modal-body" id="modalBody"></div>
       <div class="lp-modal-footer">
@@ -1480,7 +1480,7 @@ body.windows-mode #karteiBtn{display:none;}
           <div class="kartei-header-sub">smartordi.eu</div>
         </div>
       </div>
-      <button class="kartei-close" onclick="toggleKartei()">✕</button>
+      <button class="kartei-close" onclick="toggleKartei()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
 
     <div class="kartei-patient-bar">
@@ -2281,7 +2281,7 @@ body.windows-mode #karteiBtn{display:none;}
         <div style="font-size:15px;font-weight:800;color:white;">Überweisungsschein – Vorschau</div>
         <div style="font-size:11px;color:rgba(255,255,255,0.7);">Österreich · DSGVO-konform · Smartordi.eu</div>
       </div>
-      <button onclick="closeUwModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="closeUwModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
 
     <!-- A4 Preview -->
@@ -2754,7 +2754,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Patient weiterleiten</div>
-      <button class="modal-close" onclick="document.getElementById('transferModal').classList.remove('show')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('transferModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -2787,7 +2787,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal" style="max-width:520px;">
     <div class="modal-header">
       <div class="modal-title">📄 Bericht senden</div>
-      <button class="modal-close" onclick="closeKarteiReportModal()">✕</button>
+      <button class="modal-close" onclick="closeKarteiReportModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div class="form-group">
@@ -2843,7 +2843,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Paket wechseln — <span id="pcPlanLabel"></span></div>
-      <button class="modal-close" onclick="closePlanChangeModal()">✕</button>
+      <button class="modal-close" onclick="closePlanChangeModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;font-size:12px;color:#0E5E56;margin-bottom:14px;">
@@ -2863,7 +2863,7 @@ body.windows-mode #karteiBtn{display:none;}
 <div id="trialReminderBanner" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:850;background:#fffbeb;border-top:1px solid #fde68a;padding:10px 16px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,0.06);">
   <span style="font-size:13px;color:#92400e;font-weight:600;" id="trialReminderText"></span>
   <button onclick="openTrialPaymentModal()" style="padding:6px 14px;background:#EAF4F1;color:#0E5E56;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Paket & Zahlung bestätigen</button>
-  <button onclick="dismissTrialReminder()" style="background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:0 4px;" title="Schließen">✕</button>
+  <button onclick="dismissTrialReminder()" style="background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:0 4px;" title="Schließen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
 </div>
 
 <!-- CRITICAL DATA LOAD ERROR BANNER: a failed refreshPatients()/refreshTermine()/
@@ -2894,7 +2894,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal" style="width:680px;max-width:92vw;">
     <div class="modal-header">
       <div class="modal-title">Tagesliste</div>
-      <button class="modal-close" onclick="document.getElementById('allTermineModal').classList.remove('show')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('allTermineModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
       <div id="tageslisteSummary" style="font-size:12px;color:#475569;margin-bottom:8px;font-weight:600;"></div>
@@ -2909,7 +2909,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal" style="max-width:400px;">
     <div class="modal-header">
       <div class="modal-title">📋 Besuchsgrund</div>
-      <button class="modal-close" onclick="document.getElementById('visitReasonModal').classList.remove('show')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('visitReasonModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div style="font-size:12px;color:#64748b;margin-bottom:14px;">Patient/in: <strong id="visitReasonPatient" style="color:#0f172a;"></strong></div>
@@ -2926,7 +2926,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div class="modal" style="max-width:400px;">
     <div class="modal-header">
       <div class="modal-title" id="staffInviteTitle">+ Arzt/Ärztin einladen</div>
-      <button class="modal-close" onclick="document.getElementById('staffInviteModal').classList.remove('show')">✕</button>
+      <button class="modal-close" onclick="document.getElementById('staffInviteModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body">
       <div id="staffInviteFachRow" style="margin-bottom:14px;">
@@ -6680,7 +6680,7 @@ function closeModal() {
           <div style="font-size:16px;font-weight:800;color:white;">Ordination einladen</div>
           <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:2px;">Netzwerk erweitern</div>
         </div>
-        <button onclick="closeEinladenModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">×</button>
+        <button onclick="closeEinladenModal()" style="background:rgba(255,255,255,0.15);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
     </div>
     <div style="padding:20px 24px;">
