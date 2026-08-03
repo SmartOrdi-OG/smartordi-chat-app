@@ -218,7 +218,7 @@ body{
         <input type="password" class="form-input" id="recoveryPwConfirm" placeholder="Passwort wiederholen" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitRecoveryPassword()">
       </div>
     </div>
-    <button class="btn-login" id="recoveryBtn" onclick="submitRecoveryPassword()">✓ Passwort speichern & anmelden</button>
+    <button class="btn-login" id="recoveryBtn" onclick="submitRecoveryPassword()">Passwort speichern & anmelden</button>
   </div>
 
   <!-- Team-Einladung (?invite=<token> in der URL) -->
@@ -379,7 +379,7 @@ async function submitRecoveryPassword(){
   btn.disabled=true; btn.textContent='Wird gespeichert...';
   const {data:updateData,error:updateError}=await sb.auth.updateUser({password:pw});
   if(updateError||!updateData.user){
-    btn.disabled=false; btn.textContent='✓ Passwort speichern & anmelden';
+    btn.disabled=false; btn.textContent='Passwort speichern & anmelden';
     errorText.textContent='Passwort konnte nicht gespeichert werden. Bitte fordern Sie einen neuen Link an.';
     errorEl.classList.add('show');
     return;
@@ -389,7 +389,7 @@ async function submitRecoveryPassword(){
   // their own dashboard instead of making them log in again right after.
   const {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',updateData.user.id).single();
   if(profileError||!profile){
-    btn.disabled=false; btn.textContent='✓ Passwort speichern & anmelden';
+    btn.disabled=false; btn.textContent='Passwort speichern & anmelden';
     errorText.textContent='Kein Praxisprofil für dieses Konto gefunden.';
     errorEl.classList.add('show');
     return;
