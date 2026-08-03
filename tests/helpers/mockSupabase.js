@@ -53,6 +53,8 @@ function mockScript(seed) {
       if (op === 'neq') return x[k] !== v;
       if (op === 'gte') return x[k] >= v;
       if (op === 'lte') return x[k] <= v;
+      if (op === 'gt') return x[k] > v;
+      if (op === 'lt') return x[k] < v;
       if (op === 'ilike') return __ilikeMatch(x[k], v);
       return true;
     }
@@ -72,14 +74,23 @@ function mockScript(seed) {
     // row order/truncation, but a live search needs both to behave for
     // real (limit() genuinely bounding a large table, order() genuinely
     // surfacing the most relevant/recent matches first).
+    // _orders is a list (one entry per chained .order() call, in call
+    // order) so a composite ORDER BY (e.g. updated_at DESC, id DESC --
+    // real cursor pagination's tie-break, see loadPatientListPage() in
+    // vendor/patient-data.js) sorts the same way real Postgres does:
+    // ties on the first key are broken by the second, not left in
+    // whatever order the array happened to already be in.
     function __applyOrderLimit(rows, b) {
       let out = rows;
-      if (b._orderCol) {
+      if (b._orders && b._orders.length) {
         out = out.slice().sort((a, c) => {
-          const av = a[b._orderCol], cv = c[b._orderCol];
-          if (av === cv) return 0;
-          const cmp = av < cv ? -1 : 1;
-          return b._orderAsc ? cmp : -cmp;
+          for (const { col, asc } of b._orders) {
+            const av = a[col], cv = c[col];
+            if (av === cv) continue;
+            const cmp = av < cv ? -1 : 1;
+            return asc ? cmp : -cmp;
+          }
+          return 0;
         });
       }
       if (b._limit != null) out = out.slice(0, b._limit);
@@ -98,6 +109,8 @@ function mockScript(seed) {
         neq(k, v) { b._filters.push(['neq', k, v]); return b; },
         gte(k, v) { b._filters.push(['gte', k, v]); return b; },
         lte(k, v) { b._filters.push(['lte', k, v]); return b; },
+        gt(k, v) { b._filters.push(['gt', k, v]); return b; },
+        lt(k, v) { b._filters.push(['lt', k, v]); return b; },
         ilike(k, v) { b._filters.push(['ilike', k, v]); return b; },
         // Parses Supabase's "col.op.val,col2.op.val2" string format into an
         // OR-group of [op,col,val] triples (searchPatientsServer()'s
@@ -111,7 +124,10 @@ function mockScript(seed) {
           }).filter(Boolean);
           return b;
         },
-        order(col, opts) { b._orderCol = col; b._orderAsc = !(opts && opts.ascending === false); return b; },
+        // Each chained .order() call appends (real supabase-js composes a
+        // multi-column ORDER BY this way -- .order('a').order('b') means
+        // ORDER BY a, b, not "b wins").
+        order(col, opts) { (b._orders || (b._orders = [])).push({ col, asc: !(opts && opts.ascending === false) }); return b; },
         limit(n) { b._limit = n; return b; },
         maybeSingle() {
           // Same window.__forceError escape hatch then() supports (see its
