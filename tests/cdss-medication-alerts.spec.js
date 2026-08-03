@@ -105,3 +105,63 @@ test('a patient with no allergy on file gets no allergy alert for the same medic
   });
   expect(html).not.toContain('Allergie');
 });
+
+// Wider MED_INTERACTIONS coverage added after expanding MED_INGREDIENT_KEYWORDS
+// to every doctor.html MEDIKAMENTE_LIST entry (not just the original 10).
+test('an NSAR combined with a corticosteroid (Prednisolon) shows an interaction alert', async ({ page }) => {
+  await setupPage(page);
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Prednisolon 5mg';
+    document.getElementById('rz-med2').value = 'Ibuprofen 400mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Wechselwirkung');
+  expect(html).toContain('Prednisolon');
+  expect(html).toContain('Ibuprofen');
+});
+
+test('Novalgin combined with another analgesic (Diclofenac) shows an interaction alert', async ({ page }) => {
+  await setupPage(page);
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Novalgin 500mg';
+    document.getElementById('rz-med2').value = 'Diclofenac 50mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Wechselwirkung');
+});
+
+test('a beta-blocker (Bisoprolol) combined with an NSAR shows an interaction alert', async ({ page }) => {
+  await setupPage(page);
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Bisoprolol 5mg';
+    document.getElementById('rz-med2').value = 'Aspirin 100mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Wechselwirkung');
+  expect(html).toContain('Betablocker');
+});
+
+test('two sedating CNS drugs (Pregabalin + Mirtazapin) show an interaction alert', async ({ page }) => {
+  await setupPage(page);
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Pregabalin 75mg';
+    document.getElementById('rz-med2').value = 'Mirtazapin 30mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Wechselwirkung');
+  expect(html).toContain('dämpfend');
+});
+
+test('every medication in doctor.html\'s MEDIKAMENTE_LIST is recognized by MED_INGREDIENT_KEYWORDS', async ({ page }) => {
+  await setupPage(page);
+  const uncovered = await page.evaluate(() => {
+    return MEDIKAMENTE_LIST
+      .filter(med => !MED_INGREDIENT_KEYWORDS.some(k => k.match.some(m => med.name.toLowerCase().includes(m))))
+      .map(med => med.name);
+  });
+  expect(uncovered).toEqual([]);
+});
