@@ -100,7 +100,7 @@ test('resetPatientPassword() provisions/repairs the real Auth user with the new 
     const calls = [];
     sb.functions.invoke = async (name, opts) => { calls.push({ name, opts }); return { data: { ok: true }, error: null }; };
     window.confirm = () => true;
-    document.getElementById('pdTitle').textContent = '✏ Maria Huber';
+    document.getElementById('pdTitle').dataset.name = 'Maria Huber';
     await resetPatientPassword();
     return { calls, newPw: document.getElementById('pdNewPwResult').textContent };
   });
