@@ -316,6 +316,84 @@ function loadPatients(){
   return _patients;
 }
 const patientsReady=refreshPatients();
+
+// ── Real paginated patient list (architecture project, see TODO.md) ──
+// loadPatients()/refreshPatients() above stay as they are: a bounded,
+// one-shot in-memory cache used for O(1) synchronous lookups elsewhere
+// (message-count aggregation, CSV-import matching, etc.). This is a
+// SEPARATE, genuinely paginated, always-accurate view of the full
+// patients table meant to back the actual visible list -- doctor.html and
+// secretary.html both call this (not their own separate copies of "how do
+// I filter/page the list"), so there is exactly one implementation of
+// that logic instead of two that can silently drift apart from each
+// other (see TODO.md's chat read-receipt entry for a real example of that
+// exact drift causing a bug last time).
+//
+// Cursor shape: {updatedAt,id} of the last row of the previous page, or
+// null/undefined for the first page. Tie-broken by id (unique) because
+// patients.updated_at CAN genuinely collide across different rows -- e.g.
+// a single CSV-import transaction touching many rows shares one now()
+// value across all of them (Postgres freezes now() per transaction, not
+// per statement), so relying on updated_at alone would non-deterministically
+// skip or repeat rows at that boundary. Implemented as two simple queries
+// (an exact-tie bucket, then a strictly-older bucket) rather than one
+// query with a nested OR/AND filter, since that's the same end result with
+// far simpler filters on both ends (this app's code and PostgREST itself).
+const PATIENT_LIST_PAGE_COLUMNS=PATIENTS_COLUMNS+',updated_at';
+async function loadPatientListPage({cursor,pageSize}={}){
+  const size=pageSize||50;
+  let tieRows=[];
+  if(cursor){
+    const {data,error}=await selectWithColumnFallback(
+      cols=>sb.from('patients').select(cols)
+        .eq('updated_at',cursor.updatedAt).lt('id',cursor.id)
+        .order('updated_at',{ascending:false}).order('id',{ascending:false})
+        .limit(size),
+      PATIENT_LIST_PAGE_COLUMNS,'loadPatientListPage (tie bucket)');
+    if(error){ console.error('loadPatientListPage (tie bucket) failed',error); return {rows:[],cursor:null,hasMore:false,error}; }
+    tieRows=data||[];
+  }
+  const remaining=size-tieRows.length;
+  let olderRows=[];
+  if(remaining>0){
+    const {data,error}=await selectWithColumnFallback(
+      cols=>{
+        let q=sb.from('patients').select(cols)
+          .order('updated_at',{ascending:false}).order('id',{ascending:false}).limit(remaining);
+        if(cursor) q=q.lt('updated_at',cursor.updatedAt);
+        return q;
+      },
+      PATIENT_LIST_PAGE_COLUMNS,'loadPatientListPage (older bucket)');
+    if(error){ console.error('loadPatientListPage (older bucket) failed',error); return {rows:[],cursor:null,hasMore:false,error}; }
+    olderRows=data||[];
+  }
+  const rowsRaw=tieRows.concat(olderRows);
+  const localAccounts=localPatientAccountsRaw();
+  const rows=rowsRaw.map(row=>patientRowToJs(row,localAccounts));
+  rows.forEach(cachePatientLookup);
+  const last=rowsRaw[rowsRaw.length-1];
+  return {
+    rows,
+    cursor:last?{updatedAt:last.updated_at,id:last.id}:null,
+    // Heuristic, not an exact lookahead: a full page MIGHT mean there's
+    // nothing left right at the boundary, in which case the next fetch
+    // simply comes back empty and the caller stops -- same tradeoff
+    // real-world infinite-scroll UIs make everywhere to avoid a second
+    // round-trip (a COUNT/limit(size+1) probe) on every single page.
+    hasMore:rowsRaw.length>=size,
+  };
+}
+// Real total count for the practice's own patients (RLS-scoped
+// automatically, same as every other patients query) -- for the
+// Dashboard/section-header counts, which previously read patients.length
+// off the bounded ≤500 list and silently under-reported once a practice
+// passed that size (looked like "500 Patienten" forever, never higher,
+// with no error or warning).
+async function countAllPatients(){
+  const {count,error}=await sb.from('patients').select('id',{count:'exact',head:true});
+  if(error){ console.error('countAllPatients failed',error); return null; }
+  return count;
+}
 function findPatientByFullName(name){
   const username=Object.keys(_patients).find(function(u){ return _patients[u]&&_patients[u].fullName===name; });
   return username?{username,accounts:_patients}:null;
