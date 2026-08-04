@@ -2,10 +2,12 @@
 // chat" redesign: selecting a patient's name in the Praxis sidebar used to
 // immediately render their chat conversation (and silently mark it "read"
 // just from being selected). Now it shows an overview (Nächste Termine + a
-// "Chat öffnen" button carrying this patient's own unread badge) by
-// default -- the doctor sees clinical context first, and opening the chat
-// is one explicit click away (selectPatient()/renderPatientOverview()/
-// openPatientChatView()/showPatientOverview() in doctor.html).
+// "Chat öffnen" button carrying this patient's own unread badge) that stays
+// visible for as long as the patient is selected -- the doctor sees
+// clinical context first, and opening the chat is one explicit click away,
+// via a Messenger-desktop-style floating window layered on top of it
+// (selectPatient()/renderPatientOverview()/openPatientChatView()/
+// closeFloatingChat() in doctor.html).
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -45,7 +47,7 @@ test('selecting a patient shows the overview by default, not the chat conversati
   expect(state.inputHidden).toBe(true);
 });
 
-test('clicking "Chat öffnen" reveals the real conversation and hides the overview', async ({ page }) => {
+test('clicking "Chat öffnen" opens the floating chat window, keeping the overview visible alongside it', async ({ page }) => {
   await setupPage(page);
   const state = await page.evaluate(() => {
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
@@ -53,31 +55,33 @@ test('clicking "Chat öffnen" reveals the real conversation and hides the overvi
     openPatientChatView();
     return {
       overviewShown: document.getElementById('patientOverviewPane').style.display !== 'none',
+      floatingChatShown: document.getElementById('floatingChatWindow').style.display !== 'none',
       messagesHidden: document.getElementById('messages').style.display === 'none',
       chatNameStillCorrect: document.getElementById('chat-name').textContent === 'Maria Huber',
     };
   });
-  expect(state.overviewShown).toBe(false);
+  expect(state.overviewShown).toBe(true);
+  expect(state.floatingChatShown).toBe(true);
   expect(state.messagesHidden).toBe(false);
   expect(state.chatNameStillCorrect).toBe(true);
 });
 
-test('the "Übersicht" button returns from the open chat back to the overview', async ({ page }) => {
+test('closeFloatingChat() closes the floating chat window, back to overview-only', async ({ page }) => {
   await setupPage(page);
   const state = await page.evaluate(() => {
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
     openPatientChatView();
-    showPatientOverview();
+    closeFloatingChat();
     return {
       overviewShown: document.getElementById('patientOverviewPane').style.display !== 'none',
+      floatingChatHidden: document.getElementById('floatingChatWindow').style.display === 'none',
       messagesHidden: document.getElementById('messages').style.display === 'none',
-      backBtnHidden: document.getElementById('ovBackBtn').style.display === 'none',
     };
   });
   expect(state.overviewShown).toBe(true);
+  expect(state.floatingChatHidden).toBe(true);
   expect(state.messagesHidden).toBe(true);
-  expect(state.backBtnHidden).toBe(true);
 });
 
 test('an unread badge on the sidebar row is NOT cleared just by selecting the patient -- only by opening the chat', async ({ page }) => {
