@@ -114,7 +114,7 @@ async function downloadKarteiDocument(docId){
   setTimeout(function(){ URL.revokeObjectURL(url); },4000);
 }
 async function deleteKarteiDocument(docId){
-  if(!confirm('Dieses Dokument wirklich löschen?')) return;
+  if(!await showConfirmDialog('Dieses Dokument wirklich löschen?')) return;
   try{
     await deletePatientDocument(docId);
     renderKarteiDocuments();
