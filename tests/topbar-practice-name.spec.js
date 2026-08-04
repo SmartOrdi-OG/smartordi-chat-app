@@ -1,23 +1,24 @@
-// Regression test for the topbar showing the current practice's own name
-// (getPracticeSettings().name) next to the app brand, so the topbar reads
-// as THIS clinic's own installation instead of a generic app shell. No
-// "Ordination" prefix is added in code -- register.html's own "z.B.
-// Ordination Dr. Müller" placeholder means most real practice names
-// already read that way, so hardcoding another "Ordination" would double
-// it up for most real accounts.
+// Regression test for the topbar showing "Ordination <doctor name>" next to
+// the app brand, so the topbar reads as THIS clinic's own installation
+// instead of a generic app shell.
+//
+// This is built from the doctor's OWN name (session.name), not read from
+// practices.name -- a real account showed exactly why: practices.name is
+// free text typed once at registration, and was saved as just the single
+// word "Ordination" with no doctor name at all, so reading it directly
+// left the topbar looking incomplete. The doctor's own name is always
+// reliably set (required at registration, already used for the topbar
+// user chip and the Kalender heading), so "Ordination "+session.name is
+// the more robust source.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
 
-function seed(practiceOverrides) {
-  return {
+test('the topbar shows the app brand and "Ordination <doctor name>", even when practices.name itself is just the bare word "Ordination"', async ({ page }) => {
+  await installMockSupabase(page, {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'u1', practice_id: 'prac1' }],
-    practices: [Object.assign({ id: 'prac1', name: 'Ordination Dr. Test', plan: 'pro' }, practiceOverrides)],
-  };
-}
-
-async function setupPage(page, practiceOverrides) {
-  await installMockSupabase(page, seed(practiceOverrides), () => {
+    practices: [{ id: 'prac1', name: 'Ordination', plan: 'pro' }],
+  }, () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'u1', isAdmin: true }));
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
     localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ u1: { username: 'u1', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
@@ -25,20 +26,26 @@ async function setupPage(page, practiceOverrides) {
   await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
   await page.waitForTimeout(1200);
   await page.evaluate(async () => { await practiceSettingsReady; });
-}
-
-test('the topbar shows the app brand and the logged-in doctor\'s real practice name, not a hardcoded "Ordination" prefix', async ({ page }) => {
-  await setupPage(page);
   const state = await page.evaluate(() => ({
     brandText: document.querySelector('.topbar-brand-name').textContent,
     practiceNameText: document.getElementById('topbarPracticeName').textContent,
   }));
   expect(state.brandText).toBe('Smartordi IT System.');
-  expect(state.practiceNameText).toBe('Ordination Dr. Test');
+  expect(state.practiceNameText).toBe('Ordination Dr. Sarah Ahmed');
 });
 
-test('a practice name without the word "Ordination" is still shown as-is, unmodified', async ({ page }) => {
-  await setupPage(page, { name: 'Praxis am Ring' });
+test('a different doctor\'s own name is reflected in the topbar label, independent of whatever practices.name holds', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u2', vorname: 'Klaus', nachname: 'Weber', full_name: 'Dr. Klaus Weber', role: 'arzt', fach: 'Kardiologie', is_admin: true, email: 'k@a.at', username: 'u2', practice_id: 'prac2' }],
+    practices: [{ id: 'prac2', name: 'Praxis am Ring', plan: 'pro' }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Klaus Weber', username: 'u2', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ u2: { username: 'u2', fullName: 'Dr. Klaus Weber', role: 'arzt', isAdmin: true, fach: 'Kardiologie' } }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(async () => { await practiceSettingsReady; });
   const practiceNameText = await page.evaluate(() => document.getElementById('topbarPracticeName').textContent);
-  expect(practiceNameText).toBe('Praxis am Ring');
+  expect(practiceNameText).toBe('Ordination Dr. Klaus Weber');
 });
