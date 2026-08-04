@@ -21,6 +21,7 @@
 <script src="vendor/kartei-visits.js"></script>
 <script src="vendor/icd10-data.js"></script>
 <script src="vendor/icd10.js"></script>
+<script src="vendor/cdss-followup-reminders.js"></script>
 <script src="vendor/kartei-mkp.js"></script>
 <script src="vendor/kartei-documents.js"></script>
 <script src="vendor/kartei-labor.js"></script>
@@ -1546,6 +1547,11 @@ body.windows-mode #karteiBtn{display:none;}
             <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">Hypertonie, Diabetes T2</span></div>
             <div class="k-alert" id="k-stamm-allergie">Penicillin-Allergie beachten!</div>
           </div>
+          <!-- Nicht-blockierende "Kontroll-Erinnerung" (CDSS zweiter Teil,
+               vendor/cdss-followup-reminders.js) -- gefüllt von
+               renderFollowupReminder() (vendor/kartei-visits.js), berechnet
+               aus echten Besuchsdaten. Rein informativ. -->
+          <div id="kFollowupWarnung" style="display:none;margin-bottom:12px;background:#fffbeb;border-left:4px solid #d97706;border-radius:12px;padding:10px 12px;"></div>
         </div>
 
         <!-- Übernommene Krankengeschichte (Altsystem) -- only shown for
