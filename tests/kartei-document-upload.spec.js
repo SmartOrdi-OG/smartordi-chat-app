@@ -118,24 +118,40 @@ test('a real server-side rejection (e.g. the phase25 size/MIME-type constraint) 
   expect(result.rows, 'a rejected insert must not leave a row behind').toBe(0);
 });
 
+// deleteKarteiDocument() now asks via showConfirmDialog() -- a custom
+// centered modal (#genericConfirmModal) -- instead of window.confirm(),
+// since a native confirm() always prepends its own "<origin> says"
+// boilerplate and is positioned by the browser itself, not this page (a
+// real user screenshot showed it looking cramped/out of place). The modal
+// only resolves once a button is actually clicked, so deleteKarteiDocument()
+// is deliberately NOT awaited here -- this test drives the click itself,
+// the same way a real doctor would.
 test('deleteKarteiDocument() asks for confirmation and does nothing if cancelled', async ({ page }) => {
   await setupPage(page);
-  page.on('dialog', d => d.dismiss());
-  const result = await page.evaluate(async () => {
+  await page.evaluate(() => {
     window.__store.patient_documents.push({ id: 'd1', patient_id: 'p1', category: 'befund', title: 'Blutbild', created_at: new Date().toISOString() });
-    await deleteKarteiDocument('d1');
-    return window.__store.patient_documents.length;
   });
-  expect(result, 'cancelling the confirm() must leave the document in place').toBe(1);
+  page.evaluate(() => { deleteKarteiDocument('d1'); });
+  await page.waitForSelector('#genericConfirmModal.show');
+  const messageText = await page.textContent('#genericConfirmMessage');
+  expect(messageText).toBe('Dieses Dokument wirklich löschen?');
+  await page.click('#genericConfirmModal .btn-secondary');
+  await page.waitForTimeout(100);
+  const result = await page.evaluate(() => window.__store.patient_documents.length);
+  expect(result, 'cancelling must leave the document in place').toBe(1);
+  const modalStillShowing = await page.evaluate(() => document.getElementById('genericConfirmModal').classList.contains('show'));
+  expect(modalStillShowing, 'the modal must close after Abbrechen').toBe(false);
 });
 
 test('deleteKarteiDocument() removes the document once confirmed', async ({ page }) => {
   await setupPage(page);
-  page.on('dialog', d => d.accept());
-  const result = await page.evaluate(async () => {
+  await page.evaluate(() => {
     window.__store.patient_documents.push({ id: 'd1', patient_id: 'p1', category: 'befund', title: 'Blutbild', created_at: new Date().toISOString() });
-    await deleteKarteiDocument('d1');
-    return window.__store.patient_documents.length;
   });
+  page.evaluate(() => { deleteKarteiDocument('d1'); });
+  await page.waitForSelector('#genericConfirmModal.show');
+  await page.click('#genericConfirmOkBtn');
+  await page.waitForTimeout(100);
+  const result = await page.evaluate(() => window.__store.patient_documents.length);
   expect(result).toBe(0);
 });

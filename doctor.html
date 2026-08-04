@@ -1565,15 +1565,15 @@ body.windows-mode #karteiBtn{display:none;}
           </div>
           <div class="k-section">
             <div class="k-section-title">Versicherung</div>
-            <div class="k-row"><span class="k-label">Träger</span><span class="k-value" id="k-stamm-versicherung">ÖGK</span></div>
-            <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">1234 010185</span></div>
-            <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" id="k-stamm-dsgvo" style="color:#16a34a;">Einwilligung 15.01.2026</span></div>
+            <div class="k-row"><span class="k-label">Träger</span><span class="k-value" id="k-stamm-versicherung">—</span></div>
+            <div class="k-row"><span class="k-label">SV-Nummer</span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">—</span></div>
+            <div class="k-row"><span class="k-label">DSGVO</span><span class="k-value" id="k-stamm-dsgvo">—</span></div>
           </div>
           <div class="k-section">
             <div class="k-section-title">Medizinische Hinweise</div>
-            <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value" id="k-stamm-blutgruppe">A+</span></div>
-            <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">Hypertonie, Diabetes T2</span></div>
-            <div class="k-alert" id="k-stamm-allergie">Penicillin-Allergie beachten!</div>
+            <div class="k-row"><span class="k-label">Blutgruppe</span><span class="k-value" id="k-stamm-blutgruppe">—</span></div>
+            <div class="k-row"><span class="k-label">Diagnosen</span><span class="k-value" id="k-stamm-diagnosen">—</span></div>
+            <div class="k-alert" id="k-stamm-allergie" style="display:none;">Penicillin-Allergie beachten!</div>
           </div>
           <!-- Nicht-blockierende "Kontroll-Erinnerung" (CDSS zweiter Teil,
                vendor/cdss-followup-reminders.js) -- gefüllt von
@@ -2287,17 +2287,23 @@ body.windows-mode #karteiBtn{display:none;}
          staying inline here uses the space this pane used to leave empty)
          instead of jumping straight into the chat conversation -- so
          opening a patient's name doesn't automatically pull the doctor's
-         attention into messaging. Sized to its own content (not stretched
-         to fill the remaining height). -->
-    <div id="patientOverviewPane" style="display:none;padding:16px 20px;overflow-y:auto;">
-      <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Nächste Termine</div>
-      <div id="ovTermineList"></div>
-      <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:48px 0 10px;">Patient weiterleiten</div>
-      <div id="transferDoctorList"></div>
-      <textarea class="form-input" id="transferNote" rows="2" placeholder="Notiz für den Kollegen/die Kollegin (optional)..." style="width:100%;box-sizing:border-box;margin-top:4px;"></textarea>
-      <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
-      <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
-        <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+         attention into messaging. Fills the remaining height above the
+         bottom chat bar (flex:1) so the Weiterleiten block below can be
+         pinned all the way down via margin-top:auto, instead of just
+         following Nächste Termine with a fixed gap. -->
+    <div id="patientOverviewPane" style="display:none;flex-direction:column;padding:16px 20px;overflow-y:auto;flex:1;min-height:0;">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Nächste Termine</div>
+        <div id="ovTermineList"></div>
+      </div>
+      <div style="margin-top:auto;padding-top:20px;">
+        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Patient weiterleiten</div>
+        <div id="transferDoctorList"></div>
+        <textarea class="form-input" id="transferNote" rows="2" placeholder="Notiz für den Kollegen/die Kollegin (optional)..." style="width:100%;box-sizing:border-box;margin-top:4px;"></textarea>
+        <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
+        <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
+          <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+        </div>
       </div>
     </div>
     <!-- "Chat öffnen" pinned to the bottom of the chat area (margin-top:auto
@@ -2371,8 +2377,9 @@ body.windows-mode #karteiBtn{display:none;}
 
     <!-- Actions -->
     <div style="padding:16px 20px 20px;display:flex;gap:10px;flex-wrap:wrap;">
-      <button onclick="closeUwModal()" style="flex:1;min-width:120px;padding:11px;border:1.5px solid #e2e8f0;border-radius:10px;background:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;">Schließen</button>
-      <button onclick="downloadUwPDF()" style="flex:2;min-width:180px;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF herunterladen</button>
+      <button onclick="closeUwModal()" style="flex:1;min-width:100px;padding:11px;border:1.5px solid #e2e8f0;border-radius:10px;background:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;">Schließen</button>
+      <button onclick="printUwPDF()" title="Patient ist in der Ordination" style="flex:1;min-width:120px;padding:11px;border:1.5px solid #7c3aed;border-radius:10px;background:white;color:#7c3aed;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken</button>
+      <button onclick="downloadUwPDF()" style="flex:1;min-width:120px;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF</button>
     </div>
   </div>
 </div>
@@ -2811,6 +2818,24 @@ body.windows-mode #karteiBtn{display:none;}
     <div class="call-sub" id="call-sub"></div>
     <div class="call-status" id="callStatus">Verbinde...</div>
     <div class="call-btns"><button class="call-mute"></button><button class="call-end" onclick="hideCall()"></button></div>
+  </div>
+</div>
+
+<!-- ══ GENERIC CONFIRM MODAL: replaces window.confirm() for destructive
+     actions (e.g. deleteKarteiDocument()) -- a native confirm() always
+     prepends its own "<origin> says" boilerplate and is positioned by the
+     browser itself (top-left on some setups), neither of which this app
+     controls. showConfirmDialog(message) returns a Promise<boolean>,
+     resolved by whichever button the doctor clicks. ══ -->
+<div class="modal-overlay" id="genericConfirmModal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-body" style="padding:24px 22px 8px;text-align:center;">
+      <div style="font-size:14px;font-weight:600;color:var(--text-1);" id="genericConfirmMessage"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;padding:18px 22px 22px;">
+      <button class="btn-secondary" style="flex:1;" onclick="resolveGenericConfirm(false)">Abbrechen</button>
+      <button style="flex:1;padding:10px 24px;background:#dc2626;color:white;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;" onclick="resolveGenericConfirm(true)" id="genericConfirmOkBtn">Löschen</button>
+    </div>
   </div>
 </div>
 
@@ -4472,6 +4497,28 @@ function openPlanChangeModal(plan,force){
   document.getElementById('pcConfirmBtn').textContent='Weiter zu Stripe';
   document.getElementById('planChangeModal').classList.add('show');
 }
+// supabase-js wraps a non-2xx Edge Function response in a FunctionsHttpError
+// whose own .message is just a generic "Edge Function returned a non-2xx
+// status code" -- the actual reason (e.g. this project's own
+// "unknown_or_unconfigured_plan"/"stripe_failed" error codes from
+// create-checkout-session/create-billing-portal-session, or Stripe's own
+// rejection message) only lives in the raw HTTP response body, reachable
+// via error.context (a Response). Every Stripe billing call site used to
+// show the exact same blanket "fehlgeschlagen" text no matter what actually
+// went wrong -- same class of bug as the pre-existing generic
+// "Speichern fehlgeschlagen" toast fix elsewhere in this file, just for the
+// billing Edge Functions specifically.
+async function extractFunctionErrorDetail(error){
+  if(!error) return '';
+  try{
+    if(error.context && typeof error.context.clone==='function'){
+      const body=await error.context.clone().json();
+      if(body?.detail) return body.detail;
+      if(body?.error) return body.error;
+    }
+  }catch(e){ /* body wasn't JSON, or already consumed -- fall through */ }
+  return (error.message && error.message!=='Edge Function returned a non-2xx status code') ? error.message : '';
+}
 async function confirmPlanChange(){
   const errEl=document.getElementById('pcErrorMsg');
   const btn=document.getElementById('pcConfirmBtn');
@@ -4484,7 +4531,8 @@ async function confirmPlanChange(){
       body:{plan:pendingPlan, returnUrl:window.location.origin+window.location.pathname},
     });
     if(error||!data?.url){
-      errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.';
+      const detail=await extractFunctionErrorDetail(error);
+      errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.'+(detail?' ('+detail+')':'');
       errEl.style.display='block';
       btn.disabled=false;
       btn.textContent='Weiter zu Stripe';
@@ -4493,7 +4541,8 @@ async function confirmPlanChange(){
     window.location.href=data.url;
   }catch(e){
     console.error(fnName+' failed',e);
-    errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.';
+    const detail=await extractFunctionErrorDetail(e);
+    errEl.textContent='Weiterleitung zu Stripe fehlgeschlagen. Bitte später erneut versuchen.'+(detail?' ('+detail+')':'');
     errEl.style.display='block';
     btn.disabled=false;
     btn.textContent='Weiter zu Stripe';
@@ -4508,11 +4557,16 @@ async function manageBilling(){
     const {data,error}=await sb.functions.invoke('create-billing-portal-session',{
       body:{returnUrl:window.location.origin+window.location.pathname},
     });
-    if(error||!data?.url){ showToast('Öffnen der Zahlungsverwaltung fehlgeschlagen','error'); return; }
+    if(error||!data?.url){
+      const detail=await extractFunctionErrorDetail(error);
+      showToast('Öffnen der Zahlungsverwaltung fehlgeschlagen'+(detail?' ('+detail+')':''),'error');
+      return;
+    }
     window.location.href=data.url;
   }catch(e){
     console.error('create-billing-portal-session failed',e);
-    showToast('Öffnen der Zahlungsverwaltung fehlgeschlagen','error');
+    const detail=await extractFunctionErrorDetail(e);
+    showToast('Öffnen der Zahlungsverwaltung fehlgeschlagen'+(detail?' ('+detail+')':''),'error');
   }
 }
 // Stripe redirects back here with ?checkout=success once Checkout itself
@@ -4687,7 +4741,7 @@ function updateChatPaneState(){
   // The overview (Nächste Termine) shows for as long as a patient is
   // selected, regardless of whether the floating chat popup is open --
   // opening/closing the popup no longer swaps this panel's own content.
-  if(overviewPane) overviewPane.style.display=hasPatient?'block':'none';
+  if(overviewPane) overviewPane.style.display=hasPatient?'flex':'none';
   if(ovChatOpenBtn) ovChatOpenBtn.style.display=hasPatient?'':'none';
   if(ovChatOpenBtnMobile) ovChatOpenBtnMobile.style.display=hasPatient?'':'none';
   const showChat=hasPatient && _floatingChatOpen;
@@ -6020,6 +6074,25 @@ function showToast(msg,type='success'){
   clearTimeout(t._to);t._to=setTimeout(()=>t.classList.remove('show'),2800);
 }
 function showToastSettings(msg,type='success'){showToast(msg,type);}
+
+// Replaces window.confirm() for destructive actions -- a native confirm()
+// always prepends its own "<origin> says" boilerplate and is positioned by
+// the browser itself, not this page, which a real user screenshot showed
+// looking cramped/out of place instead of centered like every other modal
+// here. Returns a Promise<boolean>, resolved by whichever button gets
+// clicked; resolveGenericConfirm() is only ever called by those two
+// buttons' onclick, never directly.
+let _genericConfirmResolve=null;
+function showConfirmDialog(message){
+  document.getElementById('genericConfirmMessage').textContent=message;
+  document.getElementById('genericConfirmModal').classList.add('show');
+  return new Promise(resolve=>{ _genericConfirmResolve=resolve; });
+}
+function resolveGenericConfirm(result){
+  document.getElementById('genericConfirmModal').classList.remove('show');
+  if(_genericConfirmResolve) _genericConfirmResolve(result);
+  _genericConfirmResolve=null;
+}
 
 // Rough, non-authoritative indicator for the ~300 patients/year
 // proportionality exemption mentioned in the e-card/ELGA research (see the

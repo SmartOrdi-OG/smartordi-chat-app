@@ -128,6 +128,45 @@ test('confirmPlanChange() shows an error and stays on the page if the Edge Funct
   expect(page.url()).toContain('doctor.html');
 });
 
+// Regression test: a live incident showed the exact same blanket
+// "Weiterleitung zu Stripe fehlgeschlagen" text no matter the real cause
+// (missing STRIPE_SECRET_KEY, an unconfigured price ID, a genuine Stripe
+// rejection...), leaving no way to tell which without going into the Edge
+// Function's own server logs. extractFunctionErrorDetail() now surfaces the
+// real reason inline instead.
+test('confirmPlanChange() surfaces the underlying error message, not just a generic "fehlgeschlagen"', async ({ page }) => {
+  await setupPage(page, { plan: 'standard' });
+  const result = await page.evaluate(async () => {
+    sb.functions.invoke = async () => ({ data: null, error: { message: 'network error' } });
+    openPlanChangeModal('enterprise');
+    await confirmPlanChange();
+    return { errorText: document.getElementById('pcErrorMsg').textContent };
+  });
+  expect(result.errorText).toContain('network error');
+});
+
+test('confirmPlanChange() reads the real reason out of a non-2xx Edge Function response body instead of the generic wrapper message', async ({ page }) => {
+  await setupPage(page, { plan: 'standard' });
+  const result = await page.evaluate(async () => {
+    const fakeResponse = { clone(){ return this; }, json: async () => ({ error: 'unknown_or_unconfigured_plan' }) };
+    sb.functions.invoke = async () => ({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: fakeResponse } });
+    openPlanChangeModal('enterprise');
+    await confirmPlanChange();
+    return { errorText: document.getElementById('pcErrorMsg').textContent };
+  });
+  expect(result.errorText).toContain('unknown_or_unconfigured_plan');
+});
+
+test('manageBilling() also surfaces the underlying error, not just a generic toast', async ({ page }) => {
+  await setupPage(page, { plan: 'enterprise', stripe_customer_id: 'cus_123', payment_method: { method: 'card', brand: 'visa', last4: '4242' } });
+  const result = await page.evaluate(async () => {
+    sb.functions.invoke = async () => ({ data: null, error: { message: 'STRIPE_SECRET_KEY not configured' } });
+    await manageBilling();
+    return { toastText: document.getElementById('toast')?.textContent || '' };
+  });
+  expect(result.toastText).toContain('STRIPE_SECRET_KEY not configured');
+});
+
 test('manageBilling() redirects to the Billing Portal URL for an already-subscribed practice', async ({ page }) => {
   await setupPage(page, { plan: 'enterprise', stripe_customer_id: 'cus_123', payment_method: { method: 'card', brand: 'visa', last4: '4242' } });
   await page.route('https://billing.stripe.com/test-portal', (route) =>

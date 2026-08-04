@@ -697,3 +697,27 @@ async function downloadUwPDF(){
   }
   clearUeberweisungForm();
 }
+// "Drucken" -- the preview modal used to only offer a PDF download, with no
+// way to print the referral directly for a patient who's still in the
+// Ordination. Same openPdfAndPrint() (hidden-iframe) pattern as
+// printRezept(), and persists the same structured record as
+// downloadUwPDF() -- just without a document_id, since nothing gets
+// uploaded to patient_documents on this path either.
+async function printUwPDF(){
+  if(typeof window.jspdf==='undefined'){ alert('jsPDF lädt... Bitte nochmal versuchen.'); return; }
+  const d = getUwData();
+  const doc = buildUeberweisungPdf();
+  openPdfAndPrint(doc.output('bloburl'));
+  const patientId=await findPatientIdByFullName(d.pName);
+  if(patientId){
+    const session=currentStaffSession();
+    try{
+      await createPatientUeberweisung(patientId,{
+        kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+        diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
+        datumIso:uwVal('uwDatum'),
+      },session?session.username:null,null);
+    }catch(e){ console.error('Failed to persist structured Überweisung record after print',e); }
+  }
+  clearUeberweisungForm();
+}

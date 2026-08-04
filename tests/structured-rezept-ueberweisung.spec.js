@@ -142,6 +142,33 @@ test('downloadUwPDF() persists a structured patient_ueberweisungen row and clear
   expect(result.auChecked, 'the Arbeitsunfähig radio must reset to Nein').toBe(false);
 });
 
+// The preview modal used to offer only a PDF download -- printUwPDF() adds
+// a real "Drucken" path (same openPdfAndPrint() hidden-iframe pattern as
+// printRezept()) for a patient still in the Ordination.
+test('printUwPDF() persists a structured patient_ueberweisungen row and clears the form afterward', async ({ page }) => {
+  await setupPage(page, 'ueberweisung');
+  await page.fill('#uwAn', 'Dr. Klaus Weber – Kardiologie Wien');
+  await page.selectOption('#uwFach', 'Kardiologie');
+  await page.fill('#uwDiag', 'I10 – Arterielle Hypertonie');
+  await page.fill('#uwWegen', 'Kardiologische Abklärung, EKG');
+  await page.check('input[name="uwAU"][value="Ja"]');
+  const result = await page.evaluate(async () => {
+    await printUwPDF();
+    await new Promise(r => setTimeout(r, 50));
+    return {
+      rows: window.__store.patient_ueberweisungen,
+      anField: document.getElementById('uwAn').value,
+      auChecked: document.querySelector('input[name="uwAU"][value="Ja"]').checked,
+    };
+  });
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0].patient_id).toBe('p1');
+  expect(result.rows[0].an).toBe('Dr. Klaus Weber – Kardiologie Wien');
+  expect(result.rows[0].document_id, 'printing generates no PDF upload, so no document_id').toBeNull();
+  expect(result.anField, 'the form must clear after issuing').toBe('');
+  expect(result.auChecked, 'the Arbeitsunfähig radio must reset to Nein').toBe(false);
+});
+
 test('handleUwSend() (Per Chat senden) persists a structured patient_ueberweisungen row linked to the uploaded PDF document', async ({ page }) => {
   await setupPage(page, 'ueberweisung');
   await page.fill('#uwAn', 'Dr. Eva Novak – Neurologie Graz');
