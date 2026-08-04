@@ -1002,13 +1002,13 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .action-btn:hover{background:#EAF4F1;border-color:#0E5E56;color:#0E5E56;transform:translateY(-1px);}
 .action-btn.call{background:linear-gradient(135deg,#0E5E56,#12746A);border-color:#0E5E56;color:white;box-shadow:0 2px 8px rgba(14,94,86,0.35);}
 .action-btn.call:hover{opacity:0.9;transform:translateY(-1px);}
-.action-btn.transfer-btn{background:#fff7ed;border-color:#f59e0b;color:#d97706;}
-.action-btn.transfer-btn:hover{background:#fef3c7;transform:translateY(-1px);}
-
 /* Action row moved below the patient header (used to sit inline next to
    the name/avatar, see .chat-actions above) -- a real user report said
    that crowded the header; now its own row underneath. */
 .chat-actions-row{background:white;padding:8px 20px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+/* Pins "Chat öffnen" to the bottom of .chat-area's flex column, below the
+   overview/Weiterleiten content, instead of sitting in the actions row. */
+.chat-bottom-bar{margin-top:auto;background:white;padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;}
 /* Icon-only "open chat" button (no "Chat öffnen" label) -- opens the
    floating Messenger-style window below instead of swapping this panel's
    own content, so selecting a patient never has to fight with an inline
@@ -2265,7 +2265,6 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="mobile-chat-back-name" id="mobileChatName"></div>
       <div class="mobile-chat-back-actions">
         <button class="mobile-action-icon" onclick="karteiPatientLoaded=true;toggleKartei()" title="Kartei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
-        <button class="mobile-action-icon" onclick="showTransferModal()" title="Weiterleiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
         <button class="mobile-action-icon" id="ovChatOpenBtnMobile" onclick="openPatientChatView()" title="Chat öffnen" style="position:relative;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="mp-badge" id="ovChatBadgeMobile" style="display:none;position:absolute;top:-4px;right:-4px;width:14px;height:14px;font-size:8px;">0</span></button>
       </div>
     </div>
@@ -2279,28 +2278,37 @@ body.windows-mode #karteiBtn{display:none;}
       </div>
     </div>
     <!-- Action row moved below the header (used to sit inline next to the
-         name/avatar) -- a real user report said that crowded the header.
-         "Chat öffnen" is icon-only here (no label) and opens the floating
-         Messenger-style window below instead of swapping this panel's own
-         content -- see openPatientChatView()/closeFloatingChat() further
-         down in this file's own inline script. -->
+         name/avatar) -- a real user report said that crowded the header. -->
     <div class="chat-actions-row" id="chatActionsRow">
+      <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
+    </div>
+    <!-- Default content once a patient is selected: an overview (upcoming
+         appointments + the "Weiterleiten" panel, formerly a modal --
+         staying inline here uses the space this pane used to leave empty)
+         instead of jumping straight into the chat conversation -- so
+         opening a patient's name doesn't automatically pull the doctor's
+         attention into messaging. Sized to its own content (not stretched
+         to fill the remaining height). -->
+    <div id="patientOverviewPane" style="display:none;padding:16px 20px;overflow-y:auto;">
+      <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Nächste Termine</div>
+      <div id="ovTermineList"></div>
+      <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin:20px 0 10px;">Patient weiterleiten</div>
+      <div id="transferDoctorList"></div>
+      <textarea class="form-input" id="transferNote" rows="2" placeholder="Notiz für den Kollegen/die Kollegin (optional)..." style="width:100%;box-sizing:border-box;margin-top:4px;"></textarea>
+      <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
+      <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
+        <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+      </div>
+    </div>
+    <!-- "Chat öffnen" pinned to the bottom of the chat area (margin-top:auto
+         inside .chat-area's flex column) instead of sitting in the actions
+         row up top, per explicit request -- keeps it reachable without
+         crowding the overview/Weiterleiten content above. -->
+    <div class="chat-bottom-bar" id="chatBottomBar">
       <button class="chat-icon-btn" id="ovChatOpenBtn" onclick="openPatientChatView()" title="Chat öffnen">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
         <span class="mp-badge" id="ovChatBadge" style="display:none;position:absolute;top:-6px;right:-6px;">0</span>
       </button>
-      <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
-      <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
-    </div>
-    <!-- Default content once a patient is selected: an overview (upcoming
-         appointments) instead of jumping straight into the chat
-         conversation -- so opening a patient's name doesn't automatically
-         pull the doctor's attention into messaging. Sized to its own
-         content (not stretched to fill the remaining height) since it's
-         usually just a couple of Termine cards. -->
-    <div id="patientOverviewPane" style="display:none;padding:16px 20px;">
-      <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Nächste Termine</div>
-      <div id="ovTermineList"></div>
     </div>
   </div>
 
@@ -2803,37 +2811,6 @@ body.windows-mode #karteiBtn{display:none;}
     <div class="call-sub" id="call-sub"></div>
     <div class="call-status" id="callStatus">Verbinde...</div>
     <div class="call-btns"><button class="call-mute"></button><button class="call-end" onclick="hideCall()"></button></div>
-  </div>
-</div>
-
-<!-- TRANSFER MODAL -->
-<div class="modal-overlay" id="transferModal">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Patient weiterleiten</div>
-      <button class="modal-close" onclick="document.getElementById('transferModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Patient</label>
-        <input class="form-input" id="transferPatientName" value="" readonly>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Arzt/Ärztin auswählen</label>
-        <div id="transferDoctorList"></div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notiz für den Kollegen/die Kollegin (optional)</label>
-        <textarea class="form-input" id="transferNote" rows="3" placeholder="Wichtige Informationen zum Patienten..."></textarea>
-      </div>
-      <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:12px;font-size:12px;color:#12746A;">
-         <strong>DSGVO:</strong>Der Patient wird automatisch über die Weiterleitung informiert.
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="document.getElementById('transferModal').classList.remove('show')">Abbrechen</button>
-      <button class="btn-primary" onclick="confirmTransfer()">Weiterleiten</button>
-    </div>
   </div>
 </div>
 
@@ -4154,6 +4131,7 @@ function renderPatientOverview(name,unreadCount){
         }).join('')
       : '<div style="font-size:12px;color:#94a3b8;">Keine bevorstehenden Termine</div>';
   }
+  renderTransferPanel(name);
   updateChatPaneState();
 }
 // The floating chat popup's own × button.
@@ -6339,25 +6317,28 @@ function showCall(){
 function hideCall(){clearInterval(document.getElementById('callOverlay').dataset.timer);document.getElementById('callOverlay').classList.remove('show');}
 
 // Transfer a specific patient (the one whose chat is currently open) to a
-// real colleague at this practice -- the modal used to always show
+// real colleague at this practice -- used to be a modal that always showed
 // "Thomas Müller" and a list of fictional "Smartordi-Partner" doctors from
 // other practices, and confirming just added a fake system message + alert
 // without changing anything real. Real reassignment only makes sense to a
 // colleague who actually has an account here (see the Vertretung tab for
 // the external-substitute case, which has no such account to reassign to).
+// Now an always-visible panel inside #patientOverviewPane (formerly a
+// modal opened via a separate button) instead of a popup -- re-rendered by
+// renderPatientOverview() every time a patient is selected, same as the
+// Nächste Termine list right above it.
 let transferSelectedDoctor=null;
 let transferPatientForModal=null;
-function showTransferModal(){
-  const patientName=document.getElementById('chat-name')?.textContent;
-  if(!patientName){ showToast('Bitte zuerst einen Patienten/eine Patientin öffnen','error'); return; }
+function renderTransferPanel(patientName){
   transferPatientForModal=patientName;
-  document.getElementById('transferPatientName').value=patientName;
-  document.getElementById('transferNote').value='';
+  const noteEl=document.getElementById('transferNote');
+  if(noteEl) noteEl.value='';
   const me=currentDoctorUsername();
   const accounts=loadStaffAccounts();
   const colleagues=Object.keys(accounts).filter(u=>accounts[u].role==='arzt'&&u!==me).map(u=>Object.assign({username:u},accounts[u]));
   transferSelectedDoctor=colleagues[0]?colleagues[0].username:null;
   const listRoot=document.getElementById('transferDoctorList');
+  if(!listRoot) return;
   listRoot.innerHTML=colleagues.length
     ? colleagues.map((a,i)=>`<div class="clinic-option${i===0?' selected':''}" onclick="selectTransferDoctor(this,'${a.username}')">
         <span class="clinic-option-icon" style="width:36px;height:36px;border-radius:50%;background:${colorForName(a.fullName)};color:white;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${a.fullName[0]}</span>
@@ -6368,7 +6349,6 @@ function showTransferModal(){
         <span style="color:#0E5E56;font-weight:700;">${i===0?`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`:''}</span>
       </div>`).join('')
     : '<div style="padding:12px;background:#fef9c3;border:1px solid #fde68a;border-radius:10px;font-size:12px;color:#854d0e;">Keine anderen Ärzt/innen in dieser Ordination registriert. Für eine Vertretung von außerhalb der Ordination nutzen Sie bitte den Tab "Vertretung".</div>';
-  document.getElementById('transferModal').classList.add('show');
 }
 
 function selectTransferDoctor(el,username){
@@ -6400,7 +6380,11 @@ async function confirmTransfer(){
   const text='↪ Sie wurden an '+toDoctorName+' weitergeleitet.'+(note?' Notiz: '+note:'');
   const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime()});
 
-  document.getElementById('transferModal').classList.remove('show');
+  // No modal to close anymore -- just clear the note so the panel reads as
+  // "done" (a DB error above returns before this point, leaving whatever
+  // the doctor typed intact for an easy retry).
+  const noteEl=document.getElementById('transferNote');
+  if(noteEl) noteEl.value='';
   const msgs=document.getElementById('messages');
   if(msgs){
     const sys=document.createElement('div');sys.className='system-msg transfer';

@@ -33,16 +33,16 @@ test('a real DB error aborts the transfer instead of falsely claiming success', 
     window.__forceError = { termine: 'simulated db error' };
     transferPatientForModal = 'Maria Huber';
     transferSelectedDoctor = 'dr.berger';
-    document.getElementById('transferModal').classList.add('show');
+    document.getElementById('transferNote').value = 'wichtige Notiz';
     await confirmTransfer();
     await new Promise(r => setTimeout(r, 50));
     return {
       toastText: document.getElementById('toast')?.textContent || '',
-      modalStillOpen: document.getElementById('transferModal').classList.contains('show'),
+      noteStillThere: document.getElementById('transferNote').value,
     };
   });
   expect(result.toastText).toContain('fehlgeschlagen');
-  expect(result.modalStillOpen, 'the modal must stay open on a real error').toBe(true);
+  expect(result.noteStillThere, 'the typed note must survive a real error so the doctor can retry without retyping it').toBe('wichtige Notiz');
 });
 
 test('zero upcoming appointments is reported honestly, not as a blanket success', async ({ page }) => {
@@ -51,16 +51,16 @@ test('zero upcoming appointments is reported honestly, not as a blanket success'
     window.__store.termine = [];
     transferPatientForModal = 'Maria Huber';
     transferSelectedDoctor = 'dr.berger';
-    document.getElementById('transferModal').classList.add('show');
+    document.getElementById('transferNote').value = 'wichtige Notiz';
     await confirmTransfer();
     await new Promise(r => setTimeout(r, 50));
     return {
       toastText: document.getElementById('toast')?.textContent || '',
-      modalStillOpen: document.getElementById('transferModal').classList.contains('show'),
+      noteCleared: document.getElementById('transferNote').value === '',
     };
   });
   expect(result.toastText).toContain('keine anstehenden Termine');
-  expect(result.modalStillOpen, 'the forward itself still succeeded, so the modal should close').toBe(false);
+  expect(result.noteCleared, 'the forward itself still succeeded, so the note field should reset').toBe(true);
 });
 
 test('real upcoming appointments are actually reassigned and the count is stated', async ({ page }) => {
@@ -77,7 +77,6 @@ test('real upcoming appointments are actually reassigned and the count is stated
     ];
     transferPatientForModal = 'Maria Huber';
     transferSelectedDoctor = 'dr.berger';
-    document.getElementById('transferModal').classList.add('show');
     await confirmTransfer();
     await new Promise(r => setTimeout(r, 50));
     return {
