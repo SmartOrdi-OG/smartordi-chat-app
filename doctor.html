@@ -538,12 +538,13 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .topbar-logo{width:36px;height:36px;object-fit:contain;border-radius:9px;background:white;box-shadow:0 2px 6px rgba(0,0,0,0.18);flex-shrink:0;}
 .topbar-brand-name{color:white;font-size:18px;font-weight:800;letter-spacing:-0.2px;white-space:nowrap;}
 .topbar-brand-name span{color:rgba(255,255,255,0.65);font-weight:600;}
-/* The current practice's own name (getPracticeSettings().name) -- shown
-   next to the app brand so the topbar reads as THIS clinic's own
-   installation rather than a generic app shell. A wide left margin (not
-   just gap) keeps it visually a separate label rather than reading as
-   one continuous title with the brand name. Hidden on mobile -- the
-   topbar is already tight there (Zurück + logo + user chip). */
+/* "Ordination <doctor name>" -- shown next to the app brand so the topbar
+   reads as THIS clinic's own installation rather than a generic app shell.
+   Built from the doctor's own name (session.name), not practices.name --
+   see the topbarPracticeName assignment further down for why. A wide left
+   margin (not just gap) keeps it visually a separate label rather than
+   reading as one continuous title with the brand name. Hidden on mobile --
+   the topbar is already tight there (Zurück + logo + user chip). */
 .topbar-practice-name{color:white;font-size:18px;font-weight:800;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;margin-left:40px;}
 @media(max-width:900px){.topbar-practice-name{display:none;}}
 .topbar-user-menu{position:relative;}
@@ -4725,12 +4726,6 @@ function syncPracticeSettingsUI(){
     if(telInput && practiceInfo.tel && document.activeElement!==telInput) telInput.value=practiceInfo.tel;
     const chatEnabledInput=document.getElementById('setChatEnabled');
     if(chatEnabledInput) chatEnabledInput.checked=isChatEnabled();
-    // Practice name typically already reads as e.g. "Ordination Dr. Test"
-    // (see register.html's own "z.B. Ordination Dr. Müller" placeholder) --
-    // shown as-is in the topbar, no extra "Ordination" prefix added here,
-    // since most real practices would end up with it doubled otherwise.
-    const topbarPracticeName=document.getElementById('topbarPracticeName');
-    if(topbarPracticeName) topbarPracticeName.textContent=practiceInfo.name||'';
   }
   applyChatGating();
 }
@@ -6635,6 +6630,13 @@ window.addEventListener('load', async function() {
     if(topbarName) topbarName.textContent=session.name;
     const topbarAvatar=document.getElementById('doctorAvatarDisplay');
     if(topbarAvatar) topbarAvatar.textContent=session.name[0];
+    // Topbar practice-name label ("Ordination Dr. X") -- built from the
+    // doctor's own name rather than read from practices.name: that field is
+    // free text typed once at registration and often left as just
+    // "Ordination" with no doctor name at all (a real account showed
+    // exactly this), whereas the doctor's own name is always reliably set.
+    const topbarPracticeName=document.getElementById('topbarPracticeName');
+    if(topbarPracticeName) topbarPracticeName.textContent='Ordination '+session.name;
     const dashGreeting=document.getElementById('dashGreetingName');
     if(dashGreeting) dashGreeting.textContent=session.name;
     const uwVonInput=document.getElementById('uwVon');
