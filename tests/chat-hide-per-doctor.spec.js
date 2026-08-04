@@ -27,11 +27,16 @@ async function setupPage(page, extraStore) {
   await page.evaluate(async () => { await Promise.all([patientsReady, allMessagesReady]); });
 }
 
-test('selecting a patient with no hidden-chat row shows the normal chat, with an "ausblenden" button', async ({ page }) => {
+test('opening a patient with no hidden-chat row shows the normal chat, with an "ausblenden" button', async ({ page }) => {
   await setupPage(page);
   const state = await page.evaluate(() => {
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
+    // Selecting a patient now shows the overview pane by default (see
+    // doctor.html's selectPatient()/_chatViewMode) -- explicitly open the
+    // chat itself before inspecting #messages/the hide button, same as a
+    // doctor clicking "Chat öffnen" would.
+    openPatientChatView();
     return {
       messagesHidden: document.getElementById('messages').style.display === 'none',
       hiddenNoticeShown: document.getElementById('chatHiddenNotice').style.display === 'flex',
@@ -50,6 +55,7 @@ test('clicking "Chat ausblenden" hides this patient\'s chat for this doctor and 
   const result = await page.evaluate(async () => {
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
+    openPatientChatView();
     await toggleHideChatForCurrentPatient();
     return {
       messagesHidden: document.getElementById('messages').style.display === 'none',
@@ -66,12 +72,13 @@ test('clicking "Chat ausblenden" hides this patient\'s chat for this doctor and 
   expect(result.storedRow).toBeTruthy();
 });
 
-test('a patient already hidden (server-confirmed at page load) shows the hidden notice immediately on selection', async ({ page }) => {
+test('a patient already hidden (server-confirmed at page load) shows the hidden notice immediately once the chat is opened', async ({ page }) => {
   await setupPage(page, { doctor_hidden_chats: [{ id: 'h1', arzt_id: 'u1', patient_id: 'p1' }] });
   const state = await page.evaluate(async () => {
     await loadHiddenChatsForCurrentDoctor();
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
+    openPatientChatView();
     return {
       hiddenNoticeShown: document.getElementById('chatHiddenNotice').style.display === 'flex',
       messagesHidden: document.getElementById('messages').style.display === 'none',
@@ -87,6 +94,7 @@ test('clicking "Chat einblenden" restores the normal chat view and removes the h
     await loadHiddenChatsForCurrentDoctor();
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
+    openPatientChatView();
     await toggleHideChatForCurrentPatient();
     return {
       messagesHidden: document.getElementById('messages').style.display === 'none',
@@ -110,6 +118,7 @@ test('hiding one doctor\'s chat does not affect what a colleague (or the secreta
     await loadHiddenChatsForCurrentDoctor();
     const item = [...document.querySelectorAll('.patient-item')].find(el => el.textContent.includes('Maria Huber'));
     item.click();
+    openPatientChatView();
     return {
       messagesHidden: document.getElementById('messages').style.display === 'none',
       hiddenNoticeShown: document.getElementById('chatHiddenNotice').style.display === 'flex',
