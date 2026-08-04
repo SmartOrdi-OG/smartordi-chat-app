@@ -32,16 +32,30 @@ let _karteiVisitsRequestId=0;
 async function loadKarteiVisits(name){
   const requestId=++_karteiVisitsRequestId;
   for(let i=VISITS.length-1;i>=0;i--){ if(VISITS[i].patient===name) VISITS.splice(i,1); }
-  if(!name||name==='Kein Patient ausgewählt'){ renderYearPills();filterVisits(); return; }
+  if(!name||name==='Kein Patient ausgewählt'){ renderYearPills();filterVisits();renderFollowupReminder(name); return; }
   const patientId=await findPatientIdByFullName(name);
   if(requestId!==_karteiVisitsRequestId) return;
-  if(!patientId){ renderYearPills();filterVisits(); return; }
+  if(!patientId){ renderYearPills();filterVisits();renderFollowupReminder(name); return; }
   const rows=await getVisitsForPatient(patientId);
   if(requestId!==_karteiVisitsRequestId) return;
   rows.forEach(r=>{
     VISITS.push({patient:name,date:r.visit_date,type:r.visit_type,beschwerde:r.beschwerde||'',temp:r.temperature||'',bd:r.blutdruck||'',schmerz:r.schmerz||'',diag:r.diagnose||'Keine Diagnose',notes:r.notes||'–',therapy:r.therapy||''});
   });
-  renderYearPills();filterVisits();
+  renderYearPills();filterVisits();renderFollowupReminder(name);
+}
+
+// CDSS second slice (see vendor/cdss-followup-reminders.js's detectFollowupReminder()):
+// non-blocking "Kontroll-Erinnerung" banner, recomputed every time VISITS is
+// refreshed above so it's always based on this patient's current data.
+function renderFollowupReminder(name){
+  const box=document.getElementById('kFollowupWarnung');
+  if(!box) return;
+  const visits=VISITS.filter(v=>v.patient===name).map(v=>({date:v.date,diag:v.diag}));
+  const reminder=detectFollowupReminder(visits);
+  if(!reminder){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  box.innerHTML=`<div style="font-size:11px;font-weight:700;color:#854d0e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">⏰ Kontroll-Erinnerung</div>
+    <div style="font-size:12px;color:#713f12;">${escapeHtml(reminder.label)}: letzter Besuch vor ${reminder.monthsSince} Monaten (empfohlenes Intervall: alle ${reminder.thresholdMonths} Monate). Evtl. Kontrolltermin vereinbaren.</div>`;
 }
 
 function renderYearPills(){
