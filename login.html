@@ -125,9 +125,19 @@ body{
   body{background:radial-gradient(120% 100% at 50% 0%, #1A2F2A 0%, #12201D 55%);}
   .right{background:transparent;}
 }
+
+.corner-brand{position:fixed;bottom:20px;right:24px;text-align:right;line-height:1.25;pointer-events:none;z-index:5;}
+.corner-brand-name{font-size:19px;font-weight:800;color:var(--teal);letter-spacing:0.5px;}
+.corner-brand-sub{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+@media(prefers-color-scheme:dark){.corner-brand-name{color:#7fd4c8;}.corner-brand-sub{color:#9fb0ab;}}
 </style>
 </head>
 <body>
+
+<div class="corner-brand">
+  <div class="corner-brand-name">SMARTORDI</div>
+  <div class="corner-brand-sub">IT-SYSTEM</div>
+</div>
 
 <div class="login-shell">
 
