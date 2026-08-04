@@ -3949,6 +3949,33 @@ function renderImpfWarnungen(){
     : '<div style="padding:16px 0;text-align:center;color:#94a3b8;font-size:13px;">Keine fälligen Impfungen</div>';
 }
 
+// Per-device "when did this doctor last actually look at this patient's
+// chat" map -- same pattern as secretary.html's CHAT_LAST_VIEWED_KEY/
+// unreadCountFor(), which doctor.html never had at all: every real
+// patient's unread badge below used to be hardcoded to 0
+// (patientListEntries() only ever gave DEMO_CHAT_LIST entries, an array
+// that's empty in production, a real count), so no real practice ever saw
+// a working unread indicator anywhere in doctor.html -- not on a patient
+// row, and not on the aggregate "Praxis" nav badge either, since that just
+// sums up whatever's rendered on the rows (updateChatUnreadBadge()).
+// A patient never seen before on THIS device seeds to "now" instead of
+// counting their entire history as unread the moment this ships.
+const CHAT_LAST_VIEWED_KEY='smartordi_doc_chat_last_viewed';
+function loadChatLastViewedMap(){
+  try{ return JSON.parse(localStorage.getItem(CHAT_LAST_VIEWED_KEY))||{}; }catch(e){ return {}; }
+}
+function markChatViewed(patientKey){
+  const map=loadChatLastViewedMap();
+  map[patientKey]=new Date().toISOString();
+  localStorage.setItem(CHAT_LAST_VIEWED_KEY,JSON.stringify(map));
+}
+function unreadCountFor(patientKey,messages){
+  const map=loadChatLastViewedMap();
+  if(!map[patientKey]){ markChatViewed(patientKey); return 0; }
+  const lastViewed=map[patientKey];
+  return messages.filter(m=>m.dir==='in'&&m.createdAt&&m.createdAt>lastViewed).length;
+}
+
 function patientListEntries(){
   const entries=DEMO_CHAT_LIST.map(p=>Object.assign({},p,{dynamic:false}));
   const accounts=loadPatients();
@@ -3958,11 +3985,12 @@ function patientListEntries(){
     const msgs=a.id?loadMessagesForPatientCached(a.id):(a.messages||[]);
     const thread=msgs.length?{items:msgs}:null;
     const last=thread?thread.items[thread.items.length-1]:null;
+    const patientKey=a.id||a.fullName;
     entries.push({
       name:a.fullName,color:'#0E5E56',
       versicherung:a.versicherung||'',svnr:a.svnr||'',dob:a.dob||'',
       preview:last?(last.type==='text'?last.text:last.type==='voice'?'🎤 Sprachnachricht':'📄 Dokument'):'Noch keine Nachrichten',
-      time:'',badge:0,dynamic:!last,
+      time:'',badge:unreadCountFor(patientKey,msgs),dynamic:!last,
     });
   });
   return entries;
@@ -4055,6 +4083,14 @@ function renderPatientList(){
     (todayEntries.length?`<div class="patient-list-section-title">Heute (${todayEntries.length})</div>${todayHtml}`:'')+
     `<div class="patient-list-section-title toggle${collapsed?' collapsed':''}" id="allPatientsTitle" onclick="toggleAllPatientsSection()">Alle Patienten (${otherEntries.length})${chevronSvg}</div>`+
     `<div id="allPatientsGroup" style="display:${collapsed?'none':''};">${otherHtml}</div>`;
+  // Keeps the aggregate "Praxis" nav badge in sync with whatever rows just
+  // got (re)rendered above -- some call sites already paired the two calls
+  // manually (harmless now, just redundant), but page load itself never
+  // did, so a patient with a genuinely unread message at load time showed
+  // the correct row badge but a stale/zero aggregate badge until some
+  // unrelated event (resize, a storage event, selecting a patient...)
+  // happened to call updateChatUnreadBadge() afterward.
+  updateChatUnreadBadge();
 }
 
 // 'overview' (default once a patient is selected) or 'chat' (once the
@@ -4106,6 +4142,8 @@ function openPatientChatView(){
   const name=document.getElementById('chat-name')?.textContent;
   const color=document.getElementById('chat-avatar')?.style.background;
   if(name && name!=='Kein Patient ausgewählt'){
+    const rec=findPatientRecord(name);
+    markChatViewed(rec&&rec.id||name);
     const row=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
     const rowBadge=row?.querySelector('.unread-badge');
     if(rowBadge) rowBadge.remove();
