@@ -992,8 +992,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
    so the patient list and Kartei access must keep working regardless of
    chat's on/off state. */
 .nav-tab.nav-tab-locked{opacity:0.55;}
-.chat-disabled-notice,.chat-hidden-notice{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;text-align:center;color:var(--text-2);}
-.hide-chat-btn{background:#f8fafc;}
+.chat-disabled-notice{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;text-align:center;color:var(--text-2);}
 .chat-header{background:white;padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);}
 .chat-patient-name{font-size:15px;font-weight:800;color:var(--text-1);letter-spacing:-0.3px;}
 .chat-patient-sub{font-size:12px;color:var(--text-2);}
@@ -1005,6 +1004,35 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .action-btn.call:hover{opacity:0.9;transform:translateY(-1px);}
 .action-btn.transfer-btn{background:#fff7ed;border-color:#f59e0b;color:#d97706;}
 .action-btn.transfer-btn:hover{background:#fef3c7;transform:translateY(-1px);}
+
+/* Action row moved below the patient header (used to sit inline next to
+   the name/avatar, see .chat-actions above) -- a real user report said
+   that crowded the header; now its own row underneath. */
+.chat-actions-row{background:white;padding:8px 20px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;}
+/* Icon-only "open chat" button (no "Chat öffnen" label) -- opens the
+   floating Messenger-style window below instead of swapping this panel's
+   own content, so selecting a patient never has to fight with an inline
+   chat view for space. */
+.chat-icon-btn{height:36px;width:36px;border-radius:9px;border:1.5px solid #0E5E56;background:#f0fdfa;color:#0E5E56;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:all 0.18s;flex-shrink:0;}
+.chat-icon-btn:hover{background:#dcecea;transform:translateY(-1px);}
+/* Small round unread-count badge -- same convention as .chat-nav-badge
+   (red, top-nav aggregate) but sized to sit in a button's corner instead
+   of inline next to a label. */
+.mp-badge{background:#dc2626;color:white;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px white;}
+
+/* Messenger-desktop-style floating chat popup -- a fixed small window in
+   the bottom-right corner instead of taking over the whole middle column,
+   so the doctor can glance at/close it without losing whatever they were
+   looking at underneath (Nächste Termine). Full-screen on mobile, where a
+   small floating popup wouldn't be usable. */
+.floating-chat-window{position:fixed;bottom:20px;right:20px;width:360px;height:520px;max-height:calc(100vh - 40px);background:white;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.28);border:1px solid rgba(15,23,42,0.08);display:flex;flex-direction:column;overflow:hidden;z-index:300;}
+.floating-chat-header{background:linear-gradient(135deg,#0E5E56,#12746A);padding:10px 12px;display:flex;align-items:center;gap:10px;color:white;flex-shrink:0;}
+.floating-chat-name{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.floating-chat-close{background:rgba(255,255,255,0.15);border:none;color:white;width:26px;height:26px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.floating-chat-close:hover{background:rgba(255,255,255,0.28);}
+@media(max-width:768px){
+  .floating-chat-window{inset:0;width:100%;height:100%;max-height:none;border-radius:0;z-index:250;}
+}
 
 .tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin:2px;}
 .tag-blue{background:#DCEAE6;color:#12746A;}
@@ -2238,7 +2266,7 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="mobile-chat-back-actions">
         <button class="mobile-action-icon" onclick="karteiPatientLoaded=true;toggleKartei()" title="Kartei"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
         <button class="mobile-action-icon" onclick="showTransferModal()" title="Weiterleiten"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg></button>
-        <button class="mobile-action-icon" id="hideChatBtnMobile" onclick="toggleHideChatForCurrentPatient()" title="Chat ausblenden" style="display:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+        <button class="mobile-action-icon" id="ovChatOpenBtnMobile" onclick="openPatientChatView()" title="Chat öffnen" style="position:relative;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="mp-badge" id="ovChatBadgeMobile" style="display:none;position:absolute;top:-4px;right:-4px;width:14px;height:14px;font-size:8px;">0</span></button>
       </div>
     </div>
     <div class="chat-header" id="desktopChatHeader">
@@ -2249,69 +2277,65 @@ body.windows-mode #karteiBtn{display:none;}
           <span class="chat-patient-sub" id="chat-insurance">—</span>
         </div>
       </div>
-      <div class="chat-actions">
-        <button class="action-btn" id="ovChatOpenBtn" onclick="openPatientChatView()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;position:relative;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-          Chat öffnen
-          <span class="mp-badge" id="ovChatBadge" style="display:none;position:absolute;top:-6px;right:-6px;">0</span>
-        </button>
-        <button class="action-btn" id="ovBackBtn" onclick="showPatientOverview()" style="display:none;">Übersicht</button>
-        <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
-        <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
-        <button class="action-btn hide-chat-btn" id="hideChatBtn" onclick="toggleHideChatForCurrentPatient()" style="display:none;">Chat ausblenden</button>
-      </div>
     </div>
-    <!-- Default view once a patient is selected: an overview (upcoming
+    <!-- Action row moved below the header (used to sit inline next to the
+         name/avatar) -- a real user report said that crowded the header.
+         "Chat öffnen" is icon-only here (no label) and opens the floating
+         Messenger-style window below instead of swapping this panel's own
+         content -- see openPatientChatView()/closeFloatingChat() further
+         down in this file's own inline script. -->
+    <div class="chat-actions-row" id="chatActionsRow">
+      <button class="chat-icon-btn" id="ovChatOpenBtn" onclick="openPatientChatView()" title="Chat öffnen">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        <span class="mp-badge" id="ovChatBadge" style="display:none;position:absolute;top:-6px;right:-6px;">0</span>
+      </button>
+      <button class="action-btn" id="karteiBtn" onclick="openKarteiContextual()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Kartei öffnen</button>
+      <button class="action-btn transfer-btn" onclick="showTransferModal()">Weiterleiten</button>
+    </div>
+    <!-- Default content once a patient is selected: an overview (upcoming
          appointments) instead of jumping straight into the chat
          conversation -- so opening a patient's name doesn't automatically
-         pull the doctor's attention into messaging. Chat is one explicit
-         click away via the compact "Chat öffnen" button in the header
-         above (matching the same small .action-btn style as "Kartei
-         öffnen"/"Weiterleiten", not a large standalone CTA -- a real user
-         report said the original version looked oversized and wasted
-         screen space), which carries this patient's own unread-count
-         badge. See _chatViewMode/renderPatientOverview()/
-         openPatientChatView() further down in this file's own inline script. -->
-    <div id="patientOverviewPane" style="display:none;flex:1;overflow-y:auto;padding:20px;">
+         pull the doctor's attention into messaging. Sized to its own
+         content (not stretched to fill the remaining height) since it's
+         usually just a couple of Termine cards. -->
+    <div id="patientOverviewPane" style="display:none;padding:16px 20px;">
       <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Nächste Termine</div>
       <div id="ovTermineList"></div>
     </div>
-    <div class="messages scrollbar" id="messages"></div>
-    <!-- supabase/phase34_chat_toggle.sql -- shown instead of #messages/the
-         input area when the currently-open patient is on this doctor's own
-         hidden list (toggleHideChatForCurrentPatient()). Kartei access and
-         everything else about this patient stays completely unaffected --
-         only this doctor's OWN view of the conversation is swapped out. -->
-    <div class="chat-hidden-notice" id="chatHiddenNotice" style="display:none;">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-2);"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-      <div style="font-size:14px;font-weight:800;color:var(--text-1);">Der Chat ist für diesen Patienten ausgeblendet</div>
-      <button class="action-btn" onclick="toggleHideChatForCurrentPatient()" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Chat einblenden</button>
-    </div>
-    <!-- supabase/phase34_chat_toggle.sql -- practice-wide chat disabled
-         (Einstellungen). Takes priority over #chatHiddenNotice above --
-         once chat is off for the whole practice, per-patient hide/show no
-         longer matters. Sidebar and chat-header stay untouched (see the
-         CSS comment on .chat-disabled-notice for why). -->
-    <div class="chat-disabled-notice" id="chatDisabledNotice" style="display:none;">
-      <div style="display:flex;justify-content:center;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-      <div style="font-size:14px;font-weight:800;color:var(--text-1);">Chat ist deaktiviert</div>
-      <div style="font-size:12.5px;max-width:320px;">Der Praxis-Chat wurde in den Einstellungen deaktiviert. Patient:innen sehen aktuell "Chat derzeit nicht verfügbar".</div>
-      <button class="action-btn" onclick="openWindow('settings',document.getElementById('navTabSettings'))" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Zu den Einstellungen</button>
-    </div>
-    <div class="chat-input-area" id="clinicChatInputArea">
-      <div class="input-row">
-        <button class="input-btn" title="Emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
-        <input type="file" id="clinicAttachFile" accept="application/pdf" style="display:none;" onchange="handleClinicAttach(event)">
-        <button class="input-btn" title="Anhang" onclick="document.getElementById('clinicAttachFile').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
-        <textarea class="msg-input" placeholder="Nachricht schreiben..." id="clinicInput" rows="1"
-          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';"></textarea>
-        <button class="input-btn" title="Sprachnachricht"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
-        <button class="send-btn" onclick="sendClinicMsg()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-      </div>
-    </div>
   </div>
 
+</div>
 
+<!-- Messenger-desktop-style floating chat popup (fullscreen on mobile) --
+     see openPatientChatView()/closeFloatingChat() in this file's own
+     inline script. Sibling of .chat-area, not nested inside it, so it
+     floats independently of whatever the overview above is showing. -->
+<div id="floatingChatWindow" class="floating-chat-window" style="display:none;">
+  <div class="floating-chat-header">
+    <div class="avatar" id="fcw-avatar" style="width:30px;height:30px;font-size:12px;flex-shrink:0;"></div>
+    <div class="floating-chat-name" id="fcw-name"></div>
+    <button class="floating-chat-close" onclick="closeFloatingChat()" title="Schließen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="messages scrollbar" id="messages"></div>
+  <!-- supabase/phase34_chat_toggle.sql -- practice-wide chat disabled
+       (Einstellungen). -->
+  <div class="chat-disabled-notice" id="chatDisabledNotice" style="display:none;">
+    <div style="display:flex;justify-content:center;"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+    <div style="font-size:14px;font-weight:800;color:var(--text-1);">Chat ist deaktiviert</div>
+    <div style="font-size:12.5px;max-width:320px;">Der Praxis-Chat wurde in den Einstellungen deaktiviert. Patient:innen sehen aktuell "Chat derzeit nicht verfügbar".</div>
+    <button class="action-btn" onclick="openWindow('settings',document.getElementById('navTabSettings'))" style="background:#f0fdfa;border-color:#0E5E56;color:#0E5E56;font-weight:700;">Zu den Einstellungen</button>
+  </div>
+  <div class="chat-input-area" id="clinicChatInputArea">
+    <div class="input-row">
+      <button class="input-btn" title="Emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+      <input type="file" id="clinicAttachFile" accept="application/pdf" style="display:none;" onchange="handleClinicAttach(event)">
+      <button class="input-btn" title="Anhang" onclick="document.getElementById('clinicAttachFile').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+      <textarea class="msg-input" placeholder="Nachricht schreiben..." id="clinicInput" rows="1"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';"></textarea>
+      <button class="input-btn" title="Sprachnachricht"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+      <button class="send-btn" onclick="sendClinicMsg()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+    </div>
+  </div>
 </div>
 <!-- ══ ÜBERWEISUNG MODAL (A4 Preview + PDF) ══ -->
 <div id="uwModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:400;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;">
@@ -4045,9 +4069,8 @@ function patientItemHtml(p,activeName,todayTermin){
 // "Alle Patienten" collapse state -- collapsed by default (every doctor's
 // first visit sees only "Heute", with the full list one click away) rather
 // than defaulting to open, per the user's choice. Remembered per device via
-// localStorage once a doctor actually toggles it, same pattern as every
-// other per-device UI preference in this app (e.g. doctor_hidden_chats'
-// client-side counterpart). null (never toggled) reads as collapsed.
+// localStorage once a doctor actually toggles it. null (never toggled)
+// reads as collapsed.
 function isAllPatientsCollapsed(){
   const v=localStorage.getItem('smartordi_all_patients_collapsed');
   return v===null?true:v==='1';
@@ -4097,19 +4120,23 @@ function renderPatientList(){
   updateChatUnreadBadge();
 }
 
-// 'overview' (default once a patient is selected) or 'chat' (once the
-// doctor explicitly opens the conversation via openPatientChatView()).
-// Single flag since only one patient's chat-area is shown at a time;
-// selectPatient() resets it to 'overview' for every newly-selected patient.
-let _chatViewMode='overview';
+// Whether the floating Messenger-style chat popup (#floatingChatWindow) is
+// currently open. The overview (#patientOverviewPane) is always shown once
+// a patient is selected -- opening/closing the chat popup no longer swaps
+// it out, it just floats on top. selectPatient() closes the popup for
+// every newly-selected patient (forces an explicit re-open for whoever's
+// now selected, instead of carrying the previous patient's open chat over).
+let _floatingChatOpen=false;
 
 // Populates #patientOverviewPane's "Nächste Termine" list and the badge on
-// its "Chat öffnen" button, then lets updateChatPaneState() decide actual
-// visibility (single source of truth for #messages vs. #patientOverviewPane
-// vs. the hidden/disabled notices).
+// the icon-only "Chat öffnen" button, then lets updateChatPaneState()
+// decide actual visibility.
 function renderPatientOverview(name,unreadCount){
-  const badge=document.getElementById('ovChatBadge');
-  if(badge){ badge.style.display=unreadCount?'inline-block':'none'; badge.textContent=unreadCount; }
+  [document.getElementById('ovChatBadge'),document.getElementById('ovChatBadgeMobile')].forEach(badge=>{
+    if(!badge) return;
+    badge.style.display=unreadCount?'flex':'none';
+    badge.textContent=unreadCount;
+  });
   const list=document.getElementById('ovTermineList');
   if(list){
     const today=todayStr();
@@ -4129,23 +4156,26 @@ function renderPatientOverview(name,unreadCount){
   }
   updateChatPaneState();
 }
-// Swaps the currently-open patient's chat-area back from the conversation
-// to the overview -- reachable via the "Übersicht" button in the chat
-// header (see .chat-actions in the HTML).
-function showPatientOverview(){
-  _chatViewMode='overview';
+// The floating chat popup's own × button.
+function closeFloatingChat(){
+  _floatingChatOpen=false;
   updateChatPaneState();
 }
-// Explicit "Chat öffnen" click (or resuming an already-open chat) -- only
-// now does the unread badge actually clear, both on the sidebar row and
-// the underlying data (mirrors selectPatient()'s DEMO_CHAT_LIST/
-// updateChatUnreadBadge() handling, just moved to fire on actually opening
-// the conversation instead of merely selecting the patient's name).
+// Explicit "Chat öffnen" click (icon-only button, header row or mobile back
+// header) -- opens the floating popup and only now does the unread badge
+// actually clear, both on the sidebar row and the underlying data (mirrors
+// selectPatient()'s DEMO_CHAT_LIST/updateChatUnreadBadge() handling, just
+// moved to fire on actually opening the conversation instead of merely
+// selecting the patient's name).
 function openPatientChatView(){
-  _chatViewMode='chat';
+  _floatingChatOpen=true;
   const name=document.getElementById('chat-name')?.textContent;
   const color=document.getElementById('chat-avatar')?.style.background;
   if(name && name!=='Kein Patient ausgewählt'){
+    const fcwAvatar=document.getElementById('fcw-avatar');
+    const fcwName=document.getElementById('fcw-name');
+    if(fcwAvatar){ fcwAvatar.textContent=name[0]; fcwAvatar.style.background=color; }
+    if(fcwName) fcwName.textContent=name;
     const rec=findPatientRecord(name);
     markChatViewed(rec&&rec.id||name);
     const row=[...document.querySelectorAll('.patient-item')].find(el=>el.textContent.includes(name));
@@ -4154,14 +4184,13 @@ function openPatientChatView(){
     const demoEntry=DEMO_CHAT_LIST.find(p=>p.name===name);
     if(demoEntry) demoEntry.badge=0;
     updateChatUnreadBadge();
-    const ovBadge=document.getElementById('ovChatBadge');
-    if(ovBadge) ovBadge.style.display='none';
+    [document.getElementById('ovChatBadge'),document.getElementById('ovChatBadgeMobile')].forEach(b=>{ if(b) b.style.display='none'; });
     renderMessages(name,color); // instant render from whatever's already cached/local
     // Upgrade to the real Supabase thread a moment later (only if the
-    // doctor hasn't already switched to a different patient's chat, or back
-    // to the overview, by then).
+    // doctor hasn't already switched to a different patient's chat, or
+    // closed the popup, by then).
     hydrateRealThreadFromSupabase(name).then(function(hydrated){
-      if(hydrated && _chatViewMode==='chat' && document.getElementById('chat-name')?.textContent===name) renderMessages(name,color);
+      if(hydrated && _floatingChatOpen && document.getElementById('chat-name')?.textContent===name) renderMessages(name,color);
     });
   }
   updateChatPaneState();
@@ -4184,7 +4213,7 @@ function selectPatient(el,name,color,insurance){
   // openPatientChatView() below -- clearing it just for looking at the
   // patient's name used to mark messages "read" without ever viewing them.
   const unreadCount=parseInt(el.querySelector('.unread-badge')?.textContent,10)||0;
-  _chatViewMode='overview';
+  _floatingChatOpen=false;
   renderPatientOverview(name,unreadCount);
   // Mobile: open chat-area (shows the overview above by default too)
   mobileOpenChat(name);
@@ -4213,13 +4242,11 @@ function getTime(){const n=new Date();return n.getHours().toString().padStart(2,
 
 function sendClinicMsg(){
   // supabase/phase34_chat_toggle.sql -- defense in depth alongside
-  // #clinicChatInputArea being hidden by updateChatPaneState(): a disabled/
-  // hidden chat must never actually send, even if something reached this
-  // function anyway.
+  // #clinicChatInputArea being hidden by updateChatPaneState(): a disabled
+  // chat must never actually send, even if something reached this function
+  // anyway.
   if(!isChatEnabled()) return;
   const name=document.getElementById('chat-name')?.textContent;
-  const rec=name?findPatientRecord(name):null;
-  if(rec && rec.id && isChatHiddenForPatient(rec.id)) return;
   const inp=document.getElementById('clinicInput');const txt=inp.value.trim();if(!txt)return;
   const msgs=document.getElementById('messages');
   if(msgs.children.length===1 && msgs.firstElementChild.style.textAlign==='center') msgs.innerHTML='';
@@ -4301,8 +4328,10 @@ function mobileOpenChat(name){
   if(sidebar) sidebar.classList.add('mobile-hidden');
   var chatBack = document.getElementById('mobileChatBack');
   var chatHeader = document.getElementById('desktopChatHeader');
+  var actionsRow = document.getElementById('chatActionsRow');
   if(chatBack) chatBack.style.display='flex';
   if(chatHeader) chatHeader.style.display='none';
+  if(actionsRow) actionsRow.style.display='none';
   var nm = document.getElementById('mobileChatName');
   if(nm) nm.textContent = name;
 }
@@ -4337,8 +4366,10 @@ function mobileBackToList(){
   if(sidebar)sidebar.classList.remove('mobile-hidden');
   var chatBack=document.getElementById('mobileChatBack');
   var chatHeader=document.getElementById('desktopChatHeader');
+  var actionsRow=document.getElementById('chatActionsRow');
   if(chatBack)chatBack.style.display='none';
   if(chatHeader)chatHeader.style.display='flex';
+  if(actionsRow)actionsRow.style.display='flex';
   if(typeof karteiOpen!=='undefined'&&karteiOpen)toggleKartei();
   mnavActive('mnav-clinic');
 }
@@ -4657,82 +4688,36 @@ function syncPracticeSettingsUI(){
   applyChatGating();
 }
 
-let hiddenChatPatientIds=new Set();
-async function loadHiddenChatsForCurrentDoctor(){
-  const session=currentStaffSession();
-  if(!session || session.role!=='arzt') return;
-  const {data,error}=await sb.from('doctor_hidden_chats').select('patient_id').eq('arzt_id',session.username);
-  if(error){ console.error('loadHiddenChatsForCurrentDoctor failed',error); return; }
-  hiddenChatPatientIds=new Set((data||[]).map(function(r){ return r.patient_id; }));
-  updateChatPaneState();
-}
-function isChatHiddenForPatient(patientId){
-  return !!patientId && hiddenChatPatientIds.has(patientId);
-}
-// Only real, Supabase-backed patients (a real `id`) can be hidden -- the
-// row needs a real patients.id to reference (doctor_hidden_chats.patient_id
-// is a foreign key), so a local-only demo patient has nothing to attach to.
-async function toggleHideChatForCurrentPatient(){
-  const name=document.getElementById('chat-name')?.textContent;
-  const rec=name?await findPatientRecordAsync(name):null;
-  if(!rec || !rec.id) return;
-  const session=currentStaffSession();
-  if(!session) return;
-  const hidden=isChatHiddenForPatient(rec.id);
-  if(hidden){
-    const {error}=await sb.from('doctor_hidden_chats').delete().eq('arzt_id',session.username).eq('patient_id',rec.id);
-    if(error){ console.error('unhide chat failed',error); return; }
-    hiddenChatPatientIds.delete(rec.id);
-  } else {
-    const {error}=await sb.from('doctor_hidden_chats').insert({arzt_id:session.username,patient_id:rec.id});
-    if(error){ console.error('hide chat failed',error); return; }
-    hiddenChatPatientIds.add(rec.id);
-  }
-  updateChatPaneState();
-}
 // Single source of truth for which of #messages/#clinicChatInputArea vs.
-// #chatHiddenNotice/#chatDisabledNotice is shown for whichever patient is
-// currently open, and whether the ausblenden/einblenden buttons appear at
-// all -- called after every state change (gating toggle, hide/show, and
-// selectPatient()) instead of duplicating this branching at each call site.
-// Deliberately only toggles display: -- renderMessages()/
-// hydrateRealThreadFromSupabase() keep populating #messages in the
-// background regardless, same as before this feature existed.
+// #chatDisabledNotice is shown for whichever patient is currently open --
+// called after every state change (gating toggle and selectPatient())
+// instead of duplicating this branching at each call site. Deliberately
+// only toggles display: -- renderMessages()/hydrateRealThreadFromSupabase()
+// keep populating #messages in the background regardless.
 function updateChatPaneState(){
   const messages=document.getElementById('messages');
   const inputArea=document.getElementById('clinicChatInputArea');
-  const hiddenNotice=document.getElementById('chatHiddenNotice');
   const disabledNotice=document.getElementById('chatDisabledNotice');
   const overviewPane=document.getElementById('patientOverviewPane');
-  const ovBackBtn=document.getElementById('ovBackBtn');
+  const floatingWindow=document.getElementById('floatingChatWindow');
   const ovChatOpenBtn=document.getElementById('ovChatOpenBtn');
-  const hideBtn=document.getElementById('hideChatBtn');
-  const hideBtnMobile=document.getElementById('hideChatBtnMobile');
-  if(!messages || !inputArea || !hiddenNotice || !disabledNotice) return;
+  const ovChatOpenBtnMobile=document.getElementById('ovChatOpenBtnMobile');
+  if(!messages || !inputArea || !disabledNotice) return;
   const name=document.getElementById('chat-name')?.textContent;
   const hasPatient=!!(name && name!=='Kein Patient ausgewählt');
-  const rec=hasPatient?findPatientRecord(name):null;
   const enabled=isChatEnabled();
-  const hidden=!!(enabled && rec && rec.id && isChatHiddenForPatient(rec.id));
-  // Overview is the default view once a patient is selected
-  // (_chatViewMode==='overview') -- #messages/the notices/the input area
-  // only show once the doctor has explicitly opened the chat via
-  // openPatientChatView(). With no patient selected at all (initial page
-  // load, before anyone's been clicked) there's nothing to show an overview
-  // OF, so this falls back to the original enabled/hidden-only behavior.
-  const showOverview=hasPatient && _chatViewMode==='overview';
-  if(overviewPane) overviewPane.style.display=showOverview?'flex':'none';
-  if(ovChatOpenBtn) ovChatOpenBtn.style.display=(hasPatient && showOverview)?'':'none';
-  if(ovBackBtn) ovBackBtn.style.display=(hasPatient && !showOverview)?'':'none';
-  messages.style.display=(showOverview || !enabled || hidden)?'none':'';
-  inputArea.style.display=(showOverview || !enabled || hidden)?'none':'';
-  disabledNotice.style.display=(!showOverview && !enabled)?'flex':'none';
-  hiddenNotice.style.display=(!showOverview && enabled && hidden)?'flex':'none';
-  const canHide=!!(enabled && rec && rec.id);
-  [hideBtn,hideBtnMobile].forEach(function(btn){
-    if(!btn) return;
-    btn.style.display=(canHide && !hidden)?'':'none';
-  });
+  // The overview (Nächste Termine) shows for as long as a patient is
+  // selected, regardless of whether the floating chat popup is open --
+  // opening/closing the popup no longer swaps this panel's own content.
+  if(overviewPane) overviewPane.style.display=hasPatient?'block':'none';
+  if(ovChatOpenBtn) ovChatOpenBtn.style.display=hasPatient?'':'none';
+  if(ovChatOpenBtnMobile) ovChatOpenBtnMobile.style.display=hasPatient?'':'none';
+  const showChat=hasPatient && _floatingChatOpen;
+  if(floatingWindow) floatingWindow.style.display=showChat?'flex':'none';
+  const mustCloseForChat=hasPatient && !showChat;
+  messages.style.display=(mustCloseForChat || !enabled)?'none':'';
+  inputArea.style.display=(mustCloseForChat || !enabled)?'none':'';
+  disabledNotice.style.display=!enabled?'flex':'none';
 }
 
 function renderPlanSettings(){
@@ -6592,7 +6577,6 @@ window.addEventListener('load', async function() {
   renderPlanSettings();
   applyTrialStatus();
   handleStripeCheckoutReturn();
-  await loadHiddenChatsForCurrentDoctor();
   // Labor-E-Mail (supabase/phase24_lab_result_inbox.sql) -- generated once
   // per practice and shown read-only in Settings for copy/paste to a lab.
   const labAddrInput=document.getElementById('labEmailAddress');
