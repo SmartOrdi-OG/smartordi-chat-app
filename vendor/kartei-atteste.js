@@ -95,8 +95,13 @@ async function buildPflegefreistellungPdf(patientNameOverride){
   const bis = document.getElementById('pf-bis').value||'';
   const ort = document.getElementById('pf-ort').value||'';
 
-  const T=(text,x,y,size=10,style='normal',color=[0,0,0])=>{
-    doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);doc.text(String(text||''),x,y);
+  // align (7th arg, optional): jsPDF's own text-alignment option -- used
+  // below to center the issuing doctor's name/date directly under the
+  // signature image instead of left-aligning it at the image's left edge,
+  // which visually reads as "next to", not "under", the actual ink.
+  const T=(text,x,y,size=10,style='normal',color=[0,0,0],align)=>{
+    doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);
+    doc.text(String(text||''),x,y,align?{align}:undefined);
   };
   const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
   const R=(x,y,w,h,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h);};
@@ -138,9 +143,12 @@ async function buildPflegefreistellungPdf(patientNameOverride){
   y+=8;
   if(arzt&&arzt.stempelDataUrl){try{doc.addImage(arzt.stempelDataUrl,'PNG',10,y,40,30);}catch(e){}}
   if(arzt&&arzt.sigDataUrl){try{doc.addImage(arzt.sigDataUrl,'PNG',60,y,55,26);}catch(e){}}
-  T('Stempel & Unterschrift',10,y+34,8,'normal',[150,150,150]);
-  T(arzt?arzt.fullName:'—',60,y+34,9,'bold');
-  T((ort||'—')+', '+new Date().toLocaleDateString('de-AT'),60,y+38,8,'normal',[120,120,120]);
+  // Centered under each image's own box (stamp: x 10-50, signature: x
+  // 60-115) instead of left-aligned at the box's left edge, so the name/
+  // date actually reads as sitting under the ink, not floating beside it.
+  T('Stempel & Unterschrift',30,y+34,8,'normal',[150,150,150],'center');
+  T(arzt?arzt.fullName:'—',87.5,y+34,9,'bold',[0,0,0],'center');
+  T((ort||'—')+', '+new Date().toLocaleDateString('de-AT'),87.5,y+38,8,'normal',[120,120,120],'center');
 
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
   T('DSGVO-konform',10,290,7,'normal',[150,150,150]);
@@ -210,8 +218,11 @@ async function buildArbeitsunfaehigkeitPdf(patientNameOverride){
   const versTraeger=document.getElementById('au2-versicherungstraeger').value||'';
   const versNummer=document.getElementById('au2-versicherungsnummer').value||'';
 
-  const T=(text,x,y,size=10,style='normal',color=[0,0,0])=>{
-    doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);doc.text(String(text||''),x,y);
+  // align (7th arg, optional) -- see buildPflegefreistellungPdf()'s own
+  // comment on this same helper above.
+  const T=(text,x,y,size=10,style='normal',color=[0,0,0],align)=>{
+    doc.setFontSize(size);doc.setFont('helvetica',style);doc.setTextColor(...color);
+    doc.text(String(text||''),x,y,align?{align}:undefined);
   };
   const L=(x1,y1,x2,y2,w=0.3)=>{doc.setLineWidth(w);doc.line(x1,y1,x2,y2);};
   const R=(x,y,w,h,lw=0.3)=>{doc.setLineWidth(lw);doc.rect(x,y,w,h);};
@@ -270,8 +281,10 @@ async function buildArbeitsunfaehigkeitPdf(patientNameOverride){
   y+=8;
   if(arzt&&arzt.stempelDataUrl){try{doc.addImage(arzt.stempelDataUrl,'PNG',10,y,40,30);}catch(e){}}
   if(arzt&&arzt.sigDataUrl){try{doc.addImage(arzt.sigDataUrl,'PNG',60,y,55,26);}catch(e){}}
-  T('Stempel & Unterschrift',10,y+34,8,'normal',[150,150,150]);
-  T(arzt?arzt.fullName:'—',60,y+34,9,'bold');
+  // Centered under each image's own box -- see buildPflegefreistellungPdf()'s
+  // own comment on this same fix above.
+  T('Stempel & Unterschrift',30,y+34,8,'normal',[150,150,150],'center');
+  T(arzt?arzt.fullName:'—',87.5,y+34,9,'bold',[0,0,0],'center');
 
   doc.setFillColor(248,250,252);doc.rect(0,282,210,15,'F');
   T('DSGVO-konform',10,290,7,'normal',[150,150,150]);
