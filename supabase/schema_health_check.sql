@@ -219,7 +219,7 @@ select 'patient_ueberweisungen column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_ueberweisungen' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'kostentraeger','status_code','von','an','fachrichtung','dringlichkeit',
+  'kostentraeger','status_code','von','an','an_adresse','an_tel','fachrichtung','dringlichkeit',
   'diagnose','wegen','notizen','arbeitsunfaehig','rezeptgebuehrenbefreit','document_id'
 ]) as c
 

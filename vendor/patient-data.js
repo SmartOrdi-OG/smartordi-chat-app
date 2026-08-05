@@ -892,6 +892,10 @@ async function getRezepteForPatient(patientId){
   if(error){ console.error('getRezepteForPatient failed',error); return []; }
   return data||[];
 }
+// an_adresse/an_tel (supabase/phase52_ueberweisung_an_kontakt.sql) -- the
+// RECEIVING doctor/Krankenhaus's own Anschrift/Telefon, not the patient's
+// own (that's the separate patients.adresse/tel already elsewhere).
+const UEBERWEISUNG_COLUMNS='id,datum,kostentraeger,status_code,von,an,an_adresse,an_tel,fachrichtung,dringlichkeit,diagnose,wegen,notizen,arbeitsunfaehig,rezeptgebuehrenbefreit,document_id,created_at';
 async function createPatientUeberweisung(patientId,fields,createdBy,documentId){
   const row={
     patient_id: patientId,
@@ -900,6 +904,8 @@ async function createPatientUeberweisung(patientId,fields,createdBy,documentId){
     status_code: fields.status||null,
     von: fields.von||null,
     an: fields.an||'',
+    an_adresse: fields.anAdresse||null,
+    an_tel: fields.anTel||null,
     fachrichtung: fields.fach||null,
     dringlichkeit: fields.dring||null,
     diagnose: fields.diag||null,
@@ -910,12 +916,12 @@ async function createPatientUeberweisung(patientId,fields,createdBy,documentId){
     document_id: documentId||null,
     created_by: createdBy||null,
   };
-  const {data,error}=await sb.from('patient_ueberweisungen').insert(row).select('id,datum,kostentraeger,status_code,von,an,fachrichtung,dringlichkeit,diagnose,wegen,notizen,arbeitsunfaehig,rezeptgebuehrenbefreit,document_id,created_at').single();
+  const {data,error}=await sb.from('patient_ueberweisungen').insert(row).select(UEBERWEISUNG_COLUMNS).single();
   if(error){ console.error('createPatientUeberweisung failed',error); throw error; }
   return data;
 }
 async function getUeberweisungenForPatient(patientId){
-  const {data,error}=await sb.from('patient_ueberweisungen').select('id,datum,kostentraeger,status_code,von,an,fachrichtung,dringlichkeit,diagnose,wegen,notizen,arbeitsunfaehig,rezeptgebuehrenbefreit,document_id,created_at').eq('patient_id',patientId).order('datum',{ascending:false});
+  const {data,error}=await sb.from('patient_ueberweisungen').select(UEBERWEISUNG_COLUMNS).eq('patient_id',patientId).order('datum',{ascending:false});
   if(error){ console.error('getUeberweisungenForPatient failed',error); return []; }
   return data||[];
 }
