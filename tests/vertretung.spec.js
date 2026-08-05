@@ -129,3 +129,49 @@ test('sendVertretungBroadcast() only messages patients who still have a real acc
   expect(result.mariaGotMessage).toBe(true);
   expect(result.toastText).toContain('1 Patient/in(nen) benachrichtigt');
 });
+
+// Regression test for the 500-patient-cap bug found 2026-08-05: this used
+// to cross-check Termine against loadPatients()'s bounded recent-500 cache
+// to decide who still has a real account, so a patient outside that cache
+// (impossible to reproduce with only a handful of seeded rows) silently
+// never got the broadcast despite the "all patients" promise. Simulate
+// "outside the cache" the only practical way in a test this small: make
+// the cache report empty and confirm the broadcast still reaches Maria via
+// its own unbounded fetch instead.
+test('sendVertretungBroadcast() still reaches a patient even when loadPatients()\'s bounded cache is empty', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    const originalLoadPatients = window.loadPatients;
+    window.loadPatients = () => ({});
+    document.getElementById('vertVon').value = '2026-08-01';
+    document.getElementById('vertBis').value = '2026-08-10';
+    document.getElementById('vertName').value = 'Dr. Extern';
+    document.getElementById('vertFach').value = 'Allgemeinmedizin';
+    vertretungMode = 'external';
+    await sendVertretungBroadcast();
+    await new Promise(r => setTimeout(r, 100));
+    window.loadPatients = originalLoadPatients;
+    const row = window.__store.practice_vertretung.find(v => v.arzt_id === 'dr.ahmed');
+    return { sentTo: row.sent_to };
+  });
+  expect(result.sentTo).toEqual(['Maria Huber']);
+});
+
+test('sendAddressChangeBroadcast() still reaches a patient even when loadPatients()\'s bounded cache is empty', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    const originalLoadPatients = window.loadPatients;
+    window.loadPatients = () => ({});
+    document.getElementById('setAdresse').value = 'Neue Str 5, Wien';
+    await sendAddressChangeBroadcast();
+    await new Promise(r => setTimeout(r, 100));
+    window.loadPatients = originalLoadPatients;
+    const mariaMessages = JSON.parse(localStorage.getItem('smartordi_patient_accounts'))['maria.huber'].messages;
+    return {
+      toastText: document.getElementById('toast')?.textContent || '',
+      mariaGotMessage: mariaMessages.some(m => m.text.includes('Neue Str 5')),
+    };
+  });
+  expect(result.mariaGotMessage).toBe(true);
+  expect(result.toastText).toContain('1 Patient/in(nen) über neue Adresse informiert');
+});

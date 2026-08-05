@@ -47,6 +47,16 @@ function mockScript(seed) {
       patients: ['username', 'name', 'full_name'],
       patient_guardians: ['username', 'name', 'full_name'],
     };
+    // window.__forceError[table] can be a plain string (the common case --
+    // wrapped into {message} as before) or a full error-shaped object, so a
+    // test can simulate a specific real Postgres error code (e.g. '23505'
+    // unique_violation) instead of just a generic message. Used by
+    // insertNewPatientIdentity()'s username-collision handling
+    // (vendor/patient-data.js), which specifically branches on error.code.
+    function __forceErrorObj(table) {
+      const v = window.__forceError[table];
+      return typeof v === 'string' ? { message: v } : v;
+    }
     // Turns a Postgres ILIKE pattern into a match against one value. Only
     // handles the % wildcard the way this app actually uses it (always a
     // simple '%term%'/'term%'/'%term' contains/starts/ends search, never a
@@ -153,7 +163,7 @@ function mockScript(seed) {
           // Supabase pattern in this codebase) had no way to simulate a
           // real DB error in a test.
           if (window.__forceError && window.__forceError[table]) {
-            return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
+            return Promise.resolve({ data: null, error: __forceErrorObj(table) });
           }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
@@ -173,7 +183,7 @@ function mockScript(seed) {
         },
         single() {
           if (window.__forceError && window.__forceError[table]) {
-            return Promise.resolve({ data: null, error: { message: window.__forceError[table] } });
+            return Promise.resolve({ data: null, error: __forceErrorObj(table) });
           }
           if (b._pendingUpdate) {
             const matched = rows.filter(x => __matches(x, b._filters, b._orGroup));
@@ -265,7 +275,7 @@ function mockScript(seed) {
           // error, e.g. to verify error-handling paths without needing a
           // live (and therefore unreachable, from this sandbox) database.
           if (window.__forceError && window.__forceError[table]) {
-            return Promise.resolve({ data: null, error: { message: window.__forceError[table] } }).then(res, rej);
+            return Promise.resolve({ data: null, error: __forceErrorObj(table) }).then(res, rej);
           }
           // Simulates a migration that added a column but was never fully
           // applied on this project (the 2026-07-24 incident this whole

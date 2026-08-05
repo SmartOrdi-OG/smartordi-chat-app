@@ -317,6 +317,58 @@ function loadPatients(){
 }
 const patientsReady=refreshPatients();
 
+// Unbounded counterpart to refreshPatients()/loadPatients() -- for the rare
+// "notify literally every real patient" broadcasts (Vertretung/address-
+// change in doctor.html), which used to read loadPatients()'s bounded
+// 500-cache directly and so silently never reached an older/less-active
+// patient sitting outside it, despite promising "all patients". Same
+// unbounded-fetch reasoning as exportPracticeDataZip()'s ZIP export: a
+// rare, doctor-triggered bulk action, not the hot path the 500-cap exists
+// for. Returns null (not a partial map) on a query failure, so a caller
+// can tell "no patients" apart from "the fetch itself failed".
+async function fetchAllPatientsUnbounded(){
+  const {data,error}=await selectWithColumnFallback(
+    cols=>sb.from('patients').select(cols),
+    PATIENTS_COLUMNS,'fetchAllPatientsUnbounded');
+  if(error){ console.error('fetchAllPatientsUnbounded failed',error); return null; }
+  const localAccounts=localPatientAccountsRaw();
+  const merged={};
+  (data||[]).forEach(function(row){
+    merged[row.username]=patientRowToJs(row,localAccounts);
+  });
+  Object.keys(localAccounts).forEach(function(u){
+    if(!merged[u]) merged[u]=localAccounts[u];
+  });
+  return merged;
+}
+
+// Lazy, session-cached counterpart to fetchAllPatientsUnbounded() above --
+// for a read-heavy, SYNCHRONOUS UI path (due-vaccination reminders,
+// re-evaluated on every dashboard/sidebar render) where re-fetching
+// unbounded on every single call would undo the whole point of
+// loadPatients()'s 500-cap. Unlike refreshPatients(), NOT fired
+// unconditionally at module load -- only warms up once something actually
+// calls ensureAllPatientsSnapshot() (e.g. allDueVaccinations()), so a
+// session that never touches that feature never pays for it. Until the
+// first fetch resolves, loadAllPatientsSnapshotSync() falls back to the
+// bounded cache (today's behavior, no regression) -- correct once warmed
+// up, an acceptable tradeoff for an advisory reminder list, same "not the
+// hot path" reasoning as the rest of this class of fix.
+let _allPatientsSnapshot=null;
+let _allPatientsSnapshotPromise=null;
+function ensureAllPatientsSnapshot(){
+  if(!_allPatientsSnapshotPromise){
+    _allPatientsSnapshotPromise=fetchAllPatientsUnbounded().then(function(result){
+      _allPatientsSnapshot=result;
+      return result;
+    });
+  }
+  return _allPatientsSnapshotPromise;
+}
+function loadAllPatientsSnapshotSync(){
+  return _allPatientsSnapshot||_patients;
+}
+
 // ── Real paginated patient list (architecture project, see TODO.md) ──
 // loadPatients()/refreshPatients() above stay as they are: a bounded,
 // one-shot in-memory cache used for O(1) synchronous lookups elsewhere
@@ -545,6 +597,35 @@ async function upsertPatientIdentity(username,fields){
   await refreshPatients();
   cachePatientLookup(patientRowToJs(data,localPatientAccountsRaw()));
   return data;
+}
+
+// Used only when creating a genuinely NEW patient (createPatientAccount()/
+// createChildPatientAccount() in secretary.html) -- upsertPatientIdentity()
+// above is correct for editing/re-syncing a KNOWN existing patient by
+// username, but wrong for that case: the username there was only just
+// generated and checked for uniqueness against loadPatients()'s bounded
+// 500-cache (fast and synchronous, good enough to dodge MOST collisions
+// instantly for the front-desk QR-printing flow, which needs the username
+// back immediately) -- if it collides with a REAL patient sitting outside
+// that cache anyway, upsertPatientIdentity()'s "update if a row with this
+// username already exists" branch would silently overwrite that unrelated
+// patient's identity with the new patient's data. A real INSERT instead
+// relies on the database's own `username text unique` constraint
+// (supabase/phase1_patients_termine_messages.sql) as the actual source of
+// truth: a genuine collision now fails loudly (Postgres 23505) instead of
+// silently corrupting someone else's record. Found in a 2026-08-05
+// codebase audit.
+async function insertNewPatientIdentity(username,fields){
+  const {data,error}=await sb.from('patients').insert(Object.assign({username},fields)).select().single();
+  if(error){
+    if(error.code==='23505') return {collision:true,row:null};
+    console.error('insertNewPatientIdentity failed',error);
+    throw error;
+  }
+  invalidateLookupCacheForUsername(username);
+  await refreshPatients();
+  cachePatientLookup(patientRowToJs(data,localPatientAccountsRaw()));
+  return {collision:false,row:data};
 }
 
 // Provisions (or repairs) a real Supabase Auth user for a patient/guardian

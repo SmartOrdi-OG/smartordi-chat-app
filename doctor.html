@@ -3921,8 +3921,15 @@ function dueVaccinationsForPatient(name,dob,impfungen){
   return due;
 }
 function allDueVaccinations(){
+  // Not loadPatients()'s bounded 500-cache: a patient overdue for a
+  // vaccine precisely because they haven't visited in a long time is
+  // exactly the kind of patient likely to sit outside it. Kicks off a
+  // one-time unbounded fetch lazily (see ensureAllPatientsSnapshot()); the
+  // first call this session still reads the bounded cache (unchanged
+  // behavior) until that resolves, then every render after is complete.
+  ensureAllPatientsSnapshot();
   const results=[];
-  Object.values(loadPatients()).forEach(a=>{
+  Object.values(loadAllPatientsSnapshotSync()).forEach(a=>{
     if(!a||!a.fullName||a.role==='guardian'||!a.id) return;
     results.push(...dueVaccinationsForPatient(a.fullName,a.dob,loadImpfungenFor(a.id).map(impfRowToJs)));
   });
@@ -6250,6 +6257,31 @@ function appendRealMessage(name,msg){
   }
   return true;
 }
+// Broadcast-only variant of appendRealMessage() above, for a patient that
+// might sit outside loadPatients()'s bounded 500-cache -- takes an already
+// resolved account (from fetchAllPatientsUnbounded()) directly instead of
+// re-deriving one via findPatientAccountByFullName()/that same bounded
+// cache, so a patient outside it still actually receives the broadcast
+// instead of being silently skipped. Mirrors into the local accounts map
+// by username (creating an entry if this patient never had one there yet)
+// rather than rewriting the whole bounded cache back into localStorage the
+// way appendRealMessage() does -- same end result for the doctor's own
+// device, without depending on that cache at all.
+function appendRealMessageForAccount(name,msg,account){
+  if(!MESSAGES[name]) MESSAGES[name]={date:'',items:[]};
+  MESSAGES[name].items.push(msg);
+  if(!account) return false;
+  const localAccounts=localPatientAccountsRaw();
+  const existing=localAccounts[account.username]||account;
+  if(!existing.messages) existing.messages=[];
+  existing.messages.push(msg);
+  localAccounts[account.username]=existing;
+  localStorage.setItem('smartordi_patient_accounts',JSON.stringify(localAccounts));
+  if(account.id){
+    sendMessageToPatient(account.id,msg).catch(function(err){ console.error('sendMessageToPatient failed',err); });
+  }
+  return true;
+}
 function readVertretungForm(){
   const extName=document.getElementById('vertName').value.trim();
   const extFach=document.getElementById('vertFach').value.trim();
@@ -6336,12 +6368,28 @@ async function sendVertretungBroadcast(){
     ? [form.fach,'in dieser Ordination'].filter(Boolean).join(' · ')
     : [form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
   const text=`ℹ Wichtiger Hinweis: ${myName} ist von ${vonFmt} bis ${bisFmt} abwesend. In dieser Zeit vertritt Sie: ${form.name}${contactParts?' ('+contactParts+')':''}.`;
-  const patients=patientsForCurrentDoctor();
+  // Every patient with a Termin under this doctor -- Termine themselves are
+  // never bounded, but patientsForCurrentDoctor()'s "does this patient
+  // still have a real account" check used to go through loadPatients()'s
+  // 500-cache, so a patient outside it (older/less-active, but very real)
+  // silently never got this broadcast despite the "all patients" promise.
+  // Fetch every patient row directly instead -- same reasoning as
+  // exportPracticeDataZip()'s unbounded fetch: a rare, doctor-triggered
+  // bulk action, not the hot path that cap exists for.
+  const allPatients=await fetchAllPatientsUnbounded();
+  if(!allPatients){ showToast('Senden fehlgeschlagen','error'); return; }
+  const byFullName={};
+  Object.keys(allPatients).forEach(function(u){
+    const a=allPatients[u];
+    if(a&&a.fullName) byFullName[a.fullName]=a;
+  });
+  const names=new Set(loadTermine().filter(t=>t.arztUsername===me).map(t=>t.patient));
   const now=new Date();
   const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
   const sentTo=[];
-  patients.forEach(function(name){
-    if(appendRealMessage(name,{dir:'out',type:'text',text,time})) sentTo.push(name);
+  names.forEach(function(name){
+    const account=byFullName[name];
+    if(account&&appendRealMessageForAccount(name,{dir:'out',type:'text',text,time},account)) sentTo.push(name);
   });
   const {data,error}=await sb.from('practice_vertretung').upsert({
     arzt_id:me, von:form.von, bis:form.bis, mode:form.mode,
@@ -6361,18 +6409,21 @@ async function sendVertretungBroadcast(){
 // not tied to one doctor, so unlike Vertretung this broadcasts to every
 // real patient at the practice -- infrequent patients (e.g. once a year)
 // especially have no other way to learn the Ordination moved.
-function sendAddressChangeBroadcast(){
+async function sendAddressChangeBroadcast(){
   const adresse=(document.getElementById('setAdresse')?.value||'').trim();
   if(!adresse){ showToast('Bitte zuerst eine Adresse eingeben','error'); return; }
   const text='📍 Wichtiger Hinweis: Unsere Ordination ist umgezogen. Die neue Adresse lautet: '+adresse+'.';
   const now=new Date();
   const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'); // sent-tick is derived from m.dir at render time, not baked into the string
   const sentTo=[];
-  const accounts=loadPatients();
+  // Every real patient at the practice, not just loadPatients()'s bounded
+  // 500-cache -- same reasoning as sendVertretungBroadcast() above.
+  const accounts=await fetchAllPatientsUnbounded();
+  if(!accounts){ showToast('Senden fehlgeschlagen','error'); return; }
   Object.keys(accounts).forEach(function(u){
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||a.joinStatus==='pending'||a.joinStatus==='rejected') return;
-    if(appendRealMessage(a.fullName,{dir:'out',type:'text',text,time})) sentTo.push(a.fullName);
+    if(appendRealMessageForAccount(a.fullName,{dir:'out',type:'text',text,time},a)) sentTo.push(a.fullName);
   });
   renderPatientList();
   const noteEl=document.getElementById('addressBroadcastNote');
@@ -6682,7 +6733,11 @@ async function renderLabResultInbox(){
     root.innerHTML='<span style="color:#94a3b8;font-size:12px;">Keine neuen Ergebnisse</span>';
     return;
   }
-  const patients=Object.values(loadPatients()).filter(p=>p.id);
+  // Every real patient, not just loadPatients()'s bounded recent-500 cache
+  // -- a lab result can land for a patient who hasn't visited in a while
+  // (exactly the kind of patient missing from that cache), and this picker
+  // must be able to find them, not just silently omit them.
+  const patients=Object.values((await fetchAllPatientsUnbounded())||{}).filter(p=>p.id);
   const optionsHtml='<option value="">Patient wählen…</option>'+patients.map(p=>`<option value="${p.id}">${escapeHtml(p.fullName)}</option>`).join('');
   root.innerHTML=results.map(r=>{
     const when=new Date(r.created_at).toLocaleString('de-AT',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
