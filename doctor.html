@@ -1784,6 +1784,20 @@ body.windows-mode #karteiBtn{display:none;}
             <label class="k-form-label">Überweisung an (Arzt / Krankenhaus)</label>
             <input type="text" class="k-form-input" id="uwAn" placeholder="z.B. Dr. Klaus Weber – Kardiologie Wien">
           </div>
+          <!-- Anschrift/Telefon of the RECEIVING doctor/Krankenhaus (an
+               external referral, not this practice's own patient) -- so the
+               printed/downloaded Überweisung actually reaches them/lets
+               their office call back, not just a bare name. -->
+          <div class="k-form-row">
+            <div class="k-form-group">
+              <label class="k-form-label">Anschrift (Arzt / Krankenhaus)</label>
+              <input type="text" class="k-form-input" id="uwAnAdresse" placeholder="z.B. Hauptstraße 10, 1010 Wien">
+            </div>
+            <div class="k-form-group">
+              <label class="k-form-label">Telefon (Arzt / Krankenhaus)</label>
+              <input type="text" class="k-form-input" id="uwAnTel" placeholder="z.B. +43 1 2345678">
+            </div>
+          </div>
 
           <div class="k-form-row">
             <div class="k-form-group">

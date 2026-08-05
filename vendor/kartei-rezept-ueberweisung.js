@@ -55,6 +55,10 @@ function getUwData(){
     status:  uwVal('uwStatus')||'1',
     von:     uwVal('uwVon')||'—',
     an:      uwVal('uwAn')||'–',
+    // Anschrift/Telefon of the RECEIVING doctor/Krankenhaus -- not the
+    // patient's own (that's pAdresse above).
+    anAdresse:uwVal('uwAnAdresse'),
+    anTel:   uwVal('uwAnTel'),
     fach:    uwVal('uwFach')||'Kardiologie',
     dring:   uwVal('uwDring')||'Normal',
     diag:    uwVal('uwDiag')||'–',
@@ -87,6 +91,21 @@ function buildUwA4(){
     </div>`).join('');
 
   const chk=(v,check)=>`<span style="display:inline-block;width:11px;height:11px;border:1.5px solid #000;text-align:center;line-height:10px;font-size:9px;font-weight:900;">${v===check?'✓':''}</span>`;
+
+  // Anschrift/Telefon of the RECEIVING doctor/Krankenhaus -- only shown
+  // when at least one was actually filled in, so an unused Überweisung
+  // (no external contact details on hand yet) doesn't print an empty box.
+  const anKontaktRow = (d.anAdresse||d.anTel) ? `
+      <tr>
+        <td style="border:1px solid #000;padding:4px 6px;">
+          <div style="font-size:7px;color:#777;font-weight:700;text-transform:uppercase;">Anschrift (Arzt/Krankenhaus)</div>
+          <div style="font-size:9px;">${escapeHtml(d.anAdresse||'–')}</div>
+        </td>
+        <td style="border:1px solid #000;padding:4px 6px;">
+          <div style="font-size:7px;color:#777;font-weight:700;text-transform:uppercase;">Telefon (Arzt/Krankenhaus)</div>
+          <div style="font-size:9px;">${escapeHtml(d.anTel||'–')}</div>
+        </td>
+      </tr>` : '';
 
   document.getElementById('uwA4').innerHTML = `
     <!-- Title -->
@@ -155,7 +174,7 @@ function buildUwA4(){
           <div style="font-size:7px;color:#777;font-weight:700;text-transform:uppercase;">Überweisung an</div>
           <div style="font-size:10px;font-weight:600;">${escapeHtml(d.an)}</div>
         </td>
-      </tr>
+      </tr>${anKontaktRow}
       <tr>
         <td style="border:1px solid #000;padding:4px 6px;">
           <div style="font-size:7px;color:#777;font-weight:700;text-transform:uppercase;">Fachrichtung</div>
@@ -231,6 +250,8 @@ function buildUwA4(){
 
 function clearUeberweisungForm(){
   document.getElementById('uwAn').value='';
+  document.getElementById('uwAnAdresse').value='';
+  document.getElementById('uwAnTel').value='';
   document.getElementById('uwDiag').value='';
   document.getElementById('uwWegen').value='';
   document.getElementById('uwNotes').value='';
@@ -284,7 +305,7 @@ async function handleUwSend(){
       // alongside the PDF upload above, not instead of it.
       try{
         await createPatientUeberweisung(patientId,{
-          kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+          kt:d.kt, status:d.status, von:d.von, an:d.an, anAdresse:d.anAdresse, anTel:d.anTel, fach:d.fach, dring:d.dring,
           diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
           datumIso:uwVal('uwDatum'),
         },session?session.username:null,docId);
@@ -620,6 +641,15 @@ function buildUeberweisungPdf(){
   doc.setFillColor(0,0,0);doc.rect(15,y,180,5,'F');doc.setTextColor(255,255,255);doc.setFontSize(8);doc.setFont('helvetica','bold');
   doc.text('ÜBERWEISUNG',17,y+3.5);doc.setTextColor(0,0,0);y+=5;
   R(15,y,90,8);R(105,y,90,8);T('Von',17,y+3,7,'normal',[120,120,120]);T(d.von,17,y+7,9);T('Überweisung an',107,y+3,7,'normal',[120,120,120]);T(d.an,107,y+7,9);y+=8;
+  // Anschrift/Telefon of the RECEIVING doctor/Krankenhaus -- only drawn
+  // when at least one was actually filled in, same reasoning as buildUwA4()'s
+  // anKontaktRow above.
+  if(d.anAdresse||d.anTel){
+    R(15,y,90,8);R(105,y,90,8);
+    T('Anschrift (Arzt/Krankenhaus)',17,y+3,7,'normal',[120,120,120]);T(d.anAdresse||'–',17,y+7,9);
+    T('Telefon (Arzt/Krankenhaus)',107,y+3,7,'normal',[120,120,120]);T(d.anTel||'–',107,y+7,9);
+    y+=8;
+  }
   R(15,y,90,8);R(105,y,90,8);T('Fachrichtung',17,y+3,7,'normal',[120,120,120]);T(d.fach,17,y+7,10,'bold');
   T('Dringlichkeit',107,y+3,7,'normal',[120,120,120]);
   const dc=d.dring==='Notfall'?[220,38,38]:d.dring==='Dringend'?[217,119,6]:[0,0,0];
@@ -689,7 +719,7 @@ async function downloadUwPDF(){
     const session=currentStaffSession();
     try{
       await createPatientUeberweisung(patientId,{
-        kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+        kt:d.kt, status:d.status, von:d.von, an:d.an, anAdresse:d.anAdresse, anTel:d.anTel, fach:d.fach, dring:d.dring,
         diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
         datumIso:uwVal('uwDatum'),
       },session?session.username:null,null);
@@ -713,7 +743,7 @@ async function printUwPDF(){
     const session=currentStaffSession();
     try{
       await createPatientUeberweisung(patientId,{
-        kt:d.kt, status:d.status, von:d.von, an:d.an, fach:d.fach, dring:d.dring,
+        kt:d.kt, status:d.status, von:d.von, an:d.an, anAdresse:d.anAdresse, anTel:d.anTel, fach:d.fach, dring:d.dring,
         diag:d.diag, wegen:d.wegen, notes:d.notes, au:d.au==='Ja', rez:d.rez==='Ja',
         datumIso:uwVal('uwDatum'),
       },session?session.username:null,null);
