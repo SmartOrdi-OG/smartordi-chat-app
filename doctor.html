@@ -3597,8 +3597,23 @@ function tuVisitState(t){
   if(t.startedAt) return 'now';
   return null;
 }
+// Tracks the one visit "Start" most recently opened, so the topbar's global
+// "Zurück" button (goBack(), always returns to Kalender) can auto-complete
+// it on the way back -- lets a doctor go Start -> examine/update the
+// patient's Kartei -> Zurück, and land back on Kalender with that
+// appointment already showing "Fertig", instead of having to separately
+// find and click that row's own Fertig button afterward. Only the ONE most
+// recently started visit is tracked (not a full stack) -- if a doctor
+// starts a second visit without returning from the first, only the second
+// gets auto-completed this way; the first's own inline "Fertig" button
+// (still rendered as long as its state stays 'now') covers that edge case.
+let _tuActiveStartedTerminId=null;
 async function tuMarkStarted(id){
-  if(await startTerminVisit(id)) renderTagesuhr();
+  if(!(await startTerminVisit(id))) return;
+  renderTagesuhr();
+  _tuActiveStartedTerminId=id;
+  const t=loadTermine().find(x=>x.id===id);
+  if(t) openKarteiForPatientAndShow(t.patient,t.svnr,t.versicherung,t.dob);
 }
 async function tuMarkDone(id){
   if(await completeTerminVisit(id)) renderTagesuhr();
@@ -6986,6 +7001,15 @@ async function dismissLabResultRow(labResultId){
 // nowhere). Kalender is the app's actual home screen, so go there directly
 // instead of guessing at history.
 function goBack() {
+  // See tuMarkStarted()'s own comment -- if this Zurück is the one closing
+  // out a visit that was started from Kalender, mark it done automatically
+  // instead of leaving the doctor to also find and click that row's own
+  // Fertig button. Cleared up front so a double-click can't fire this twice.
+  if(_tuActiveStartedTerminId){
+    const id=_tuActiveStartedTerminId;
+    _tuActiveStartedTerminId=null;
+    completeTerminVisit(id).then(function(ok){ if(ok) renderTagesuhr(); });
+  }
   showKalender();
   mnavActive('mnav-kalender');
 }

@@ -36,6 +36,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 .input-wrap{position:relative;}
 .input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;}
 .form-input{width:100%;padding:13px 14px 13px 42px;background:var(--blue-light);border:1.5px solid #C7D7F5;border-radius:12px;color:var(--slate);font-family:inherit;font-size:14px;outline:none;transition:all 0.2s;-webkit-appearance:none;}
+/* Reserved for inputs with a .toggle-pw reveal button (login/newPw/confirmPw)
+   -- the default 14px right padding above left long password text running
+   right under the eye icon (real report: "8ٍ4" partly hidden behind it). */
+.form-input.has-toggle{padding-right:42px;}
 .form-input::placeholder{color:#94a3b8;}
 .form-input:focus{border-color:#1e40af;background:#EEF4FF;box-shadow:0 0 0 3px rgba(30,64,175,0.15);}
 .toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:color 0.15s;}
@@ -103,7 +107,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <label class="form-label" data-i18n="login.password.label">Passwort</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-        <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" class="form-input has-toggle" id="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
         <button class="toggle-pw" onclick="togglePw('password','togglePw1')" id="togglePw1" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
     </div>
@@ -213,7 +217,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-        <input type="password" class="form-input" id="newPw" placeholder="Mindestens 6 Zeichen" data-i18n-ph="changepw.newPw.placeholder" oninput="checkStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('confirmPw').focus()">
+        <input type="password" class="form-input has-toggle" id="newPw" placeholder="Mindestens 6 Zeichen" data-i18n-ph="changepw.newPw.placeholder" oninput="checkStrength(this.value)" onkeydown="if(event.key==='Enter')document.getElementById('confirmPw').focus()">
         <button class="toggle-pw" onclick="togglePw('newPw','togglePw2')" id="togglePw2" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       <div class="pw-strength"><div class="pw-strength-fill" id="strengthFill"></div></div>
@@ -223,7 +227,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <label class="form-label" data-i18n="changepw.confirmPw.label">Passwort bestätigen</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
-        <input type="password" class="form-input" id="confirmPw" placeholder="Passwort wiederholen" data-i18n-ph="changepw.confirmPw.placeholder" onkeydown="if(event.key==='Enter')saveNewPw()">
+        <input type="password" class="form-input has-toggle" id="confirmPw" placeholder="Passwort wiederholen" data-i18n-ph="changepw.confirmPw.placeholder" onkeydown="if(event.key==='Enter')saveNewPw()">
         <button class="toggle-pw" onclick="togglePw('confirmPw','togglePw3')" id="togglePw3" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
     </div>
