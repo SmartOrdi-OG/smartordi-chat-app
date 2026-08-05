@@ -1550,8 +1550,13 @@ body.windows-mode #karteiBtn{display:none;}
          clip almost this entire dropdown (it's taller than the tab bar
          itself). Placed/sized via toggleKarteiMehrMenu() at open time
          instead of static CSS coordinates. -->
+    <!-- "Überweisung" used to have its own button here -- removed on
+         purpose: an external referral now starts from the "Patient
+         überweisen" quick-picker in the chat overview pane (Fachrichtung +
+         optional Arzt/Praxis name), which opens straight into this same
+         underlying tab (#ktab-ueberweisung, still fully intact below)
+         pre-filled, instead of a doctor first having to dig into "Mehr". -->
     <div id="karteiMehrMenu" class="kartei-mehr-menu" style="display:none;">
-      <button class="kartei-tab" onclick="switchKarteiTab('ueberweisung',this)">Überweisung</button>
       <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
       <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
       <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
@@ -2436,6 +2441,28 @@ body.windows-mode #karteiBtn{display:none;}
         <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
         <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
           <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+        </div>
+        <!-- Referral to a doctor OUTSIDE this practice (any specialty) --
+             distinct from "Weiterleiten" above, which only reassigns
+             appointments to a colleague INSIDE this practice. There's no
+             account/appointments to reassign for an external doctor, so
+             this doesn't touch termine at all -- it's a fast on-ramp into
+             the existing Kartei "Überweisung" tab (the real referral-letter
+             PDF form, ktab-ueberweisung), pre-filled with the chosen
+             Fachrichtung/name, instead of a doctor having to dig for that
+             tab under "Mehr" first (that button was removed from
+             #karteiMehrMenu when this shipped). -->
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Patient überweisen</div>
+          <select class="form-input" id="uwQuickFach" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+            <option value="">Fachrichtung wählen…</option>
+            <option>Kardiologie</option><option>Neurologie</option><option>Orthopädie</option>
+            <option>Dermatologie</option><option>Psychiatrie</option><option>Innere Medizin</option>
+            <option>HNO</option><option>Augenheilkunde</option><option>Urologie</option>
+            <option>Gynäkologie</option><option>Radiologie</option><option>Chirurgie</option><option>Andere</option>
+          </select>
+          <input class="form-input" id="uwQuickArzt" placeholder="Name des Arztes/der Praxis (optional)" style="width:100%;box-sizing:border-box;">
+          <button class="btn-primary" onclick="startUeberweisenFromOverview()" style="margin-top:10px;">Überweisen</button>
         </div>
       </div>
     </div>
@@ -5722,7 +5749,7 @@ function switchKarteiTab(tab,btn){
   if(mehrMenu)mehrMenu.style.display='none';
   const mehrBtn=document.getElementById('ktab-btn-mehr');
   if(mehrBtn){
-    const mehrLabels={ueberweisung:'Überweisung',mkp:'MKP',labor:'Labor',dokumente:'Dokumente',pflegefreistellung:'Pflegefreistellung',arbeitsunfaehigkeit:'Arbeitsunfähigkeit',suche:'Suche'};
+    const mehrLabels={mkp:'MKP',labor:'Labor',dokumente:'Dokumente',pflegefreistellung:'Pflegefreistellung',arbeitsunfaehigkeit:'Arbeitsunfähigkeit',suche:'Suche'};
     const inMehrGroup=tab in mehrLabels;
     mehrBtn.classList.toggle('active',inMehrGroup);
     mehrBtn.textContent=inMehrGroup?('Mehr: '+mehrLabels[tab]+' ▾'):'Mehr ▾';
@@ -6681,6 +6708,32 @@ async function confirmTransfer(){
     ? (count===1?'1 Termin übertragen':count+' Termine übertragen')
     : 'keine anstehenden Termine zum Übertragen gefunden';
   showToast('Weitergeleitet an '+toDoctorName+' · '+terminPart+(messaged?' · Patient per Chat informiert':''),'success');
+}
+
+// "Patient überweisen" quick-picker (chat overview pane) -- refers the
+// currently-open patient to a doctor OUTSIDE this practice. Unlike
+// confirmTransfer() above, there's no staff account/appointments to
+// reassign here (an external doctor isn't in loadStaffAccounts() at all),
+// so this doesn't touch termine -- it just jumps straight into the real
+// Kartei "Überweisung" tab (ktab-ueberweisung, unchanged -- still the same
+// referral-letter PDF form Rezept's sibling always was), pre-filled with
+// the Fachrichtung/name picked here, instead of leaving the doctor to find
+// that tab under "Mehr" themselves (removed from #karteiMehrMenu when this
+// shipped -- see its own comment).
+function startUeberweisenFromOverview(){
+  const fachEl=document.getElementById('uwQuickFach');
+  const arztEl=document.getElementById('uwQuickArzt');
+  const fach=fachEl.value;
+  if(!fach){ showToast('Bitte eine Fachrichtung auswählen','error'); return; }
+  const arztName=arztEl.value.trim();
+  openKarteiContextual();
+  switchKarteiTab('ueberweisung',null);
+  const uwFachEl=document.getElementById('uwFach');
+  const uwAnEl=document.getElementById('uwAn');
+  if(uwFachEl) uwFachEl.value=fach;
+  if(uwAnEl && arztName) uwAnEl.value=arztName;
+  fachEl.value='';
+  arztEl.value='';
 }
 
 // Kalender/Tagesuhr is the default landing tab (no .view starts .active in
