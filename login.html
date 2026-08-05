@@ -103,6 +103,10 @@ body{
 }
 .form-input::placeholder{color:#8A9691;}
 .form-input:focus{border-color:var(--teal);background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.14);}
+/* Reserved for inputs with a .toggle-pw reveal button -- the default 14px
+   right padding above let long password text run right under the eye icon
+   (real report: end of the password partly hidden behind it). */
+.form-input.has-toggle{padding-right:42px;}
 .toggle-pw{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;padding:4px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:color 0.15s;}
 .toggle-pw:hover{color:#0E5E56;}
 .toggle-pw svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
@@ -175,7 +179,7 @@ body{
   <div class="form-group">
     <div class="input-wrap">
       <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-      <input type="password" class="form-input" id="password" placeholder="••••••••" autocomplete="current-password"
+      <input type="password" class="form-input has-toggle" id="password" placeholder="••••••••" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')doLogin()">
       <button class="toggle-pw" onclick="togglePw()" tabindex="-1" id="togglePwBtn">
         <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
