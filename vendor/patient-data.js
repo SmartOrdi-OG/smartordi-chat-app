@@ -920,6 +920,64 @@ async function getUeberweisungenForPatient(patientId){
   return data||[];
 }
 
+// ── ATTESTE (supabase/phase51_atteste.sql) -- "Antrag auf
+// Pflegefreistellung" (§16 UrlG, care leave for a sick relative) and
+// "Arbeitsunfähigkeitsmeldung" (sick note). Same structured-storage
+// pattern as createPatientRezept()/createPatientUeberweisung() above.
+// patient_id is always the person the doctor is certifying as sick --
+// for Pflegefreistellung that's the Angehörige named on the certificate,
+// not the Antragsteller (the working relative applying for leave at
+// their own employer, who may not be a patient here at all).
+const PFLEGEFREISTELLUNG_COLUMNS='id,antragsteller_name,verwandtschaftsverhaeltnis,von,bis,ort,ausstellungsdatum,document_id,created_at';
+async function createPatientPflegefreistellung(patientId,fields,createdBy,documentId){
+  const row={
+    patient_id: patientId,
+    antragsteller_name: fields.antragstellerName||'',
+    verwandtschaftsverhaeltnis: fields.verwandtschaftsverhaeltnis||'',
+    von: fields.von,
+    bis: fields.bis,
+    ort: fields.ort||null,
+    ausstellungsdatum: fields.ausstellungsdatum||new Date().toISOString().slice(0,10),
+    document_id: documentId||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_pflegefreistellung').insert(row).select(PFLEGEFREISTELLUNG_COLUMNS).single();
+  if(error){ console.error('createPatientPflegefreistellung failed',error); throw error; }
+  return data;
+}
+async function getPflegefreistellungenForPatient(patientId){
+  const {data,error}=await sb.from('patient_pflegefreistellung').select(PFLEGEFREISTELLUNG_COLUMNS).eq('patient_id',patientId).order('ausstellungsdatum',{ascending:false});
+  if(error){ console.error('getPflegefreistellungenForPatient failed',error); return []; }
+  return data||[];
+}
+
+const ARBEITSUNFAEHIGKEIT_COLUMNS='id,krankenstandsadresse,von,bis,ausgehzeit_von,ausgehzeit_bis,bettruhe,grund,versicherungstraeger,versicherungsnummer,ausstellungsdatum,document_id,created_at';
+async function createPatientArbeitsunfaehigkeit(patientId,fields,createdBy,documentId){
+  const row={
+    patient_id: patientId,
+    krankenstandsadresse: fields.krankenstandsadresse||null,
+    von: fields.von,
+    bis: fields.bis,
+    ausgehzeit_von: fields.ausgehzeitVon||null,
+    ausgehzeit_bis: fields.ausgehzeitBis||null,
+    bettruhe: !!fields.bettruhe,
+    grund: fields.grund||'Krankheit',
+    versicherungstraeger: fields.versicherungstraeger||null,
+    versicherungsnummer: fields.versicherungsnummer||null,
+    ausstellungsdatum: fields.ausstellungsdatum||new Date().toISOString().slice(0,10),
+    document_id: documentId||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_arbeitsunfaehigkeit').insert(row).select(ARBEITSUNFAEHIGKEIT_COLUMNS).single();
+  if(error){ console.error('createPatientArbeitsunfaehigkeit failed',error); throw error; }
+  return data;
+}
+async function getArbeitsunfaehigkeitenForPatient(patientId){
+  const {data,error}=await sb.from('patient_arbeitsunfaehigkeit').select(ARBEITSUNFAEHIGKEIT_COLUMNS).eq('patient_id',patientId).order('ausstellungsdatum',{ascending:false});
+  if(error){ console.error('getArbeitsunfaehigkeitenForPatient failed',error); return []; }
+  return data||[];
+}
+
 // ── MKP (Mutter-Kind-Pass) UNTERSUCHUNGEN -- staff-only,
 // supabase/phase4_mkp_untersuchungen.sql. Never read by patient.html: the
 // parents already carry the official physical booklet, this is just the

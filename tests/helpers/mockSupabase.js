@@ -23,7 +23,7 @@ const EMPTY_STORE = {
   patient_join_requests: [], patient_sessions: [], audit_log: [],
   practice_vertretung: [], patient_visits: [], patient_guardians: [], guardian_sessions: [],
   doctor_hidden_chats: [], patient_rezepte: [], patient_ueberweisungen: [],
-  client_error_log: [],
+  client_error_log: [], patient_pflegefreistellung: [], patient_arbeitsunfaehigkeit: [],
 };
 
 function mockScript(seed) {

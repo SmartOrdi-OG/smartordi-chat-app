@@ -29,6 +29,7 @@
 <script src="vendor/kartei-impfung.js"></script>
 <script src="vendor/kartei-anamnese.js"></script>
 <script src="vendor/kartei-rezept-ueberweisung.js"></script>
+<script src="vendor/kartei-atteste.js"></script>
 <script src="vendor/cdss-medication-alerts.js"></script>
 <style>
 @font-face{
@@ -1554,6 +1555,8 @@ body.windows-mode #karteiBtn{display:none;}
       <button class="kartei-tab" id="ktab-btn-mkp" onclick="switchKarteiTab('mkp',this)">MKP</button>
       <button class="kartei-tab" onclick="switchKarteiTab('labor',this)">Labor</button>
       <button class="kartei-tab" onclick="switchKarteiTab('dokumente',this)">Dokumente</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('pflegefreistellung',this)">Pflegefreistellung</button>
+      <button class="kartei-tab" onclick="switchKarteiTab('arbeitsunfaehigkeit',this)">Arbeitsunfähigkeit</button>
       <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
     </div>
 
@@ -2228,6 +2231,126 @@ body.windows-mode #karteiBtn{display:none;}
           <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:10px;">Hochgeladene Dokumente</div>
           <div id="kDokListe"><div style="color:#94a3b8;font-size:12px;">Lädt...</div></div>
         </div>
+      </div>
+
+      <!-- ══ PFLEGEFREISTELLUNG TAB (supabase/phase51_atteste.sql) ══
+           Bestätigung für den Antrag auf Pflegefreistellung (§16 UrlG) --
+           the doctor certifies that the currently-open patient (the
+           Angehörige needing care) required care from the Antragsteller
+           (a working relative, applying for leave at their OWN employer --
+           not necessarily a patient here at all, so stored as free text). -->
+      <div id="ktab-pflegefreistellung" style="display:none;padding:16px;">
+        <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:14px;padding:16px;margin-bottom:16px;">
+          <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;">Bestätigung: Pflegefreistellung</div>
+          <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">§ 16 Urlaubsgesetz — Pflege eines/einer nahen Angehörigen</div>
+        </div>
+
+        <div class="k-form-section">
+          <div class="k-form-label">Zu pflegende Person (Patient/in)</div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;font-weight:600;" id="pf-patient-info">— Patient wählen —</div>
+        </div>
+
+        <div class="k-form-section">
+          <div class="k-form-label">Antragsteller/in (pflegende, berufstätige Person)</div>
+          <input class="k-form-input" id="pf-antragsteller" placeholder="Vor- und Nachname">
+        </div>
+        <div class="k-form-section">
+          <div class="k-form-label">Verwandtschaftsverhältnis zum/zur Patient/in</div>
+          <input class="k-form-input" id="pf-verwandtschaft" placeholder="z.B. Mutter, Vater, Ehepartner/in">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="k-form-section">
+            <div class="k-form-label">Pflege erforderlich von</div>
+            <input class="k-form-input" id="pf-von" type="date">
+          </div>
+          <div class="k-form-section">
+            <div class="k-form-label">bis</div>
+            <input class="k-form-input" id="pf-bis" type="date">
+          </div>
+        </div>
+        <div class="k-form-section">
+          <div class="k-form-label">Ausstellungsort</div>
+          <input class="k-form-input" id="pf-ort" placeholder="z.B. Linz">
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;margin-bottom:10px;">
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="downloadPflegefreistellungPdf()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Herunterladen
+          </button>
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="printPflegefreistellung()" title="Patient ist in der Ordination">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken
+          </button>
+        </div>
+        <div class="k-dsgvo-note">DSGVO-konform · § 16 Urlaubsgesetz</div>
+      </div>
+
+      <!-- ══ ARBEITSUNFÄHIGKEIT TAB (supabase/phase51_atteste.sql) ══
+           Arbeitsunfähigkeitsmeldung / Krankenstandsbestätigung -- the
+           currently-open patient IS the person being certified unable to
+           work, unlike Pflegefreistellung above. -->
+      <div id="ktab-arbeitsunfaehigkeit" style="display:none;padding:16px;">
+        <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:14px;padding:16px;margin-bottom:16px;">
+          <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;">Arbeitsunfähigkeitsmeldung</div>
+          <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px;">Krankenstandsbestätigung</div>
+        </div>
+
+        <div class="k-form-section">
+          <div class="k-form-label">Patient/in</div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;font-weight:600;" id="au2-patient-info">— Patient wählen —</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="k-form-section">
+            <div class="k-form-label">Arbeitsunfähig von</div>
+            <input class="k-form-input" id="au2-von" type="date">
+          </div>
+          <div class="k-form-section">
+            <div class="k-form-label">bis</div>
+            <input class="k-form-input" id="au2-bis" type="date">
+          </div>
+        </div>
+        <div class="k-form-section">
+          <div class="k-form-label">Grund</div>
+          <input class="k-form-input" id="au2-grund" value="Krankheit">
+        </div>
+        <div class="k-form-section">
+          <div class="k-form-label">Krankenstandsadresse</div>
+          <input class="k-form-input" id="au2-adresse" placeholder="Adresse während des Krankenstands">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:14px;">
+          <input type="checkbox" id="au2-bettruhe" style="width:18px;height:18px;accent-color:#0E5E56;">
+          <label for="au2-bettruhe" style="font-size:13px;font-weight:600;color:#15803d;cursor:pointer;">Bettruhe erforderlich</label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="k-form-section">
+            <div class="k-form-label">Ausgehzeit von (falls erlaubt)</div>
+            <input class="k-form-input" id="au2-ausgehVon" placeholder="z.B. 10:00">
+          </div>
+          <div class="k-form-section">
+            <div class="k-form-label">bis</div>
+            <input class="k-form-input" id="au2-ausgehBis" placeholder="z.B. 12:00">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="k-form-section">
+            <div class="k-form-label">Versicherungsträger</div>
+            <input class="k-form-input" id="au2-versicherungstraeger">
+          </div>
+          <div class="k-form-section">
+            <div class="k-form-label">Versicherungsnummer</div>
+            <input class="k-form-input" id="au2-versicherungsnummer">
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px;margin-bottom:10px;">
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="downloadArbeitsunfaehigkeitPdf()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Herunterladen
+          </button>
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="printArbeitsunfaehigkeit()" title="Patient ist in der Ordination">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken
+          </button>
+        </div>
+        <div class="k-dsgvo-note">DSGVO-konform · Krankenstandsbestätigung</div>
       </div>
 
       <!-- ══ SUCHE TAB ══ -->
@@ -5589,7 +5712,7 @@ function switchKarteiTab(tab,btn){
     showToast('Rezept & Impfpass sind erst ab dem Pro-Paket enthalten.');
     return;
   }
-  ['verlauf','anamnese','ueberweisung','rezept','impfung','mkp','labor','dokumente','suche'].forEach(t=>{
+  ['verlauf','anamnese','ueberweisung','rezept','impfung','mkp','labor','dokumente','pflegefreistellung','arbeitsunfaehigkeit','suche'].forEach(t=>{
     const el=document.getElementById('ktab-'+t);
     if(el)el.style.display=t===tab?'block':'none';
   });
@@ -5599,7 +5722,7 @@ function switchKarteiTab(tab,btn){
   if(mehrMenu)mehrMenu.style.display='none';
   const mehrBtn=document.getElementById('ktab-btn-mehr');
   if(mehrBtn){
-    const mehrLabels={ueberweisung:'Überweisung',mkp:'MKP',labor:'Labor',dokumente:'Dokumente',suche:'Suche'};
+    const mehrLabels={ueberweisung:'Überweisung',mkp:'MKP',labor:'Labor',dokumente:'Dokumente',pflegefreistellung:'Pflegefreistellung',arbeitsunfaehigkeit:'Arbeitsunfähigkeit',suche:'Suche'};
     const inMehrGroup=tab in mehrLabels;
     mehrBtn.classList.toggle('active',inMehrGroup);
     mehrBtn.textContent=inMehrGroup?('Mehr: '+mehrLabels[tab]+' ▾'):'Mehr ▾';
@@ -5650,6 +5773,12 @@ function switchKarteiTab(tab,btn){
   }
   if(tab==='dokumente'){
     renderKarteiDocuments();
+  }
+  if(tab==='pflegefreistellung'){
+    openAttestTabForCurrentPatient('pflegefreistellung');
+  }
+  if(tab==='arbeitsunfaehigkeit'){
+    openAttestTabForCurrentPatient('arbeitsunfaehigkeit');
   }
   if(tab==='ueberweisung'){
     const n=document.getElementById('kartei-name')?.textContent||'';
