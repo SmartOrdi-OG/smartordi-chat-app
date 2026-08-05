@@ -6171,9 +6171,16 @@ function patientsForCurrentDoctor(){
   // Termine are never cleaned up when a patient's account is deleted
   // (e.g. removed directly in the Supabase table editor), so a name from
   // an old appointment would otherwise keep counting as an existing
-  // patient forever -- cross-check against the live patients cache and
-  // drop anyone who no longer has a real account.
-  const existingNames=new Set(Object.values(loadPatients()).map(p=>p.fullName).filter(Boolean));
+  // patient forever -- cross-check against a real account instead of just
+  // trusting the Termin. Not loadPatients()'s bounded 500-cache: this
+  // count is shown right next to "Alle Patient/innen benachrichtigen" as a
+  // preview of who's about to receive it, so it must match what
+  // sendVertretungBroadcast() (which already reads the real unbounded set)
+  // actually sends -- found live via a large-practice test (2026-08-05)
+  // showing "0" here right before a broadcast that actually reached 900
+  // real patients. Same lazy-snapshot warm-up as allDueVaccinations().
+  ensureAllPatientsSnapshot();
+  const existingNames=new Set(Object.values(loadAllPatientsSnapshotSync()).map(p=>p.fullName).filter(Boolean));
   return [...names].filter(name=>existingNames.has(name));
 }
 
@@ -6322,6 +6329,15 @@ function renderVertretungView(){
   setVertretungMode(v.mode==='internal'?'internal':'external');
   document.getElementById('vertStatusPill').style.display=v.von?'inline-block':'none';
   document.getElementById('vertPatientCount').textContent=patientsForCurrentDoctor().length;
+  // The very first time this view opens this session, the count above can
+  // still reflect the bounded cache (the unbounded snapshot it now reads
+  // hasn't resolved yet) -- refresh it once that lands, so a doctor who
+  // opens this view before it's warm still sees the real number without
+  // having to navigate away and back.
+  ensureAllPatientsSnapshot().then(function(){
+    const countEl=document.getElementById('vertPatientCount');
+    if(countEl) countEl.textContent=patientsForCurrentDoctor().length;
+  });
   document.getElementById('vertSentCount').textContent=(v.sentTo||[]).length;
   const noteEl=document.getElementById('vertLastSentNote');
   noteEl.textContent=v.sentAt

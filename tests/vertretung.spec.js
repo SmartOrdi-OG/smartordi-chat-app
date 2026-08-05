@@ -175,3 +175,31 @@ test('sendAddressChangeBroadcast() still reaches a patient even when loadPatient
   expect(result.mariaGotMessage).toBe(true);
   expect(result.toastText).toContain('1 Patient/in(nen) über neue Adresse informiert');
 });
+
+// Regression test found via a large-practice exploratory test (2026-08-05):
+// the "N Patient/innen gefunden" preview shown right above "Alle
+// Patient/innen benachrichtigen" used to read the same bounded cache as
+// the (already-fixed) broadcast functions -- so with a large enough
+// practice, this preview could show "0" while the actual broadcast just
+// below it reached hundreds of real patients, making the feature look
+// broken right before it silently does something much bigger than shown.
+test('the Vertretung patient-count preview reflects the real unbounded count, not loadPatients()\'s bounded cache', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    const originalLoadPatients = window.loadPatients;
+    // Simulate Maria sitting outside the bounded cache, the same way the
+    // broadcast-reach tests above do.
+    window.loadPatients = () => ({});
+    renderVertretungView();
+    const immediateCount = document.getElementById('vertPatientCount').textContent;
+    await new Promise(r => setTimeout(r, 300)); // let ensureAllPatientsSnapshot() resolve
+    const settledCount = document.getElementById('vertPatientCount').textContent;
+    window.loadPatients = originalLoadPatients;
+    return { immediateCount, settledCount };
+  });
+  // The immediate read is allowed to still reflect the (simulated-empty)
+  // bounded cache -- what matters is that it self-corrects once the
+  // unbounded snapshot resolves, without needing the doctor to navigate
+  // away and back.
+  expect(result.settledCount).toBe('1');
+});
