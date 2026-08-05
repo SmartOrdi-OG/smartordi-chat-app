@@ -1,0 +1,13 @@
+# Both functions already verify the caller via supabase.auth.getUser() inside
+# their own code (see their index.ts comments) using the forwarded
+# Authorization header -- so Supabase's platform-level JWT gate is redundant
+# for the real request, but it also intercepts the CORS preflight OPTIONS
+# request (which never carries an Authorization header by spec), rejecting
+# it before the function's own `if (req.method==="OPTIONS")` handler ever
+# runs. That surfaces in the browser as a plain CORS failure with no useful
+# detail ("Response to preflight request doesn't pass access control check").
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.create-billing-portal-session]
+verify_jwt = false
