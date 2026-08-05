@@ -54,7 +54,7 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
 ]) as t
 
 union all
@@ -225,6 +225,30 @@ from unnest(array[
 
 union all
 
+-- phase51_atteste.sql (Pflegefreistellung/Arbeitsunfähigkeit) -- same
+-- reasoning as patient_ueberweisungen above: every column here is what
+-- createPatientPflegefreistellung()/getPflegefreistellungenForPatient()
+-- in vendor/patient-data.js actually selects/inserts.
+select 'patient_pflegefreistellung column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_pflegefreistellung' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'antragsteller_name','verwandtschaftsverhaeltnis','von','bis','ort','ausstellungsdatum','document_id'
+]) as c
+
+union all
+
+-- Same for createPatientArbeitsunfaehigkeit()/getArbeitsunfaehigkeitenForPatient().
+select 'patient_arbeitsunfaehigkeit column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_arbeitsunfaehigkeit' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'krankenstandsadresse','von','bis','ausgehzeit_von','ausgehzeit_bis','bettruhe','grund',
+  'versicherungstraeger','versicherungsnummer','ausstellungsdatum','document_id'
+]) as c
+
+union all
+
 -- ══════════════════════════════════════════════════════════════
 -- 4/5/6) RLS (row-level security) health -- added 2026-07-30, after the
 -- user asked whether this whole script already covers everything before
@@ -258,7 +282,7 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
 ]) as t
 
 union all
@@ -280,7 +304,7 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
 ]) as t
 
 union all
@@ -317,7 +341,7 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
 ]) as t
 
 order by check_type, name;
