@@ -49,3 +49,32 @@ test('a different doctor\'s own name is reflected in the topbar label, independe
   const practiceNameText = await page.evaluate(() => document.getElementById('topbarPracticeName').textContent);
   expect(practiceNameText).toBe('Ordination Dr. Klaus Weber');
 });
+
+// secretary.html got the same "Smartordi IT System" + "Ordination <name>"
+// topbar treatment on request (2026-08-06) -- a secretary isn't the doctor
+// themselves, so this is built from practiceAdminName() (the practice's
+// admin arzt, already used elsewhere in this file for the same purpose)
+// rather than the logged-in secretary's own name.
+test('secretary.html topbar shows "Smartordi IT System" and "Ordination <the practice\'s admin doctor>"', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practice_settings: [{ id: true }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Lisa Huber', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({
+      'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' },
+    }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(async () => { await staffRosterReady; });
+  const state = await page.evaluate(() => ({
+    brandText: document.querySelector('.topbar-name').textContent,
+    practiceNameText: document.getElementById('topbarPracticeName').textContent,
+    logoSrc: document.querySelector('.topbar-logo img').getAttribute('src'),
+  }));
+  expect(state.brandText).toContain('Smartordi IT System');
+  expect(state.practiceNameText).toBe('Ordination Dr. Sarah Ahmed');
+  expect(state.logoSrc).toBe('logo-icon.png');
+});
