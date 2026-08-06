@@ -72,7 +72,7 @@ test('secretary.html topbar shows "Smartordi IT System" and "Ordination <the pra
   const state = await page.evaluate(() => ({
     brandText: document.querySelector('.topbar-name').textContent,
     practiceNameText: document.getElementById('topbarPracticeName').textContent,
-    logoSrc: document.querySelector('.topbar-icon img').getAttribute('src'),
+    logoSrc: document.querySelector('.topbar-logo img').getAttribute('src'),
   }));
   expect(state.brandText).toContain('Smartordi IT System');
   expect(state.practiceNameText).toBe('Ordination Dr. Sarah Ahmed');
