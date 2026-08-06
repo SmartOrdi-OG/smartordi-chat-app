@@ -148,3 +148,25 @@ test('the "Patientendaten" card only lists fields that are actually on file, and
   const infoText = await page.evaluate(() => document.getElementById('secOvPatientInfo').textContent);
   expect(infoText).toContain('Keine Angaben hinterlegt');
 });
+
+// Third real report, same day: on a tall monitor the overview pane still
+// stretched to match .nachrichten-list-pane's full height (up to the
+// 720px max-height), leaving a tall hollow box under the short content --
+// visually indistinguishable from "the whole page is empty" even after the
+// Patientendaten card was added. Two separate rules were forcing the
+// stretch (a base, non-media .nachrichten-chat-pane{height:100%} rule, and
+// the row's own default cross-axis stretch) -- both now overridden at
+// >=1024px so the pane sizes to its own content instead.
+test('on a tall desktop viewport, the overview pane sizes to its own content instead of stretching to match the list pane\'s full height', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1400 });
+  await setupPage(page, {
+    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', adresse: 'Teststraße 1', join_status: 'approved' }],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(300);
+  const heights = await page.evaluate(() => ({
+    chatPane: document.querySelector('.nachrichten-chat-pane').getBoundingClientRect().height,
+    listPane: document.querySelector('.nachrichten-list-pane').getBoundingClientRect().height,
+  }));
+  expect(heights.chatPane, 'the overview pane must not stretch to match the (720px-capped) list pane height').toBeLessThan(heights.listPane - 100);
+});
