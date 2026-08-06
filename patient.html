@@ -2074,6 +2074,13 @@ document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwit
 initPatientLanguage();
 renderCalendar();
 initPatientData();
+// No .view/.nav-item ever carries the "active" class in the markup itself,
+// and nothing called switchView() on load before this -- a fresh page load
+// (real user report) showed a blank page with no tab highlighted until the
+// patient tapped a nav button themselves. Profil is the safest default: it
+// still renders something meaningful (name/insurance/etc, or "—" fallbacks)
+// even before initPatientData()'s async fetches above have resolved.
+switchView('profil');
 
 // Real (Supabase-backed) patients have no Realtime subscription (anon has
 // no direct table access, only the RPCs above) -- poll instead, on tab

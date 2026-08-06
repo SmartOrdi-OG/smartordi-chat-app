@@ -71,3 +71,29 @@ test('a failed patient_get_staff_roster() call leaves the dropdown empty instead
   const bookableViaUi = await page.evaluate(() => document.getElementById('termineSub') !== null);
   expect(bookableViaUi, 'the page must still render, not crash, on a roster fetch failure').toBe(true);
 });
+
+// supabase/phase55_patient_staff_roster_is_admin.sql -- real user report: a
+// real patient's chat header/Termine subtitle stayed on "—" even though
+// their session clearly worked (messages/documents loaded fine). Root
+// cause: patient_get_staff_roster() never returned is_admin, so
+// updatePracticeIdentityUI()'s accounts.find(a=>a.role==='arzt'&&a.isAdmin)
+// never matched anyone -- the roster itself wasn't empty, just missing the
+// one field that identifies WHICH doctor is the practice admin.
+test('the chat header/Termine subtitle show the real admin doctor\'s name, not "—", once patient_get_staff_roster() includes is_admin', async ({ page }) => {
+  await setupPatientPage(page, {
+    patient_get_staff_roster: {
+      data: [
+        { id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true },
+        { id: 'u2', vorname: 'Test', nachname: 'Sek', full_name: 'Test Sek', role: 'sekretaerin', fach: null, is_admin: false },
+      ],
+      error: null,
+    },
+    patient_get_working_hours: { data: null, error: null },
+  });
+  const texts = await page.evaluate(() => ({
+    chatDoctorName: document.getElementById('chatDoctorName').textContent,
+    termineSub: document.getElementById('termineSub').textContent,
+  }));
+  expect(texts.chatDoctorName).toBe('Dr. Sarah Ahmed');
+  expect(texts.termineSub).toContain('Dr. Sarah Ahmed');
+});
