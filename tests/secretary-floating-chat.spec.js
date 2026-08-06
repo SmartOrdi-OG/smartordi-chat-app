@@ -242,3 +242,46 @@ test('the floating chat popup is a larger fixed size (420x600) than the original
   expect(size.width).toBe(420);
   expect(size.height).toBe(600);
 });
+
+// Merging Patienten with Termine (2026-08-06, "ندمج Patienten مع Termine"):
+// "Nächste Termine" used to be a read-only summary -- confirming/moving/
+// cancelling a patient's appointment required leaving their chat and
+// hunting for it in the Termine tab. It now reuses the exact same
+// actionable cards (terminRowHtml()) Termine's own day-detail panel uses.
+test('the overview pane\'s "Nächste Termine" cards are actionable (Bestätigen/Verschieben/Absagen), not just a read-only summary', async ({ page }) => {
+  await setupPage(page, {
+    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(300);
+  const before = await page.evaluate(() => ({
+    hasConfirmBtn: !!document.querySelector('#secOvTermineList .t-btn-confirm'),
+    hasMoveBtn: !!document.querySelector('#secOvTermineList .t-btn-move'),
+    hasCancelBtn: !!document.querySelector('#secOvTermineList .t-btn-cancel'),
+  }));
+  expect(before.hasConfirmBtn).toBe(true);
+  expect(before.hasMoveBtn).toBe(true);
+  expect(before.hasCancelBtn).toBe(true);
+
+  await page.click('#secOvTermineList .t-btn-confirm');
+  await page.waitForTimeout(400);
+  const after = await page.evaluate(() => ({
+    overviewText: document.getElementById('secOvTermineList').textContent,
+    stillOnOverview: getComputedStyle(document.getElementById('secOverviewPane')).display !== 'none',
+  }));
+  expect(after.overviewText).toContain('Bestätigt');
+  expect(after.stillOnOverview).toBe(true);
+});
+
+test('the overview pane\'s Termine cards don\'t repeat the patient\'s own name (redundant -- every card there already belongs to them)', async ({ page }) => {
+  await setupPage(page, {
+    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(300);
+  const patientNameVisible = await page.evaluate(() => {
+    const el = document.querySelector('#secOvTermineList .t-patient');
+    return el ? getComputedStyle(el).display !== 'none' : true;
+  });
+  expect(patientNameVisible).toBe(false);
+});
