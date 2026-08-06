@@ -170,3 +170,75 @@ test('on a tall desktop viewport, the overview pane sizes to its own content ins
   }));
   expect(heights.chatPane, 'the overview pane must not stretch to match the (720px-capped) list pane height').toBeLessThan(heights.listPane - 100);
 });
+
+// User picked a specific combination of two mockup options after seeing a
+// visual comparison: expand the overview pane into a second column with
+// real reference material (Letzte Nachrichten/Letzte Behandlung/Impfung
+// fällig), and enlarge the existing cards -- rather than just widening
+// empty space. Also asked to enlarge the floating chat popup itself.
+test('the overview pane\'s second column shows the last 2 messages (both directions) and the most recent Behandlung', async ({ page }) => {
+  await setupPage(page, {
+    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved' }],
+    patient_messages: [
+      { id: 'm1', patient_id: 'p1', dir: 'in', type: 'text', text: 'Guten Tag, Frage zu meinem Termin', created_at: new Date(Date.now() - 7200000).toISOString() },
+      { id: 'm2', patient_id: 'p1', dir: 'out', type: 'text', text: 'Bestätigt für morgen 10 Uhr', created_at: new Date(Date.now() - 3600000).toISOString() },
+      { id: 'm3', patient_id: 'p1', dir: 'in', type: 'text', text: 'Danke!', created_at: new Date().toISOString() },
+    ],
+    patient_visits: [
+      { id: 'v1', patient_id: 'p1', visit_date: '2026-05-12', visit_type: 'Kontrolle', diagnose: 'J06.9 – Akute Infektion', created_at: new Date().toISOString() },
+      { id: 'v2', patient_id: 'p1', visit_date: '2026-01-03', visit_type: 'Erstuntersuchung', diagnose: '', created_at: new Date().toISOString() },
+    ],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(500);
+  const state = await page.evaluate(() => ({
+    msgs: document.getElementById('secOvLastMessages').textContent,
+    visit: document.getElementById('secOvLastVisit').textContent,
+  }));
+  expect(state.msgs, 'only the last 2 messages, not the oldest one').not.toContain('Frage zu meinem Termin');
+  expect(state.msgs).toContain('Bestätigt für morgen 10 Uhr');
+  expect(state.msgs).toContain('Danke!');
+  expect(state.visit, 'the most recent visit (by date), not the oldest').toContain('Kontrolle');
+  expect(state.visit).toContain('J06.9');
+  expect(state.visit).not.toContain('Erstuntersuchung');
+});
+
+test('the overview pane falls back to plain "no data" messages for a patient with no messages/visits on file', async ({ page }) => {
+  await setupPage(page, {
+    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved' }],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(500);
+  const state = await page.evaluate(() => ({
+    msgs: document.getElementById('secOvLastMessages').textContent,
+    visit: document.getElementById('secOvLastVisit').textContent,
+    impf: document.getElementById('secOvImpfWarning').textContent,
+  }));
+  expect(state.msgs).toContain('Noch keine Nachrichten');
+  expect(state.visit).toContain('Keine Behandlungen erfasst');
+  expect(state.impf.trim()).toBe('');
+});
+
+test('a patient with an overdue vaccination shows an "Impfung fällig" warning in the overview pane', async ({ page }) => {
+  await setupPage(page, {
+    patients: [{ id: 'p1', username: 'baby.test', full_name: 'Baby Test', name: 'Baby', versicherung: 'ÖGK', svnr: '999', dob: new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10), join_status: 'approved' }],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Baby Test")');
+  await page.waitForTimeout(500);
+  const impfText = await page.evaluate(() => document.getElementById('secOvImpfWarning').textContent);
+  expect(impfText).toContain('Impfung fällig');
+});
+
+test('the floating chat popup is a larger fixed size (420x600) than the original design', async ({ page }) => {
+  await setupPage(page);
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(200);
+  await page.click('#secChatOpenBtn');
+  await page.waitForTimeout(200);
+  const size = await page.evaluate(() => {
+    const r = document.getElementById('secFloatingChatWindow').getBoundingClientRect();
+    return { width: Math.round(r.width), height: Math.round(r.height) };
+  });
+  expect(size.width).toBe(420);
+  expect(size.height).toBe(600);
+});
