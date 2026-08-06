@@ -5044,7 +5044,7 @@ async function updateStaffInviteLink(){
     document.getElementById('staffInviteLinkText').textContent='Fehler beim Erstellen: '+error.message;
     return;
   }
-  const origin='https://smartordi-chat-app.vercel.app';
+  const origin='https://chat.smartordiog.eu';
   const url=`${origin}/login.html?invite=${token}`;
   document.getElementById('staffInviteLinkText').textContent=url;
   const qr=qrcode(0,'M');
