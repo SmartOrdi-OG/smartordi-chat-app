@@ -54,7 +54,8 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
+  'patient_vaccine_dismissals'
 ]) as t
 
 union all
@@ -249,6 +250,21 @@ from unnest(array[
 
 union all
 
+-- phase57_vaccine_dismissals.sql -- backs the × button next to a due
+-- vaccine in doctor.html's Kartei Impfung tab. If this table is missing,
+-- refreshVaccineDismissals() (vendor/patient-data.js) fails on every single
+-- page load of doctor.html/secretary.html, which is exactly what trips the
+-- red "Einige Daten konnten nicht geladen werden" banner -- even though
+-- nothing about the real patient list/termine/messages is actually broken.
+select 'patient_vaccine_dismissals column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_vaccine_dismissals' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'id','patient_id','vaccine_label','dismissed_by','dismissed_at'
+]) as c
+
+union all
+
 -- ══════════════════════════════════════════════════════════════
 -- 4/5/6) RLS (row-level security) health -- added 2026-07-30, after the
 -- user asked whether this whole script already covers everything before
@@ -282,7 +298,8 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
+  'patient_vaccine_dismissals'
 ]) as t
 
 union all
@@ -304,7 +321,8 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
+  'patient_vaccine_dismissals'
 ]) as t
 
 union all
@@ -341,7 +359,8 @@ from unnest(array[
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
-  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit'
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
+  'patient_vaccine_dismissals'
 ]) as t
 
 order by check_type, name;

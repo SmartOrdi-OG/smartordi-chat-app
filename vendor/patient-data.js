@@ -1080,7 +1080,15 @@ async function subscribeImpfungenRealtime(onChange){
 let _vaccineDismissals={};
 async function refreshVaccineDismissals(){
   const {data,error}=await sb.from('patient_vaccine_dismissals').select('patient_id,vaccine_label');
-  if(error){ reportCriticalDataError('refreshVaccineDismissals',error); return; }
+  // console.warn, not reportCriticalDataError -- unlike patients/termine/
+  // messages, this table failing to load is a purely cosmetic degradation
+  // (a previously-dismissed vaccine just reappears in the due-list, nothing
+  // is hidden or lost), so it shouldn't trip the same "Einige Daten...
+  // konnten nicht geladen werden" banner a doctor would reasonably read as
+  // "my patient list might be broken." Real early case: this table not
+  // existing yet (supabase/phase57_vaccine_dismissals.sql not run yet) used
+  // to fail this way on every single page load.
+  if(error){ console.warn('refreshVaccineDismissals failed -- previously-dismissed vaccine reminders will reappear until this is fixed (run supabase/phase57_vaccine_dismissals.sql if the table is missing)',error); return; }
   const byPatient={};
   (data||[]).forEach(function(row){
     (byPatient[row.patient_id]=byPatient[row.patient_id]||new Set()).add(row.vaccine_label);
