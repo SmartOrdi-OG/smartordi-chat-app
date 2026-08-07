@@ -1007,10 +1007,9 @@ window.addEventListener('storage',function(e){
 });
 
 function switchView(v){
-  // Remove badge on chat open (works in both mobile and desktop nav)
   if(v==='chat'){
-    const b=document.querySelector('#nav-chat .nav-badge');if(b)b.remove();
-    const tb=document.getElementById('navTabChatBadge');if(tb)tb.remove();
+    markPatientChatViewed();
+    updateChatBadge();
   }
   if(isDesktopWidth()){
     ensureWindowChrome();
@@ -1114,6 +1113,57 @@ function renderPatientMessages(){
   msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
   msgs.scrollTop=msgs.scrollHeight;
 }
+
+// ── Unread-message badge -- per-device "last viewed" marker, same
+// convention as secretary.html's own unread tracking (CHAT_LAST_VIEWED_KEY/
+// markChatViewed/unreadCountFor). Previously the nav badge was just the
+// static "2" baked into the HTML markup -- shown whenever the account had
+// ANY messages at all (read or not) and only ever cleared for the rest of
+// that same browser session by switchView('chat'). Reloading the page, or
+// logging back in later, always reset it straight back to that same
+// meaningless "2", even with zero genuinely new messages since the patient
+// last looked (real user report). Keyed by currentUsername (not a single
+// global marker) since a guardian's session can switch between children,
+// each with their own conversation/unread state.
+const PATIENT_CHAT_LAST_VIEWED_KEY='smartordi_patient_chat_last_viewed';
+function loadPatientChatLastViewedMap(){
+  try{ return JSON.parse(localStorage.getItem(PATIENT_CHAT_LAST_VIEWED_KEY))||{}; }catch(e){ return {}; }
+}
+function markPatientChatViewed(){
+  if(!currentUsername) return;
+  const map=loadPatientChatLastViewedMap();
+  map[currentUsername]=new Date().toISOString();
+  localStorage.setItem(PATIENT_CHAT_LAST_VIEWED_KEY,JSON.stringify(map));
+}
+// No recorded "last viewed" yet (brand new account, or first time this
+// device has ever seen this account) -- unlike secretary.html's equivalent
+// bootstrap case, there's only ever ONE conversation here (this patient's
+// own), so treating that as "nothing unread" risks hiding a real message
+// staff already sent before the patient's first login. Counting every
+// dir:'out' (staff-written) message as unread until they actually open
+// Chat once is the safer default for this single-conversation view.
+function patientUnreadCount(messages){
+  const map=loadPatientChatLastViewedMap();
+  const lastViewed=currentUsername?map[currentUsername]:null;
+  return (messages||[]).filter(m=>m.dir==='out'&&(!lastViewed||(m.createdAt&&m.createdAt>lastViewed))).length;
+}
+function updateChatBadge(){
+  const account=getCurrentAccount();
+  const count=account?patientUnreadCount(account.messages||[]):0;
+  const b1=document.querySelector('#nav-chat .nav-badge');
+  const b2=document.getElementById('navTabChatBadge');
+  // Hide via display, never remove the element -- a genuinely new message
+  // can arrive later (pollPatientData()'s 25s refresh) after the badge was
+  // already cleared once, and it needs to be able to show up again.
+  if(count>0){
+    if(b1){ b1.textContent=count; b1.style.display=''; }
+    if(b2){ b2.textContent=count; b2.style.display=''; }
+  }else{
+    if(b1) b1.style.display='none';
+    if(b2) b2.style.display='none';
+  }
+}
+
 // Real (Supabase-backed) documents a staff member uploaded for this patient
 // (supabase/phase2_patient_documents.sql) -- _remoteDocuments is refreshed
 // alongside profile/messages/termine in initPatientData()/pollPatientData().
@@ -1490,10 +1540,7 @@ async function initPatientData(){
   const deletionCard=document.getElementById('profilDeletionCard');
   if(deletionCard) deletionCard.style.display=getPatientToken()?'block':'none';
   renderPatientMessages();
-  if(!(account.messages&&account.messages.length)){
-    const b1=document.querySelector('#nav-chat .nav-badge');if(b1)b1.remove();
-    const b2=document.getElementById('navTabChatBadge');if(b2)b2.remove();
-  }
+  updateChatBadge();
   // Guardian viewing one of their children -- offer a way to switch. Real
   // (Supabase-backed) multi-child guardians never had account.
   // guardianUsername set (that field only ever came from the legacy local-
@@ -2097,6 +2144,7 @@ async function pollPatientData(){
   await refreshRemoteDocuments();
   await refreshRemoteImpfungen();
   renderPatientMessages();
+  updateChatBadge();
   renderPatientTermine();
   renderCalendar();
   renderTimeSlots();
