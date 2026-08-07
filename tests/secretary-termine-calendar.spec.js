@@ -50,25 +50,53 @@ test('a bulk-imported Termin from a different month never leaks into "today"\'s 
     { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: ymdOffset(-20), time: '09:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
     { id: 't2', patient_id: 'p2', patient_name: 'Karl Gruber', art: 'Kontrolle', date: ymdOffset(35), time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
   ]);
+  await page.evaluate((d) => secCalSelectDay(d), ymdOffset(0));
   const result = await page.evaluate(() => ({
-    detailHtml: document.querySelector('.sec-cal-detail').textContent,
+    windowBody: document.getElementById('secCalWindowBody').textContent,
     todayCellHasEntries: document.querySelector('.sec-cal-day.today').textContent,
   }));
-  expect(result.detailHtml).toContain('Keine Termine an diesem Tag');
-  expect(result.detailHtml).not.toContain('Maria Huber');
-  expect(result.detailHtml).not.toContain('Karl Gruber');
+  expect(result.windowBody).toContain('Keine Termine an diesem Tag');
+  expect(result.windowBody).not.toContain('Maria Huber');
+  expect(result.windowBody).not.toContain('Karl Gruber');
 });
 
-test('clicking a day cell opens exactly that day\'s Termine in the detail panel below the grid', async ({ page }) => {
+test('clicking a day cell opens that day\'s Termine in the floating window, not an inline panel', async ({ page }) => {
   const targetDate = ymdOffset(3);
   await setupPage(page, [
     { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: targetDate, time: '09:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
     { id: 't2', patient_id: 'p2', patient_name: 'Karl Gruber', art: 'Kontrolle', date: ymdOffset(10), time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
   ]);
+  await expect(page.locator('#secCalWindow')).toBeHidden();
   await page.evaluate((d) => secCalSelectDay(d), targetDate);
-  const detailText = await page.evaluate(() => document.querySelector('.sec-cal-detail').textContent);
-  expect(detailText).toContain('Maria Huber');
-  expect(detailText).not.toContain('Karl Gruber');
+  await expect(page.locator('#secCalWindow')).toBeVisible();
+  const state = await page.evaluate(() => ({
+    windowBody: document.getElementById('secCalWindowBody').textContent,
+    windowTitle: document.getElementById('secCalWindowTitle').textContent,
+    detailPanelStillExists: !!document.querySelector('.sec-cal-detail'),
+  }));
+  expect(state.windowBody).toContain('Maria Huber');
+  expect(state.windowBody).not.toContain('Karl Gruber');
+  expect(state.windowTitle.length).toBeGreaterThan(0);
+  expect(state.detailPanelStillExists, 'no leftover inline detail panel below the grid').toBe(false);
+
+  await page.evaluate(() => closeSecCalWindow());
+  await expect(page.locator('#secCalWindow')).toBeHidden();
+});
+
+test('the enlarged grid cells show more than 2 appointment chips before collapsing into "+N mehr"', async ({ page }) => {
+  const d1 = ymdOffset(6);
+  await setupPage(page, [
+    { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'A', date: d1, time: '08:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+    { id: 't2', patient_id: 'p1', patient_name: 'Maria Huber', art: 'B', date: d1, time: '09:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+    { id: 't3', patient_id: 'p1', patient_name: 'Maria Huber', art: 'C', date: d1, time: '10:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+    { id: 't4', patient_id: 'p1', patient_name: 'Maria Huber', art: 'D', date: d1, time: '11:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+  ]);
+  const chipCount = await page.evaluate((d) => {
+    const cells = [...document.querySelectorAll('.sec-cal-day')];
+    const cell = cells.find(c => c.onclick && c.getAttribute('onclick').includes(d));
+    return cell ? cell.querySelectorAll('.sec-cal-day-chip').length : -1;
+  }, d1);
+  expect(chipCount).toBe(4); // all 4 fit under the new SEC_CAL_MAX_CHIPS=5 cap, none collapsed into "+N mehr"
 });
 
 test('the day cell for a date with Termine shows a colored chip (or count on narrow layouts), grouped correctly by date', async ({ page }) => {
@@ -100,7 +128,7 @@ test('Vor/Zurück month navigation moves the grid a full month at a time, and "H
   expect(todayTitle).toBe(initialTitle);
 });
 
-test('confirming a Termin from the day-detail panel keeps the same day selected and reflects the new status', async ({ page }) => {
+test('confirming a Termin from the floating window keeps it open on the same day and reflects the new status', async ({ page }) => {
   const targetDate = ymdOffset(2);
   await setupPage(page, [
     { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: targetDate, time: '09:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
@@ -108,24 +136,26 @@ test('confirming a Termin from the day-detail panel keeps the same day selected 
   await page.evaluate((d) => secCalSelectDay(d), targetDate);
   await page.evaluate(async () => { await confirmTermin('t1'); });
   const result = await page.evaluate(() => ({
-    detailText: document.querySelector('.sec-cal-detail').textContent,
+    windowVisible: getComputedStyle(document.getElementById('secCalWindow')).display !== 'none',
+    windowBody: document.getElementById('secCalWindowBody').textContent,
     status: loadTermine().find(t => t.id === 't1').status,
   }));
   expect(result.status).toBe('bestaetigt');
-  expect(result.detailText).toContain('Maria Huber');
-  expect(result.detailText).toContain('Bestätigt');
+  expect(result.windowVisible, 'confirming from inside the window must not close it').toBe(true);
+  expect(result.windowBody).toContain('Maria Huber');
+  expect(result.windowBody).toContain('Bestätigt');
 });
 
-test('a cancelled (abgesagt) Termin still shows on its day but is visually distinct and has no action buttons in the detail panel', async ({ page }) => {
+test('a cancelled (abgesagt) Termin still shows on its day but is visually distinct and has no action buttons in the floating window', async ({ page }) => {
   const targetDate = ymdOffset(1);
   await setupPage(page, [
     { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: targetDate, time: '09:00', status: 'abgesagt', arzt_id: 'u1', created_at: new Date().toISOString() },
   ]);
   await page.evaluate((d) => secCalSelectDay(d), targetDate);
-  const detailText = await page.evaluate(() => document.querySelector('.sec-cal-detail').textContent);
-  expect(detailText).toContain('Maria Huber');
-  expect(detailText).toContain('Abgesagt');
-  expect(detailText).not.toContain('Bestätigen');
+  const windowBody = await page.evaluate(() => document.getElementById('secCalWindowBody').textContent);
+  expect(windowBody).toContain('Maria Huber');
+  expect(windowBody).toContain('Abgesagt');
+  expect(windowBody).not.toContain('Bestätigen');
 });
 
 test('a day outside the currently-shown month is visually marked (leading/trailing days) but still clickable to its own Termine', async ({ page }) => {

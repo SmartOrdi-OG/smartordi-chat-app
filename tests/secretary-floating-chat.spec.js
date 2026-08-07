@@ -71,7 +71,10 @@ test('the × button closes the floating popup without losing the overview undern
   await page.waitForTimeout(300);
   await page.click('#secChatOpenBtn');
   await page.waitForTimeout(200);
-  await page.click('.floating-chat-close');
+  // Scoped to the chat popup specifically -- the Termine calendar's
+  // day-detail popup (#secCalWindow) reuses the same generic
+  // .floating-chat-close class for its own close button.
+  await page.click('#secFloatingChatWindow .floating-chat-close');
   await page.waitForTimeout(200);
   const state = await page.evaluate(() => ({
     floatingDisplay: getComputedStyle(document.getElementById('secFloatingChatWindow')).display,
