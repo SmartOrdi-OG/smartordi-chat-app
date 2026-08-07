@@ -2,9 +2,10 @@
 // calendar alongside the existing Tag/Woche views -- not a replacement,
 // same "additive" pattern as Woche (see tuhome-week-view.spec.js and the
 // #tuHome CSS comments). Mirrors secretary.html's own Termine month grid
-// (renderSecTermineCalendar), but the selected day's detail panel below the
-// grid reuses Tag view's own tuApptCardHtml cards (Start/Fertig controls
-// included) instead of a read-only row list.
+// (renderSecTermineCalendar): clicking a day cell opens its appointments in
+// a floating window beside the cell (tuCalWindow), reusing Tag view's own
+// tuApptCardHtml cards (Start/Fertig controls included) instead of a
+// read-only row list.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -47,7 +48,7 @@ test('Monat view shows a full month grid with appointment chips, and the day vie
   expect(state.chipText).toContain('Ahmad');
 });
 
-test('clicking a day cell selects that day, stays in Monat view, and shows its appointments in the detail panel below', async ({ page }) => {
+test('clicking a day cell selects that day, stays in Monat view, and shows its appointments in a floating window beside the grid', async ({ page }) => {
   const today = new Date();
   const target = new Date(today.getFullYear(), today.getMonth(), 20);
 
@@ -66,20 +67,59 @@ test('clicking a day cell selects that day, stays in Monat view, and shows its a
   await page.waitForTimeout(1200);
   await page.evaluate(() => { tuSetViewMode('monat'); });
 
-  await page.evaluate((ds) => { tuSelectDate(ds); }, ymd(target));
+  await page.evaluate((ds) => { tuCalSelectDay(ds); }, ymd(target));
 
   const state = await page.evaluate((ds) => ({
     mode: tuViewMode,
     selected: tuSelectedDate,
     monthGridVisible: getComputedStyle(document.getElementById('tuMonthGridWrap')).display !== 'none',
-    detailNames: [...document.querySelectorAll('#tuCalDetailList .tu-appt-card')].map(c => c.textContent),
+    windowVisible: getComputedStyle(document.getElementById('tuCalWindow')).display !== 'none',
+    detailNames: [...document.querySelectorAll('#tuCalWindowBody .tu-appt-card')].map(c => c.textContent),
     selectedCellHighlighted: !!document.querySelector(`.tu-cal-day.selected`),
   }), ymd(target));
   expect(state.mode, 'stays in Monat view -- does not jump to Tag').toBe('monat');
   expect(state.selected).toBe(ymd(target));
   expect(state.monthGridVisible).toBe(true);
+  expect(state.windowVisible, 'the floating window opens on click').toBe(true);
   expect(state.selectedCellHighlighted).toBe(true);
-  expect(state.detailNames.some(t => t.includes('Maria Huber')), 'detail panel shows the clicked day\'s appointment as a real tuApptCardHtml card').toBe(true);
+  expect(state.detailNames.some(t => t.includes('Maria Huber')), 'floating window shows the clicked day\'s appointment as a real tuApptCardHtml card').toBe(true);
+});
+
+test('a real click opens the floating window right next to the clicked day cell, not always the same corner', async ({ page }) => {
+  const today = new Date();
+  const target = new Date(today.getFullYear(), today.getMonth(), 20);
+
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    patients: [{ id: 'p1', username: 'maria', full_name: 'Maria Huber', name: 'Maria', join_status: 'approved' }],
+    termine: [
+      { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Erstgespräch', date: ymd(target), time: '11:00', end_time: '11:45', status: 'bestaetigt', arzt_id: 'u1' },
+    ],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'u1', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+  });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => { tuSetViewMode('monat'); });
+
+  const targetDs = ymd(target);
+  const cellIndex = await page.evaluate((ds) => {
+    const cells = [...document.querySelectorAll('#tuCalGrid .tu-cal-day')];
+    return cells.findIndex(c => c.getAttribute('onclick')?.includes(ds));
+  }, targetDs);
+  expect(cellIndex).toBeGreaterThan(-1);
+
+  const cellBox = await page.locator('#tuCalGrid .tu-cal-day').nth(cellIndex).boundingBox();
+  await page.locator('#tuCalGrid .tu-cal-day').nth(cellIndex).click();
+  await page.waitForTimeout(150);
+
+  const winBox = await page.locator('#tuCalWindow').boundingBox();
+  // The window should land close to the clicked cell -- not off in some
+  // fixed corner of the screen regardless of where the grid was.
+  expect(Math.abs(winBox.y - cellBox.y)).toBeLessThan(400);
 });
 
 test('shifting month via the toolbar arrow browses independently without losing the selected day', async ({ page }) => {
