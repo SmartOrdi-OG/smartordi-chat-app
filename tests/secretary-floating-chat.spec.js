@@ -232,18 +232,41 @@ test('a patient with an overdue vaccination shows an "Impfung fällig" warning i
   expect(impfText).toContain('Impfung fällig');
 });
 
-test('the floating chat popup is a larger fixed size (420x600) than the original design', async ({ page }) => {
+test('the floating chat popup is a right-side panel (top-to-bottom, not just a bottom-right corner box)', async ({ page }) => {
   await setupPage(page);
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(200);
   await page.click('#secChatOpenBtn');
   await page.waitForTimeout(200);
-  const size = await page.evaluate(() => {
+  const state = await page.evaluate(() => {
     const r = document.getElementById('secFloatingChatWindow').getBoundingClientRect();
-    return { width: Math.round(r.width), height: Math.round(r.height) };
+    const listRight = document.querySelector('.nachrichten-list-pane').getBoundingClientRect().right;
+    return { left: Math.round(r.left), listRight: Math.round(listRight), top: Math.round(r.top), bottom: Math.round(r.bottom), viewportHeight: window.innerHeight };
   });
-  expect(size.width).toBe(420);
-  expect(size.height).toBe(600);
+  // Fills whatever space is free to the right of the patient list, not a
+  // guessed fixed width -- left edge sits at the list pane's right edge
+  // plus a small margin ("تاخد كل المساحة الفاضية يمين قائمة المرضى").
+  expect(state.left).toBeGreaterThan(state.listRight);
+  expect(state.left).toBeLessThan(state.listRight + 40);
+  // Pinned near the top AND the bottom of the viewport (a real right-side
+  // panel), not just anchored by a bottom margin with a fixed 600px height
+  // that left empty space above it on a normal-height screen -- real user
+  // report ("بدي نافذة المحادثة العايمة تظهر بالجانب اليمين مو بالاسفل").
+  expect(state.top).toBeLessThan(30);
+  expect(state.viewportHeight - state.bottom).toBeLessThan(30);
+});
+
+test('the floating chat popup width grows and shrinks with the viewport ("تكبر لما الشاشة تكبر")', async ({ page }) => {
+  await setupPage(page);
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(200);
+  await page.click('#secChatOpenBtn');
+  await page.waitForTimeout(200);
+  const narrowWidth = await page.evaluate(() => Math.round(document.getElementById('secFloatingChatWindow').getBoundingClientRect().width));
+  await page.setViewportSize({ width: 1900, height: 1000 });
+  await page.waitForTimeout(500);
+  const wideWidth = await page.evaluate(() => Math.round(document.getElementById('secFloatingChatWindow').getBoundingClientRect().width));
+  expect(wideWidth).toBeGreaterThan(narrowWidth);
 });
 
 // Merging Patienten with Termine (2026-08-06, "ندمج Patienten مع Termine"):
