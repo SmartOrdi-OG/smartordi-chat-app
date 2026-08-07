@@ -1088,6 +1088,7 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
    small floating popup wouldn't be usable. */
 .floating-chat-window{position:fixed;bottom:20px;right:20px;width:360px;height:520px;max-height:calc(100vh - 40px);background:white;border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,0.28);border:1px solid rgba(15,23,42,0.08);display:flex;flex-direction:column;overflow:hidden;z-index:300;}
 .floating-chat-header{background:linear-gradient(135deg,#0E5E56,#12746A);padding:10px 12px;display:flex;align-items:center;gap:10px;color:white;flex-shrink:0;}
+@media(min-width:769px){ .floating-chat-header{cursor:move;} }
 .floating-chat-name{font-size:14px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .floating-chat-close{background:rgba(255,255,255,0.15);border:none;color:white;width:26px;height:26px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .floating-chat-close:hover{background:rgba(255,255,255,0.28);}
@@ -3280,6 +3281,21 @@ function buildWave(id,count){
 buildWave('wave1',15);buildWave('wave2',12);
 
 function switchView(view,btn){
+  // tuCalWindow (Monat's day-cards floating window) is a page-level overlay,
+  // not scoped inside the Kalender tab's own DOM -- closing it used to only
+  // be wired into Kalender's own internal Tag/Woche/Monat switches
+  // (tuSetViewMode()), so it stayed floating on top of whatever tab the
+  // doctor navigated to next. Real report, with a screenshot: it stayed
+  // open over the Kartei/chat overview pane, hiding "Kartei öffnen"
+  // underneath it ("لنافذة انتقلت مع kartei... لنافذة مكانها الصحيح
+  // كالندر"). switchView() is the one hub every other tab goes through
+  // (openWindow('clinic'/'dashboard'/'settings',...) all call it), so
+  // closing it here covers every path away from Kalender.
+  if(typeof _tuCalWindowOpen!=='undefined'&&_tuCalWindowOpen){
+    _tuCalWindowOpen=false;
+    const tuCalWinEl=document.getElementById('tuCalWindow');
+    if(tuCalWinEl) tuCalWinEl.style.display='none';
+  }
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
@@ -3916,6 +3932,44 @@ function closeTuCalWindow(){
   _tuCalWindowOpen=false;
   renderTagesuhr();
 }
+// Lets a floating window (tuCalWindow, floatingChatWindow) be dragged by
+// its header to anywhere on screen -- on request ("اعمل النافذة العائمة
+// متحركة"), after a real report that tuCalWindow landed exactly on top of
+// the "Kartei öffnen" button with no way to see/reach what was underneath
+// it besides closing the whole window. Ignores a mousedown on the close
+// button itself (that's a click, not a drag start). Desktop-only, matching
+// the existing >768px pattern -- mobile goes fullscreen (inset:0) via CSS,
+// where dragging has no meaning. Switches the window to explicit left/top
+// positioning (clearing right/bottom) so it stays exactly where dropped,
+// same technique tuCalPositionWindow()/positionSecFloatingChatWindow()
+// already use elsewhere in this file.
+function makeFloatingWindowDraggable(win,header){
+  if(!win||!header) return;
+  header.addEventListener('mousedown',function(e){
+    if(e.target.closest('.floating-chat-close')) return;
+    if(window.innerWidth<=768) return;
+    e.preventDefault();
+    const rect=win.getBoundingClientRect();
+    const offsetX=e.clientX-rect.left, offsetY=e.clientY-rect.top;
+    function onMove(ev){
+      let left=ev.clientX-offsetX, top=ev.clientY-offsetY;
+      left=Math.max(0,Math.min(left,window.innerWidth-rect.width));
+      top=Math.max(0,Math.min(top,window.innerHeight-rect.height));
+      win.style.left=left+'px';
+      win.style.top=top+'px';
+      win.style.right='auto';
+      win.style.bottom='auto';
+    }
+    function onUp(){
+      document.removeEventListener('mousemove',onMove);
+      document.removeEventListener('mouseup',onUp);
+    }
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onUp);
+  });
+}
+makeFloatingWindowDraggable(document.getElementById('tuCalWindow'),document.querySelector('#tuCalWindow .floating-chat-header'));
+makeFloatingWindowDraggable(document.getElementById('floatingChatWindow'),document.querySelector('#floatingChatWindow .floating-chat-header'));
 function renderTuMiniCal(){
   const el=document.getElementById('tuMiniCal');
   if(!el) return;
