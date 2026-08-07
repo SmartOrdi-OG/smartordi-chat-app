@@ -78,14 +78,46 @@ const MED_INTERACTIONS = [
 
 // Drug -> keywords to look for in the patient's free-text allergie field.
 // Cefuroxim (a cephalosporin) is included under a penicillin allergy due to
-// well-known cross-reactivity, not because it IS penicillin.
+// well-known cross-reactivity, not because it IS penicillin. Both the
+// German ("Penizillin", the Anamnese checkbox's own label, deriveAllergyText()
+// below) and Latin/English ("Penicillin", the more common free-text spelling)
+// forms are listed -- a real gap found 2026-08-07: only the c-spelling was
+// here, so it silently never matched the z-spelling the app itself renders.
 const MED_ALLERGY_CLASSES = [
-  { id: 'amoxicillin', keywords: ['penicillin', 'amoxicillin'] },
-  { id: 'cefuroxim', keywords: ['penicillin', 'cephalosporin', 'cefuroxim'] },
+  { id: 'amoxicillin', keywords: ['penicillin', 'penizillin', 'amoxicillin'] },
+  { id: 'cefuroxim', keywords: ['penicillin', 'penizillin', 'cephalosporin', 'cefuroxim'] },
   { id: 'aspirin', keywords: ['aspirin', 'ass', 'nsar', 'acetylsalicyl'] },
   { id: 'ibuprofen', keywords: ['nsar', 'ibuprofen'] },
   { id: 'diclofenac', keywords: ['nsar', 'diclofenac'] },
 ];
+
+// Combines the patient's free-text allergie field (only ever populated via
+// secretary.html's CSV bulk import -- there is no manual UI for it) with
+// their structured Anamnese answers (the "Allergien & Unverträglichkeiten"
+// checkboxes/free-text every doctor/patient actually fills in via the
+// Anamnese questionnaire, vendor/anamnese-shared.js) into one string for
+// detectMedicationAlerts() below. Real bug found 2026-08-07: a patient
+// marked "Aspirin/NSAR" in their Anamnese never triggered a Rezept-tab
+// allergy alert for Aspirin, because that data lives entirely separately
+// (patients.anamnese jsonb) from the free-text field this check used to
+// read alone (patients.allergie) -- for a patient never bulk-imported via
+// CSV, that field is simply always empty, so the alert was silently
+// unreachable for the normal, everyday way of recording an allergy.
+// rec is whatever findPatientRecordAsync()/accountToPatientRecord() return
+// (must include both .allergie and .anamnese).
+function deriveAllergyText(rec) {
+  const parts = [];
+  if (rec && rec.allergie) parts.push(rec.allergie);
+  const an = rec && rec.anamnese;
+  if (an) {
+    if (an['an.common.allergie.penizillin']) parts.push('Penizillin');
+    if (an['an.common.allergie.aspirin']) parts.push('Aspirin/NSAR');
+    if (an['an.common.allergie.latex']) parts.push('Latex');
+    if (an['an.common.allergie.kontrastmittel']) parts.push('Kontrastmittel');
+    if (an['an.common.allergie.weitere']) parts.push(an['an.common.allergie.weitere']);
+  }
+  return parts.join(', ');
+}
 
 function _medLabel(id) {
   const m = MED_INGREDIENT_KEYWORDS.find(k => k.id === id);

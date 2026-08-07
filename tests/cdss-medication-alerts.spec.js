@@ -156,6 +156,56 @@ test('two sedating CNS drugs (Pregabalin + Mirtazapin) show an interaction alert
   expect(html).toContain('dämpfend');
 });
 
+// Real bug (2026-08-07): a patient's allergy recorded via the Anamnese
+// questionnaire's own "Allergien & Unverträglichkeiten" checkboxes/free-text
+// (vendor/anamnese-shared.js, patients.anamnese jsonb) never triggered a
+// Rezept-tab alert -- the check only ever read patients.allergie, a
+// free-text column with no manual UI at all (only ever populated via
+// secretary.html's CSV bulk import). deriveAllergyText() (vendor/cdss-
+// medication-alerts.js) now combines both sources.
+test('an allergy recorded via the Anamnese "Aspirin/NSAR" checkbox (not the free-text allergie field) shows an allergy alert for Aspirin', async ({ page }) => {
+  await setupPage(page, { patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved', allergie: '', anamnese: { 'an.common.allergie.aspirin': true } }] });
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Aspirin 100mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Allergie');
+  expect(html).toContain('Aspirin');
+});
+
+test('an allergy recorded via the Anamnese "Penizillin" checkbox (German spelling) shows an allergy alert for Amoxicillin', async ({ page }) => {
+  await setupPage(page, { patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved', allergie: '', anamnese: { 'an.common.allergie.penizillin': true } }] });
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Amoxicillin 500mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Allergie');
+  expect(html).toContain('Amoxicillin');
+});
+
+test('an allergy typed into the Anamnese "Weitere Allergien" free-text field also shows an allergy alert', async ({ page }) => {
+  await setupPage(page, { patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved', allergie: '', anamnese: { 'an.common.allergie.weitere': 'Diclofenac -- Hautausschlag' } }] });
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Diclofenac 50mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).toContain('Mögliche Allergie');
+  expect(html).toContain('Diclofenac');
+});
+
+test('a patient with neither the free-text allergie field nor any Anamnese allergy answer gets no allergy alert', async ({ page }) => {
+  await setupPage(page, { patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved', allergie: '', anamnese: { 'an.common.allergie.aspirin': false, 'an.common.allergie.penizillin': false } }] });
+  const html = await page.evaluate(() => {
+    document.getElementById('rz-med1').value = 'Amoxicillin 500mg';
+    checkMedicationAlerts();
+    return document.getElementById('rzMedAlerts').innerHTML;
+  });
+  expect(html).not.toContain('Allergie');
+});
+
 test('every medication in doctor.html\'s MEDIKAMENTE_LIST is recognized by MED_INGREDIENT_KEYWORDS', async ({ page }) => {
   await setupPage(page);
   const uncovered = await page.evaluate(() => {
