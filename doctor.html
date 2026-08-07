@@ -4215,7 +4215,6 @@ function allTerminRowHtml(t,dueSet){
     <div style="display:flex;gap:6px;flex-shrink:0;">
       ${(t.reason&&t.reason.length)||t.reasonNote?`<button onclick="showVisitReason('${t.id}')" style="padding:6px 10px;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;color:#92400e;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg> Grund</button>`:''}
       <button onclick="openKarteiForPatientAndShow('${jsArg(t.patient)}','${jsArg(t.svnr)}','${jsArg(t.versicherung)}','${jsArg(t.dob)}')" style="padding:6px 10px;background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;color:#0E5E56;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Kartei</button>
-      <button onclick="openChatForPatient('${jsArg(t.patient)}','${colorForName(t.patient)}','${jsArg(t.versicherung)}')" style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Chat</button>
     </div>
   </div>`;
 }
