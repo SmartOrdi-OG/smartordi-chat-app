@@ -1982,7 +1982,10 @@ async function logout(){
     sessionStorage.removeItem('smartordi_user');
     sessionStorage.removeItem('smartordi_guardian_session');
     setPatientToken(null);
-    window.location.href='login.html';
+    // Was 'login.html' -- the STAFF login page (doctor/secretary), not the
+    // patient one, so a patient logging out landed on the wrong login form
+    // entirely (real user report).
+    window.location.href='patient-login.html';
   }
 }
 
