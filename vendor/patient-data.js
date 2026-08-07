@@ -1065,3 +1065,35 @@ async function subscribeImpfungenRealtime(onChange){
     })
     .subscribe();
 }
+
+// ── Vaccine due-reminder dismissals, supabase/phase57_vaccine_dismissals.sql ──
+// Doctor.html's Kartei Impfung tab is the only remaining due-vaccine display
+// left after the Dashboard/Übersicht "Impfungen fällig" widgets were dropped
+// (both doctor and patient showed little interest in that duplicate nagging
+// surface, 2026-08-07) -- this backs the tab's own × button, which hides a
+// specific vaccine's due reminder for that patient permanently. Keyed by
+// (patient_id, vaccine label) rather than a specific due-date, so a
+// dismissal survives dueVaccinationsForPatient()'s own "next due" date
+// shifting -- it only stops applying once a new patient_impfungen entry
+// changes which vaccine label is actually being computed as due (e.g. the
+// dose label advances from "D2" to "D3").
+let _vaccineDismissals={};
+async function refreshVaccineDismissals(){
+  const {data,error}=await sb.from('patient_vaccine_dismissals').select('patient_id,vaccine_label');
+  if(error){ reportCriticalDataError('refreshVaccineDismissals',error); return; }
+  const byPatient={};
+  (data||[]).forEach(function(row){
+    (byPatient[row.patient_id]=byPatient[row.patient_id]||new Set()).add(row.vaccine_label);
+  });
+  _vaccineDismissals=byPatient;
+}
+function dismissedVaccinesFor(patientId){
+  return _vaccineDismissals[patientId]||new Set();
+}
+const vaccineDismissalsReady=refreshVaccineDismissals();
+async function dismissVaccineForPatient(patientId,vaccineLabel,dismissedBy){
+  const row={patient_id:patientId, vaccine_label:vaccineLabel, dismissed_by:dismissedBy||null};
+  const {error}=await sb.from('patient_vaccine_dismissals').upsert(row,{onConflict:'patient_id,vaccine_label'});
+  if(error){ console.error('dismissVaccineForPatient failed',error); throw error; }
+  (_vaccineDismissals[patientId]=_vaccineDismissals[patientId]||new Set()).add(vaccineLabel);
+}

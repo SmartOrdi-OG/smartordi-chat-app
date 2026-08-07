@@ -1,8 +1,9 @@
 // Regression test for the vaccination-schedule logic in doctor.html --
-// dueVaccinationsForPatient() (the "⚠ Fällige Impfungen" warning that both
-// the Impfpass tab and the dashboard's due-list depend on) had no test
-// coverage despite encoding Austria's whole Kinderimpfprogramm schedule.
-// Also covers addImpfung()'s own validation before it ever writes a row.
+// dueVaccinationsForPatient() (the "⚠ Fällige Impfungen" warning the
+// Impfpass tab's own due-list depends on -- the Dashboard's own duplicate
+// of this list was dropped 2026-08-07) had no test coverage despite
+// encoding Austria's whole Kinderimpfprogramm schedule. Also covers
+// addImpfung()'s own validation before it ever writes a row.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
