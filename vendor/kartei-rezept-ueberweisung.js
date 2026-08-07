@@ -507,11 +507,17 @@ function clearRezeptForm(){
 // alerts for known drug-drug interactions / drug-allergy-class matches
 // among whatever's currently typed into rz-med1..4. _rzCurrentAllergie is
 // refreshed once per Rezept-tab activation (openRezeptTabForCurrentPatient()
-// below) rather than re-fetched on every keystroke.
+// below) rather than re-fetched on every keystroke. Built via
+// deriveAllergyText() (vendor/cdss-medication-alerts.js), which combines the
+// free-text allergie field with the patient's structured Anamnese allergy
+// answers -- the free-text field alone is only ever populated by CSV bulk
+// import, so relying on it exclusively silently missed every allergy a
+// doctor/patient actually recorded the normal way (real bug, 2026-08-07).
 let _rzCurrentAllergie='';
 async function openRezeptTabForCurrentPatient(){
   const name=document.getElementById('kartei-name')?.textContent;
-  _rzCurrentAllergie = name && name!=='Kein Patient ausgewählt' ? ((await findPatientRecordAsync(name))?.allergie||'') : '';
+  const rec = name && name!=='Kein Patient ausgewählt' ? await findPatientRecordAsync(name) : null;
+  _rzCurrentAllergie = deriveAllergyText(rec);
   checkMedicationAlerts();
 }
 function checkMedicationAlerts(){
