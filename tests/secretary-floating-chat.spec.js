@@ -285,3 +285,35 @@ test('the overview pane\'s Termine cards don\'t repeat the patient\'s own name (
   });
   expect(patientNameVisible).toBe(false);
 });
+
+// Real user report (2026-08-06, screenshot): after Nächste Termine cards
+// became actionable, a patient with 2+ upcoming appointments made the
+// overview pane taller than its parent's box on a real (non-ultra-tall)
+// laptop screen -- the parent's overflow:hidden (needed elsewhere) clipped
+// the excess instead of scrolling it, taking the "Chat öffnen" button down
+// with it. Looked exactly like the button had vanished, not like a normal
+// need-to-scroll situation.
+test('the "Chat öffnen" button stays reachable (via internal scroll) even when a patient has enough upcoming Termine to make the overview pane taller than its box', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 750 });
+  await setupPage(page, {
+    termine: [
+      { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:30', end_time: '10:45', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+      { id: 't2', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Ordination', date: '2026-10-10', time: '15:00', end_time: '15:20', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+    ],
+  });
+  await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
+  await page.waitForTimeout(300);
+  // Confirm the bug scenario is actually reproduced first (pane content
+  // taller than its own box) -- otherwise this test would pass vacuously.
+  const overflowing = await page.evaluate(() => {
+    const pane = document.getElementById('nachrichtenChatPane');
+    return pane.scrollHeight > pane.clientHeight + 5;
+  });
+  expect(overflowing, 'test setup did not actually reproduce the overflow scenario').toBe(true);
+
+  await page.locator('#secChatOpenBtn').scrollIntoViewIfNeeded();
+  await page.click('#secChatOpenBtn');
+  await page.waitForTimeout(300);
+  const floatingOpen = await page.evaluate(() => getComputedStyle(document.getElementById('secFloatingChatWindow')).display !== 'none');
+  expect(floatingOpen).toBe(true);
+});

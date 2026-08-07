@@ -173,7 +173,12 @@ async function patientRefreshStaffRoster(){
   if(error){ console.error('patientRefreshStaffRoster failed',error); return; }
   const next={};
   (data||[]).forEach(p=>{
-    next[p.id]={ vorname:p.vorname, nachname:p.nachname, fullName:p.full_name, role:p.role, fach:p.fach };
+    // isAdmin -- supabase/phase55_patient_staff_roster_is_admin.sql. Without
+    // it, updatePracticeIdentityUI()'s accounts.find(a=>a.role==='arzt' &&
+    // a.isAdmin) never matched anyone for a real patient/guardian session,
+    // leaving the chat header/Termine subtitle stuck on "—" even though the
+    // roster itself had resolved correctly (found via a user report).
+    next[p.id]={ vorname:p.vorname, nachname:p.nachname, fullName:p.full_name, role:p.role, fach:p.fach, isAdmin:p.is_admin };
   });
   _staffRoster=next;
 }
