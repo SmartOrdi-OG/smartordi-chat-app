@@ -191,3 +191,27 @@ test('renderImpfEintrag() (vaccination history list) escapes a malicious vaccine
   expect(result.hasRawImgTag).toBe(false);
   expect(result.hasEscapedText).toBe(true);
 });
+
+// Real user report (2026-08-07, with a screenshot): the red "Einige Daten
+// (z.B. Patientenliste) konnten nicht geladen werden" banner showed up right
+// after being handed supabase/phase57_vaccine_dismissals.sql to run -- most
+// likely refreshVaccineDismissals() hitting the table before the migration
+// had actually been applied yet. That's a purely cosmetic feature failing
+// (a previously-dismissed reminder just reappears), so it must NOT trip the
+// same alarming banner a genuine patients/termine/messages failure does.
+test('doctor.html: a failed refreshVaccineDismissals() does not show the critical data-load banner', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', join_status: 'approved' }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'u1', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+    window.__forceError = { patient_vaccine_dismissals: 'relation "patient_vaccine_dismissals" does not exist' };
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+
+  const bannerVisible = await page.evaluate(() => getComputedStyle(document.getElementById('dataLoadErrorBanner')).display !== 'none');
+  expect(bannerVisible, 'a missing/failing vaccine-dismissals table must not look like a real patient-data failure').toBe(false);
+});
