@@ -189,9 +189,16 @@ async function patientLogout(){
   const {error}=await sb.auth.signOut();
   if(error) console.error('patientLogout failed',error);
 }
+// reportCriticalDataError() (not just console.error, unlike this file's
+// other patientGetX() calls) -- a failed profile fetch is the one failure
+// in this file that leaves the ENTIRE Profil view frozen on its static
+// "--" placeholders with zero visible indication anything went wrong,
+// indistinguishable from a genuinely broken/empty account to the patient
+// looking at their own screen. Real report, with a screenshot. Same
+// reasoning as vendor/patient-data.js's refreshPatients() etc.
 async function patientGetProfile(){
   const {data,error}=await sb.rpc('patient_get_profile');
-  if(error){ console.error('patientGetProfile failed',error); return null; }
+  if(error){ reportCriticalDataError('patientGetProfile',error); return null; }
   const row=data&&data[0];
   if(!row) return null;
   return {
