@@ -1,5 +1,13 @@
 # Smartordi – قائمة المهام
 
+## 🐛 صفحة دخول المريض ما عادت تتحول لوضع ليلي داكن — الكتابة كانت مش واضحة
+
+بلّغتي بصورة: فتحتوا حساب المريض من جوال تاني (Dark Mode مفعّل بإعدادات الجوال)، وطلعت شاشة الدخول بألوان غامقة مختلفة كليًا عن الجوال العادي عندك — مش نسخة قديمة ولا مشكلة كاش، الصفحة كانت أصلاً فيها وضع ليلي تلقائي (`@media(prefers-color-scheme:dark)`) بيتبع إعداد نظام الجوال. طلبتي نخليها فاتحة دايمًا لأنه بالوضع الداكن الكتابة ما كانت واضحة.
+
+- **`patient-login.html`**: شلنا الـ`@media(prefers-color-scheme:dark)` بالكامل — الصفحة هلق فاتحة دايمًا بغض النظر عن إعداد الوضع الليلي بالجوال.
+- اختبار جديد (`tests/patient-login-always-light.spec.js`) بيتأكد إنه الصفحة بتضل فاتحة (خلفية بيضا، كتابة غامقة واضحة) حتى لو حاكينا متصفح بوضع Dark Mode مفعّل.
+- تأكدنا عبر `node --check` وتشغيل الاختبار الجديد + اختبارات تسجيل الدخول الموجودة (guardian-login-flow، anamnese-first-login، join-request-review) — كلها ناجحة.
+
 ## 🔒 ثغرة حقيقية في عزل العيادات (multi-tenant): جدول `patient_vaccine_dismissals` (phase57) كان بدون scoping خالص
 
 طلعت من `supabase/schema_health_check.sql` نفسه بعد ما شغّلناه (بالذات فحص "RLS actually scopes access" اللي اتضاف بتاريخ ٢٠٢٦-٠٧-٣٠): الصف الوحيد اللي طلع مش OK كان `patient_vaccine_dismissals` — `WARNING -- every policy on this table looks fully unscoped`.
