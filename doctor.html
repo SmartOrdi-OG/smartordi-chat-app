@@ -423,6 +423,8 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .tu-month-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px;}
 .tu-week-arrow{flex-shrink:0;width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;}
 .tu-week-arrow:hover{background:#EAF4F1;color:#0E5E56;}
+.tu-today-btn{flex-shrink:0;padding:0 14px;height:30px;border-radius:8px;border:none;background:#f1f5f9;color:#64748b;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:background .15s,color .15s;}
+.tu-today-btn:hover{background:#EAF4F1;color:#0E5E56;}
 .tu-month-label{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--text-1,#0f172a);}
 /* Single-day list (desktop) -- an hour-proportional timeline used to sit
    here instead, but a day with only a couple of appointments spread hours
@@ -873,6 +875,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
            are never selectable, not just muted. -->
       <div class="tu-desktop-view">
         <div class="tu-day-toolbar">
+          <button class="tu-today-btn" onclick="tuGoToday()">Heute</button>
           <button class="tu-week-arrow" onclick="tuShiftView(-1)" title="Zurück">‹</button>
           <div class="tu-month-label" id="tuDayLabel">–</div>
           <button class="tu-week-arrow" onclick="tuShiftView(1)" title="Weiter">›</button>
@@ -3643,6 +3646,16 @@ function tuShiftView(delta){
 function tuSelectDate(dateStr){
   tuSelectedDate=dateStr;
   tuFollowingToday=(dateStr===todayStr());
+  renderTagesuhr();
+}
+// "Heute" toolbar button (mirrors secretary.html's secCalGoToday()) -- jumps
+// Tag/Woche back to today (tuFollowingToday re-enables renderTagesuhr()'s own
+// weekend-clamping) and, independently, resets Monat's own browsed-away
+// month (tuCalYear/tuCalMonth) back to today's, same as tuSetViewMode() does
+// on first entering Monat mode.
+function tuGoToday(){
+  tuFollowingToday=true;
+  tuCalYear=null; tuCalMonth=null;
   renderTagesuhr();
 }
 function tuShiftWeek(deltaDays){
