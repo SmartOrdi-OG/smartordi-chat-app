@@ -55,7 +55,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records'
 ]) as t
 
 union all
@@ -81,7 +81,7 @@ from unnest(array[
   'anonymize_practice','run_scheduled_practice_deletions',
   'flag_expired_unpaid_trials',
   'patient_get_booking_enabled','patient_get_staff_roster',
-  'public_get_practice_join_info'
+  'public_get_practice_join_info','record_consent'
 ]) as f
 
 union all
@@ -299,7 +299,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records'
 ]) as t
 
 union all
@@ -322,7 +322,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records'
 ]) as t
 
 union all
@@ -360,7 +360,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records'
 ]) as t
 
 order by check_type, name;
