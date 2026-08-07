@@ -431,6 +431,22 @@ async function doRegister(){
 
   if(fach) localStorage.setItem('fachrichtung', fach);
 
+  // supabase/phase59_consent_records.sql -- the dsgvo/agb checkbox above
+  // only ever gated this submit button; the actual "yes, I agreed" moment
+  // was never written anywhere. record_consent() is the real, timestamped,
+  // append-only evidence (a Database Webhook on this table then emails the
+  // platform owner a copy -- see phase59's own header comment). Fire-and-
+  // forget: never blocks the registration success screen, and a failure
+  // here must not undo an already-created account.
+  // POLICY_VERSION: keep in sync with datenschutz.html's own "Version"
+  // string whenever that page is revised.
+  const POLICY_VERSION='2.1';
+  sb.rpc('record_consent',{
+    p_practice_id:practiceRow.id, p_consent_type:'doctor_registration',
+    p_full_name:fullName, p_email:email, p_policy_version:POLICY_VERSION,
+    p_user_agent:navigator.userAgent,
+  }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
+
   sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username:userId, isAdmin:true}));
 
   setTimeout(()=>{
