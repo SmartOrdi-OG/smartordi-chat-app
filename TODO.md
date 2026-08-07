@@ -1,5 +1,14 @@
 # Smartordi – قائمة المهام
 
+## 🔒 ثغرة حقيقية في عزل العيادات (multi-tenant): جدول `patient_vaccine_dismissals` (phase57) كان بدون scoping خالص
+
+طلعت من `supabase/schema_health_check.sql` نفسه بعد ما شغّلناه (بالذات فحص "RLS actually scopes access" اللي اتضاف بتاريخ ٢٠٢٦-٠٧-٣٠): الصف الوحيد اللي طلع مش OK كان `patient_vaccine_dismissals` — `WARNING -- every policy on this table looks fully unscoped`.
+
+- **السبب**: `phase57_vaccine_dismissals.sql` (نفس اليوم، ميزة زر × لإخفاء تذكير تطعيم) اتكتب بـpolicy `for all to authenticated using (true) with check (true)` — بتعليق بيقول "نفس شكل policy تبع `patient_impfungen` (phase5)". صحيح كان هيك شكلها بالأصل، **بس** `phase12_multi_tenant_rls.sql` (تحديث عزل العيادات الكبير) كان استبدل نفس الـpolicy دي لـ`patient_impfungen` بـpolicy مربوطة بـ`current_practice_id()` من زمان — يعني phase57 نسخت شكل قديم اتلغى، من غير ما تعمل نفس خطوة phase12 التانية. النتيجة: أي موظف/طبيب من **أي عيادة** كان يقدر يشوف ويعدّل صفوف التطعيمات المخفية بتاعة مرضى عيادة تانية بالكامل.
+- **`supabase/phase58_vaccine_dismissals_rls_fix.sql`** (جديد): يضيف عمود `practice_id`، يملأه للصفوف الموجودة (لو فيه)، يضيف trigger `trg_set_practice_id` (نفس آلية باقي الجداول) عشان كل صف جديد ياخد `practice_id` تلقائي، يمسح الـpolicy الواسعة القديمة ويحط بدالها policy مربوطة بـ`current_practice_id()` (نفس نمط `patient_impfungen` الحالي)، وضاف index على العمود (نفس نمط phase35).
+- `supabase/schema_health_check.sql` أصلاً كان بيغطي الجدول ده بالكامل من قبل (هو اللي مسك المشكلة) — مفيش تعديل عليه، الصف هيتحول تلقائي لـOK بعد ما phase58 يتشغّل.
+- ما في تغيير على أي كود frontend — الإصلاح كله SQL/RLS، ودالة `dismissVaccineForPatient()`/`refreshVaccineDismissals()` بـ`vendor/patient-data.js` أصلاً ما بترسل `practice_id` بنفسها (زي `patient_documents`)، فالـtrigger كافي.
+
 ## 🐛 صلّحنا زر "Kartei öffnen" يلي كان طالع ورا النافذة العائمة عند الضغط على "⋮" جوا كالندر الشهر
 
 بلّغتي إنه بوضع Monat (شهر) بكالندر الطبيب، لما تفتح كرت موعد جوا النافذة العائمة (يلي بتفتح لما تدوس على يوم بالشبكة) وتضغط "⋮" جنب اسم المريض، قائمة "Kartei öffnen" كانت تطلع **ورا** النافذة العائمة نفسها — يعني ما فيك تشوفها ولا تضغط عليها.
