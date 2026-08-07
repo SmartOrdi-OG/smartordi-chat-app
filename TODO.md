@@ -9,6 +9,14 @@
 - `supabase/schema_health_check.sql` أصلاً كان بيغطي الجدول ده بالكامل من قبل (هو اللي مسك المشكلة) — مفيش تعديل عليه، الصف هيتحول تلقائي لـOK بعد ما phase58 يتشغّل.
 - ما في تغيير على أي كود frontend — الإصلاح كله SQL/RLS، ودالة `dismissVaccineForPatient()`/`refreshVaccineDismissals()` بـ`vendor/patient-data.js` أصلاً ما بترسل `practice_id` بنفسها (زي `patient_documents`)، فالـtrigger كافي.
 
+## 🎨 شلنا زر "Chat" من قائمة "Tagesliste" (كل المواعيد) عند الطبيب
+
+طلبتي حذف زر "Chat" من هاي القايمة، ما في داعي الها.
+
+- **`doctor.html`**: القائمة يلي بتنفتح من زر "Alle sehen →" بالـDashboard (نافذة "Tagesliste") كانت بتعرض لكل موعد زرين — "Kartei" و"Chat" — جنب بعض. شلنا زر "Chat" وخلينا "Kartei" بس (وزر "Grund" لما يكون في سبب زيارة مسجل).
+- اختبار جديد (`tests/tagesliste-no-chat-button.spec.js`) بيتأكد إنه زر "Kartei" لسا موجود وزر "Chat" ما عاد يطلع بهاي القائمة تحديدًا.
+- تأكدنا عبر `node --check` وتشغيل الاختبار الجديد + اختبارات الكالندر الموجودة (kalender-start-opens-kartei، kalender-heute-button، kalender-row-menu-zindex) — كلها ناجحة.
+
 ## 🐛 صلّحنا زر "Kartei öffnen" يلي كان طالع ورا النافذة العائمة عند الضغط على "⋮" جوا كالندر الشهر
 
 بلّغتي إنه بوضع Monat (شهر) بكالندر الطبيب، لما تفتح كرت موعد جوا النافذة العائمة (يلي بتفتح لما تدوس على يوم بالشبكة) وتضغط "⋮" جنب اسم المريض، قائمة "Kartei öffnen" كانت تطلع **ورا** النافذة العائمة نفسها — يعني ما فيك تشوفها ولا تضغط عليها.
