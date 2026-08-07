@@ -163,3 +163,28 @@ test('a day outside the currently-shown month is visually marked (leading/traili
   const outsideCount = await page.evaluate(() => document.querySelectorAll('.sec-cal-day.outside').length);
   expect(outsideCount).toBeGreaterThan(0);
 });
+
+test('a real click opens the floating window right next to the clicked day cell, not always the same corner', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 }); // desktop -- mobile goes fullscreen regardless of position
+  const targetDate = ymdOffset(4);
+  await setupPage(page, [
+    { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: targetDate, time: '09:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+  ]);
+  const { cellBox, cellIndex } = await page.evaluate((d) => {
+    const cells = [...document.querySelectorAll('.sec-cal-day')];
+    const idx = cells.findIndex(c => c.onclick && c.getAttribute('onclick').includes(d));
+    const r = cells[idx].getBoundingClientRect();
+    return { cellBox: { left: r.left, right: r.right, top: r.top }, cellIndex: idx };
+  }, targetDate);
+  await page.locator('.sec-cal-day').nth(cellIndex).click();
+  await expect(page.locator('#secCalWindow')).toBeVisible();
+  const winBox = await page.evaluate(() => document.getElementById('secCalWindow').getBoundingClientRect());
+  // Should open right beside the clicked cell (left edge close to the cell's
+  // right edge, or the cell's own left edge if it flipped to the other
+  // side), not the old fixed-corner default (bottom-right, far away from a
+  // cell near the grid's top).
+  const nearRight = Math.abs(winBox.left - cellBox.right) < 30;
+  const nearLeft = Math.abs(winBox.left - cellBox.left) < 450;
+  expect(nearRight || nearLeft, `window left=${winBox.left} should be near cell right=${cellBox.right} or left=${cellBox.left}`).toBe(true);
+  expect(Math.abs(winBox.top - cellBox.top)).toBeLessThan(200);
+});
