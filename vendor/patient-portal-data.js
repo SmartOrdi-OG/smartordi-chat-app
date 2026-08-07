@@ -205,8 +205,11 @@ async function patientGetMessages(){
   const {data,error}=await sb.rpc('patient_get_messages');
   if(error){ console.error('patientGetMessages failed',error); return []; }
   return (data||[]).map(function(row){
+    // createdAt (full ISO timestamp, kept alongside the display-only "time"
+    // HH:MM) -- patient.html's unread-badge tracking needs this to compare
+    // against a per-device "last viewed" marker (patientUnreadCount()).
     return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16),
-      docId:row.doc_id, filename:row.filename, sub:row.doc_sub};
+      createdAt:row.created_at, docId:row.doc_id, filename:row.filename, sub:row.doc_sub};
   });
 }
 async function patientSendMessage(text){
