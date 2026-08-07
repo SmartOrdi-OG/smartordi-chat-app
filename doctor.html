@@ -1242,6 +1242,15 @@ body.windows-mode #karteiBtn{display:none;}
 .kartei-tab:hover:not(.active){color:#0891b2!important;background:#ecfeff;}
 .kartei-mehr-menu{position:fixed;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:200;min-width:150px;}
 .kartei-mehr-menu .kartei-tab{width:100%;justify-content:flex-start;}
+/* #tuRowMenu ("⋮" -> "Kartei öffnen") opens from a card's own row inside
+   tuCalWindow (Monat mode's floating day-appointments window) as well as
+   from Tag/mobile's plain lists. .kartei-mehr-menu's shared z-index:200 sits
+   BELOW .floating-chat-window's z-index:300 (tuCalWindow reuses that same
+   chrome), so from inside tuCalWindow the menu opened right on top of a card
+   rendered behind the window it came from -- real report, with a screenshot.
+   Scoped to the #id (not the whole .kartei-mehr-menu class) since the other
+   user of that class, #karteiMehrMenu, never opens over a floating-chat-window. */
+#tuRowMenu{z-index:320;}
 /* Deliberately its own class, not .kartei-tab -- updateKarteiChromeVisibility()
    disables every .kartei-tab whenever no patient is loaded in the real Kartei
    tab bar, but this button (the Kalender's "⋮ → Kartei öffnen" shortcut) is
