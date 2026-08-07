@@ -528,6 +528,19 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 </head>
 <body>
 
+<!-- CRITICAL DATA LOAD ERROR BANNER: patientGetProfile() (and its siblings
+     in vendor/patient-portal-data.js) swallow their own RPC failures and
+     just return null -- previously that left the whole Profil view frozen
+     on its static "--" placeholders (and the Chat nav badge stuck on its
+     hardcoded demo "2") with zero visible indication anything was wrong,
+     indistinguishable from a genuinely broken/empty account to the patient
+     looking at their own screen. Real report, with a screenshot. Same fix
+     as doctor.html/secretary.html's own #dataLoadErrorBanner. -->
+<div id="dataLoadErrorBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:950;background:#fef2f2;border-bottom:2px solid #fca5a5;padding:10px 16px;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+  <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#991b1b;font-weight:700;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span data-i18n="dataError.banner">Einige Daten konnten nicht geladen werden. Das bedeutet NICHT, dass Ihre Daten gelöscht wurden.</span></span>
+  <button onclick="location.reload()" style="padding:6px 14px;background:#fff;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="dataError.reload">Seite neu laden</button>
+</div>
+
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="topbar-logo">
@@ -850,6 +863,15 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 <div class="toast" id="toast"></div>
 
 <script>
+// Registered as the very first thing this script does -- mirrors doctor.
+// html/secretary.html's own setCriticalDataErrorHandler() wiring (vendor/
+// staff-accounts.js). setCriticalDataErrorHandler() itself flushes any
+// failure that already queued before this point.
+setCriticalDataErrorHandler(function(){
+  const banner=document.getElementById('dataLoadErrorBanner');
+  if(banner) banner.style.display='flex';
+});
+
 // ── Nav ──
 /* ══ WINDOW MODE (desktop): each tab opens as its own draggable, minimizable, fullscreen-by-default window ══ */
 let winZ=500;
