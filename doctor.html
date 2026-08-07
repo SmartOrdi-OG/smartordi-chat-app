@@ -478,11 +478,13 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
   .tu-week-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
 }
 /* Monat view -- full month grid (same "additive, not a replacement"
-   reasoning as Woche above), with the selected day's appointments shown
-   below it using the exact same tu-day-list/tu-appt-card cards as Tag
-   view (Start/Fertig controls included), instead of a plain read-only row
-   list -- clicking through from Monat straight into starting a visit
-   shouldn't require switching to Tag first. */
+   reasoning as Woche above). Clicking a day opens its appointments (the
+   exact same tu-day-list/tu-appt-card cards Tag view uses, Start/Fertig
+   controls included) in a floating window beside the clicked cell
+   (tuCalWindow, see tuCalSelectDay()/tuCalPositionWindow() in this file's
+   own inline script) -- on request ("اعمل الكالندر الشهرية عند الطبيب
+   كمان عند الضغط تظهر لكروت قائمة عائمة بجانبها"), mirroring
+   secretary.html's own Termine month-calendar (#secCalWindow). */
 .tu-month-grid-wrap{display:none;}
 #tuHome.tu-month-mode .tu-month-grid-wrap{display:block;}
 #tuHome.tu-month-mode .tu-day-layout{display:none;}
@@ -499,7 +501,11 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 .tu-cal-day-chip.pending{background:#fef9c3;color:#854d0e;}
 .tu-cal-day-more{font-size:9.5px;font-weight:700;color:#94a3b8;}
 .tu-cal-day-count{display:none;}
-.tu-cal-detail-title{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--text-1,#0f172a);margin-bottom:12px;}
+/* tuCalWindow's scrollable body -- reuses .floating-chat-window/-header/
+   -close/-name for its chrome (same base class #floatingChatWindow itself
+   uses), scoped by id below so its own fixed 360x520 sizing stays
+   untouched. */
+.tu-cal-window-body{flex:1;overflow-y:auto;padding:12px 16px;}
 @media(max-width:700px){
   .tu-cal-day{min-height:40px;}
   .tu-cal-day-chip,.tu-cal-day-more{display:none;}
@@ -887,10 +893,6 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
         <div class="tu-week-grid" id="tuWeekGrid"></div>
         <div class="tu-month-grid-wrap" id="tuMonthGridWrap">
           <div class="tu-cal-grid" id="tuCalGrid"></div>
-          <div class="tu-cal-detail">
-            <div class="tu-cal-detail-title" id="tuCalDetailTitle"></div>
-            <div class="tu-day-list" id="tuCalDetailList"></div>
-          </div>
         </div>
       </div>
 
@@ -2573,6 +2575,20 @@ body.windows-mode #karteiBtn{display:none;}
     </div>
   </div>
 </div>
+
+<!-- Monat view's selected-day appointments -- floating window, opened via
+     tuCalSelectDay() beside whichever grid cell was clicked, closed via
+     closeTuCalWindow(). Reuses the same .floating-chat-window chrome as
+     #floatingChatWindow above (id-scoped positioning only, see that rule's
+     own comment), same pattern as secretary.html's #secCalWindow. -->
+<div id="tuCalWindow" class="floating-chat-window" style="display:none;">
+  <div class="floating-chat-header">
+    <div class="floating-chat-name" id="tuCalWindowTitle"></div>
+    <button class="floating-chat-close" onclick="closeTuCalWindow()" title="Schließen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="tu-cal-window-body" id="tuCalWindowBody"></div>
+</div>
+
 <!-- ══ ÜBERWEISUNG MODAL (A4 Preview + PDF) ══ -->
 <div id="uwModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);z-index:400;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;">
   <div style="background:white;border-radius:20px;width:100%;max-width:640px;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden;margin:auto;">
@@ -3597,6 +3613,11 @@ function tuSetViewMode(mode){
   if(mode==='monat'){
     const selD=new Date(tuSelectedDate+'T00:00:00');
     tuCalYear=selD.getFullYear(); tuCalMonth=selD.getMonth();
+  } else {
+    // Leaving Monat -- the floating window has no clicked-cell position to
+    // anchor to once we're back on Tag/Woche, so close it rather than
+    // leaving a stale overlay showing.
+    _tuCalWindowOpen=false;
   }
   const root=document.getElementById('tuHome');
   if(root){
@@ -3837,9 +3858,9 @@ function tuShiftCalMonth(delta){
 }
 // Full month grid, one cell per day with up to 2 appointment chips + a
 // "+N mehr" overflow marker (mirrors secretary.html's own Termine month
-// calendar, renderSecTermineCalendar) -- clicking a cell selects that day
-// (tuSelectDate(), same function Tag/Woche already use) without leaving
-// Monat view, so the detail list below just updates in place.
+// calendar, renderSecTermineCalendar) -- clicking a cell opens that day's
+// appointments in a floating window beside the cell (tuCalSelectDay()),
+// same pattern as secretary.html's #secCalWindow.
 function renderTuCalGrid(mine){
   const gridEl=document.getElementById('tuCalGrid');
   if(!gridEl) return;
@@ -3864,13 +3885,50 @@ function renderTuCalGrid(mine){
     const chips=dayTermine.slice(0,2).map(t=>`<div class="tu-cal-day-chip${t.status==='bestaetigt'?' confirmed':' pending'}">${t.time} ${escapeHtml((t.patient||'').split(' ')[0])}</div>`).join('');
     const more=dayTermine.length>2?`<div class="tu-cal-day-more">+${dayTermine.length-2} mehr</div>`:'';
     const count=dayTermine.length?`<div class="tu-cal-day-count">${dayTermine.length}</div>`:'';
-    cells+=`<div class="tu-cal-day${outside?' outside':''}${ds===todayS?' today':''}${ds===tuSelectedDate?' selected':''}" onclick="tuSelectDate('${ds}')">
+    cells+=`<div class="tu-cal-day${outside?' outside':''}${ds===todayS?' today':''}${ds===tuSelectedDate?' selected':''}" onclick="tuCalSelectDay('${ds}',event)">
       <div class="tu-cal-day-num">${cellDate.getDate()}</div>
       ${chips}${more}${count}
     </div>`;
   }
   const dowRow=TU_DOW_MINI.map(d=>`<div class="tu-cal-dow">${d}</div>`).join('');
   gridEl.innerHTML=dowRow+cells;
+}
+// Whether Monat's floating appointments window (tuCalWindow) is open --
+// mirrors secretary.html's own _secCalWindowOpen. Clicking a day cell opens
+// it directly; reset to false whenever the view leaves Monat mode (see
+// tuSetViewMode()), since there's no clicked-cell position to anchor to
+// once back on Tag/Woche.
+let _tuCalWindowOpen=false;
+function tuCalSelectDay(dateStr,evt){
+  // Captured before tuSelectDate() -> renderTagesuhr() rebuilds the grid's
+  // DOM -- the clicked cell itself may not survive the re-render, but its
+  // position at click time is all tuCalPositionWindow() needs.
+  const rect=evt&&evt.currentTarget?evt.currentTarget.getBoundingClientRect():null;
+  _tuCalWindowOpen=true;
+  tuSelectDate(dateStr);
+  if(rect) tuCalPositionWindow(rect);
+}
+// Opens next to whichever day cell was actually clicked (same approach as
+// secretary.html's secCalPositionWindow()): prefers the cell's right side,
+// falls back to its left if that would run off-screen, then clamps fully
+// into the viewport as a last resort. Skipped on mobile, where the window
+// goes fullscreen (inset:0) regardless of left/top.
+function tuCalPositionWindow(rect){
+  const win=document.getElementById('tuCalWindow');
+  if(!win||window.innerWidth<=768) return;
+  const winWidth=360, winHeight=520, margin=12;
+  let left=rect.right+margin;
+  if(left+winWidth>window.innerWidth-margin) left=rect.left-winWidth-margin;
+  left=Math.max(margin,Math.min(left,window.innerWidth-winWidth-margin));
+  let top=Math.max(margin,Math.min(rect.top,window.innerHeight-winHeight-margin));
+  win.style.left=left+'px';
+  win.style.top=top+'px';
+  win.style.right='auto';
+  win.style.bottom='auto';
+}
+function closeTuCalWindow(){
+  _tuCalWindowOpen=false;
+  renderTagesuhr();
 }
 function renderTuMiniCal(){
   const el=document.getElementById('tuMiniCal');
@@ -3966,13 +4024,22 @@ function renderTagesuhr(){
   if(legendEl) legendEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptRowHtml).join('') : emptyHtml;
   const dayListEl=document.getElementById('tuDayList');
   if(dayListEl) dayListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
-  // Monat's detail panel below the month grid reuses the exact same cards
-  // (Start/Fertig controls included) as Tag view's tuDayList -- not a
-  // separate read-only summary.
-  const calDetailListEl=document.getElementById('tuCalDetailList');
-  if(calDetailListEl) calDetailListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
-  const calDetailTitleEl=document.getElementById('tuCalDetailTitle');
-  if(calDetailTitleEl) calDetailTitleEl.textContent=(tuSelectedDate===todayStr()?'Heute — ':'')+longDateDE(tuSelectedDate);
+  // Monat's selected-day appointments -- floating window (tuCalWindow), not
+  // an inline panel below the grid. Reuses the exact same cards (Start/
+  // Fertig controls included) as Tag view's tuDayList -- not a separate
+  // read-only summary. Only shown while in Monat mode with the window
+  // actually open (see tuCalSelectDay()/closeTuCalWindow()).
+  const tuCalWinEl=document.getElementById('tuCalWindow');
+  if(tuCalWinEl){
+    const showTuCalWin=_tuCalWindowOpen&&tuViewMode==='monat';
+    tuCalWinEl.style.display=showTuCalWin?'flex':'none';
+    if(showTuCalWin){
+      const tuCalWinTitleEl=document.getElementById('tuCalWindowTitle');
+      if(tuCalWinTitleEl) tuCalWinTitleEl.textContent=(tuSelectedDate===todayStr()?'Heute — ':'')+longDateDE(tuSelectedDate);
+      const tuCalWinBodyEl=document.getElementById('tuCalWindowBody');
+      if(tuCalWinBodyEl) tuCalWinBodyEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
+    }
+  }
   renderTuSummary(dayAppts);
   renderTuWeekGrid(mine,week);
   renderTuCalGrid(mine);
