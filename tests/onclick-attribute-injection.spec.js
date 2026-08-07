@@ -12,6 +12,10 @@
 //  1. doctor.html's impfWarnRowHtml() "Kartei" button interpolated
 //     d.patient into the onclick attribute with NO escaping at all -- a
 //     literal " in the name breaks out of the HTML attribute entirely.
+//     (impfWarnRowHtml() itself was later removed 2026-08-07 along with the
+//     Dashboard/Übersicht widgets it belonged to; the same fix now lives in
+//     vendor/kartei-impfung.js's impfDueRowHtml(), the due-vaccines display
+//     that took its place in the Kartei Impfung tab.)
 //  2. dashApptCardHtml()/tuApptRowHtml()/tuApptCardHtml() (doctor.html),
 //     secMsgBubbleHtml() (secretary.html), and msgRowHtml() (patient.html)
 //     all did escapeHtml(x).replace(/'/g,"\\'") -- the WRONG order.
@@ -51,7 +55,7 @@ async function renderAttachClickAndCheck(page, html, selector) {
 }
 
 test.describe('onclick-attribute injection via unescaped patient/document names', () => {
-  test('doctor.html: impfWarnRowHtml() Kartei button no longer executes injected JS from an unescaped patient name', async ({ page }) => {
+  test('doctor.html: impfDueRowHtml() × dismiss button no longer executes injected JS from an unescaped patient name', async ({ page }) => {
     await installMockSupabase(page, {
       staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
     }, () => {
@@ -59,10 +63,10 @@ test.describe('onclick-attribute injection via unescaped patient/document names'
     });
     await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
     await page.waitForTimeout(1200);
-    await page.evaluate(() => { window.openKarteiForVaccineCheck = () => {}; }); // stub the real handler so the click is otherwise a no-op
-    const html = await page.evaluate((payload) => impfWarnRowHtml({ patient: payload, vaccine: 'MMR', detail: 'Auffrischung', status: 'faellig' }), PAYLOAD);
+    await page.evaluate(() => { window.dismissVaccineDue = () => {}; }); // stub the real handler so the click is otherwise a no-op
+    const html = await page.evaluate((payload) => impfDueRowHtml({ vaccine: 'MMR', detail: 'Auffrischung', status: 'faellig' }, 'p1', '', payload), PAYLOAD);
     const fired = await renderAttachClickAndCheck(page, html, 'button');
-    expect(fired, 'clicking the Kartei button must not execute injected JS from the patient name').toBe(false);
+    expect(fired, 'clicking the × dismiss button must not execute injected JS from the patient name').toBe(false);
   });
 
   for (const fn of ['dashApptCardHtml', 'tuApptRowHtml', 'tuApptCardHtml']) {

@@ -41,17 +41,20 @@ async function setupSecretaryPage(page, extraSeed) {
   await page.waitForTimeout(1200);
 }
 
-// ── Finding: impfWarnRowHtml() (doctor.html + secretary.html) interpolated
-// patient/vaccine name straight into innerHTML AND into an unquoted-context
-// onchange attribute with zero escaping -- a stored-XSS hole reachable the
-// moment any vaccination is due, on the default landing view. ──
-for (const [role, file, setup] of [['doctor', 'doctor.html', setupDoctorPage], ['secretary', 'secretary.html', setupSecretaryPage]]) {
-  test(`${role}: impfWarnRowHtml() escapes a malicious patient/vaccine name instead of executing it`, async ({ page }) => {
-    await setup(page, {});
+// ── Finding: impfDueRowHtml() (doctor.html's Kartei Impfung tab, vendor/
+// kartei-impfung.js -- the sole surviving due-vaccines display since the
+// Dashboard/Übersicht widgets that duplicated it were dropped 2026-08-07)
+// interpolates vaccine name/patient name straight into innerHTML AND into
+// an onchange/onclick attribute -- the exact same class of bug fixed in the
+// (now-removed) impfWarnRowHtml() during the 2026-07-29 audit, but never
+// applied to this booklet-local copy until it became the only one left. ──
+test.describe('impfDueRowHtml (doctor.html Kartei Impfung tab)', () => {
+  test('escapes a malicious vaccine/patient name instead of executing it', async ({ page }) => {
+    await setupDoctorPage(page, {});
     const dialogs = [];
     page.on('dialog', d => { dialogs.push(d.message()); d.dismiss(); });
     const result = await page.evaluate((payload) => {
-      const html = impfWarnRowHtml({ patient: payload, vaccine: payload, detail: '2026-07-01', status: 'ueberfaellig' });
+      const html = impfDueRowHtml({ vaccine: payload, detail: '2026-07-01', status: 'ueberfaellig' }, 'p1', '', payload);
       const root = document.createElement('div');
       root.innerHTML = html;
       document.body.appendChild(root);
@@ -59,7 +62,7 @@ for (const [role, file, setup] of [['doctor', 'doctor.html', setupDoctorPage], [
         hasRawImgTag: /<img[^>]*onerror/.test(root.innerHTML),
         hasEscapedText: root.innerHTML.includes('&lt;img'),
       };
-    }, XSS_PATIENT);
+    }, XSS_VACCINE);
     await page.waitForTimeout(100);
     expect(dialogs).toEqual([]);
     expect(await page.evaluate(() => window.__xssFired)).toBe(false);
@@ -67,11 +70,11 @@ for (const [role, file, setup] of [['doctor', 'doctor.html', setupDoctorPage], [
     expect(result.hasEscapedText).toBe(true);
   });
 
-  test(`${role}: impfWarnRowHtml()'s onchange attribute cannot be broken out of via a quote in the vaccine name`, async ({ page }) => {
-    await setup(page, {});
+  test("the price input's onchange attribute cannot be broken out of via a quote in the vaccine name", async ({ page }) => {
+    await setupDoctorPage(page, {});
     const injected = "Grippe');window.__xssFired=true;('";
     const result = await page.evaluate((payload) => {
-      const html = impfWarnRowHtml({ patient: 'Maria Huber', vaccine: payload, detail: '2026-07-01', status: 'faellig' });
+      const html = impfDueRowHtml({ vaccine: payload, detail: '2026-07-01', status: 'faellig' }, 'p1', '', 'Maria Huber');
       const root = document.createElement('div');
       root.innerHTML = html;
       document.body.appendChild(root);
@@ -82,7 +85,23 @@ for (const [role, file, setup] of [['doctor', 'doctor.html', setupDoctorPage], [
     await page.waitForTimeout(100);
     expect(await page.evaluate(() => window.__xssFired), 'a quote in the vaccine name must not let injected JS execute via onchange').toBe(false);
   });
-}
+
+  test("the × dismiss button's onclick attribute cannot be broken out of via a quote in the vaccine or patient name", async ({ page }) => {
+    await setupDoctorPage(page, {});
+    const injected = "Grippe');window.__xssFired=true;('";
+    const result = await page.evaluate((payload) => {
+      const html = impfDueRowHtml({ vaccine: payload, detail: '2026-07-01', status: 'faellig' }, 'p1', '', payload);
+      const root = document.createElement('div');
+      root.innerHTML = html;
+      document.body.appendChild(root);
+      const btn = root.querySelector('button');
+      btn.click();
+      return { onclickAttr: btn.getAttribute('onclick') };
+    }, injected);
+    await page.waitForTimeout(100);
+    expect(await page.evaluate(() => window.__xssFired), 'a quote in the vaccine/patient name must not let injected JS execute via onclick').toBe(false);
+  });
+});
 
 // ── Finding: printTerminSlip()/printAnwesenheitsbestaetigung() (secretary.
 // html) write a whole new document via document.write() using raw patient/
