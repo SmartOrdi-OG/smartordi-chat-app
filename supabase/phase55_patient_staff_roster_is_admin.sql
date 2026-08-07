@@ -17,6 +17,12 @@
 -- Run this in the Supabase SQL editor, after phase45_patient_staff_roster.sql.
 -- ══════════════════════════════════════════════════════════════
 
+-- create or replace function can't change an existing function's return
+-- columns (Postgres error 42P13, "cannot change return type of existing
+-- function") -- phase45's version has no is_admin column, so the old
+-- signature has to be dropped first.
+drop function if exists public.patient_get_staff_roster();
+
 create or replace function public.patient_get_staff_roster()
 returns table(id uuid, vorname text, nachname text, full_name text, role text, fach text, is_admin boolean)
 language plpgsql security definer set search_path = public as $$
