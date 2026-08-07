@@ -477,6 +477,34 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 @media(max-width:1100px){
   .tu-week-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));}
 }
+/* Monat view -- full month grid (same "additive, not a replacement"
+   reasoning as Woche above), with the selected day's appointments shown
+   below it using the exact same tu-day-list/tu-appt-card cards as Tag
+   view (Start/Fertig controls included), instead of a plain read-only row
+   list -- clicking through from Monat straight into starting a visit
+   shouldn't require switching to Tag first. */
+.tu-month-grid-wrap{display:none;}
+#tuHome.tu-month-mode .tu-month-grid-wrap{display:block;}
+#tuHome.tu-month-mode .tu-day-layout{display:none;}
+.tu-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:20px;}
+.tu-cal-dow{font-size:11px;font-weight:700;color:#94a3b8;text-align:center;padding:4px 0;}
+.tu-cal-day{min-height:76px;border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:6px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:2px;transition:background .15s,border-color .15s;}
+.tu-cal-day:hover{background:#f8fafc;}
+.tu-cal-day.outside{opacity:.35;}
+.tu-cal-day.today{box-shadow:inset 0 0 0 1.5px #0E5E56;}
+.tu-cal-day.selected{background:#EAF4F1;border-color:#0E5E56;}
+.tu-cal-day-num{font-size:12.5px;font-weight:800;color:var(--text-1,#0f172a);}
+.tu-cal-day-chip{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:6px;background:#f1f5f9;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tu-cal-day-chip.confirmed{background:#dcfce7;color:#16a34a;}
+.tu-cal-day-chip.pending{background:#fef9c3;color:#854d0e;}
+.tu-cal-day-more{font-size:9.5px;font-weight:700;color:#94a3b8;}
+.tu-cal-day-count{display:none;}
+.tu-cal-detail-title{font-family:'Fraunces',serif;font-size:15px;font-weight:700;color:var(--text-1,#0f172a);margin-bottom:12px;}
+@media(max-width:700px){
+  .tu-cal-day{min-height:40px;}
+  .tu-cal-day-chip,.tu-cal-day-more{display:none;}
+  .tu-cal-day-count{display:block;font-size:10px;font-weight:800;color:#0E5E56;}
+}
 /* A single full-width row per appointment left a wide blank strip between
    the name/type text on the left and the status control pinned to the far
    right on a wide desktop screen -- cards that wrap into several per row
@@ -845,6 +873,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
           <div class="tu-view-toggle">
             <button id="tuViewTagBtn" class="active" onclick="tuSetViewMode('tag')">Tag</button>
             <button id="tuViewWocheBtn" onclick="tuSetViewMode('woche')">Woche</button>
+            <button id="tuViewMonatBtn" onclick="tuSetViewMode('monat')">Monat</button>
           </div>
         </div>
         <div class="tu-day-layout">
@@ -856,6 +885,13 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
           </div>
         </div>
         <div class="tu-week-grid" id="tuWeekGrid"></div>
+        <div class="tu-month-grid-wrap" id="tuMonthGridWrap">
+          <div class="tu-cal-grid" id="tuCalGrid"></div>
+          <div class="tu-cal-detail">
+            <div class="tu-cal-detail-title" id="tuCalDetailTitle"></div>
+            <div class="tu-day-list" id="tuCalDetailList"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Mobile: one compact horizontal day-strip up top, everything else
@@ -3543,24 +3579,42 @@ let tuSelectedDate=null;
 // forever (until a manual click or full page reload), since nothing else
 // re-evaluates what "today" currently is.
 let tuFollowingToday=true;
-// Tag (single day, the existing view) vs Woche (5-day work-week overview,
-// added alongside it -- see the tu-week-grid CSS comment for why this is
-// additive, not a replacement). Plain module-level state like
-// tuSelectedDate above -- survives until reload, not persisted further.
+// Tag (single day, the existing view) vs Woche (5-day work-week overview)
+// vs Monat (full month grid) -- each added alongside the others, never a
+// replacement (see the tu-week-grid CSS comment for why an always-on
+// alternative layout was already tried and dropped once). Plain
+// module-level state like tuSelectedDate above -- survives until reload,
+// not persisted further.
 let tuViewMode='tag';
 function tuSetViewMode(mode){
   tuViewMode=mode;
+  // Jump Monat's displayed month to match whatever day is currently
+  // selected -- but only on entry into Monat mode, not synced every render
+  // like tuMiniCalYear/tuMiniCalMonth are (renderTagesuhr() resyncs those
+  // unconditionally, which is right for a "mini date-picker" but would
+  // fight tuShiftCalMonth()'s independent month-browsing below if reused
+  // for the big grid too).
+  if(mode==='monat'){
+    const selD=new Date(tuSelectedDate+'T00:00:00');
+    tuCalYear=selD.getFullYear(); tuCalMonth=selD.getMonth();
+  }
   const root=document.getElementById('tuHome');
-  if(root) root.classList.toggle('tu-week-mode',mode==='woche');
+  if(root){
+    root.classList.toggle('tu-week-mode',mode==='woche');
+    root.classList.toggle('tu-month-mode',mode==='monat');
+  }
   document.getElementById('tuViewTagBtn')?.classList.toggle('active',mode==='tag');
   document.getElementById('tuViewWocheBtn')?.classList.toggle('active',mode==='woche');
+  document.getElementById('tuViewMonatBtn')?.classList.toggle('active',mode==='monat');
   renderTagesuhr();
 }
 // Toolbar's ‹/› arrows mean "one step back/forward in whatever unit the
 // current view shows" -- a real day in Tag mode (tuShiftDay's own
-// weekend-skipping logic), a full week in Woche mode.
+// weekend-skipping logic), a full week in Woche mode, a full month in
+// Monat mode.
 function tuShiftView(delta){
   if(tuViewMode==='woche') tuShiftWeek(delta*7);
+  else if(tuViewMode==='monat') tuShiftCalMonth(delta);
   else tuShiftDay(delta);
 }
 function tuSelectDate(dateStr){
@@ -3766,6 +3820,58 @@ function tuShiftMiniCalMonth(delta){
   tuMiniCalMonth=m; tuMiniCalYear=y;
   renderTuMiniCal();
 }
+// ── Monat view's own displayed month -- deliberately separate state from
+// tuMiniCalYear/tuMiniCalMonth above, not reused: renderTagesuhr() forces
+// the mini-cal to always follow tuSelectedDate's month on every render
+// (right for a small date-picker), which would fight independent month
+// browsing here (tuShiftCalMonth() re-renders only the grid itself, same
+// pattern as tuShiftMiniCalMonth()).
+let tuCalYear=null, tuCalMonth=null;
+function tuShiftCalMonth(delta){
+  let m=tuCalMonth+delta, y=tuCalYear;
+  if(m<0){m=11;y--;} else if(m>11){m=0;y++;}
+  tuCalMonth=m; tuCalYear=y;
+  renderTuCalGrid(filterToMyTermine(loadTermine()));
+  const dayLabelEl=document.getElementById('tuDayLabel');
+  if(dayLabelEl) dayLabelEl.textContent=TU_MONTHS_DE[tuCalMonth]+' '+tuCalYear;
+}
+// Full month grid, one cell per day with up to 2 appointment chips + a
+// "+N mehr" overflow marker (mirrors secretary.html's own Termine month
+// calendar, renderSecTermineCalendar) -- clicking a cell selects that day
+// (tuSelectDate(), same function Tag/Woche already use) without leaving
+// Monat view, so the detail list below just updates in place.
+function renderTuCalGrid(mine){
+  const gridEl=document.getElementById('tuCalGrid');
+  if(!gridEl) return;
+  if(tuCalYear===null){
+    const selD=new Date(tuSelectedDate+'T00:00:00');
+    tuCalYear=selD.getFullYear(); tuCalMonth=selD.getMonth();
+  }
+  const year=tuCalYear, month=tuCalMonth;
+  const byDate={};
+  mine.forEach(t=>{ (byDate[t.date]=byDate[t.date]||[]).push(t); });
+  const firstDay=new Date(year,month,1);
+  const startOffset=(firstDay.getDay()+6)%7; // Monday-first, matches TU_DOW_MINI
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const totalCells=Math.ceil((startOffset+daysInMonth)/7)*7;
+  const todayS=todayStr();
+  let cells='';
+  for(let i=0;i<totalCells;i++){
+    const cellDate=new Date(year,month,i-startOffset+1); // JS normalizes over/underflow into neighboring months
+    const ds=tuDateStr(cellDate);
+    const outside=cellDate.getMonth()!==month;
+    const dayTermine=(byDate[ds]||[]).filter(t=>t.status!=='abgesagt').sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+    const chips=dayTermine.slice(0,2).map(t=>`<div class="tu-cal-day-chip${t.status==='bestaetigt'?' confirmed':' pending'}">${t.time} ${escapeHtml((t.patient||'').split(' ')[0])}</div>`).join('');
+    const more=dayTermine.length>2?`<div class="tu-cal-day-more">+${dayTermine.length-2} mehr</div>`:'';
+    const count=dayTermine.length?`<div class="tu-cal-day-count">${dayTermine.length}</div>`:'';
+    cells+=`<div class="tu-cal-day${outside?' outside':''}${ds===todayS?' today':''}${ds===tuSelectedDate?' selected':''}" onclick="tuSelectDate('${ds}')">
+      <div class="tu-cal-day-num">${cellDate.getDate()}</div>
+      ${chips}${more}${count}
+    </div>`;
+  }
+  const dowRow=TU_DOW_MINI.map(d=>`<div class="tu-cal-dow">${d}</div>`).join('');
+  gridEl.innerHTML=dowRow+cells;
+}
 function renderTuMiniCal(){
   const el=document.getElementById('tuMiniCal');
   if(!el) return;
@@ -3826,6 +3932,12 @@ function renderTagesuhr(){
     if(tuViewMode==='woche'){
       const first=new Date(week[0]+'T00:00:00'), last=new Date(week[4]+'T00:00:00');
       dayLabelEl.textContent=first.getDate()+'.–'+last.getDate()+'. '+TU_MONTHS_DE[last.getMonth()]+' '+last.getFullYear();
+    } else if(tuViewMode==='monat'){
+      if(tuCalYear===null){
+        const selD=new Date(tuSelectedDate+'T00:00:00');
+        tuCalYear=selD.getFullYear(); tuCalMonth=selD.getMonth();
+      }
+      dayLabelEl.textContent=TU_MONTHS_DE[tuCalMonth]+' '+tuCalYear;
     } else {
       const d=new Date(tuSelectedDate+'T00:00:00');
       dayLabelEl.textContent=TU_DOW_DE[d.getDay()]+', '+d.getDate()+'. '+TU_MONTHS_DE[d.getMonth()]+' '+d.getFullYear();
@@ -3854,8 +3966,16 @@ function renderTagesuhr(){
   if(legendEl) legendEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptRowHtml).join('') : emptyHtml;
   const dayListEl=document.getElementById('tuDayList');
   if(dayListEl) dayListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
+  // Monat's detail panel below the month grid reuses the exact same cards
+  // (Start/Fertig controls included) as Tag view's tuDayList -- not a
+  // separate read-only summary.
+  const calDetailListEl=document.getElementById('tuCalDetailList');
+  if(calDetailListEl) calDetailListEl.innerHTML = dayAppts.length ? dayAppts.map(tuApptCardHtml).join('') : emptyHtml;
+  const calDetailTitleEl=document.getElementById('tuCalDetailTitle');
+  if(calDetailTitleEl) calDetailTitleEl.textContent=(tuSelectedDate===todayStr()?'Heute — ':'')+longDateDE(tuSelectedDate);
   renderTuSummary(dayAppts);
   renderTuWeekGrid(mine,week);
+  renderTuCalGrid(mine);
 }
 // Woche view: one column per work day, each independently scrollable
 // (capped height, own overflow-y) -- a busy day scrolls within its own
