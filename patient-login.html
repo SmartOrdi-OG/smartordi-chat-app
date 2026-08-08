@@ -738,6 +738,10 @@ function showAnamneseScreen(){
   const info=anamneseSpecialtyInfo(fach);
   document.getElementById('anamnese-specialty-title').textContent=info.html?tr(info.titleKey):'';
   document.getElementById('anamnese-specialty-section').innerHTML=info.html;
+  // Defensive, not load-bearing here (this screen always starts blank) -- keeps the
+  // Gesundheitsfragebogen's "Wenn ja, ..." fields in sync with their select's default value,
+  // same call kartei-anamnese.js makes after loading a returning patient's saved answers.
+  anGfbSyncAll(document.getElementById('anamnese-specialty-section'));
   // Every field here carries a stable data-key (see vendor/anamnese-shared.js)
   // that collectAnamneseData/applyAnamneseData read instead of the visible
   // label text, so translating the displayed labels/options below is safe --
