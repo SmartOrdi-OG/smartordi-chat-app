@@ -303,13 +303,22 @@ async function refreshPatients(){
   (data||[]).forEach(function(row){
     merged[row.username]=patientRowToJs(row,localAccounts);
   });
-  // Accounts that only exist locally so far (not yet uploaded/created in
-  // Supabase -- e.g. a not-yet-migrated legacy guardian/child pair from
-  // before supabase/phase28_guardian_child_accounts.sql) still need to show
-  // up exactly as they did before this migration.
-  Object.keys(localAccounts).forEach(function(u){
-    if(!merged[u]) merged[u]=localAccounts[u];
-  });
+  // Deliberately NOT merging in localAccounts entries this Supabase fetch
+  // didn't return (the old "not yet uploaded/created in Supabase" fallback,
+  // for a pre-phase28_guardian_child_accounts.sql legacy migration gap that
+  // has long since closed). Real incident (2026-08-08): smartordi_patient_
+  // accounts is a single browser-wide localStorage key with no practice_id
+  // scoping at all -- switching, on the SAME device, from a real practice's
+  // staff login to a different practice's (e.g. a freshly created Pilot
+  // account) left that other practice's own cached patients (full name +
+  // SVNR) sitting in localStorage, and this fallback blindly injected every
+  // one of them into _patients as if they belonged to the NEWLY logged-in
+  // practice -- a real cross-tenant PII leak, entirely client-side (Supabase/
+  // RLS itself was never wrong; this fetch above was already correctly
+  // scoped). Every patient the app depends on has a real Supabase row by
+  // now, so a username this practice's own fetch didn't return is either a
+  // stale cache from a DIFFERENT practice/session on this device, or a
+  // deleted patient -- never something safe to resurrect into the list.
   _patients=merged;
 }
 function loadPatients(){
@@ -336,9 +345,11 @@ async function fetchAllPatientsUnbounded(){
   (data||[]).forEach(function(row){
     merged[row.username]=patientRowToJs(row,localAccounts);
   });
-  Object.keys(localAccounts).forEach(function(u){
-    if(!merged[u]) merged[u]=localAccounts[u];
-  });
+  // Same cross-tenant leak as refreshPatients() above (see its comment) --
+  // this unbounded variant backs Vertretung/address-change broadcasts, so
+  // the stale-foreign-practice-account version of this bug was actually
+  // worse here: it could have sent a real message to a different practice's
+  // real patient using that patient's real cached id.
   return merged;
 }
 
