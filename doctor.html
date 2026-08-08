@@ -3924,12 +3924,25 @@ function renderTuCalGrid(mine){
 // once back on Tag/Woche.
 let _tuCalWindowOpen=false;
 function tuCalSelectDay(dateStr,evt){
-  // Captured before tuSelectDate() -> renderTagesuhr() rebuilds the grid's
-  // DOM -- the clicked cell itself may not survive the re-render, but its
-  // position at click time is all tuCalPositionWindow() needs.
+  // Captured before renderTagesuhr() rebuilds the grid's DOM -- the clicked
+  // cell itself may not survive the re-render, but its position at click
+  // time is all tuCalPositionWindow() needs.
   const rect=evt&&evt.currentTarget?evt.currentTarget.getBoundingClientRect():null;
   _tuCalWindowOpen=true;
-  tuSelectDate(dateStr);
+  // Sets tuSelectedDate directly instead of going through tuSelectDate()
+  // (which sets tuFollowingToday=true whenever the picked date happens to
+  // equal real "today") -- a real bug found via a failing Playwright run on
+  // a Saturday: Monat's day cells, unlike Tag/Woche's day-strip, are NOT
+  // restricted to weekdays, so clicking on an actual Sat/Sun (one that
+  // happens to be "today") turned auto-follow on, and renderTagesuhr()'s
+  // weekend-clamp (meant only for Tag/Woche's default/auto-refresh view)
+  // then silently swapped tuSelectedDate to the following Monday -- so the
+  // floating window opened next to the Saturday cell the doctor actually
+  // clicked, but showed Monday's appointments instead. Clicking a specific
+  // Monat day cell should always mean exactly that day, full stop.
+  tuSelectedDate=dateStr;
+  tuFollowingToday=false;
+  renderTagesuhr();
   if(rect) tuCalPositionWindow(rect);
 }
 // Opens next to whichever day cell was actually clicked (same approach as
