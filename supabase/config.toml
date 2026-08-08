@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.create-billing-portal-session]
 verify_jwt = false
+
+# Clicked directly by a browser from an email link (top-level navigation,
+# no fetch/XHR) -- there is no Authorization/JWT on this request at all, so
+# Supabase's platform-level JWT gate would reject every real call with a
+# plain 401 before pilot-login/index.ts's own token check ever runs. The
+# ?token= query param IS this function's actual authorization check (see
+# its own header comment).
+[functions.pilot-login]
+verify_jwt = false
