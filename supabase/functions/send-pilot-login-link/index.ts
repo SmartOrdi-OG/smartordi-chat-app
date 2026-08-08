@@ -66,13 +66,13 @@ Deno.serve(async (req: Request) => {
   }
   if (!RESEND_API_KEY) return json({ error: "not_configured" }, 500);
 
-  let body: { staffId?: string; days?: number };
+  let body: { staffId?: string; days?: number; sendTo?: string };
   try {
     body = await req.json();
   } catch {
     return json({ error: "invalid_json" }, 400);
   }
-  const { staffId } = body;
+  const { staffId, sendTo } = body;
   if (!staffId) return json({ error: "missing_staff_id" }, 400);
   const days = Math.min(30, Math.max(1, Number(body.days) || 14));
 
@@ -81,7 +81,14 @@ Deno.serve(async (req: Request) => {
   const { data: staff, error: staffErr } = await admin
     .from("staff_profiles").select("id, vorname, nachname, email, practice_id").eq("id", staffId).maybeSingle();
   if (staffErr || !staff) return json({ error: "staff_not_found" }, 404);
-  if (!staff.email) return json({ error: "staff_has_no_email" }, 400);
+
+  // staff.email is the Supabase Auth login identifier (see phase53_pilot_account_setup.sql --
+  // deliberately a made-up address, "nicht die der Pilot-Person"), not necessarily an inbox
+  // anyone reads. sendTo lets the caller point the ACTUAL magic-link email at the Pilot-Person's
+  // real, receivable address instead. Falls back to staff.email for the normal case where staff
+  // really did register with their own real email.
+  const recipient = sendTo || staff.email;
+  if (!recipient) return json({ error: "staff_has_no_email" }, 400);
 
   const { data: practice } = await admin
     .from("practices").select("name").eq("id", staff.practice_id).maybeSingle();
@@ -103,7 +110,7 @@ Deno.serve(async (req: Request) => {
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: RESEND_FROM_EMAIL,
-      to: [staff.email],
+      to: [recipient],
       subject: "Ihr Zugang zu SmartOrdi",
       html: emailHtml(fullName || "Sie", practice?.name || "Ihre Praxis", loginUrl, days),
     }),
