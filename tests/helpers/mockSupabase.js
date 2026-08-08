@@ -366,7 +366,17 @@ function mockScript(seed) {
           signOut: () => Promise.resolve({ error: null }),
           updateUser: () => Promise.resolve({ data: {}, error: null }),
           getUser: () => Promise.resolve({ data: { user: null }, error: null }),
-          onAuthStateChange() {},
+          // Captures the callback instead of a true no-op so a test can
+          // simulate a real Supabase auth event (e.g. the pilot-login
+          // magic-link SIGNED_IN callback in login.html) via
+          // window.__authStateChangeCallback('SIGNED_IN', {user:{id:...}}).
+          // Never auto-invoked by this mock itself -- no existing test
+          // relied on this firing, so this stays a no-op unless a test
+          // opts in explicitly.
+          onAuthStateChange(cb) {
+            window.__authStateChangeCallback = cb;
+            return { data: { subscription: { unsubscribe() {} } } };
+          },
           // Mirrors whatever sessionStorage.smartordi_user the test itself
           // set up (read lazily, at call time, since installMockSupabase's
           // extraInit callback -- which is what actually sets that key --

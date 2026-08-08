@@ -278,6 +278,13 @@ body{
 </div>
 
 <script>
+// Read BEFORE anything async (Supabase Auth's own detectSessionInUrl
+// handling) has a chance to strip it off the visible URL -- lets the
+// onAuthStateChange handler below tell a Pilot-Konto passwordless login
+// (supabase/functions/pilot-login) apart from an ordinary doLogin()
+// password sign-in, which also fires a plain SIGNED_IN event.
+const isPilotMagicLinkCallback=window.location.hash.includes('type=magiclink');
+
 function togglePw(){
   const i=document.getElementById('password');
   const b=document.getElementById('togglePwBtn');
@@ -369,15 +376,33 @@ async function sendPasswordResetLink(){
 // Supabase redirects back here after the email link is clicked, with a
 // recovery session already established (#access_token=...&type=recovery in
 // the URL) -- onAuthStateChange fires PASSWORD_RECOVERY once it's parsed.
-sb.auth.onAuthStateChange((event)=>{
+// A Pilot-Konto's passwordless login link (supabase/functions/pilot-login)
+// lands back here the same way, except with type=magiclink -- Supabase
+// fires plain SIGNED_IN for that (the same event a normal doLogin()
+// password sign-in also fires), so isPilotMagicLinkCallback is what tells
+// the two apart.
+sb.auth.onAuthStateChange((event,session)=>{
   if(event==='PASSWORD_RECOVERY'){
     document.getElementById('normalLoginForm').style.display='none';
     document.getElementById('forgotPwForm').style.display='none';
     document.getElementById('inviteForm').style.display='none';
     document.getElementById('recoveryForm').style.display='block';
     document.getElementById('recoveryPw').focus();
+  }else if(event==='SIGNED_IN'&&isPilotMagicLinkCallback){
+    handlePilotMagicLinkSignIn(session);
   }
 });
+async function handlePilotMagicLinkSignIn(session){
+  if(!session||!session.user)return;
+  const {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',session.user.id).single();
+  if(profileError||!profile){
+    document.getElementById('errorText').textContent='Kein Praxisprofil für dieses Konto gefunden.';
+    document.getElementById('errorMsg').classList.add('show');
+    return;
+  }
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:session.user.id,isAdmin:!!profile.is_admin}));
+  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
+}
 async function submitRecoveryPassword(){
   const pw=document.getElementById('recoveryPw').value;
   const confirmPw=document.getElementById('recoveryPwConfirm').value;
