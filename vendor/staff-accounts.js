@@ -272,9 +272,9 @@ function getPracticeSettings(){
 const PLAN_FEATURES = {
   standard: {
     label:'Standard', price:'€149', billingPeriod:'Monat',
-    patientLimit:500, uploadMaxBytes:8*1024*1024,
+    patientLimit:250, uploadMaxBytes:8*1024*1024,
     rezeptImpfung:true, sekretaerin:true,
-    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 500 Patienten','Chat, Kartei, Rezept & Impfpass','Uploads bis 8 MB'],
+    bullets:['Ärzte & Sekretär/innen: unbegrenzt','Bis 250 Patienten','Chat, Kartei, Rezept & Impfpass','Uploads bis 8 MB'],
   },
   enterprise: {
     label:'Enterprise', price:'€349', billingPeriod:'Monat',

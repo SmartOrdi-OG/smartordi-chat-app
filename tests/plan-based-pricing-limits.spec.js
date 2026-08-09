@@ -2,10 +2,12 @@
 // moved from doctor.html into vendor/staff-accounts.js (so secretary.html
 // can enforce it too) and changed from a 3-tier Basic/Pro/Enterprise
 // lineup (with no real enforcement anywhere) into 2 tiers -- Standard
-// (500-patient cap, 8 MB uploads) and Enterprise (unlimited patients,
+// (250-patient cap, 8 MB uploads) and Enterprise (unlimited patients,
 // 25 MB uploads, plus an Enterprise-only annual billing option. Found in
 // a pricing audit that the old "Bis 500 Patienten"/"max. 8 MB" bullet
 // text never actually blocked anything: no cap existed in code at all.
+// (Standard's cap was lowered from 500 to 250 on 2026-08-09, before any
+// real practice had subscribed, to create a clearer upgrade incentive.)
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -55,9 +57,9 @@ async function setupDoctorPage(page, plan, extraSeed) {
   });
 }
 
-test.describe('Standard plan: 500-patient cap enforcement', () => {
+test.describe('Standard plan: 250-patient cap enforcement', () => {
   test('confirmNewPatient() is blocked once the cap is reached, no new row is created', async ({ page }) => {
-    await setupSecretaryPage(page, 'standard', { patients: manyPatients(500) });
+    await setupSecretaryPage(page, 'standard', { patients: manyPatients(250) });
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
     await page.fill('#npNachname', 'Patient');
@@ -67,11 +69,11 @@ test.describe('Standard plan: 500-patient cap enforcement', () => {
       return { toastText: document.getElementById('toast')?.textContent || '', count: window.__store.patients.length };
     });
     expect(result.toastText).toContain('Patientenlimit');
-    expect(result.count, 'no new patient row should have been created past the cap').toBe(500);
+    expect(result.count, 'no new patient row should have been created past the cap').toBe(250);
   });
 
-  test('confirmNewPatient() still works exactly at the cap boundary (the 500th patient)', async ({ page }) => {
-    await setupSecretaryPage(page, 'standard', { patients: manyPatients(499) });
+  test('confirmNewPatient() still works exactly at the cap boundary (the 250th patient)', async ({ page }) => {
+    await setupSecretaryPage(page, 'standard', { patients: manyPatients(249) });
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
     await page.fill('#npNachname', 'Patient');
@@ -80,13 +82,13 @@ test.describe('Standard plan: 500-patient cap enforcement', () => {
       await new Promise(r => setTimeout(r, 100));
       return { count: window.__store.patients.length, created: window.__store.patients.find(p => p.full_name === 'Neuer Patient') };
     });
-    expect(result.count).toBe(500);
-    expect(result.created, 'the 500th patient must still be allowed in').toBeTruthy();
+    expect(result.count).toBe(250);
+    expect(result.created, 'the 250th patient must still be allowed in').toBeTruthy();
   });
 
   test('approveJoinRequest() is blocked once the cap is reached; the request stays pending', async ({ page }) => {
     await setupSecretaryPage(page, 'standard', {
-      patients: manyPatients(500),
+      patients: manyPatients(250),
       patient_join_requests: [{ id: 'jr1', username: 'neuer.patient', vorname: 'Neuer', full_name: 'Neuer Patient', adresse: 'Musterstr 1', svnr: '1234567890', pw_hash: 'hash', status: 'pending', submitted_at: '2026-07-01T10:00:00Z' }],
     });
     const result = await page.evaluate(async () => {
@@ -105,7 +107,7 @@ test.describe('Standard plan: 500-patient cap enforcement', () => {
 });
 
 test.describe('Enterprise plan: no patient cap', () => {
-  test('confirmNewPatient() succeeds well past the Standard plan\'s 500-patient threshold', async ({ page }) => {
+  test('confirmNewPatient() succeeds well past the Standard plan\'s 250-patient threshold', async ({ page }) => {
     await setupSecretaryPage(page, 'enterprise', { patients: manyPatients(600) });
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
@@ -122,11 +124,11 @@ test.describe('Enterprise plan: no patient cap', () => {
 test.describe('CSV bulk import respects the patient cap mid-batch', () => {
   test('stops creating NEW patients once the cap is hit, but still updates an existing matched patient in the same import', async ({ page }) => {
     await setupSecretaryPage(page, 'standard', {
-      patients: manyPatients(499).concat([
+      patients: manyPatients(249).concat([
         { id: 'existing-p1', username: 'josef.bauer', full_name: 'Josef Bauer', name: 'Josef', svnr: '4567180452', dob: '1952-04-18', join_status: 'approved' },
       ]),
     });
-    // 499 pre-existing + Josef = 500, already AT the cap. Row 1 (new
+    // 249 pre-existing + Josef = 250, already AT the cap. Row 1 (new
     // patient) must therefore be rejected immediately -- there is no
     // remaining slot at all. Row 2 (also new) must likewise be skipped.
     // Row 3 matches the already-existing Josef Bauer by SVNr -- an UPDATE,
@@ -156,9 +158,9 @@ test.describe('CSV bulk import respects the patient cap mid-batch', () => {
   });
 
   test('a bulk import that only crosses the cap partway through still creates patients up to the limit', async ({ page }) => {
-    await setupSecretaryPage(page, 'standard', { patients: manyPatients(499) });
-    // Exactly one remaining slot: row 1 must be created (patient #500), row
-    // 2 must be rejected (would be #501).
+    await setupSecretaryPage(page, 'standard', { patients: manyPatients(249) });
+    // Exactly one remaining slot: row 1 must be created (patient #250), row
+    // 2 must be rejected (would be #251).
     const csv = 'Vorname,Nachname\nErste,Neue\nZweite,Neue';
     const result = await page.evaluate(async (csvText) => {
       await patientsReady;
