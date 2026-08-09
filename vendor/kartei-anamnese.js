@@ -69,9 +69,20 @@ function loadAnamneseForPatient(name){
   // untouched instead of being blanked out as a side effect of this reset.
   const root=document.getElementById('anamnese-collapse-body');
   root.querySelectorAll('input,select,textarea').forEach(el=>{
-    if(el.type==='checkbox') el.checked=false; else el.value='';
+    if(el.type==='checkbox') el.checked=false;
+    // A <select> whose options are all non-empty (every Gesundheitsfragebogen Ja/Nein
+    // toggle, plus an.kind.geburtsart, an.gyn.menopause, an.card.schrittmacher, etc.) has
+    // no option with value="" -- setting .value='' on those leaves selectedIndex at -1
+    // (nothing shown as selected) instead of resetting to the field's actual default.
+    // selectedIndex=0 always lands back on the first, intended-default <option>.
+    else if(el.tagName==='SELECT') el.selectedIndex=0;
+    else el.value='';
   });
   if(account && account.anamnese) applyAnamneseData(root,account.anamnese);
+  // applyAnamneseData only sets .value on the Gesundheitsfragebogen selects (Allgemeinmedizin/
+  // Kinderheilkunde) -- it never touches the sibling "Wenn ja, ..." field's display:none, so a
+  // returning patient's saved "Ja" answer would otherwise load with its detail text hidden.
+  anGfbSyncAll(root);
 }
 
 function updateAnamneseByFach(fach){

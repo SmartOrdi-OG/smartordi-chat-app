@@ -45,44 +45,53 @@ begin
   end if;
 
   -- ── Patienten ──────────────────────────────────────────────
+  -- Usernames are prefixed "pilot-" -- patients.username is UNIQUE across
+  -- the ENTIRE database, not just this practice (see phase1_patients_
+  -- termine_messages.sql), so a plain, realistic-looking name like
+  -- "anna.berger" can genuinely collide with an already-existing real
+  -- patient at a completely different, unrelated practice (found live: a
+  -- real "duplicate key value violates unique constraint
+  -- patients_username_key" on anna.berger while seeding an unrelated
+  -- Pilot practice). Prefixing guarantees this demo seed can never collide
+  -- with any real customer's data, for this or any future pilot run.
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('lukas.wagner','Lukas','Lukas Wagner','1985-03-12','Hauptstraße 12, 1010 Wien','+43 660 1234501','lukas.wagner@example.at','ÖGK','1234 120385',v_practice_id)
+  values ('pilot-lukas.wagner','Lukas','Lukas Wagner','1985-03-12','Hauptstraße 12, 1010 Wien','+43 660 1234501','lukas.wagner@example.at','ÖGK','1234 120385',v_practice_id)
   returning id into v_p_wagner;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('anna.berger','Anna','Anna Berger','1990-07-22','Bahnhofgasse 4, 4020 Linz','+43 660 1234502','anna.berger@example.at','ÖGK','2234 220790',v_practice_id)
+  values ('pilot-anna.berger','Anna','Anna Berger','1990-07-22','Bahnhofgasse 4, 4020 Linz','+43 660 1234502','anna.berger@example.at','ÖGK','2234 220790',v_practice_id)
   returning id into v_p_berger;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('felix.steiner','Felix','Felix Steiner','1978-11-05','Ringstraße 9, 8010 Graz','+43 660 1234503','felix.steiner@example.at','BVAEB','3234 051178',v_practice_id)
+  values ('pilot-felix.steiner','Felix','Felix Steiner','1978-11-05','Ringstraße 9, 8010 Graz','+43 660 1234503','felix.steiner@example.at','BVAEB','3234 051178',v_practice_id)
   returning id into v_p_steiner;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('sophie.huber','Sophie','Sophie Huber','2001-02-14','Kirchplatz 2, 5020 Salzburg','+43 660 1234504','sophie.huber@example.at','SVS','4234 140201',v_practice_id)
+  values ('pilot-sophie.huber','Sophie','Sophie Huber','2001-02-14','Kirchplatz 2, 5020 Salzburg','+43 660 1234504','sophie.huber@example.at','SVS','4234 140201',v_practice_id)
   returning id into v_p_huber;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('paul.gruber','Paul','Paul Gruber','1965-09-30','Marktgasse 15, 6020 Innsbruck','+43 660 1234505','paul.gruber@example.at','ÖGK','5234 300965',v_practice_id)
+  values ('pilot-paul.gruber','Paul','Paul Gruber','1965-09-30','Marktgasse 15, 6020 Innsbruck','+43 660 1234505','paul.gruber@example.at','ÖGK','5234 300965',v_practice_id)
   returning id into v_p_gruber;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('mia.winkler','Mia','Mia Winkler',(current_date - interval '110 days')::date,'Wiesenweg 3, 1210 Wien','+43 660 1234506','eltern.winkler@example.at','ÖGK','6234 000000',v_practice_id)
+  values ('pilot-mia.winkler','Mia','Mia Winkler',(current_date - interval '110 days')::date,'Wiesenweg 3, 1210 Wien','+43 660 1234506','eltern.winkler@example.at','ÖGK','6234 000000',v_practice_id)
   returning id into v_p_winkler;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('noah.bauer','Noah','Noah Bauer',v_bauer_dob,'Feldweg 8, 2340 Mödling','+43 660 1234507','eltern.bauer@example.at','ÖGK','7234 000001',v_practice_id)
+  values ('pilot-noah.bauer','Noah','Noah Bauer',v_bauer_dob,'Feldweg 8, 2340 Mödling','+43 660 1234507','eltern.bauer@example.at','ÖGK','7234 000001',v_practice_id)
   returning id into v_p_bauer;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('emma.fischer','Emma','Emma Fischer','1993-12-08','Lindenallee 21, 4600 Wels','+43 660 1234508','emma.fischer@example.at','ÖGK','8234 081293',v_practice_id)
+  values ('pilot-emma.fischer','Emma','Emma Fischer','1993-12-08','Lindenallee 21, 4600 Wels','+43 660 1234508','emma.fischer@example.at','ÖGK','8234 081293',v_practice_id)
   returning id into v_p_fischer;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('jakob.maier','Jakob','Jakob Maier','1950-04-17','Dorfstraße 6, 3100 St. Pölten','+43 660 1234509','jakob.maier@example.at','ÖGK','9234 170450',v_practice_id)
+  values ('pilot-jakob.maier','Jakob','Jakob Maier','1950-04-17','Dorfstraße 6, 3100 St. Pölten','+43 660 1234509','jakob.maier@example.at','ÖGK','9234 170450',v_practice_id)
   returning id into v_p_maier;
 
   insert into patients (username, name, full_name, dob, adresse, tel, email, versicherung, svnr, practice_id)
-  values ('laura.koenig','Laura','Laura König','1988-06-25','Gartenweg 11, 9020 Klagenfurt','+43 660 1234510','laura.koenig@example.at','BVAEB','1334 250688',v_practice_id)
+  values ('pilot-laura.koenig','Laura','Laura König','1988-06-25','Gartenweg 11, 9020 Klagenfurt','+43 660 1234510','laura.koenig@example.at','BVAEB','1334 250688',v_practice_id)
   returning id into v_p_koenig;
 
   -- ── Termine ────────────────────────────────────────────────

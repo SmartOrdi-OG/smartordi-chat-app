@@ -55,7 +55,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
 ]) as t
 
 union all
@@ -81,7 +81,7 @@ from unnest(array[
   'anonymize_practice','run_scheduled_practice_deletions',
   'flag_expired_unpaid_trials',
   'patient_get_booking_enabled','patient_get_staff_roster',
-  'public_get_practice_join_info'
+  'public_get_practice_join_info','record_consent'
 ]) as f
 
 union all
@@ -299,7 +299,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
 ]) as t
 
 union all
@@ -309,10 +309,15 @@ union all
 -- silently breaks every feature that touches this table. guardian_active_
 -- child is a deliberate, documented exception (phase31_patient_auth.sql):
 -- it's reachable ONLY from inside SECURITY DEFINER functions, by design,
--- with zero policies on purpose.
+-- with zero policies on purpose. staff_pilot_login_links is the same kind
+-- of exception, for the same reason (phase60_pilot_login_links.sql):
+-- reachable ONLY via the service-role key inside the pilot-login/
+-- send-pilot-login-link Edge Functions, never by any authenticated/anon
+-- client role.
 select 'RLS policy exists' as check_type, t as name,
   case
     when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
+    when t='staff_pilot_login_links' then 'N/A -- intentionally zero policies (service-role Edge Functions only, see phase60_pilot_login_links.sql)'
     when exists (select 1 from pg_policies where schemaname='public' and tablename=t) then 'OK'
     else 'MISSING -- RLS is enabled but has zero policies -- this table is completely inaccessible to every real caller, likely breaking whatever feature reads/writes it'
   end as status
@@ -322,7 +327,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
 ]) as t
 
 union all
@@ -344,6 +349,7 @@ union all
 select 'RLS actually scopes access' as check_type, t as name,
   case
     when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
+    when t='staff_pilot_login_links' then 'N/A -- intentionally zero policies (service-role Edge Functions only, see phase60_pilot_login_links.sql)'
     when t='client_error_log' then 'N/A -- insert-only with a deliberately unscoped with_check; scoping is enforced by the trg_set_practice_id trigger, not this policy (see phase46_client_error_log.sql)'
     when not exists (select 1 from pg_policies where schemaname='public' and tablename=t)
       then 'MISSING (see the RLS policy exists check above)'
@@ -360,7 +366,7 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
 ]) as t
 
 order by check_type, name;

@@ -58,6 +58,79 @@ const ANAMNESE_COMMON_HTML = `
   </div>
 `;
 
+// Gesundheitsfragebogen -- 24 Ja/Nein-Screeningfragen (Medikamente, Vorerkrankungen,
+// Schwangerschaft, Rauchen usw.), 1:1 übernommen aus dem BVAEB-Anamnesebogen, auf
+// ausdrücklichen Wunsch aber NUR für Allgemeinmedizin + Kinderheilkunde eingebunden
+// (siehe SPECIALTY_ANAMNESE unten) -- die 3 rein zahnmedizinischen Fragen des
+// Originalbogens (Grund des Besuchs, letzte Kontrolle, Zahnfleischbluten) sind
+// bewusst NICHT übernommen, da es hier kein Zahnmedizin-Fachrichtung gibt.
+// Jede Frage ist ein <select> (Nein/Ja, gleiche Konvention wie z.B.
+// an.card.schrittmacher weiter unten) statt einer Checkbox, weil eine unbeantwortete
+// Checkbox nicht von einem echten "Nein" unterscheidbar wäre -- hier ist "Nein" die
+// Voreinstellung wie im Papierbogen auch. anGfbSync()/anGfbSyncAll() (unten in dieser
+// Datei) blenden das zugehörige "Wenn ja, ..."-Freitextfeld nur ein, wenn "Ja"
+// gewählt ist -- inklusive beim Laden bereits gespeicherter Antworten (applyAnamneseData
+// setzt nur .value, nicht die Sichtbarkeit -- siehe loadAnamneseForPatient()).
+function anGfbRow(key, question, followupPlaceholderKey, followupPlaceholderText){
+  const followup = followupPlaceholderKey ? `
+      <input class="k-form-input gfb-wennja" data-key="${key}.detail" placeholder="${followupPlaceholderText}" data-i18n-ph="${followupPlaceholderKey}" style="display:none;margin-top:6px;">` : '';
+  return `
+    <div class="gfb-q" style="padding:7px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+        <span style="font-size:12px;color:#334155;flex:1;" data-i18n="${key}">${question}</span>
+        <select class="k-form-input" data-key="${key}" style="width:84px;flex-shrink:0;" onchange="anGfbSync(this)">
+          <option value="Nein" data-i18n="an.gfb.nein">Nein</option>
+          <option value="Ja" data-i18n="an.gfb.ja">Ja</option>
+        </select>
+      </div>${followup}
+    </div>`;
+}
+const ANAMNESE_GESUNDHEITSFRAGEBOGEN_HTML = `
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:700;color:#4f46e5;margin-bottom:6px;" data-i18n="an.gfb.section.title">Gesundheitsfragebogen</div>
+    ${anGfbRow('an.gfb.medikamente','Nehmen Sie Medikamente ein?','an.gfb.medikamente.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.injektionen','Bekommen Sie regelmäßig Injektionen?','an.gfb.injektionen.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.allergie','Leiden Sie an einer Allergie oder Medikamentenunverträglichkeit?','an.gfb.allergie.detail.ph','Wenn ja, an welcher?')}
+    ${anGfbRow('an.gfb.infektion','Leiden oder litten Sie an einer Infektionskrankheit (z.B. Hepatitis, Tuberkulose, HIV/AIDS)?','an.gfb.infektion.detail.ph','Wenn ja, an welcher?')}
+    ${anGfbRow('an.gfb.diabetes','Leiden oder litten Sie an Diabetes mellitus (Zuckerkrankheit)?')}
+    ${anGfbRow('an.gfb.osteoporose','Leiden oder litten Sie an Osteoporose?')}
+    ${anGfbRow('an.gfb.schwanger','Sind Sie oder könnten Sie schwanger sein?')}
+    ${anGfbRow('an.gfb.stillen','Stillen Sie derzeit?')}
+    ${anGfbRow('an.gfb.epilepsie','Leiden oder litten Sie an Epilepsie?')}
+    ${anGfbRow('an.gfb.blutungsneigung','Haben Sie eine angeborene Blutungsneigung oder nehmen Sie blutverdünnende Medikamente ein?','an.gfb.blutungsneigung.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.atemwege','Leiden oder litten Sie an einer Atemwegserkrankung (z.B. Asthma, COPD)?','an.gfb.atemwege.detail.ph','Wenn ja, an welcher?')}
+    ${anGfbRow('an.gfb.rauchen','Rauchen Sie?','an.gfb.rauchen.detail.ph','Wenn ja, wieviel pro Tag?')}
+    ${anGfbRow('an.gfb.herzkreislauf','Haben Sie eine Erkrankung des Herz-Kreislauf-Systems?','an.gfb.herzkreislauf.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.schrittmacher','Tragen Sie einen Herzschrittmacher?')}
+    ${anGfbRow('an.gfb.augen','Haben Sie eine Erkrankung der Augen (z.B. Glaukom)?','an.gfb.augen.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.schilddruese','Haben Sie eine Erkrankung der Schilddrüse?','an.gfb.schilddruese.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.nieren','Haben Sie eine Erkrankung der Nieren?','an.gfb.nieren.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.verdauung','Haben Sie eine Erkrankung der Verdauungsorgane?','an.gfb.verdauung.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.tumor','Haben oder hatten Sie eine Tumorerkrankung/Chemo- oder Strahlentherapie?','an.gfb.tumor.detail.ph','Wenn ja, wann?')}
+    ${anGfbRow('an.gfb.operation','Hatten Sie kürzlich eine Operation?','an.gfb.operation.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.autoimmun','Leiden Sie an einer Autoimmunerkrankung?','an.gfb.autoimmun.detail.ph','Wenn ja, an welcher?')}
+    ${anGfbRow('an.gfb.immunschwaeche','Haben Sie eine Immunschwäche?')}
+    ${anGfbRow('an.gfb.psychisch','Leiden Sie an einer Erkrankung des Nervensystems oder liegt eine psychische Erkrankung vor?','an.gfb.psychisch.detail.ph','Wenn ja, welche?')}
+    ${anGfbRow('an.gfb.schlaganfall','Hatten Sie im vergangenen Jahr einen Schlaganfall?')}
+  </div>
+`;
+// Reveals/hides one question's "Wenn ja, ..." field based on its own select's value --
+// bound via onchange="anGfbSync(this)" on every <select> ANAMNESE_GESUNDHEITSFRAGEBOGEN_HTML
+// renders. Scoped via .closest('.gfb-q') rather than a fixed DOM offset so row markup can
+// change without this breaking.
+function anGfbSync(selectEl){
+  const q = selectEl.closest('.gfb-q');
+  const field = q && q.querySelector('.gfb-wennja');
+  if(field) field.style.display = selectEl.value === 'Ja' ? 'block' : 'none';
+}
+// Re-syncs every Gesundheitsfragebogen field's visibility against its current (just-loaded)
+// value -- needed after applyAnamneseData() populates a returning patient's saved "Ja"
+// answers, since that only sets .value, never the sibling field's display:none.
+function anGfbSyncAll(root){
+  if(!root) return;
+  root.querySelectorAll('.gfb-q select').forEach(anGfbSync);
+}
+
 const SPECIALTY_ANAMNESE = {
   'Kinderheilkunde': {
     label: 'Pädiatrie — Kinderheilkunde',
@@ -88,7 +161,13 @@ const SPECIALTY_ANAMNESE = {
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" data-key="an.kind.sprachtherapie" style="accent-color:#16a34a;"><span data-i18n="an.kind.sprachtherapie">Sprachtherapie</span></label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" data-key="an.kind.ergotherapie" style="accent-color:#16a34a;"><span data-i18n="an.kind.ergotherapie">Ergotherapie</span></label>
         </div>
-      </div>`
+      </div>
+      ${ANAMNESE_GESUNDHEITSFRAGEBOGEN_HTML}`
+  },
+  'Allgemeinmedizin': {
+    label: 'Allgemeinmedizin',
+    titleKey: 'an.specialty.title.allgemeinmedizin',
+    html: ANAMNESE_GESUNDHEITSFRAGEBOGEN_HTML
   },
   'Gynäkologie': {
     label: 'Gynäkologie & Geburtshilfe',

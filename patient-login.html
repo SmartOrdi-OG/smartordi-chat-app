@@ -70,15 +70,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 .k-form-input{width:100%;padding:9px 12px;border:1.5px solid #C7D7F5;border-radius:9px;font-family:inherit;font-size:12px;color:var(--slate);outline:none;transition:all 0.15s;background:var(--blue-light);}
 .k-form-input:focus{border-color:#1e40af;background:white;box-shadow:0 0 0 3px rgba(30,64,175,0.12);}
 .anamnese-specialty-title{font-size:12px;font-weight:700;color:var(--teal-dark);margin:4px 0 10px;text-transform:uppercase;letter-spacing:0.5px;}
-
-@media(prefers-color-scheme:dark){
-  body{background:#0f172a;}
-  .card{background:#1e293b;border-radius:16px;padding:24px;}
-  .change-pw-title,.k-label,.k-form-label{color:#e2e8f0;}
-  .change-pw-sub,.pw-strength-label{color:#94a3b8;}
-  .form-input,.k-form-input{background:#0f172a;border-color:#334155;color:#e2e8f0;}
-  .notice{background:#1e293b;border-color:#334155;color:#93c5fd;}
-}
 </style>
 </head>
 <body>
@@ -629,6 +620,23 @@ async function submitJoinRequest(){
     return;
   }
 
+  // supabase/phase59_consent_records.sql -- the "reqAgb" checkbox above
+  // only ever gated this submit button; the actual "yes, I agreed" moment
+  // was never written anywhere. record_consent() is the real, timestamped,
+  // append-only evidence (a Database Webhook on this table then emails the
+  // platform owner a copy -- see phase59's own header comment). Callable as
+  // the anon role, same as the patient_join_requests insert right above.
+  // Fire-and-forget: never blocks the "request sent" screen, and a failure
+  // here must not undo an already-submitted join request.
+  // POLICY_VERSION: keep in sync with datenschutz.html's own "Version"
+  // string whenever that page is revised.
+  const POLICY_VERSION='2.1';
+  sb.rpc('record_consent',{
+    p_practice_id:joinRequestPracticeId, p_consent_type:'patient_join_request',
+    p_full_name:fullName, p_email:null, p_policy_version:POLICY_VERSION,
+    p_user_agent:navigator.userAgent,
+  }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
+
   // No local bookkeeping needed anymore -- doLogin() now asks Supabase
   // directly (via check_join_request_status) whenever a username has no
   // patients row yet, so this device doesn't need its own copy of the
@@ -730,6 +738,10 @@ function showAnamneseScreen(){
   const info=anamneseSpecialtyInfo(fach);
   document.getElementById('anamnese-specialty-title').textContent=info.html?tr(info.titleKey):'';
   document.getElementById('anamnese-specialty-section').innerHTML=info.html;
+  // Defensive, not load-bearing here (this screen always starts blank) -- keeps the
+  // Gesundheitsfragebogen's "Wenn ja, ..." fields in sync with their select's default value,
+  // same call kartei-anamnese.js makes after loading a returning patient's saved answers.
+  anGfbSyncAll(document.getElementById('anamnese-specialty-section'));
   // Every field here carries a stable data-key (see vendor/anamnese-shared.js)
   // that collectAnamneseData/applyAnamneseData read instead of the visible
   // label text, so translating the displayed labels/options below is safe --
