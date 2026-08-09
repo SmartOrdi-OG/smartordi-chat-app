@@ -29,9 +29,11 @@ test('the topbar shows the app brand and "Ordination <doctor name>", even when p
   const state = await page.evaluate(() => ({
     brandText: document.querySelector('.topbar-brand-name').textContent,
     practiceNameText: document.getElementById('topbarPracticeName').textContent,
+    logoSrc: document.querySelector('.topbar-brand img.topbar-logo').getAttribute('src'),
   }));
-  expect(state.brandText).toBe('Smartordi IT System.');
+  expect(state.brandText).toBe('smartordi.chat');
   expect(state.practiceNameText).toBe('Ordination Dr. Sarah Ahmed');
+  expect(state.logoSrc).toBe('logo-icon.png');
 });
 
 test('a different doctor\'s own name is reflected in the topbar label, independent of whatever practices.name holds', async ({ page }) => {
@@ -54,8 +56,9 @@ test('a different doctor\'s own name is reflected in the topbar label, independe
 // topbar treatment on request (2026-08-06) -- a secretary isn't the doctor
 // themselves, so this is built from practiceAdminName() (the practice's
 // admin arzt, already used elsewhere in this file for the same purpose)
-// rather than the logged-in secretary's own name.
-test('secretary.html topbar shows "Smartordi IT System" and "Ordination <the practice\'s admin doctor>"', async ({ page }) => {
+// rather than the logged-in secretary's own name. Brand text/logo unified
+// with doctor.html to "smartordi.chat" + logo-icon.png on request (2026-08-09).
+test('secretary.html topbar shows "smartordi.chat" and "Ordination <the practice\'s admin doctor>"', async ({ page }) => {
   await installMockSupabase(page, {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
     practice_settings: [{ id: true }],
@@ -74,7 +77,7 @@ test('secretary.html topbar shows "Smartordi IT System" and "Ordination <the pra
     practiceNameText: document.getElementById('topbarPracticeName').textContent,
     logoSrc: document.querySelector('.topbar-logo img').getAttribute('src'),
   }));
-  expect(state.brandText).toContain('Smartordi IT System');
+  expect(state.brandText).toContain('smartordi.chat');
   expect(state.practiceNameText).toBe('Ordination Dr. Sarah Ahmed');
   expect(state.logoSrc).toBe('logo-icon.png');
 });
