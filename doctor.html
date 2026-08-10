@@ -2829,6 +2829,23 @@ body.windows-mode #karteiBtn{display:none;}
       <div class="dash-card-header"><span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0E5E56;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Praxisprofil</span></div>
       <div class="dash-card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div>
+          <!-- supabase/phase11_multi_tenant_schema.sql's original migration
+               hardcoded every pre-existing practice's `practices.name` to
+               the literal placeholder 'Ordination' (never the doctor's own
+               choice), and register.html only ever writes this field once,
+               at signup -- there was no way to fix/set it afterward. This is
+               exactly what patient-login.html's QR "Mit Ordination
+               verbinden" screen shows (public_get_practice_join_info() reads
+               practices.name directly), so a stale/placeholder value there
+               was permanent until now. -->
+          <label style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0E5E56;flex-shrink:0;"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>Name der Praxis</label>
+          <div style="position:relative;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+            <input type="text" id="setPraxisName" value="" placeholder="z. B. Ordination Dr. Muster" style="width:100%;padding:9px 12px 9px 34px !important;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:15px;outline:none;" onfocus="this.style.borderColor='#0E5E56'" onblur="this.style.borderColor='#e2e8f0'" onchange="saveSinglePracticeField(this,'name')">
+          </div>
+          <div style="font-size:12.5px;color:#94a3b8;margin-top:5px;">Dieser Name wird Patient:innen z. B. beim Verbinden per QR-Code angezeigt.</div>
+        </div>
+        <div>
           <label style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;display:flex;align-items:center;gap:6px;margin-bottom:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#0E5E56;flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Name des Arztes/der Ärztin</label>
           <div style="position:relative;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -5220,6 +5237,8 @@ function applyChatGating(){
 function syncPracticeSettingsUI(){
   const practiceInfo=getPracticeSettings();
   if(practiceInfo){
+    const praxisNameInput=document.getElementById('setPraxisName');
+    if(praxisNameInput && practiceInfo.name && document.activeElement!==praxisNameInput) praxisNameInput.value=practiceInfo.name;
     const adresseInput=document.getElementById('setAdresse');
     if(adresseInput && practiceInfo.adresse && document.activeElement!==adresseInput) adresseInput.value=practiceInfo.adresse;
     const telInput=document.getElementById('setTel');

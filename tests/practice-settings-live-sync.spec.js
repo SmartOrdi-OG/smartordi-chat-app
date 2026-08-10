@@ -25,6 +25,36 @@ async function setupDoctor(page) {
   await page.waitForTimeout(1200);
 }
 
+// Regression test for a real report (2026-08-10): patient-login.html's QR
+// "Mit Ordination verbinden" screen showed the bare placeholder "Ordination"
+// instead of the practice's actual name -- practices.name was only ever
+// writable once, at registration (register.html), with no field anywhere in
+// doctor.html to fix/set it afterward. A pre-multi-tenant practice's row got
+// this placeholder hardcoded by phase11_multi_tenant_schema.sql's own
+// migration and had no way to be corrected until this field existed.
+test('Praxisprofil loads the practice name from practices.name on open', async ({ page }) => {
+  await setupDoctor(page);
+  const value = await page.evaluate(async () => {
+    await practiceSettingsReady;
+    syncPracticeSettingsUI();
+    return document.getElementById('setPraxisName').value;
+  });
+  expect(value).toBe('Ordination Dr. Ahmed');
+});
+
+test('saveSinglePracticeField() persists an edited practice name to practices.name and shows a success toast', async ({ page }) => {
+  await setupDoctor(page);
+  await page.evaluate(async () => {
+    await practiceSettingsReady;
+    const input = document.getElementById('setPraxisName');
+    input.value = 'Ordination Dr. Test';
+    await saveSinglePracticeField(input, 'name');
+  });
+  await expect(page.locator('#toast')).toHaveText('Gespeichert');
+  const saved = await page.evaluate(() => window.__store.practices[0].name);
+  expect(saved).toBe('Ordination Dr. Test');
+});
+
 test('saveSinglePracticeField() shows a success toast when the save actually succeeds', async ({ page }) => {
   await setupDoctor(page);
   await page.evaluate(async () => {
