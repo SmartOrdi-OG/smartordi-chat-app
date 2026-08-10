@@ -390,11 +390,24 @@ function mockScript(seed) {
           // by setting window.__forceNoSession = true.
           getSession() {
             if (window.__forceNoSession) return Promise.resolve({ data: { session: null } });
+            // An explicit override lets a test simulate a real Supabase Auth
+            // session that exists INDEPENDENTLY of this app's own
+            // sessionStorage.smartordi_user -- e.g. patient.html's
+            // rehydrateSessionFromRealAuth() (sessionStorage empty/cleared,
+            // but the real Auth session in localStorage is still valid).
+            // The sessionStorage-mirroring fallback below can never express
+            // that case, since it goes null the instant sessionStorage does
+            // too. Set via window.__mockAuthSession = {...} / null.
+            if ('__mockAuthSession' in window) return Promise.resolve({ data: { session: window.__mockAuthSession } });
             let cached = null;
             try { cached = JSON.parse(sessionStorage.getItem('smartordi_user')); } catch (e) {}
             if (!cached || !cached.username) return Promise.resolve({ data: { session: null } });
             return Promise.resolve({ data: { session: { user: { id: cached.username } } } });
           },
+          // Reassignable per-test (see sb.rpc/sb.functions.invoke above) --
+          // no test needed this before rehydrateSessionFromRealAuth()'s
+          // refresh-and-retry-once fallback.
+          refreshSession: () => Promise.resolve({ data: { session: null }, error: { message: 'not mocked' } }),
         },
       }),
     };
