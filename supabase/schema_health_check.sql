@@ -139,7 +139,14 @@ from (values
   -- phase61: catches the exact regression that shipped in phase33 --
   -- patient_send_message() silently dropping practice_id, which made every
   -- patient-sent chat message invisible to staff with no error anywhere.
-  ('patient_send_message', 'v_practice_id')
+  ('patient_send_message', 'v_practice_id'),
+  -- phase62: catches a regression back to checking patients.pw_hash (a
+  -- value that goes permanently stale the moment a patient changes their
+  -- own password) instead of the real auth.users.encrypted_password --
+  -- that locked every patient who ever changed their password out of
+  -- every fresh login with a false "wrong password".
+  ('patient_login_precheck', 'auth.users'),
+  ('guardian_login_precheck', 'auth.users')
 ) as f(name, expect)
 
 union all
