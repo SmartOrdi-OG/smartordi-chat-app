@@ -1495,8 +1495,59 @@ async function selectRealChild(childId,name,username){
   await initPatientData();
 }
 
+// sessionStorage's own smartordi_user/smartordi_patient_token (the "is this
+// a real, backend-linked account" markers getSessionUser()/getPatientToken()
+// check) are cleared the moment this TAB closes -- a brand new tab/app
+// relaunch to the same site starts with empty sessionStorage even though
+// the REAL Supabase Auth session (its own separate, longer-lived storage)
+// is still perfectly valid. Every one of this file's ~15 `if(getPatientToken())`
+// checks silently took the "local-only demo" branch whenever that happened,
+// with zero error shown -- the patient's real profile/messages/Termine
+// looked wiped (all "--"), and worse, a real action like submitSymptoms()
+// would silently save to the local demo store instead of the real backend
+// while still showing a "✓ gespeichert" success toast, so a doctor would
+// never see it. Real report: a patient's Beschwerdegrund/Symptome never
+// reached the doctor despite the app confirming it saved.
+//
+// Fixes that by checking for a still-valid real Auth session BEFORE ever
+// falling back to the demo view, and silently re-deriving sessionStorage's
+// markers from it if one exists -- the same thing a normal login does, just
+// without asking for the password again. patientGetProfile() alone already
+// covers both a direct patient AND a guardian who had already picked an
+// active child in ANY earlier session (guardian_active_child, phase31,
+// persists server-side, not per-tab) -- current_patient_id() resolves
+// through either path. A guardian who has never picked a child yet is the
+// one case this can't recover on its own; it falls through to the normal
+// "no session" behavior below, same as today.
+async function rehydrateSessionFromRealAuth(){
+  try{
+    const {data}=await sb.auth.getSession();
+    if(!data||!data.session) return null; // no real Auth session at all -- a genuinely logged-out/never-logged-in visitor, nothing to recover
+    const profile=await patientGetProfile();
+    if(!profile||!profile.username) return null;
+    const user={role:'patient', name:profile.name, username:profile.username};
+    sessionStorage.setItem('smartordi_user',JSON.stringify(user));
+    setPatientToken('1');
+    // Best-effort: restores the "🔁 Kind wechseln" button for a rehydrated
+    // guardian session too. Not fatal if this fails -- worst case, that
+    // button stays hidden until the next normal (password) login, same as
+    // it always has been.
+    try{
+      const {data:gRow}=await sb.rpc('guardian_get_profile');
+      if(gRow&&gRow[0]) sessionStorage.setItem('smartordi_guardian_session','1');
+    }catch(e){ console.error('rehydrateSessionFromRealAuth: guardian check failed',e); }
+    return user;
+  }catch(e){
+    console.error('rehydrateSessionFromRealAuth failed',e);
+    return null;
+  }
+}
+
 async function initPatientData(){
-  const session=getSessionUser();
+  let session=getSessionUser();
+  if((!session||!session.username)&&!getPatientToken()){
+    session=await rehydrateSessionFromRealAuth();
+  }
   if(!session||!session.username){
     document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
     return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
