@@ -135,7 +135,11 @@ select 'function body' as check_type, f.name,
     else 'STALE -- deployed version is missing "'||f.expect||'" from its body; find + rerun the LATEST phaseNN_*.sql that redefines this function'
   end as status
 from (values
-  ('patient_book_termin', 'invalid_arzt')
+  ('patient_book_termin', 'invalid_arzt'),
+  -- phase61: catches the exact regression that shipped in phase33 --
+  -- patient_send_message() silently dropping practice_id, which made every
+  -- patient-sent chat message invisible to staff with no error anywhere.
+  ('patient_send_message', 'v_practice_id')
 ) as f(name, expect)
 
 union all
