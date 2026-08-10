@@ -1,11 +1,18 @@
-// New feature, on request: a "Impfung eintragen" entry in secretary.html's
-// "☰ Aktionen" dropdown (Patienten view) opens a right-side floating window
-// (secVacWindow, same floating-chat-window chrome as secCalWindow/
-// secFloatingChatWindow) -- pick a patient (live search, same idea as the
-// "QR-Code" picker), then fill in the same vaccine form doctor.html's own
-// Kartei "＋ Neue Impfung eintragen" uses, backed by the same
-// addImpfungEntry() (vendor/patient-data.js). Lets office staff record a
-// vaccination without a doctor having to open the patient's Kartei for it.
+// New feature, on request: an "Impfung eintragen" entry in secretary.html's
+// per-patient chat header "☰ Aktionen" menu (#chatAttestActionsMenu,
+// alongside Pflegefreistellung/Arbeitsunfähigkeit ausstellen) lets office
+// staff record a vaccination for whichever patient's chat is currently
+// open, without a doctor having to open the patient's Kartei for it.
+// openImpfungFromChat() resolves the patient straight from #chatName (same
+// idea as the two Attest buttons next to it) -- no separate patient-picker
+// step. Same VACCINE_SCHEDULE + addImpfungEntry() (vendor/patient-data.js)
+// doctor.html's own Kartei "＋ Neue Impfung eintragen" form uses.
+//
+// Renders as a real inline third column of .nachrichten-split (the
+// "vac-open" class, #nachrichtenVacPane) -- NOT a position:fixed floating
+// window -- on request ("مش صفحة عايمة... تيجي في الجزء الفاضي اللي على
+// اليمين"): it fills the same real screen space .nachrichten-chat-pane's
+// own max-width:760px cap already leaves empty on a wide monitor.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -14,6 +21,7 @@ function seed(extra) {
   return Object.assign({
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
     practice_settings: [{ id: true }],
+    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', join_status: 'approved' }],
   }, extra);
 }
 
@@ -25,56 +33,51 @@ async function setupPage(page, extraSeed) {
   });
   await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
   await page.waitForTimeout(1200);
-  await page.evaluate(async () => { await Promise.all([patientsReady]); switchView('patienten'); });
+  await page.evaluate(async () => { await Promise.all([patientsReady, allMessagesReady, termineReady]); renderRealPatientRows(); });
+  await page.click('.nav-tab[data-view="patienten"]');
+  await page.waitForTimeout(200);
 }
 
-async function openPickerAndSearch(page, query) {
-  await page.click('button.patient-actions-toggle[onclick*="patientActionsMenu"]');
-  await page.click('#patientActionsMenu >> text=Impfung eintragen');
-  await page.fill('#secVacPatientSearchInput', query);
-  await page.waitForTimeout(400); // 250ms debounce inside secVacPatientSearch()
+async function openPatientChat(page, name) {
+  await page.click(`#patientList .patient-row[data-real]:has-text("${name}")`);
+  await page.waitForTimeout(300);
 }
 
-test('the Aktionen dropdown has an "Impfung eintragen" entry that opens the picker window', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await page.click('button.patient-actions-toggle[onclick*="patientActionsMenu"]');
-  await page.click('#patientActionsMenu >> text=Impfung eintragen');
-  const state = await page.evaluate(() => ({
-    windowVisible: getComputedStyle(document.getElementById('secVacWindow')).display !== 'none',
-    onSearchStep: getComputedStyle(document.getElementById('secVacSearchStep')).display !== 'none',
-    onFormStep: getComputedStyle(document.getElementById('secVacFormStep')).display !== 'none',
-  }));
-  expect(state.windowVisible).toBe(true);
-  expect(state.onSearchStep).toBe(true);
-  expect(state.onFormStep).toBe(false);
+async function openVaccinePane(page) {
+  await page.click('button.patient-actions-toggle[onclick*="chatAttestActionsMenu"]');
+  await page.click('#chatAttestActionsMenu >> text=Impfung eintragen');
+  await page.waitForTimeout(150);
+}
+
+test('the chat header Aktionen menu has an "Impfung eintragen" entry, alongside the Atteste ones', async ({ page }) => {
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  const menuItems = await page.evaluate(() => [...document.querySelectorAll('#chatAttestActionsMenu .rail-btn')].map(b => b.textContent.trim()));
+  expect(menuItems).toEqual(['Pflegefreistellung ausstellen', 'Arbeitsunfähigkeit ausstellen', 'Impfung eintragen']);
 });
 
-test('picking a patient moves to the vaccine form, showing their name and a pre-filled date', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await openPickerAndSearch(page, 'Maria');
-  await page.click('.qr-patient-row');
+test('opening it shows the inline pane (not a floating window) with the open chat\'s patient name and a pre-filled date', async ({ page }) => {
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
   const state = await page.evaluate(() => ({
-    onSearchStep: getComputedStyle(document.getElementById('secVacSearchStep')).display !== 'none',
-    onFormStep: getComputedStyle(document.getElementById('secVacFormStep')).display !== 'none',
-    selectedName: document.getElementById('secVacSelectedPatient').textContent,
+    splitHasVacOpen: document.getElementById('nachrichtenSplit').classList.contains('vac-open'),
+    paneVisible: getComputedStyle(document.getElementById('nachrichtenVacPane')).display !== 'none',
+    isInlineNotFixed: getComputedStyle(document.getElementById('nachrichtenVacPane')).position !== 'fixed',
+    patientLabel: document.getElementById('secVacPatientLabel').textContent,
     datum: document.getElementById('secVacDatum').value,
   }));
-  expect(state.onSearchStep).toBe(false);
-  expect(state.onFormStep).toBe(true);
-  expect(state.selectedName).toContain('Maria Huber');
+  expect(state.splitHasVacOpen).toBe(true);
+  expect(state.paneVisible).toBe(true);
+  expect(state.isInlineNotFixed).toBe(true);
+  expect(state.patientLabel).toBe('Maria Huber');
   expect(state.datum).toBe(new Date().toISOString().slice(0, 10));
 });
 
-test('submitting a valid entry inserts it into patient_impfungen for the right patient, then closes the window', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await openPickerAndSearch(page, 'Maria');
-  await page.click('.qr-patient-row');
+test('submitting a valid entry inserts it into patient_impfungen for the open chat\'s patient, then closes the pane', async ({ page }) => {
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
   await page.selectOption('#secVacName', 'Rotavirus');
   await page.selectOption('#secVacDosis', '2. Dosis');
   await page.fill('#secVacCharge', 'A12345B');
@@ -83,22 +86,20 @@ test('submitting a valid entry inserts it into patient_impfungen for the right p
 
   const result = await page.evaluate(() => ({
     row: window.__store.patient_impfungen[0],
-    windowVisible: getComputedStyle(document.getElementById('secVacWindow')).display !== 'none',
+    splitHasVacOpen: document.getElementById('nachrichtenSplit').classList.contains('vac-open'),
   }));
   expect(result.row.patient_id).toBe('p1');
   expect(result.row.vaccine_name).toBe('Rotavirus');
   expect(result.row.dose_label).toBe('2. Dosis');
   expect(result.row.charge).toBe('A12345B');
   expect(result.row.uploaded_by).toBe('sek1');
-  expect(result.windowVisible).toBe(false);
+  expect(result.splitHasVacOpen).toBe(false);
 });
 
 test('"Sonstige" requires a typed name and saves it as the vaccine name', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await openPickerAndSearch(page, 'Maria');
-  await page.click('.qr-patient-row');
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
   await page.selectOption('#secVacName', 'Sonstige');
   await page.fill('#secVacNameCustom', 'Gelbfieber');
   await page.click('text=✓ Impfung speichern');
@@ -108,50 +109,49 @@ test('"Sonstige" requires a typed name and saves it as the vaccine name', async 
 });
 
 test('a missing date is rejected before anything is saved', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
+  await setupPage(page);
   const alerts = [];
   page.on('dialog', d => { alerts.push(d.message()); d.accept(); });
-  await openPickerAndSearch(page, 'Maria');
-  await page.click('.qr-patient-row');
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
   await page.fill('#secVacDatum', '');
   await page.click('text=✓ Impfung speichern');
   expect(alerts.pop()).toContain('Datum eingeben');
   expect((await page.evaluate(() => window.__store.patient_impfungen.length))).toBe(0);
 });
 
-test('the picker shows "Keine Treffer" for a search that matches no patient', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await openPickerAndSearch(page, 'Zzzznotfound');
-  const text = await page.evaluate(() => document.getElementById('secVacPatientSearchResults').textContent);
-  expect(text).toContain('Keine Treffer');
-});
-
-test('"‹ Anderen Patienten wählen" goes back to the search step without losing the window', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await openPickerAndSearch(page, 'Maria');
-  await page.click('.qr-patient-row');
-  await page.click('text=‹ Anderen Patienten wählen');
+test('closing the pane reveals the chat pane again, without leaving Patienten', async ({ page }) => {
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
+  await page.click('#nachrichtenVacPane .floating-chat-close');
   const state = await page.evaluate(() => ({
-    windowVisible: getComputedStyle(document.getElementById('secVacWindow')).display !== 'none',
-    onSearchStep: getComputedStyle(document.getElementById('secVacSearchStep')).display !== 'none',
+    splitHasVacOpen: document.getElementById('nachrichtenSplit').classList.contains('vac-open'),
+    chatPaneVisible: getComputedStyle(document.getElementById('nachrichtenChatPane')).display !== 'none',
   }));
-  expect(state.windowVisible).toBe(true);
-  expect(state.onSearchStep).toBe(true);
+  expect(state.splitHasVacOpen).toBe(false);
+  expect(state.chatPaneVisible).toBe(true);
 });
 
-test('switching away from the Patienten tab closes the window', async ({ page }) => {
-  await setupPage(page, {
-    patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', join_status: 'approved' }],
-  });
-  await page.click('button.patient-actions-toggle[onclick*="patientActionsMenu"]');
-  await page.click('#patientActionsMenu >> text=Impfung eintragen');
+test('switching away from the Patienten tab closes the pane', async ({ page }) => {
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await openVaccinePane(page);
   await page.evaluate(() => switchView('uebersicht'));
-  const windowVisible = await page.evaluate(() => getComputedStyle(document.getElementById('secVacWindow')).display !== 'none');
-  expect(windowVisible).toBe(false);
+  const splitHasVacOpen = await page.evaluate(() => document.getElementById('nachrichtenSplit').classList.contains('vac-open'));
+  expect(splitHasVacOpen).toBe(false);
+});
+
+test('a patient with no Cloud-Konto shows an error instead of opening the pane', async ({ page }) => {
+  // Only reachable in practice if a legacy/local-only chat were somehow
+  // open, but openImpfungFromChat() itself must fail closed either way --
+  // simulate it by making the account lookup miss.
+  await setupPage(page);
+  await openPatientChat(page, 'Maria Huber');
+  await page.evaluate(() => { window.findPatientAccountAsync = async () => null; });
+  await page.click('button.patient-actions-toggle[onclick*="chatAttestActionsMenu"]');
+  await page.click('#chatAttestActionsMenu >> text=Impfung eintragen');
+  await page.waitForTimeout(150);
+  const splitHasVacOpen = await page.evaluate(() => document.getElementById('nachrichtenSplit').classList.contains('vac-open'));
+  expect(splitHasVacOpen).toBe(false);
 });
