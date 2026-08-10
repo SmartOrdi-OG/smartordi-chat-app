@@ -807,6 +807,32 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     </div>
   </div>
 
+  <!-- TERMIN DETAIL MODAL -- tapping any upcoming/past appointment card opens
+       this with everything known about that one appointment (date, time,
+       doctor + Fachrichtung, practice address, status, and the visit
+       reason/symptoms if one was given) instead of the list card's
+       necessarily-short summary. -->
+  <div class="modal-overlay" id="terminDetailModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="terminDetailTitle">—</div>
+        <button class="modal-close" onclick="closeTerminDetail()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div id="terminDetailStatusWrap" style="margin-bottom:14px;"></div>
+        <div class="info-row"><span class="info-label" data-i18n="termine.detail.date">Datum</span><span class="info-value" id="terminDetailDate">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="termine.detail.time">Uhrzeit</span><span class="info-value" id="terminDetailTime">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.arzt">Arzt</span><span class="info-value" id="terminDetailArzt">—</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="terminDetailAddress">—</span></div>
+        <div style="margin-top:16px;">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;" data-i18n="symptom.title">Grund für den Besuch</div>
+          <div id="terminDetailReason"></div>
+          <button type="button" class="region-chip" id="terminDetailAddReasonBtn" style="display:none;margin-top:10px;font-weight:700;" onclick="terminDetailAddReason()" data-i18n="termine.detail.addReason">Grund angeben</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── PASSWORT ÄNDERN ── -->
   <div class="modal-overlay" id="changePwModal">
     <div class="modal">
@@ -1820,6 +1846,17 @@ async function updatePracticeIdentityUI(){
   const ordTelEl=document.getElementById('profilOrdTel');
   if(ordTelEl) ordTelEl.textContent=tel;
   window.__practiceOrdinationAddress=adresse!=='—'?adresse:null;
+  // terminCardHtml()'s subtitle also reads window.__practiceOrdinationAddress
+  // (fixing what used to be a hardcoded "· Linz" there) -- unlike
+  // termineSubEl above, that's baked into a string the FIRST renderPatientTermine()
+  // call (initPatientData(), before this async function's own two awaits above
+  // resolve) already generated, so it needs an explicit re-render here or it
+  // silently keeps whatever renderPatientTermine() saw before the address was
+  // known (empty, on a real account, every single time -- practiceSettingsReady
+  // essentially never wins that race). staffRosterReady.then(renderPatientTermine)
+  // right below already re-renders once the roster resolves, but that promise
+  // can settle before this one does, missing the address entirely.
+  renderPatientTermine();
 }
 
 async function renderProfilArztRows(){
@@ -2095,23 +2132,36 @@ async function bookTermin(){
   openSymptomModal(termin.id);
 }
 
-function terminCardHtml(t){
-  const d=new Date(t.date+'T00:00:00');
-  const status=t.status==='bestaetigt'?`<span class="termin-status status-confirmed">${tr('termine.status.confirmed')}</span>`
+// Shared by the list cards and the detail modal -- was duplicated inline in
+// terminCardHtml() before the detail modal needed the exact same markup.
+function terminStatusBadgeHtml(t){
+  return t.status==='bestaetigt'?`<span class="termin-status status-confirmed">${tr('termine.status.confirmed')}</span>`
     :t.status==='abgesagt'?`<span class="termin-status" style="background:#f1f5f9;color:#94a3b8;">${tr('termine.status.cancelled')}</span>`
     :`<span class="termin-status status-pending">${tr('termine.status.pending')}</span>`;
-  return `<div class="termin-card">
+}
+function terminCardHtml(t){
+  const d=new Date(t.date+'T00:00:00');
+  // Was a hardcoded "· Linz" regardless of which practice the patient
+  // actually belongs to -- same class of bug updatePracticeIdentityUI()'s
+  // own comment already flagged for the chat header/Termine subtitle
+  // placeholders, just missed here since this string is card-local instead
+  // of going through that function. window.__practiceOrdinationAddress is
+  // set by updatePracticeIdentityUI() once the real practice_settings row
+  // resolves; a demo/local-only account (never resolves one) just omits it,
+  // same as the address rows elsewhere in this file.
+  const city=window.__practiceOrdinationAddress?' · '+window.__practiceOrdinationAddress.split(',').pop().trim():'';
+  return `<div class="termin-card" style="cursor:pointer;" onclick="openTerminDetail('${t.id}')">
     <div class="termin-date-box"><div class="termin-day">${d.getDate()}</div><div class="termin-month">${monthsShort()[d.getMonth()]}</div></div>
     <div class="termin-info">
       <div class="termin-title">${escapeHtml(t.art)}</div>
-      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} ${tr('termine.uhr')} · ${escapeHtml(arztDisplayName(t.arztUsername))} · Linz</div>
+      <div class="termin-sub">${t.time}${t.endTime?'–'+t.endTime:''} ${tr('termine.uhr')} · ${escapeHtml(arztDisplayName(t.arztUsername))}${city}</div>
     </div>
-    ${status}
+    ${terminStatusBadgeHtml(t)}
   </div>`;
 }
 function visitCardHtml(t){
   const d=new Date(t.date+'T00:00:00');
-  return `<div class="visit-card">
+  return `<div class="visit-card" style="cursor:pointer;" onclick="openTerminDetail('${t.id}')">
     <div class="visit-card-top">
       <span class="visit-card-date">${d.toLocaleDateString('de-AT')}</span>
       <span class="visit-card-type">${escapeHtml(t.art)}</span>
@@ -2119,6 +2169,43 @@ function visitCardHtml(t){
     <div class="visit-card-title">${(t.reason&&t.reason.length)?escapeHtml(t.reason.map(trSymptom).join(', ')):escapeHtml(t.art)}</div>
     ${t.reasonNote?`<div class="visit-card-note">${escapeHtml(t.reasonNote)}</div>`:''}
   </div>`;
+}
+// Full detail for one appointment -- the list cards above only ever have
+// room for a short summary (real request: "كل المعلومات عن المعاد", every
+// appointment field in one place, for both upcoming and past visits).
+let terminDetailId=null;
+function openTerminDetail(id){
+  const t=myTermine().find(x=>String(x.id)===String(id));
+  if(!t) return;
+  terminDetailId=id;
+  const d=new Date(t.date+'T00:00:00');
+  const accounts=loadStaffAccounts();
+  const arzt=accounts[t.arztUsername]||{};
+  document.getElementById('terminDetailTitle').textContent=t.art;
+  document.getElementById('terminDetailStatusWrap').innerHTML=terminStatusBadgeHtml(t);
+  document.getElementById('terminDetailDate').textContent=d.toLocaleDateString('de-AT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('terminDetailTime').textContent=t.time+(t.endTime?'–'+t.endTime:'')+' '+tr('termine.uhr');
+  document.getElementById('terminDetailArzt').textContent=arztDisplayName(t.arztUsername)+(arzt.fach?' · '+arzt.fach:'');
+  document.getElementById('terminDetailAddress').textContent=window.__practiceOrdinationAddress||'—';
+  const reasonRoot=document.getElementById('terminDetailReason');
+  const hasReason=(t.reason&&t.reason.length)||t.reasonNote;
+  reasonRoot.innerHTML=hasReason
+    ?`<div style="display:flex;flex-wrap:wrap;gap:6px;">${(t.reason||[]).map(s=>`<span class="symptom-chip active" style="cursor:default;">${escapeHtml(trSymptom(s))}</span>`).join('')}</div>${t.reasonNote?`<div class="visit-card-note" style="margin-top:8px;">${escapeHtml(t.reasonNote)}</div>`:''}`
+    :`<div style="color:var(--text-muted);font-size:12.5px;">${escapeHtml(tr('termine.detail.noReason'))}</div>`;
+  // Only offer "add a reason" for an upcoming, not-yet-cancelled visit that
+  // doesn't already have one -- a past visit's reason is a fixed medical
+  // record from the practice's side by then, not something to add after
+  // the fact from here.
+  const isPast=t.date<todayStr();
+  const addBtn=document.getElementById('terminDetailAddReasonBtn');
+  addBtn.style.display=(!isPast&&!hasReason&&t.status!=='abgesagt')?'inline-block':'none';
+  document.getElementById('terminDetailModal').classList.add('show');
+}
+function closeTerminDetail(){ document.getElementById('terminDetailModal').classList.remove('show'); }
+function terminDetailAddReason(){
+  const id=terminDetailId;
+  closeTerminDetail();
+  openSymptomModal(id);
 }
 function renderPatientTermine(){
   const upcomingRoot=document.getElementById('upcomingTermineRoot');
@@ -2421,6 +2508,14 @@ function onPatientLanguageChanged(){
     document.getElementById('bodyViewToggle').textContent=tr(showingBodyBack?'symptom.toggleFront':'symptom.toggleBack');
     renderSymptomRegions();
     updateSymptomNoteHint();
+  }
+  // The status badge/symptom chips/empty-reason text below are built as
+  // plain strings via tr() at openTerminDetail() time, not [data-i18n]
+  // elements applyI18n() would already catch above -- re-run it explicitly
+  // so a language switch while the modal happens to be open doesn't leave
+  // it stuck in the old language.
+  if(document.getElementById('terminDetailModal').classList.contains('show')&&terminDetailId){
+    openTerminDetail(terminDetailId);
   }
 }
 function updateSymptomNoteHint(){
