@@ -81,7 +81,7 @@ from unnest(array[
   'anonymize_practice','run_scheduled_practice_deletions',
   'flag_expired_unpaid_trials',
   'patient_get_booking_enabled','patient_get_staff_roster',
-  'public_get_practice_join_info','record_consent'
+  'public_get_practice_join_info','record_consent','patient_update_profile'
 ]) as f
 
 union all
@@ -146,7 +146,11 @@ from (values
   -- that locked every patient who ever changed their password out of
   -- every fresh login with a false "wrong password".
   ('patient_login_precheck', 'auth.users'),
-  ('guardian_login_precheck', 'auth.users')
+  ('guardian_login_precheck', 'auth.users'),
+  -- phase63: catches a deployed version that's missing the ownership check
+  -- (current_patient_id()) -- without it, a patient could edit ANY row's
+  -- contact details, not just their own.
+  ('patient_update_profile', 'current_patient_id')
 ) as f(name, expect)
 
 union all

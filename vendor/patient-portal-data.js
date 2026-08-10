@@ -249,6 +249,18 @@ async function patientSetSymptoms(terminId,reason,reasonNote){
   if(error){ console.error('patientSetSymptoms failed',error); return false; }
   return !!data;
 }
+// supabase/phase63_patient_update_profile.sql -- lets a patient edit their
+// own contact details (address/phone/email) from patient.html's Settings
+// area. Deliberately narrow: name/Geburtsdatum/Versicherung/SV-Nummer have
+// no patient-facing edit path at all (identity/legal/insurance fields stay
+// staff-controlled), same as the RPC itself only ever accepting these 3.
+async function patientUpdateProfile(fields){
+  const {data,error}=await sb.rpc('patient_update_profile',{
+    p_adresse:fields.adresse, p_tel:fields.tel, p_email:fields.email,
+  });
+  if(error){ console.error('patientUpdateProfile failed',error); return false; }
+  return !!data;
+}
 // supabase/phase2_patient_documents.sql -- documents a staff member uploaded
 // for this patient (lab results, referrals...). patientGetDocuments() only
 // returns metadata; the base64 file body is fetched separately per document
