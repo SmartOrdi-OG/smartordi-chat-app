@@ -455,6 +455,38 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .info-label{font-size:12px;color:var(--text-muted);}
 .info-value{font-size:13px;font-weight:600;color:var(--text);text-align:right;max-width:60%;}
 
+/* ── TOPBAR BACK BUTTON -- shown instead of the logo once a section is
+   open (mobile only), returns to the new #view-home landing screen. A
+   single shared button in the topbar rather than one per view: the 4
+   views (chat/termine/dokumente/profil) have 3 differently-shaped headers
+   already (.chat-header/.view-header/.profil-header-card), so one global
+   back control is far less invasive than reworking all three. ── */
+.topbar-back-btn{display:none;background:none;border:none;width:32px;height:32px;border-radius:9px;align-items:center;justify-content:center;color:var(--text);cursor:pointer;flex-shrink:0;margin-inline-end:8px;padding:0;}
+.topbar-back-btn:hover{background:var(--teal-light);color:var(--teal);}
+.topbar-back-btn svg{width:20px;height:20px;}
+html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
+
+/* ── HOME SCREEN -- app-launcher-style landing page shown right after
+   login (mobile only; desktop already has #appNavBar as its always-visible
+   menu, serving the same purpose). Tapping a tile slides into that
+   section (animateViewTransition() in the script below); the topbar back
+   button slides back. ── */
+#view-home{background:var(--bg);}
+.home-greeting{padding:22px 20px 4px;}
+.home-greeting-hello{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--text);}
+.home-greeting-sub{font-size:12.5px;color:var(--text-muted);margin-top:4px;}
+.home-tiles{flex:1;overflow-y:auto;padding:16px 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start;}
+.home-tile{background:white;border:1px solid var(--border);border-radius:18px;padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;cursor:pointer;font-family:inherit;box-shadow:0 2px 14px rgba(0,0,0,0.05);transition:transform 0.15s;position:relative;}
+.home-tile:active{transform:scale(0.96);}
+.home-tile-icon{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--teal),#12746A);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.home-tile-label{font-size:13.5px;font-weight:700;color:var(--text);}
+.home-tile-badge{position:absolute;top:12px;inset-inline-end:12px;background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;min-width:17px;text-align:center;}
+
+@media(min-width:1024px){
+  #view-home{display:none!important;}
+  .topbar-back-btn{display:none!important;}
+}
+
 .logout-btn{
   width:100%;padding:13px;border:none;border-radius:12px;
   background:#FAF0EE;color:var(--red);
@@ -544,6 +576,7 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 <!-- TOP BAR -->
 <div class="topbar">
   <div class="topbar-logo">
+    <button class="topbar-back-btn" id="topbarBackBtn" onclick="goHome()" data-i18n-aria="nav.back" data-i18n-title="nav.back" aria-label="Zurück" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
     <div class="topbar-icon"><img src="logo..jpeg" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px;"></div>
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
@@ -580,6 +613,33 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
 <!-- VIEWS -->
 <div class="views">
+
+  <!-- ── HOME (app-launcher landing screen, mobile only) ── -->
+  <div class="view active" id="view-home">
+    <div class="home-greeting">
+      <div class="home-greeting-hello" id="homeGreeting">—</div>
+      <div class="home-greeting-sub" data-i18n="home.sub">Wählen Sie einen Bereich</div>
+    </div>
+    <div class="home-tiles">
+      <button class="home-tile" onclick="goToSection('chat')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        <span class="home-tile-label" data-i18n="nav.chat">Chat</span>
+        <span class="home-tile-badge" id="homeChatBadge" style="display:none;">2</span>
+      </button>
+      <button class="home-tile" onclick="goToSection('termine')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+        <span class="home-tile-label" data-i18n="nav.termine">Termine</span>
+      </button>
+      <button class="home-tile" onclick="goToSection('dokumente')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
+        <span class="home-tile-label" data-i18n="nav.dokumente">Dokumente</span>
+      </button>
+      <button class="home-tile" onclick="goToSection('profil')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span class="home-tile-label" data-i18n="nav.profil">Profil</span>
+      </button>
+    </div>
+  </div>
 
   <!-- ── CHAT ── -->
   <div class="view" id="view-chat">
@@ -840,6 +900,10 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
+  <button class="nav-item" id="nav-home" onclick="switchView('home')">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+    <span data-i18n="nav.home">Start</span>
+  </button>
   <button class="nav-item" id="nav-chat" onclick="switchView('chat')">
     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
     <span data-i18n="nav.chat">Chat</span>
@@ -1050,10 +1114,53 @@ function switchView(v){
     focusWindow(v);
     return;
   }
-  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  const nextEl=document.getElementById('view-'+v);
+  if(!nextEl) return;
+  const prevEl=document.querySelector('.views > .view.active');
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
-  document.getElementById('view-'+v).classList.add('active');
-  document.getElementById('nav-'+v).classList.add('active');
+  const navEl=document.getElementById('nav-'+v);
+  if(navEl) navEl.classList.add('active');
+  const backBtn=document.getElementById('topbarBackBtn');
+  if(backBtn) backBtn.style.display=(v==='home')?'none':'flex';
+  // Slide transition only between the home screen and a section (either
+  // direction) -- a lateral jump between two sections (bottom nav tap while
+  // already inside one) swaps instantly, same as before, since there's no
+  // natural "forward/back" relationship between siblings.
+  if(prevEl&&prevEl!==nextEl&&(prevEl.id==='view-home'||v==='home')){
+    animateViewTransition(prevEl,nextEl,v==='home'?'back':'forward');
+  }else{
+    document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+    nextEl.classList.add('active');
+  }
+}
+// Tapping a home tile -- always a "forward" (home -> section) transition.
+function goToSection(v){ switchView(v); }
+// Topbar back button -- always returns to the home screen.
+function goHome(){ switchView('home'); }
+// Slides oldEl out and newEl in, mobile-only (isDesktopWidth() already
+// routed elsewhere by switchView() before this is ever called). direction
+// 'forward' = home -> section (new view enters from the "next" side),
+// 'back' = section -> home (new view enters from the "previous" side).
+// Mirrored for RTL (Arabic) so it always reads as "forward"/"backward" in
+// the patient's own reading direction, not just visually left/right.
+function animateViewTransition(oldEl,newEl,direction){
+  const isRtl=document.documentElement.getAttribute('dir')==='rtl';
+  const sign=(direction==='forward'?1:-1)*(isRtl?-1:1);
+  [oldEl,newEl].forEach(el=>{ el.style.position='absolute'; el.style.inset='0'; });
+  newEl.style.transition='none';
+  newEl.style.transform='translateX('+(sign*100)+'%)';
+  newEl.classList.add('active');
+  void newEl.offsetWidth; // force reflow so the transition below actually animates from this starting position
+  requestAnimationFrame(()=>{
+    newEl.style.transition='transform 0.28s cubic-bezier(.4,0,.2,1)';
+    oldEl.style.transition='transform 0.28s cubic-bezier(.4,0,.2,1)';
+    newEl.style.transform='translateX(0)';
+    oldEl.style.transform='translateX('+(-sign*100)+'%)';
+  });
+  setTimeout(()=>{
+    oldEl.classList.remove('active');
+    [oldEl,newEl].forEach(el=>{ el.style.position='';el.style.inset='';el.style.transform='';el.style.transition=''; });
+  },300);
 }
 
 // ══ PATIENT ACCOUNT DATA (real login, not hardcoded Thomas Müller) ══
@@ -1122,14 +1229,14 @@ function renderPatientMessages(){
   // chat off entirely.
   if(!_patientChatEnabled){
     if(inputArea) inputArea.style.display='none';
-    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">Chat derzeit nicht verfügbar</div><div class="empty-sub">Bitte kontaktieren Sie Ihre Ordination auf anderem Weg.</div></div>';
+    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-text">'+escapeHtml(tr('chat.disabled.title'))+'</div><div class="empty-sub">'+escapeHtml(tr('chat.disabled.sub'))+'</div></div>';
     return;
   }
   if(inputArea) inputArea.style.display='';
   const account=getCurrentAccount();
   const items=(account&&account.messages)||[];
   if(!items.length){
-    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">Noch keine Nachrichten</div><div class="empty-sub">Schreiben Sie Ihrer Ordination eine Nachricht</div></div>';
+    msgs.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">'+escapeHtml(tr('chat.empty.title'))+'</div><div class="empty-sub">'+escapeHtml(tr('chat.empty.sub'))+'</div></div>';
     return;
   }
   msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
@@ -1174,15 +1281,18 @@ function updateChatBadge(){
   const count=account?patientUnreadCount(account.messages||[]):0;
   const b1=document.querySelector('#nav-chat .nav-badge');
   const b2=document.getElementById('navTabChatBadge');
+  const b3=document.getElementById('homeChatBadge');
   // Hide via display, never remove the element -- a genuinely new message
   // can arrive later (pollPatientData()'s 25s refresh) after the badge was
   // already cleared once, and it needs to be able to show up again.
   if(count>0){
     if(b1){ b1.textContent=count; b1.style.display=''; }
     if(b2){ b2.textContent=count; b2.style.display=''; }
+    if(b3){ b3.textContent=count; b3.style.display=''; }
   }else{
     if(b1) b1.style.display='none';
     if(b2) b2.style.display='none';
+    if(b3) b3.style.display='none';
   }
 }
 
@@ -1595,6 +1705,8 @@ async function initPatientData(){
   const initial=fullName[0]||'P';
   document.getElementById('topbarAvatar').textContent=initial;
   document.getElementById('topbarUsername').textContent=(account.name||fullName.split(' ')[0]);
+  const homeGreetingEl=document.getElementById('homeGreeting');
+  if(homeGreetingEl) homeGreetingEl.textContent=tr('home.greeting').replace('{name}',account.name||fullName.split(' ')[0]);
   document.getElementById('profilAvatar').textContent=initial;
   document.getElementById('profilName').textContent=fullName;
   document.getElementById('profilSub').textContent='Patient · '+(account.versicherung||'—')+(account.adresse?' · '+account.adresse.split(',').pop().trim():'');
@@ -2197,13 +2309,29 @@ document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwit
 initPatientLanguage();
 renderCalendar();
 initPatientData();
-// No .view/.nav-item ever carries the "active" class in the markup itself,
-// and nothing called switchView() on load before this -- a fresh page load
-// (real user report) showed a blank page with no tab highlighted until the
-// patient tapped a nav button themselves. Profil is the safest default: it
-// still renders something meaningful (name/insurance/etc, or "—" fallbacks)
-// even before initPatientData()'s async fetches above have resolved.
-switchView('profil');
+// #view-home ships with the "active" class already in the markup itself
+// (renders instantly, zero dependency on any account data -- even safer
+// than the old default here, see the history below), but nothing else
+// (nav-home highlighted, the topbar back button hidden) is wired up until
+// this runs. On request: the app now opens to a home screen (icon tiles
+// for Chat/Termine/Dokumente/Profil) instead of jumping straight into a
+// specific section.
+//
+// Previously: no .view/.nav-item ever carried the "active" class in the
+// markup itself, and nothing called switchView() on load before this -- a
+// fresh page load (real user report) showed a blank page with no tab
+// highlighted until the patient tapped a nav button themselves. Profil was
+// the safest default then: it still rendered something meaningful (name/
+// insurance/etc, or "—" fallbacks) even before initPatientData()'s async
+// fetches above resolved -- the home screen is static tiles, so it has the
+// exact same property without needing to be any specific data-backed view.
+//
+// Desktop-only exception: #view-home is force-hidden by CSS at >=1024px
+// (see that rule's own comment -- #appNavBar's always-visible sidebar
+// already serves the same "where do I go" purpose there), so opening it as
+// a window would just show a blank screen. Profil remains the desktop
+// default, same as always.
+switchView(isDesktopWidth()?'profil':'home');
 
 // Real (Supabase-backed) patients have no Realtime subscription (anon has
 // no direct table access, only the RPCs above) -- poll instead, on tab
@@ -2236,6 +2364,20 @@ function onPatientLanguageChanged(){
   renderPatientTermine();
   renderProfilArztRows();
   renderProfilImpfungen();
+  // renderPatientMessages()'s own empty/disabled states were hardcoded
+  // German strings until now (chat.empty.*/chat.disabled.*) -- also not
+  // caught by applyI18n()'s static [data-i18n] walk since they're built in
+  // JS, same reasoning as the other calls in this function.
+  renderPatientMessages();
+  // homeGreeting interpolates {name} into home.greeting -- not a plain
+  // [data-i18n] element for that reason, so applyI18n()'s static walk can't
+  // catch it on its own.
+  const homeGreetingEl=document.getElementById('homeGreeting');
+  if(homeGreetingEl){
+    const account=getCurrentAccount();
+    const name=account?(account.name||(account.fullName||'').split(' ')[0]):'';
+    homeGreetingEl.textContent=name?tr('home.greeting').replace('{name}',name):tr('home.greeting').replace('{name}','').trim();
+  }
   // termineSub has no data-i18n anymore (see the HTML comment there), but
   // re-running this defensively costs nothing and guards against any
   // future data-i18n reintroduction silently overwriting it again.

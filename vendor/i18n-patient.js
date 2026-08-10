@@ -22,9 +22,13 @@ const PATIENT_LANGS=[
 const I18N={
   de:{
     'nav.chat':'Chat','nav.termine':'Termine','nav.dokumente':'Dokumente','nav.profil':'Profil',
+    'nav.home':'Start','nav.back':'Zurück',
+    'home.greeting':'Hallo, {name} 👋','home.sub':'Wählen Sie einen Bereich',
     'topbar.logout':'Abmelden',
     'win.minimize':'Minimieren','win.fullscreen':'Verkleinern','win.vollbild':'Vollbild','win.close':'Schließen',
     'chat.placeholder':'Nachricht schreiben...','chat.toast.sendFailed':'Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
+    'chat.empty.title':'Noch keine Nachrichten','chat.empty.sub':'Schreiben Sie Ihrer Ordination eine Nachricht',
+    'chat.disabled.title':'Chat derzeit nicht verfügbar','chat.disabled.sub':'Bitte kontaktieren Sie Ihre Ordination auf anderem Weg.',
     'termine.title':'Meine Termine',
     'termine.bookTitle':'Termin buchen','termine.chooseDay':'Wählen Sie einen Tag im Kalender',
     'termine.confirmBtn':'✓ Termin bestätigen','termine.upcoming':'Kommende Termine','termine.past':'Vergangene Besuche',
@@ -295,9 +299,13 @@ const I18N={
   },
   en:{
     'nav.chat':'Chat','nav.termine':'Appointments','nav.dokumente':'Documents','nav.profil':'Profile',
+    'nav.home':'Home','nav.back':'Back',
+    'home.greeting':'Hello, {name} 👋','home.sub':'Choose an area',
     'topbar.logout':'Log out',
     'win.minimize':'Minimize','win.fullscreen':'Restore','win.vollbild':'Fullscreen','win.close':'Close',
     'chat.placeholder':'Write a message...','chat.toast.sendFailed':'Could not send your message. Please try again.',
+    'chat.empty.title':'No messages yet','chat.empty.sub':'Write a message to your practice',
+    'chat.disabled.title':'Chat currently unavailable','chat.disabled.sub':'Please contact your practice another way.',
     'termine.title':'My Appointments',
     'termine.bookTitle':'Book an appointment','termine.chooseDay':'Choose a day in the calendar',
     'termine.confirmBtn':'✓ Confirm appointment','termine.upcoming':'Upcoming Appointments','termine.past':'Past Visits',
@@ -568,9 +576,13 @@ const I18N={
   },
   ar:{
     'nav.chat':'محادثة','nav.termine':'المواعيد','nav.dokumente':'المستندات','nav.profil':'الملف الشخصي',
+    'nav.home':'الرئيسية','nav.back':'رجوع',
+    'home.greeting':'مرحبًا، {name} 👋','home.sub':'اختر قسمًا',
     'topbar.logout':'تسجيل الخروج',
     'win.minimize':'تصغير','win.fullscreen':'استعادة','win.vollbild':'ملء الشاشة','win.close':'إغلاق',
     'chat.placeholder':'اكتب رسالة...','chat.toast.sendFailed':'تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى.',
+    'chat.empty.title':'لا توجد رسائل بعد','chat.empty.sub':'اكتب رسالة لعيادتك',
+    'chat.disabled.title':'المحادثة غير متاحة حاليًا','chat.disabled.sub':'يرجى التواصل مع عيادتك بطريقة أخرى.',
     'termine.title':'مواعيدي',
     'termine.bookTitle':'حجز موعد','termine.chooseDay':'اختر يوماً من التقويم',
     'termine.confirmBtn':'✓ تأكيد الموعد','termine.upcoming':'المواعيد القادمة','termine.past':'الزيارات السابقة',
@@ -841,9 +853,13 @@ const I18N={
   },
   tr:{
     'nav.chat':'Sohbet','nav.termine':'Randevular','nav.dokumente':'Belgeler','nav.profil':'Profil',
+    'nav.home':'Ana Sayfa','nav.back':'Geri',
+    'home.greeting':'Merhaba, {name} 👋','home.sub':'Bir bölüm seçin',
     'topbar.logout':'Çıkış yap',
     'win.minimize':'Küçült','win.fullscreen':'Geri yükle','win.vollbild':'Tam ekran','win.close':'Kapat',
     'chat.placeholder':'Mesaj yazın...','chat.toast.sendFailed':'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
+    'chat.empty.title':'Henüz mesaj yok','chat.empty.sub':'Muayenehanenize bir mesaj yazın',
+    'chat.disabled.title':'Sohbet şu anda kullanılamıyor','chat.disabled.sub':'Lütfen muayenehanenizle başka bir şekilde iletişime geçin.',
     'termine.title':'Randevularım',
     'termine.bookTitle':'Randevu al','termine.chooseDay':'Takvimden bir gün seçin',
     'termine.confirmBtn':'✓ Randevuyu onayla','termine.upcoming':'Yaklaşan Randevular','termine.past':'Geçmiş Ziyaretler',
@@ -1114,9 +1130,13 @@ const I18N={
   },
   bs:{
     'nav.chat':'Chat','nav.termine':'Termini','nav.dokumente':'Dokumenti','nav.profil':'Profil',
+    'nav.home':'Početna','nav.back':'Nazad',
+    'home.greeting':'Zdravo, {name} 👋','home.sub':'Odaberite oblast',
     'topbar.logout':'Odjava',
     'win.minimize':'Umanji','win.fullscreen':'Vrati','win.vollbild':'Puni ekran','win.close':'Zatvori',
     'chat.placeholder':'Napišite poruku...','chat.toast.sendFailed':'Poruka nije mogla biti poslata. Pokušajte ponovo.',
+    'chat.empty.title':'Još nema poruka','chat.empty.sub':'Napišite poruku svojoj ordinaciji',
+    'chat.disabled.title':'Chat trenutno nije dostupan','chat.disabled.sub':'Molimo kontaktirajte svoju ordinaciju na drugi način.',
     'termine.title':'Moji termini',
     'termine.bookTitle':'Zakaži termin','termine.chooseDay':'Odaberite dan u kalendaru',
     'termine.confirmBtn':'✓ Potvrdi termin','termine.upcoming':'Predstojeći termini','termine.past':'Prošle posjete',
@@ -1488,6 +1508,10 @@ function applyI18n(root){
   root.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=tr(el.getAttribute('data-i18n')); });
   root.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder=tr(el.getAttribute('data-i18n-ph')); });
   root.querySelectorAll('[data-i18n-title]').forEach(el=>{ el.title=tr(el.getAttribute('data-i18n-title')); });
+  // Screen-reader label, same idea as data-i18n-title -- added for the
+  // topbar back button (#topbarBackBtn), which has no visible text of its
+  // own for a translated tooltip to stand in for.
+  root.querySelectorAll('[data-i18n-aria]').forEach(el=>{ el.setAttribute('aria-label',tr(el.getAttribute('data-i18n-aria'))); });
 }
 function setPatientLanguage(lang){
   localStorage.setItem(PATIENT_LANG_KEY,lang);
