@@ -119,6 +119,13 @@ body{
 .view.active{display:flex;}
 
 /* ── BOTTOM NAV ── */
+/* Hidden on the home screen itself (its own tile grid already IS the
+   navigation) -- shown again the moment the patient is inside an actual
+   section, so lateral switching between sections stays a single tap away.
+   body.on-home is toggled in switchView(). Desktop already hides
+   .bottom-nav unconditionally (see the >=1024px rule below), so this
+   never needs to care about that branch. */
+body.on-home .bottom-nav{display:none;}
 .bottom-nav{
   background:white;
   border-top:1px solid #E4DFD3;
@@ -1122,6 +1129,7 @@ function switchView(v){
   if(navEl) navEl.classList.add('active');
   const backBtn=document.getElementById('topbarBackBtn');
   if(backBtn) backBtn.style.display=(v==='home')?'none':'flex';
+  document.body.classList.toggle('on-home',v==='home');
   // Slide transition only between the home screen and a section (either
   // direction) -- a lateral jump between two sections (bottom nav tap while
   // already inside one) swaps instantly, same as before, since there's no
@@ -1633,8 +1641,35 @@ async function rehydrateSessionFromRealAuth(){
   try{
     const {data}=await sb.auth.getSession();
     if(!data||!data.session) return null; // no real Auth session at all -- a genuinely logged-out/never-logged-in visitor, nothing to recover
-    const profile=await patientGetProfile();
-    if(!profile||!profile.username) return null;
+    let profile=await patientGetProfile();
+    // A real session that just resumed from the device being backgrounded/
+    // asleep can carry an access token that's technically still stored but
+    // past (or seconds from) its expiry -- getSession() itself doesn't
+    // always force a refresh before returning, so the very first request
+    // made against it (this profile fetch) can fail. Force one explicit
+    // refresh and retry once before giving up on an otherwise-real session
+    // -- cheap, and a real report (patient hit this right after a plain
+    // page refresh with a normally-persistent Auth session) points at
+    // exactly this kind of one-shot staleness rather than a genuinely
+    // logged-out visitor.
+    if(!profile||!profile.username){
+      try{
+        const {data:refreshed,error:refreshErr}=await sb.auth.refreshSession();
+        if(!refreshErr&&refreshed&&refreshed.session) profile=await patientGetProfile();
+      }catch(e){ console.error('rehydrateSessionFromRealAuth: refreshSession retry failed',e); }
+    }
+    if(!profile||!profile.username){
+      // Diagnostic-only (never the visible banner -- a real Auth session
+      // with a legitimately empty profile is NOT always a bug, e.g. a
+      // guardian who hasn't picked a child yet, so this must stay silent to
+      // the patient the same way patientGetProfile()'s own zero-row case
+      // does). This just makes the "real session, but rehydrate still
+      // couldn't recover it" combination visible in client_error_log for
+      // us, instead of being indistinguishable from a normal logged-out
+      // load with no trace left anywhere.
+      logClientErrorRemotely('rehydrateSessionFromRealAuth: real auth session but no patient profile resolved (even after refresh retry)', null);
+      return null;
+    }
     const user={role:'patient', name:profile.name, username:profile.username};
     sessionStorage.setItem('smartordi_user',JSON.stringify(user));
     setPatientToken('1');
