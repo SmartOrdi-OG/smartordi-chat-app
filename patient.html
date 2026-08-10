@@ -1822,6 +1822,26 @@ async function initPatientData(){
   if(deletionCard) deletionCard.style.display=getPatientToken()?'block':'none';
   renderPatientMessages();
   updateChatBadge();
+  // Diagnostic-only (2026-08-10 user report, screenshot): the Chat badge
+  // shows an unread count on a fresh open, but opening Chat itself is
+  // completely empty. renderPatientMessages()/updateChatBadge() above read
+  // the exact same account.messages in this same synchronous pass, so a
+  // genuine divergence can only mean patient_get_messages() itself
+  // returned something unexpected right here -- not a rendering bug.
+  // Couldn't reproduce locally (needs the real account's live data), so
+  // this logs just enough to diagnose a recurrence without ever logging
+  // message text (PHI): count/total/each message's dir+timestamp only.
+  // Remove once this is understood and fixed.
+  if(getPatientToken()){
+    const msgList=(account&&account.messages)||[];
+    const unread=patientUnreadCount(msgList);
+    if(unread>0){
+      logClientErrorRemotely('patient chat badge shows unread on a fresh initPatientData() load', {
+        message:'unread='+unread+' total='+msgList.length+' username='+(currentUsername||'?')+
+          ' msgs=['+msgList.slice(0,10).map(m=>m.dir+'@'+m.createdAt).join(', ')+']',
+      });
+    }
+  }
   // Guardian viewing one of their children -- offer a way to switch. Real
   // (Supabase-backed) multi-child guardians never had account.
   // guardianUsername set (that field only ever came from the legacy local-
