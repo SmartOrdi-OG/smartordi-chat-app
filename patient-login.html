@@ -17,6 +17,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-portal-data.js"></script>
+<!-- jsQR (vendored, not CDN -- same self-hosting convention as vendor/
+     qrcode.js) -- pure-JS QR decoder used by the in-app "Mit Ordination
+     verbinden" camera scanner below. Exposes a single global function,
+     jsQR(imageData, width, height). -->
+<script src="vendor/jsqr.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{--teal:#0d9488;--teal-dark:#0f766e;--slate:#0f172a;--blue-light:#EEF4FF;--muted:#64748b;--red:#ef4444;}
@@ -107,7 +112,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <div class="spinner" id="spinner"></div>
     </button>
     <div style="text-align:center;margin-top:14px;">
-      <a href="#" onclick="showRequestScreen();return false;" style="font-size:12px;color:#1e40af;font-weight:600;text-decoration:none;" data-i18n="request.link">Neu hier? Anmeldung beantragen</a>
+      <a href="#" onclick="startFreshRegistration();return false;" style="font-size:12px;color:#1e40af;font-weight:600;text-decoration:none;" data-i18n="request.link">Neu hier? Anmeldung beantragen</a>
     </div>
   </div>
 
@@ -161,6 +166,61 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     <button class="btn-main" onclick="submitJoinRequest()" data-i18n="request.submit">Antrag senden</button>
     <div style="text-align:center;margin-top:12px;">
       <a href="#" onclick="backToLoginFromRequest();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="request.backToLogin">Zurück zur Anmeldung</a>
+    </div>
+  </div>
+
+  <!-- SCREEN 4b: Mit Ordination verbinden (QR-Scan) -- only reached when the
+       patient started from the plain "Neu hier?" link (no QR/deep link
+       involved at all), so submitJoinRequest() doesn't yet know which
+       practice to send the request to. An old-style bare /patient-register
+       QR (no id embedded) or the current per-practice one still goes
+       straight through to screen-request-sent as before -- see
+       submitJoinRequest()'s own comment. -->
+  <div class="screen" id="screen-link-practice">
+    <div class="change-pw-header">
+      <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M14 21h3M21 14v3M21 21h.01"/></svg></div>
+      <div class="change-pw-title" data-i18n="linkPractice.title">Mit Ordination verbinden</div>
+      <div class="change-pw-sub" data-i18n="linkPractice.sub">Scannen Sie den QR-Code Ihrer Ordination, um Ihren Antrag zu senden.</div>
+    </div>
+    <div class="error-msg" id="linkErrorMsg"><span>!</span><span id="linkErrorText"></span></div>
+
+    <!-- state: intro -->
+    <div id="linkStateIntro">
+      <button class="btn-main" style="width:100%;" onclick="startQrScan()" data-i18n="linkPractice.scanBtn">📷 QR-Code scannen</button>
+    </div>
+
+    <!-- state: scanning -->
+    <div id="linkStateScanning" style="display:none;">
+      <div style="position:relative;border-radius:16px;overflow:hidden;background:#0f172a;aspect-ratio:1/1;max-width:280px;margin:0 auto 14px;">
+        <video id="qrVideo" playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+        <div style="position:absolute;inset:16%;border:2.5px solid rgba(255,255,255,0.75);border-radius:12px;pointer-events:none;"></div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:14px;" data-i18n="linkPractice.scanning.sub">Halten Sie den QR-Code Ihrer Ordination in den Rahmen.</div>
+      <button class="btn-main" style="width:100%;background:#f1f5f9;color:#334155;box-shadow:none;" onclick="cancelQrScan()" data-i18n="linkPractice.cancel">Abbrechen</button>
+    </div>
+
+    <!-- state: found (QR decoded, practice confirmed, awaiting final send) -->
+    <div id="linkStateFound" style="display:none;">
+      <div class="notice" style="display:block;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" data-i18n="request.clinic.label">Ordination</div>
+        <div style="font-size:13px;font-weight:700;color:var(--slate);" id="linkFoundName">—</div>
+        <div style="font-size:11px;color:var(--muted);" id="linkFoundSub">—</div>
+      </div>
+      <button class="btn-main" style="width:100%;" onclick="confirmLinkPractice()" data-i18n="linkPractice.found.confirmBtn">✓ Antrag senden</button>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="#" onclick="startQrScan();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="linkPractice.found.rescan">Anderen Code scannen</a>
+      </div>
+    </div>
+
+    <!-- state: error (camera denied/unavailable, or an unrelated QR code) -->
+    <div id="linkStateError" style="display:none;">
+      <button class="btn-main" style="width:100%;" onclick="startQrScan()" data-i18n="linkPractice.err.retry">Erneut versuchen</button>
+    </div>
+
+    <canvas id="qrCanvas" style="display:none;"></canvas>
+
+    <div style="text-align:center;margin-top:16px;">
+      <a href="#" onclick="backToRequestFromLinkPractice();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="linkPractice.back">← Zurück zu Ihren Daten</a>
     </div>
   </div>
 
@@ -315,11 +375,30 @@ function tryQrLogin(){
 // already-printed QR code with no id in it -- same fallback as before for
 // those, not a regression.
 let joinRequestPracticeId=null;
+// True for ANY /patient-register deep link (QR or shared URL), whether or
+// not it happened to embed a practice id -- an old, already-printed QR from
+// before phase48 embedded ids at all is still a deep link, and
+// submitJoinRequest() must keep submitting it immediately with
+// practice_id:null exactly as before (see patient-register-deeplink.spec.js's
+// "old-QR-code fallback, unchanged" test). Only a patient who opened the
+// plain "Neu hier?" link on the login screen itself -- no query params, no
+// practice known at all -- gets routed to the new in-app QR-scan flow below.
+let reqViaDeepLink=false;
 function tryPatientRegisterDeepLink(){
   const params=new URLSearchParams(window.location.search);
   if(!params.has('patient-register')) return;
   joinRequestPracticeId=params.get('practice')||null;
+  reqViaDeepLink=true;
   history.replaceState(null,'',window.location.pathname);
+  showRequestScreen();
+}
+// The plain "Neu hier? Anmeldung beantragen" link on the login screen --
+// resets both flags in case a stale deep-link state was left over from
+// earlier in the same page load (e.g. the user went back to the login
+// screen after an old-style QR link, then chose to register fresh instead).
+function startFreshRegistration(){
+  joinRequestPracticeId=null;
+  reqViaDeepLink=false;
   showRequestScreen();
 }
 
@@ -563,6 +642,14 @@ function resubmitJoinRequest(){
   document.getElementById('screen-request').classList.add('active');
 }
 
+// Validates the personal-data form and either submits right away (a QR/deep
+// link already told us which practice -- old-style bare link included, see
+// reqViaDeepLink's own comment) or, for a patient who started from the
+// plain "Neu hier?" link with no practice known yet, stashes the validated
+// fields and moves to the new in-app QR-scan screen instead. Either way,
+// the actual insert always happens in performJoinRequestSubmit() below, so
+// there's exactly one place that talks to patient_join_requests.
+let pendingJoinRequestFields=null;
 async function submitJoinRequest(){
   const vorname=document.getElementById('reqVorname').value.trim();
   const nachname=document.getElementById('reqNachname').value.trim();
@@ -597,8 +684,28 @@ async function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
+  const fields={vorname,nachname,adresse,svnr,username,pw};
+  if(joinRequestPracticeId||reqViaDeepLink){
+    await performJoinRequestSubmit(fields,joinRequestPracticeId);
+    return;
+  }
+  // No practice known yet -- hand off to the QR-scan screen. The form's own
+  // values stay exactly as typed (this screen is just hidden, not reset),
+  // so "← Zurück zu Ihren Daten" from there shows them unchanged.
+  pendingJoinRequestFields=fields;
+  showLinkPracticeScreen();
+}
+
+// The actual patient_join_requests insert -- shared by both the "practice
+// already known" path (submitJoinRequest() above, unchanged from before)
+// and confirmLinkPractice() (the new QR-scan path) below.
+async function performJoinRequestSubmit(fields,practiceId){
+  const {vorname,nachname,adresse,svnr,username,pw}=fields;
   const fullName=vorname+' '+nachname;
-  const submitBtn=document.querySelector('#screen-request .btn-main');
+  // Whichever screen is currently showing the trigger button -- screen-
+  // request's "Antrag senden" for the practice-already-known path, or
+  // screen-link-practice's "✓ Antrag senden" once a QR was scanned.
+  const submitBtn=document.querySelector('.screen.active .btn-main');
   if(submitBtn) submitBtn.disabled=true;
   // The Ordination reviews this request from its own (staff) device, which
   // is never the same browser as the patient's -- a plain localStorage
@@ -611,12 +718,18 @@ async function submitJoinRequest(){
   // validate this patient's own chosen password once approved.
   const {error}=await sb.from('patient_join_requests').insert({
     username, vorname, nachname, full_name:fullName, adresse, svnr, temp_password:pw,
-    practice_id:joinRequestPracticeId,
+    practice_id:practiceId,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){
-    errorText.textContent=tr('request.err.submitFailed')+' ('+error.message+')';
-    errorEl.classList.add('show');
+    // The QR-scan path's error box (screen-link-practice) is separate from
+    // the personal-data form's (screen-request) -- show whichever one is
+    // actually visible right now.
+    const onLinkScreen=document.getElementById('screen-link-practice').classList.contains('active');
+    const errEl=document.getElementById(onLinkScreen?'linkErrorMsg':'reqErrorMsg');
+    const errTextEl=document.getElementById(onLinkScreen?'linkErrorText':'reqErrorText');
+    errTextEl.textContent=tr('request.err.submitFailed')+' ('+error.message+')';
+    errEl.classList.add('show');
     return;
   }
 
@@ -632,7 +745,7 @@ async function submitJoinRequest(){
   // string whenever that page is revised.
   const POLICY_VERSION='2.1';
   sb.rpc('record_consent',{
-    p_practice_id:joinRequestPracticeId, p_consent_type:'patient_join_request',
+    p_practice_id:practiceId, p_consent_type:'patient_join_request',
     p_full_name:fullName, p_email:null, p_policy_version:POLICY_VERSION,
     p_user_agent:navigator.userAgent,
   }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
@@ -642,10 +755,121 @@ async function submitJoinRequest(){
   // patients row yet, so this device doesn't need its own copy of the
   // pending state to show the right screen later.
   resubmitUsername=null;
+  pendingJoinRequestFields=null;
 
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-request-sent').classList.add('active');
 }
+
+// ── Mit Ordination verbinden (in-app QR scan) ──
+// Reached only when submitJoinRequest() had no practice id at all (plain
+// "Neu hier?" entry, no QR/deep link involved). scannedPracticeId is the id
+// this screen resolved from the camera scan; confirmLinkPractice() is what
+// actually sends pendingJoinRequestFields + this id to
+// performJoinRequestSubmit() above.
+let scannedPracticeId=null;
+let qrStream=null;
+let qrScanRAF=null;
+function setLinkPracticeState(state){
+  ['Intro','Scanning','Found','Error'].forEach(s=>{
+    document.getElementById('linkState'+s).style.display=(s.toLowerCase()===state)?'block':'none';
+  });
+}
+function showLinkPracticeScreen(){
+  scannedPracticeId=null;
+  document.getElementById('linkErrorMsg').classList.remove('show');
+  setLinkPracticeState('intro');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-link-practice').classList.add('active');
+}
+function backToRequestFromLinkPractice(){
+  stopQrScan();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-request').classList.add('active');
+}
+async function startQrScan(){
+  document.getElementById('linkErrorMsg').classList.remove('show');
+  setLinkPracticeState('scanning');
+  const video=document.getElementById('qrVideo');
+  try{
+    // environment-facing (rear) camera -- a QR code is never something you'd
+    // point the front/selfie camera at.
+    qrStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  }catch(e){
+    console.error('getUserMedia failed',e);
+    setLinkPracticeState('error');
+    document.getElementById('linkErrorText').textContent=tr('linkPractice.err.camera');
+    document.getElementById('linkErrorMsg').classList.add('show');
+    return;
+  }
+  video.srcObject=qrStream;
+  try{ await video.play(); }catch(e){ /* autoplay quirks -- readyState check in the scan loop below covers it either way */ }
+  scanQrFrame();
+}
+function stopQrScan(){
+  if(qrScanRAF!==null){ cancelAnimationFrame(qrScanRAF); qrScanRAF=null; }
+  if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream=null; }
+}
+function cancelQrScan(){
+  stopQrScan();
+  setLinkPracticeState('intro');
+}
+function scanQrFrame(){
+  const video=document.getElementById('qrVideo');
+  const canvas=document.getElementById('qrCanvas');
+  if(video.readyState===video.HAVE_ENOUGH_DATA&&video.videoWidth>0){
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code=jsQR(imageData.data,imageData.width,imageData.height);
+    if(code&&code.data){
+      handleQrDecoded(code.data);
+      return;
+    }
+  }
+  qrScanRAF=requestAnimationFrame(scanQrFrame);
+}
+// Only ever accepts the exact scheme secretary.html's own QR generator
+// produces (.../patient-register/<id>, see vercel.json's rewrite) -- a
+// random unrelated QR code (a product barcode, a WiFi QR, anything else
+// someone points the camera at) must never be silently treated as a
+// practice id.
+function extractPracticeIdFromScannedText(text){
+  if(!text) return null;
+  const m=String(text).match(/\/patient-register\/([^/?#]+)/);
+  return (m&&m[1])?decodeURIComponent(m[1]):null;
+}
+async function handleQrDecoded(text){
+  stopQrScan();
+  const practiceId=extractPracticeIdFromScannedText(text);
+  if(!practiceId){
+    setLinkPracticeState('error');
+    document.getElementById('linkErrorText').textContent=tr('linkPractice.err.invalid');
+    document.getElementById('linkErrorMsg').classList.add('show');
+    return;
+  }
+  scannedPracticeId=practiceId;
+  // Same anon-callable lookup the deep-link path already uses (phase48) --
+  // shows the patient which practice they're about to send a request to
+  // before they confirm, instead of submitting blind off a camera scan.
+  let info=null;
+  try{
+    const {data}=await sb.rpc('public_get_practice_join_info',{p_practice_id:practiceId});
+    info=data&&data[0];
+  }catch(e){ console.error('public_get_practice_join_info failed',e); }
+  document.getElementById('linkFoundName').textContent=(info&&(info.practice_name||(info.admin_full_name&&('Ordination '+info.admin_full_name))))||tr('linkPractice.foundFallback');
+  document.getElementById('linkFoundSub').textContent=(info&&info.admin_fach||'')+((info&&info.adresse)?(' · '+info.adresse):'');
+  setLinkPracticeState('found');
+}
+async function confirmLinkPractice(){
+  if(!pendingJoinRequestFields||!scannedPracticeId) return;
+  await performJoinRequestSubmit(pendingJoinRequestFields,scannedPracticeId);
+}
+// Safety net -- releases the camera if the patient navigates away (back/
+// forward, closing the tab) while mid-scan instead of leaving it running.
+window.addEventListener('pagehide',stopQrScan);
 
 async function saveNewPw(){
   const newPw=document.getElementById('newPw').value;
