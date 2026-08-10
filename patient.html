@@ -858,6 +858,34 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     </div>
   </div>
 
+  <!-- ── SETTINGS: Kontaktdaten bearbeiten ── -->
+  <div class="modal-overlay" id="editContactModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="settings.title">Kontaktdaten bearbeiten</div>
+        <button class="modal-close" onclick="closeEditContactModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div id="editContactError" style="display:none;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.adresse">Adresse</label>
+          <input type="text" id="editAdresse" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+        </div>
+        <div style="margin-bottom:10px;">
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.tel">Telefon</label>
+          <input type="tel" id="editTel" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+        </div>
+        <div>
+          <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.email">E-Mail</label>
+          <input type="email" id="editEmail" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')saveContactEdit()">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm" onclick="saveContactEdit()" data-i18n="settings.save">✓ Speichern</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── DOKUMENTE ── -->
   <div class="view" id="view-dokumente">
     <div class="view-header">
@@ -887,7 +915,14 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       </div>
 
       <div class="info-card">
-        <div class="info-card-header" data-i18n="profil.persoenlich">Persönliche Daten</div>
+        <div class="info-card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <span data-i18n="profil.persoenlich">Persönliche Daten</span>
+          <!-- Settings request: address/phone/email are the only fields a
+               patient can self-edit here -- name/Geburtsdatum stay
+               staff-controlled, so this button lives on this card only,
+               not the Versicherung one below. -->
+          <button onclick="openEditContactModal()" style="background:none;border:none;cursor:pointer;color:#0E5E56;font-size:11px;font-weight:700;font-family:inherit;text-transform:none;letter-spacing:0;padding:2px;" data-i18n="settings.editBtn">✏️ Bearbeiten</button>
+        </div>
         <div class="info-row"><span class="info-label" data-i18n="profil.fullName">Vollständiger Name</span><span class="info-value" id="profilFullName">—</span></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.dob">Geburtsdatum</span><span class="info-value" id="profilDob">—</span></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.adresse">Adresse</span><span class="info-value" id="profilAdresse">—</span></div>
@@ -2424,6 +2459,61 @@ async function submitChangePassword(){
   }
   closeChangePasswordModal();
   showToast(tr('changepw2.save').replace('✓ ',''));
+}
+
+// ── Settings: Kontaktdaten bearbeiten ──
+// supabase/phase63_patient_update_profile.sql -- patient-facing edit for
+// address/phone/email only (see that file's own header comment for why
+// name/Geburtsdatum/Versicherung/SV-Nummer stay out of scope). Same dual-
+// mode pattern as submitChangePassword() above: a real (token-backed)
+// account calls the RPC; a local-only/demo account just writes through to
+// its own localStorage record, same as every other local-only save path.
+function openEditContactModal(){
+  const account=getCurrentAccount()||{};
+  document.getElementById('editAdresse').value=account.adresse||'';
+  document.getElementById('editTel').value=account.tel||'';
+  document.getElementById('editEmail').value=account.email||'';
+  document.getElementById('editContactError').style.display='none';
+  document.getElementById('editContactModal').classList.add('show');
+}
+function closeEditContactModal(){
+  document.getElementById('editContactModal').classList.remove('show');
+}
+function showEditContactError(key){
+  const el=document.getElementById('editContactError');
+  el.textContent=tr(key);
+  el.style.display='block';
+}
+async function saveContactEdit(){
+  const adresse=document.getElementById('editAdresse').value.trim();
+  const tel=document.getElementById('editTel').value.trim();
+  const email=document.getElementById('editEmail').value.trim();
+  document.getElementById('editContactError').style.display='none';
+  // Loose on purpose -- an empty field is always allowed (clearing a value
+  // is legitimate), this only catches an email that's clearly not one at
+  // all, same permissiveness as the rest of this app's own validation.
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    showEditContactError('settings.err.invalidEmail');
+    return;
+  }
+
+  if(getPatientToken()){
+    const ok=await patientUpdateProfile({adresse,tel,email});
+    if(!ok){ showEditContactError('settings.err.saveFailed'); return; }
+    await refreshRemoteProfile();
+  }else{
+    const accounts=loadPatientAccounts();
+    if(!accounts[currentUsername]) accounts[currentUsername]={};
+    accounts[currentUsername].adresse=adresse;
+    accounts[currentUsername].tel=tel;
+    accounts[currentUsername].email=email;
+    savePatientAccounts(accounts);
+  }
+  document.getElementById('profilAdresse').textContent=adresse||'—';
+  document.getElementById('profilTel').textContent=tel||'—';
+  document.getElementById('profilEmail').textContent=email||'—';
+  closeEditContactModal();
+  showToast(tr('settings.saved'));
 }
 
 // Init
