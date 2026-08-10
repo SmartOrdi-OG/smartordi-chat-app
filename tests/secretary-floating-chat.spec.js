@@ -119,7 +119,7 @@ test('the "Aktionen"/"Bearbeiten" header buttons still work from the overview pa
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(200);
   const menuItems = await page.evaluate(() => [...document.querySelectorAll('#chatAttestActionsMenu .rail-btn')].map(b => b.textContent.trim()));
-  expect(menuItems).toEqual(['Pflegefreistellung ausstellen', 'Arbeitsunfähigkeit ausstellen']);
+  expect(menuItems).toEqual(['Pflegefreistellung ausstellen', 'Arbeitsunfähigkeit ausstellen', 'Impfung eintragen']);
   expect(menuItems.join(' ')).not.toContain('Weiterleiten');
   expect(menuItems.join(' ')).not.toContain('Überweisen');
 });
