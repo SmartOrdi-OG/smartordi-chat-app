@@ -116,6 +116,66 @@ test('a stale access token that fails once is retried after refreshSession() bef
   expect(profilName).toBe('Maria Huber');
 });
 
+// supabase/phase66_retire_guardian_login_system.sql (Phase C): a guardian
+// whose children were migrated into patient_account_profiles has a real
+// Auth session but current_patient_id() resolves to nothing until a
+// profile is actually selected -- exactly what a fresh tab relaunch (no
+// guardian_active_child/patient_active_profile row yet) looks like.
+// ensureActiveProfile() must recover this the same way the stale-token
+// retry above does, instead of the item-4 redirect firing on a perfectly
+// real, just-not-yet-switched session.
+test('a real Auth session with no active profile selected yet (a migrated guardian, fresh tab) auto-switches to their child instead of redirecting to login', async ({ page }) => {
+  await installMockSupabase(page, {}, () => {
+    window.__mockAuthSession = { user: { id: 'anna.bauer' } };
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    const origCreateClient = window.supabase.createClient;
+    window.supabase.createClient = (...args) => {
+      const client = origCreateClient(...args);
+      const origRpc = client.rpc.bind(client);
+      let switched = false;
+      client.rpc = (name, params) => {
+        if (name === 'patient_get_profile') {
+          if (!switched) return Promise.resolve({ data: [], error: null }); // current_patient_id() unresolved yet
+          return Promise.resolve({ data: [{
+            id: 'c1', username: 'leo.bauer', name: 'Leo', full_name: 'Leo Bauer',
+            dob: '2018-04-01', adresse: null, tel: null, email: null,
+            versicherung: null, svnr: null, first_login: false,
+          }], error: null });
+        }
+        if (name === 'patient_get_profiles') {
+          return Promise.resolve({ data: [{ patient_id: 'c1', full_name: 'Leo Bauer', relation: 'child', relation_label: null, practice_id: 'pr2', practice_name: 'Kinderarzt', is_active: false }], error: null });
+        }
+        if (name === 'patient_switch_profile') { switched = true; return Promise.resolve({ data: true, error: null }); }
+        return origRpc(name, params);
+      };
+      return client;
+    };
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
+  await page.waitForTimeout(500);
+
+  const state = await page.evaluate(() => ({
+    profilName: document.getElementById('profilName').textContent,
+    sessionUser: JSON.parse(sessionStorage.getItem('smartordi_user') || 'null'),
+    url: window.location.href,
+  }));
+  expect(state.url.endsWith('/patient.html'), 'must not have been bounced to patient-login.html').toBe(true);
+  expect(state.profilName).toBe('Leo Bauer');
+  expect(state.sessionUser && state.sessionUser.username).toBe('leo.bauer');
+});
+
+// The genuinely-unmigrated case: no profile AND no linked profiles at all
+// -- must still behave exactly like before (redirect), never loop or crash.
+test('a real Auth session with truly zero profiles anywhere still redirects to patient-login.html, no crash/loop', async ({ page }) => {
+  await installMockSupabase(page, {}, () => {
+    window.__mockAuthSession = { user: { id: 'anna.bauer' } };
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
+  await page.waitForURL('**/patient-login.html', { timeout: 5000 });
+  expect(page.url().endsWith('/patient-login.html')).toBe(true);
+});
+
 test('genuinely no session anywhere (sessionStorage empty, no real Auth session either) redirects to patient-login.html instead of showing a blank shell', async ({ page }) => {
   // Real user report (2026-08-11): a fresh visitor opening a shared link
   // for the first time landed on what looked like an empty, broken page --
