@@ -998,7 +998,15 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
            at least one profile (a real remote patient only -- the legacy
            local-only demo account has nothing to switch between). -->
       <div class="info-card" id="profilProfilesCard" style="display:none;">
-        <div class="info-card-header" data-i18n="profiles.title">Meine Profile</div>
+        <div class="info-card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <span data-i18n="profiles.title">Meine Profile</span>
+          <!-- Real report: a profile linked/approved by staff while this
+               card was already on screen (not just re-opened) had no way to
+               show up short of an app relaunch. switchView('profil') itself
+               now also re-fetches on every tab switch -- this button covers
+               the one remaining case, sitting on the tab the whole time. -->
+          <button onclick="renderProfilesCard()" title="Aktualisieren" style="background:none;border:none;cursor:pointer;color:#0E5E56;font-size:14px;padding:2px 4px;line-height:1;">🔄</button>
+        </div>
         <div id="profilProfilesList"></div>
         <div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="openAddProfileModal('child')" style="background:#EAF4F1;border:none;color:#0E5E56;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="profiles.addChild">+ Kind hinzufügen</button>
@@ -1256,6 +1264,16 @@ function switchView(v){
   if(v==='chat'){
     markPatientChatViewed();
     updateChatBadge();
+  }
+  // Real report (2026-08-11): "Meine Profile" has no realtime push -- a
+  // profile linked/approved by staff while this tab was already open never
+  // showed up until a full app relaunch, which isn't an obvious/discoverable
+  // action on an installed PWA (no pull-to-refresh, no visible reload
+  // button). Re-fetching every time this tab is opened -- even switching
+  // back to it, not just the very first load -- means a plain in-app tab
+  // tap is enough instead.
+  if(v==='profil'&&getPatientToken()){
+    renderProfilesCard();
   }
   if(isDesktopWidth()){
     ensureWindowChrome();
