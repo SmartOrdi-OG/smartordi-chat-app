@@ -88,7 +88,9 @@ from unnest(array[
   'public_get_practice_join_info','record_consent','patient_update_profile',
   -- phase64: not called by any app code yet (schema/RPC foundation only)
   'patient_get_profiles','patient_switch_profile',
-  'patient_submit_profile_join_request','staff_link_account_profile'
+  'patient_submit_profile_join_request','staff_link_account_profile',
+  -- phase65
+  'patient_change_username'
 ]) as f
 
 union all
@@ -178,7 +180,9 @@ select 'patients column', c,
 from unnest(array[
   'id','username','name','full_name','fach','dob','adresse','tel','email','versicherung','svnr',
   'anamnese','diagnosen','allergie','blutgruppe','legacy_history','join_status','join_note',
-  'practice_id','guardian_id','auth_user_id'
+  'practice_id','guardian_id','auth_user_id',
+  -- phase65
+  'is_child'
 ]) as c
 
 union all
@@ -227,6 +231,18 @@ select 'patient_guardians column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'id','practice_id','username','pw_hash','temp_password','first_login','name','full_name','created_at','auth_user_id'
+]) as c
+
+union all
+
+-- phase65
+select 'patient_join_requests column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_join_requests' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'id','username','vorname','nachname','full_name','adresse','svnr','temp_password','pw_hash',
+  'practice_id','status','submitted_at','reviewed_at','note','linked_auth_user_id','relation',
+  'relation_label','is_child'
 ]) as c
 
 union all

@@ -31,7 +31,14 @@ async function setupPage(page, extraRequests) {
   await page.waitForTimeout(1200);
 }
 
-test('"+ Neuer Patient" no longer has a "Kind" checkbox or guardian fields', async ({ page }) => {
+// Real user feedback (2026-08-11): removing the "Kind" checkbox entirely
+// (see the module comment above) also removed staff's only way to note in
+// a patient's own record that they're a child -- deliberately reintroduced
+// via supabase/phase65_patient_username_change_and_is_child.sql, but as a
+// plain classification flag only. The OLD guardian-creation mini-form
+// (npGuardianFields/npGuardianVorname, superseded by this feature's unified-
+// profile model) must still not be back.
+test('"+ Neuer Patient" has a plain "Kind" checkbox, but no guardian-creation fields', async ({ page }) => {
   await setupPage(page);
   const state = await page.evaluate(() => {
     openNewPatientModal();
@@ -41,7 +48,7 @@ test('"+ Neuer Patient" no longer has a "Kind" checkbox or guardian fields', asy
       hasGuardianVorname: !!document.getElementById('npGuardianVorname'),
     };
   });
-  expect(state.hasIsChild).toBe(false);
+  expect(state.hasIsChild).toBe(true);
   expect(state.hasGuardianFields).toBe(false);
   expect(state.hasGuardianVorname).toBe(false);
 });
@@ -117,4 +124,35 @@ test('approving an ordinary (non-linked) self-registration never calls staff_lin
     return { linkCalled };
   });
   expect(result.linkCalled).toBe(false);
+});
+
+// Item 5b (real user feedback, 2026-08-11): patient-login.html's
+// self-registration screen now has a "Für mich / Für mein Kind" choice
+// (supabase/phase65_patient_username_change_and_is_child.sql's is_child
+// column on patient_join_requests) -- approving the request must carry
+// that flag through onto the resulting patients row.
+test('approving a self-registration submitted as "Für mein Kind" copies is_child onto the new patients row', async ({ page }) => {
+  await setupPage(page, [
+    { id: 'jr3', username: 'kind.patient', vorname: 'Lena', nachname: 'Patient', full_name: 'Lena Patient', adresse: 'Musterstr 2', svnr: '2222222222', pw_hash: 'h3', status: 'pending', submitted_at: '2026-08-03T10:00:00Z', is_child: true },
+  ]);
+  const result = await page.evaluate(async () => {
+    await approveJoinRequest('kind.patient');
+    await new Promise(r => setTimeout(r, 200));
+    return window.__store.patients.find(p => p.username === 'kind.patient');
+  });
+  expect(result).toBeTruthy();
+  expect(result.is_child).toBe(true);
+});
+
+test('approving an ordinary self-registration ("Für mich") stores is_child as false', async ({ page }) => {
+  await setupPage(page, [
+    { id: 'jr4', username: 'erwachsen.patient', vorname: 'Peter', nachname: 'Patient', full_name: 'Peter Patient', adresse: 'Musterstr 3', svnr: '3333333333', pw_hash: 'h4', status: 'pending', submitted_at: '2026-08-04T10:00:00Z', is_child: false },
+  ]);
+  const result = await page.evaluate(async () => {
+    await approveJoinRequest('erwachsen.patient');
+    await new Promise(r => setTimeout(r, 200));
+    return window.__store.patients.find(p => p.username === 'erwachsen.patient');
+  });
+  expect(result).toBeTruthy();
+  expect(result.is_child).toBe(false);
 });

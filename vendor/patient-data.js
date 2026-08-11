@@ -275,6 +275,9 @@ function patientRowToJs(row,localAccounts){
     legacyHistory: row.legacy_history||local.legacyHistory,
     joinStatus: row.join_status,
     joinNote: row.join_note,
+    // supabase/phase65_patient_username_change_and_is_child.sql -- a plain
+    // classification flag, staff's own reference only.
+    isChild: row.is_child!=null?row.is_child:(local.isChild||false),
   });
 }
 let _patients={};
@@ -794,6 +797,25 @@ async function subscribeMessagesRealtime(onChange){
   sb.channel('patient-messages-changes')
     .on('postgres_changes',opts,async function(){
       await refreshAllMessages();
+      if(onChange) onChange();
+    })
+    .subscribe();
+}
+// Real report (2026-08-11): a new self-registration (Beitrittsanfrage) only
+// ever showed up after the secretary manually reloaded the page -- unlike
+// every other list in this app (messages, Termine, Impfungen...), which
+// already live-update via their own realtime subscription. fetchPending
+// JoinRequests() (secretary.html) always re-queries fresh on its own, so
+// unlike subscribeMessagesRealtime() above there's no local cache to
+// refresh here first -- onChange() alone is enough, it re-renders straight
+// from a fresh query.
+async function subscribeJoinRequestsRealtime(onChange){
+  await practiceSettingsReady;
+  const opts={event:'*',schema:'public',table:'patient_join_requests'};
+  const practiceId=getPracticeSettings()?.id;
+  if(practiceId) opts.filter='practice_id=eq.'+practiceId;
+  sb.channel('patient-join-requests-changes')
+    .on('postgres_changes',opts,function(){
       if(onChange) onChange();
     })
     .subscribe();

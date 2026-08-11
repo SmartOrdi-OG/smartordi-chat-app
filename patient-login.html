@@ -52,6 +52,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 .toggle-pw svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .error-msg{background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:600;color:#DC2626;margin-bottom:14px;display:none;align-items:center;gap:7px;}
 .error-msg.show{display:flex;}
+/* "Für mich / Für mein Kind" self-registration step (item 5b, real user
+   feedback 2026-08-11) -- a simple two-way segmented toggle, same visual
+   weight as the existing form-group labels above/around it. */
+.forwhom-toggle{display:flex;gap:8px;}
+.forwhom-btn{flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#475569;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.forwhom-btn.active{border-color:#1e40af;background:#EFF6FF;color:#1e40af;}
 .btn-main{display:block;width:auto;min-width:220px;margin:4px auto 0;padding:13px 28px;border:1px solid #bfdbfe;border-radius:12px;background:#EFF6FF;color:#1e40af;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;}
 .btn-main:hover{background:#dbeafe;}
 .btn-main.loading{opacity:0.7;cursor:not-allowed;}
@@ -126,6 +132,19 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <div class="change-pw-sub" data-i18n="request.sub">Füllen Sie Ihre Daten aus. Ihre Anfrage wird von der Ordination geprüft.</div>
     </div>
     <div class="error-msg" id="reqErrorMsg"><span>!</span><span id="reqErrorText"></span></div>
+    <!-- Real user feedback (2026-08-11): self-registration had no way at all
+         to say the account being created is for a child, not the person
+         typing -- reqIsChild (default false) is carried into the submitted
+         patient_join_requests row (supabase/phase65_patient_username_
+         change_and_is_child.sql's is_child column) and copied onto the
+         resulting patients row by secretary.html's approveJoinRequest(). -->
+    <div class="form-group">
+      <label class="form-label" data-i18n="request.forWhom.label">Für wen?</label>
+      <div class="forwhom-toggle">
+        <button type="button" id="reqForSelfBtn" class="forwhom-btn active" onclick="setReqIsChild(false)" data-i18n="request.forWhom.self">Für mich</button>
+        <button type="button" id="reqForChildBtn" class="forwhom-btn" onclick="setReqIsChild(true)" data-i18n="request.forWhom.child">Für mein Kind</button>
+      </div>
+    </div>
     <div class="form-group">
       <label class="form-label" data-i18n="request.vorname.label">Vorname</label>
       <input type="text" class="form-input" id="reqVorname" style="padding-left:14px;">
@@ -266,6 +285,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     </div>
     <div class="notice" data-i18n="changepw.notice">Ihr Passwort ist nur für Sie sichtbar</div>
     <div class="error-msg" id="errorMsg2"><span>!</span><span id="errorText2"></span></div>
+    <!-- Real user feedback (2026-08-11): the system-generated username from
+         secretary.html's QR flow (a slugified full name, e.g.
+         "max.mustermann") is easy to forget, especially since the patient
+         never types it themselves at signup -- they only ever scan a QR and
+         set a password. Pre-filled with the current username so leaving it
+         untouched (the common case) changes nothing; saveNewPw() only calls
+         patient_change_username() (supabase/phase65_patient_username_
+         change_and_is_child.sql) when the value actually differs. -->
+    <div class="form-group" id="newUsernameGroup">
+      <label class="form-label" data-i18n="changepw.newUsername.label">Benutzername</label>
+      <div class="input-wrap">
+        <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <input type="text" class="form-input" id="newUsername" autocapitalize="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="pw-strength-label" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
+    </div>
     <div class="form-group">
       <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
       <div class="input-wrap">
@@ -503,7 +538,8 @@ async function doLogin(){
       // an already-answered patient the moment they logged in from any
       // other device (or after clearing this one's storage).
       acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
-           joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:result.anamnese};
+           joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:result.anamnese,
+           isChild:result.isChild};
     }
     if(!acc){
       // supabase/phase28_guardian_child_accounts.sql -- a real guardian is
@@ -518,6 +554,12 @@ async function doLogin(){
         currentUser={username:u, name:guardianResult.name, fullName:guardianResult.fullName};
         if(guardianResult.firstLogin){
           document.getElementById('screen-login').classList.remove('active');
+          // A guardian is a separate identity from a patient (patient_
+          // guardians, not patients) -- patient_change_username() targets
+          // current_patient_id(), which is never a guardian, so this
+          // wouldn't work for them; hide it rather than offer something
+          // that would fail.
+          document.getElementById('newUsernameGroup').style.display='none';
           document.getElementById('screen-changepw').classList.add('active');
           document.getElementById('newPw').focus();
         }else{
@@ -575,6 +617,15 @@ async function doLogin(){
     if(acc.firstLogin){
       // Show change password screen
       document.getElementById('screen-login').classList.remove('active');
+      // patient_change_username() (supabase/phase65_patient_username_
+      // change_and_is_child.sql) needs a real Supabase Auth session
+      // (current_patient_id()) -- getPatientToken() is only set once that
+      // real login has actually happened (see setPatientToken('1') above).
+      // A fully local-only/demo account has no such session, so the field
+      // would only ever fail there -- hide it for that case instead.
+      const usernameGroup=document.getElementById('newUsernameGroup');
+      usernameGroup.style.display=getPatientToken()?'':'none';
+      document.getElementById('newUsername').value=currentUser.username;
       document.getElementById('screen-changepw').classList.add('active');
       document.getElementById('newPw').focus();
     } else if(acc.joinStatus==='approved'&&!acc.anamnese){
@@ -593,15 +644,35 @@ async function doLogin(){
 
 // ── Self-registration ("Anmeldung beantragen") ──
 let resubmitUsername=null;
+// Item 5b (real user feedback, 2026-08-11): defaults to "für mich" every
+// time this screen is freshly shown (showRequestScreen() below resets it),
+// same as every other field on this form.
+let reqIsChild=false;
+function setReqIsChild(isChild){
+  reqIsChild=isChild;
+  document.getElementById('reqForSelfBtn').classList.toggle('active',!isChild);
+  document.getElementById('reqForChildBtn').classList.toggle('active',isChild);
+}
 
 function showRequestScreen(){
   resubmitUsername=null;
   ['reqVorname','reqNachname','reqAdresse','reqSvnr','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
+  setReqIsChild(false);
   document.getElementById('reqErrorMsg').classList.remove('show');
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-request').classList.add('active');
+  // The "Ordination —/—" notice only ever has anything real to show for a
+  // deep-link/QR arrival (joinRequestPracticeId/reqViaDeepLink) -- the
+  // plain "Neu hier?" flow doesn't know which practice yet at all (that's
+  // resolved later, on the QR-scan screen this hands off to instead), so
+  // showing a permanently-empty "—/—" box here was pure noise. Still shown
+  // (even as "—") for any deep-link arrival, matching the existing,
+  // documented "old QR with no embedded id" behaviour below -- not a
+  // regression for that case.
+  const noticeEl=document.querySelector('#screen-request .notice');
+  if(noticeEl) noticeEl.style.display=(joinRequestPracticeId||reqViaDeepLink)?'block':'none';
 }
 
 function backToLoginFromRequest(){
@@ -630,6 +701,7 @@ function resubmitJoinRequest(){
   // itself already carries instead of assuming a local account exists.
   const acc=PATIENTS[currentUser.username]||currentUser||{};
   resubmitUsername=currentUser.username;
+  setReqIsChild(false);
   document.getElementById('reqVorname').value=acc.name||'';
   document.getElementById('reqNachname').value=(acc.fullName||'').split(' ').slice(1).join(' ');
   document.getElementById('reqAdresse').value=acc.adresse||'';
@@ -720,7 +792,7 @@ async function performJoinRequestSubmit(fields,practiceId){
   // validate this patient's own chosen password once approved.
   const {error}=await sb.from('patient_join_requests').insert({
     username, vorname, nachname, full_name:fullName, adresse, svnr, temp_password:pw,
-    practice_id:practiceId,
+    practice_id:practiceId, is_child:reqIsChild,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){
@@ -922,6 +994,34 @@ async function saveNewPw(){
     PATIENTS[currentUser.username].firstLogin = false;
     savePatients();
   } else {
+    // supabase/phase65_patient_username_change_and_is_child.sql -- the
+    // field is hidden for a guardian/local-only session (see where
+    // #newUsernameGroup's display is set in doLogin() above), so this only
+    // ever runs for a real patient session; skipped entirely when left
+    // untouched (still equal to the QR-provisioned username), the common
+    // case. Checked BEFORE the password change below so a rejected
+    // username (too short/already taken) never leaves the patient with a
+    // changed password but no clear indication the username half failed.
+    const newUsernameRaw=document.getElementById('newUsername').value.trim().toLowerCase();
+    if(newUsernameRaw && newUsernameRaw!==currentUser.username){
+      const unameRes=await patientChangeUsername(newUsernameRaw);
+      if(!unameRes.ok){
+        errorText.textContent = unameRes.code==='too_short' ? tr('changepw.err.usernameTooShort')
+          : unameRes.code==='taken' ? tr('changepw.err.usernameTaken')
+          : tr('changepw.err.saveFailed');
+        errorEl.classList.add('show');return;
+      }
+      // Every later reference in this tab keys off currentUser.username
+      // (the local PATIENTS shadow, the smartordi_user sessionStorage
+      // entry written below) -- update it here so nothing downstream still
+      // points at the now-renamed old username.
+      if(local){
+        PATIENTS[newUsernameRaw]=local;
+        delete PATIENTS[currentUser.username];
+        savePatients();
+      }
+      currentUser.username=newUsernameRaw;
+    }
     const ok=await patientChangePassword(newPw);
     if(!ok){
       errorText.textContent=tr('changepw.err.saveFailed');
@@ -959,7 +1059,17 @@ async function saveNewPw(){
 function showAnamneseScreen(){
   document.querySelector('.card').classList.add('wide');
   const acc=PATIENTS[currentUser.username]||currentUser||{};
-  const fach=acc.fach||'Allgemeinmedizin';
+  // Explicit user decision (2026-08-11): an account marked as a child
+  // (secretary.html's "Kind" checkbox, or "Für mein Kind" in self-
+  // registration -- supabase/phase65_patient_username_change_and_is_
+  // child.sql) always gets the pediatric Anamnese below, even when the
+  // practice itself isn't a Kinderheilkunde practice. currentUser.isChild
+  // is the real, server-sourced flag (patient_get_profile()); acc's own
+  // value is only ever a local-device echo (e.g. secretary.html's own
+  // accounts[username] shadow, not necessarily present on the PATIENT's
+  // own device), so it's only a fallback, never trusted over the real one.
+  const isChild=!!(currentUser.isChild||acc.isChild);
+  const fach=isChild?'Kinderheilkunde':(acc.fach||'Allgemeinmedizin');
   document.getElementById('anamnese-common-section').innerHTML=ANAMNESE_COMMON_HTML;
   const info=anamneseSpecialtyInfo(fach);
   document.getElementById('anamnese-specialty-title').textContent=info.html?tr(info.titleKey):'';

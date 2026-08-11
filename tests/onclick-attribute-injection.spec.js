@@ -107,7 +107,15 @@ test.describe('onclick-attribute injection via unescaped patient/document names'
       staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
       patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', join_status: 'approved' }],
     }, () => {
-      sessionStorage.setItem('smartordi_patient_session', JSON.stringify({ id: 'p1', name: 'Maria', username: 'maria.huber' }));
+      // Real session key patient.html's getSessionUser() actually reads is
+      // 'smartordi_user' -- 'smartordi_patient_session' (the old value
+      // here) was never recognized as a session at all, which happened to
+      // not matter while a session-less load still rendered the rest of
+      // the page as a fallback. Now a genuinely session-less load redirects
+      // straight to patient-login.html (real user report, 2026-08-11), so
+      // this test needs an actually-recognized session to still be testing
+      // msgRowHtml() rather than a navigation.
+      sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'patient', name: 'Maria', username: 'maria.huber' }));
       localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
     });
     await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));

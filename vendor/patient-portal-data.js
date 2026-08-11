@@ -65,6 +65,7 @@ async function patientLogin(username,password){
   return {
     fullName: profile.fullName, name: profile.name, firstLogin: profile.firstLogin,
     joinStatus: profile.joinStatus, joinNote: profile.joinNote, anamnese: profile.anamnese,
+    isChild: profile.isChild,
   };
 }
 // ── GUARDIAN LOGIN (supabase/phase28_guardian_child_accounts.sql) -- a
@@ -108,6 +109,25 @@ async function patientChangePassword(newPassword){
   const {data:ok,error:markErr}=await sb.rpc('patient_mark_password_changed');
   if(markErr){ console.error('patient_mark_password_changed failed',markErr); return false; }
   return !!ok;
+}
+// supabase/phase65_patient_username_change_and_is_child.sql -- lets a
+// patient replace the system-generated username secretary.html's QR flow
+// assigned them (e.g. "max.mustermann", easy to forget since they never
+// typed it themselves) with one of their own choosing, from the same
+// first-login screen where they already set their password. Returns
+// {ok:true} on success, or {ok:false, code} where code is
+// 'too_short'/'taken'/'error' so the caller can show the specific reason
+// instead of one generic failure message.
+async function patientChangeUsername(newUsername){
+  const {data:ok,error}=await sb.rpc('patient_change_username',{p_new_username:newUsername});
+  if(error){
+    const msg=String(error.message||'');
+    if(msg.indexOf('username_too_short')!==-1) return {ok:false,code:'too_short'};
+    if(msg.indexOf('username_taken')!==-1) return {ok:false,code:'taken'};
+    console.error('patientChangeUsername failed',error);
+    return {ok:false,code:'error'};
+  }
+  return {ok:!!ok};
 }
 // supabase/phase20_patient_self_deletion.sql -- lets the patient request
 // their own erasure (Art. 17 DSGVO) directly, instead of only through
@@ -206,6 +226,7 @@ async function patientGetProfile(){
     fach: row.fach, dob: row.dob, adresse: row.adresse, tel: row.tel, email: row.email,
     versicherung: row.versicherung, svnr: row.svnr, firstLogin: row.first_login,
     joinStatus: row.join_status, joinNote: row.join_note, anamnese: row.anamnese,
+    isChild: !!row.is_child,
   };
 }
 async function patientGetMessages(){
