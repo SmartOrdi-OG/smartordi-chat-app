@@ -16,6 +16,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-portal-data.js"></script>
+<!-- jsQR (vendored, not CDN -- same self-hosting convention as patient-
+     login.html's own QR-scan screen, which this reuses the same scan-loop
+     shape from) -- used only by the "Kind/Erwachsene:n hinzufügen" QR-scan
+     step (supabase/phase64_unified_account_profiles.sql). -->
+<script src="vendor/jsqr.js"></script>
 <style>
 @font-face{
   font-family:'IBM Plex Sans';
@@ -886,6 +891,79 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     </div>
   </div>
 
+  <!-- ── PROFIL: Kind/Erwachsene:n hinzufügen (supabase/phase64_unified_
+       account_profiles.sql) -- submits a join request scoped to whichever
+       practice's QR gets scanned, carrying this account's own auth identity
+       + the claimed family relation, exactly like a brand-new self-
+       registration except staff already know which existing account to
+       attach it to once they approve it (secretary.html's Beitrittsanfragen,
+       unchanged review step). ── -->
+  <div class="modal-overlay" id="addProfileModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="addProfileTitle">—</div>
+        <button class="modal-close" onclick="closeAddProfileModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div id="addProfileError" style="display:none;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;margin-bottom:12px;"></div>
+
+        <!-- state: form -->
+        <div id="apStateForm">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+            <div>
+              <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="request.vorname.label">Vorname</label>
+              <input type="text" id="apVorname" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+            </div>
+            <div>
+              <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="request.nachname.label">Nachname</label>
+              <input type="text" id="apNachname" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+            </div>
+          </div>
+          <div id="apRelationWrap" style="display:none;margin-bottom:10px;">
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profiles.relation">Beziehung zu Ihnen</label>
+            <select id="apRelation" onchange="document.getElementById('apRelationLabelWrap').style.display=(this.value==='other')?'block':'none'" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;background:white;">
+              <option value="father" data-i18n="profiles.father">Vater</option>
+              <option value="mother" data-i18n="profiles.mother">Mutter</option>
+              <option value="other" data-i18n="profiles.otherRelation">Andere</option>
+            </select>
+            <div id="apRelationLabelWrap" style="display:none;margin-top:8px;">
+              <input type="text" id="apRelationLabel" data-i18n-placeholder="profiles.otherRelationPlaceholder" placeholder="z. B. Großmutter" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.adresse">Adresse</label>
+            <input type="text" id="apAdresse" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.svnr">SV-Nummer</label>
+            <input type="text" id="apSvnr" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
+        </div>
+
+        <!-- state: scanning -->
+        <div id="apStateScanning" style="display:none;">
+          <div style="position:relative;border-radius:16px;overflow:hidden;background:#0f172a;aspect-ratio:1/1;max-width:280px;margin:0 auto 14px;">
+            <video id="apQrVideo" playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+            <div style="position:absolute;inset:16%;border:2.5px solid rgba(255,255,255,0.75);border-radius:12px;pointer-events:none;"></div>
+          </div>
+          <div style="text-align:center;font-size:12px;color:var(--text-muted);" data-i18n="profiles.scanSub">Scannen Sie den QR-Code der Ordination, der dieses Profil hinzugefügt werden soll.</div>
+          <canvas id="apQrCanvas" style="display:none;"></canvas>
+        </div>
+
+        <!-- state: sent -->
+        <div id="apStateSent" style="display:none;text-align:center;padding:20px 0;">
+          <div style="font-size:36px;margin-bottom:10px;">✓</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;" data-i18n="request.sent.title">Antrag gesendet</div>
+          <div style="font-size:12.5px;color:var(--text-muted);line-height:1.6;" data-i18n="profiles.sentSub">Die Ordination prüft den Antrag. Sobald bestätigt, erscheint das neue Profil hier.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="apCancelBtn" onclick="closeAddProfileModal()" data-i18n="linkPractice.cancel">Abbrechen</button>
+        <button class="btn-confirm" id="apNextBtn" onclick="startAddProfileScan()" data-i18n="linkPractice.scanBtn">📷 QR-Code scannen</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── DOKUMENTE ── -->
   <div class="view" id="view-dokumente">
     <div class="view-header">
@@ -911,6 +989,20 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         <div>
           <div class="profil-name" id="profilName">—</div>
           <div class="profil-sub" id="profilSub">—</div>
+        </div>
+      </div>
+
+      <!-- supabase/phase64_unified_account_profiles.sql -- one login can
+           hold several independent patient profiles (own + any linked
+           child/adult). Hidden until renderProfilesCard() actually resolves
+           at least one profile (a real remote patient only -- the legacy
+           local-only demo account has nothing to switch between). -->
+      <div class="info-card" id="profilProfilesCard" style="display:none;">
+        <div class="info-card-header" data-i18n="profiles.title">Meine Profile</div>
+        <div id="profilProfilesList"></div>
+        <div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="openAddProfileModal('child')" style="background:#EAF4F1;border:none;color:#0E5E56;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="profiles.addChild">+ Kind hinzufügen</button>
+          <button onclick="openAddProfileModal('adult')" style="background:#EAF4F1;border:none;color:#0E5E56;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="profiles.addAdult">+ Erwachsene:n hinzufügen</button>
         </div>
       </div>
 
@@ -1863,6 +1955,7 @@ async function initPatientData(){
   updatePracticeIdentityUI();
   renderDokumente();
   renderProfilImpfungen();
+  renderProfilesCard();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
   staffRosterReady.then(renderPatientTermine);
@@ -2535,6 +2628,172 @@ async function saveContactEdit(){
   closeEditContactModal();
   showToast(tr('settings.saved'));
 }
+
+// ══ Meine Profile (supabase/phase64_unified_account_profiles.sql) ══
+// One login can now hold several independent patient profiles (own + any
+// linked child/adult). Only meaningful for a real, Supabase-backed patient
+// (getPatientToken()) -- the legacy local-only demo account has no server-
+// side identity for any of this to resolve against.
+function profilesRelationLabel(p){
+  if(p.relation==='self') return tr('profiles.self');
+  if(p.relation==='child') return tr('profiles.child');
+  if(p.relation==='father') return tr('profiles.father');
+  if(p.relation==='mother') return tr('profiles.mother');
+  return p.relationLabel||tr('profiles.otherRelation');
+}
+async function renderProfilesCard(){
+  const card=document.getElementById('profilProfilesCard');
+  const root=document.getElementById('profilProfilesList');
+  if(!card||!root) return;
+  if(!getPatientToken()){ card.style.display='none'; return; }
+  const profiles=await patientGetProfiles();
+  // A brand-new/legacy account with no linked profiles at all still only
+  // ever has its own single row here (patient_get_profiles() always
+  // includes it) -- show the card regardless, so "+ Kind/Erwachsene:n
+  // hinzufügen" is discoverable even before anyone has ever used it.
+  card.style.display='';
+  root.innerHTML=profiles.map(function(p){
+    const activeTag=p.isActive?`<span style="background:#EAF4F1;color:#0E5E56;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;">${escapeHtml(tr('profiles.active'))}</span>`:'';
+    const clickable=!p.isActive;
+    return `<div class="info-row" ${clickable?`onclick="switchToProfile('${p.patientId}')" style="cursor:pointer;"`:''}>
+        <span class="info-label">${escapeHtml(p.fullName)} · ${escapeHtml(profilesRelationLabel(p))}</span>
+        <span class="info-value">${activeTag}</span>
+      </div>`;
+  }).join('');
+}
+async function switchToProfile(patientId){
+  const ok=await patientSwitchProfile(patientId);
+  if(!ok){ showToast(tr('profiles.switchFailed'),'error'); return; }
+  // Re-derives sessionStorage's own smartordi_user (and every downstream
+  // cache keyed off it) from the NEWLY active profile, then re-runs the
+  // exact same bootstrap a fresh login/page load already goes through --
+  // deliberately NOT a location.reload(): every screen this tab has already
+  // rendered (chat, Termine, Dokumente, this Profil view itself) still
+  // describes the PREVIOUS profile, and getPatientToken() being set means
+  // initPatientData() alone would otherwise trust that stale cache instead
+  // of re-deriving it. Skipping rehydrateSessionFromRealAuth() here is
+  // exactly the kind of cross-identity stale-data bug this whole feature
+  // was designed carefully to avoid.
+  await rehydrateSessionFromRealAuth();
+  await initPatientData();
+  showToast(tr('profiles.switched'));
+}
+
+let _apType='child';
+let _apStream=null;
+let _apScanRAF=null;
+function openAddProfileModal(type){
+  _apType=type;
+  document.getElementById('addProfileTitle').textContent=tr(type==='child'?'profiles.addChild':'profiles.addAdult');
+  document.getElementById('apVorname').value='';
+  document.getElementById('apNachname').value='';
+  document.getElementById('apAdresse').value='';
+  document.getElementById('apSvnr').value='';
+  document.getElementById('apRelation').selectedIndex=0;
+  document.getElementById('apRelationLabel').value='';
+  document.getElementById('apRelationLabelWrap').style.display='none';
+  document.getElementById('apRelationWrap').style.display=(type==='adult')?'block':'none';
+  document.getElementById('addProfileError').style.display='none';
+  setApState('form');
+  document.getElementById('addProfileModal').classList.add('show');
+}
+function closeAddProfileModal(){
+  stopApQrScan();
+  document.getElementById('addProfileModal').classList.remove('show');
+}
+function setApState(state){
+  document.getElementById('apStateForm').style.display=(state==='form')?'block':'none';
+  document.getElementById('apStateScanning').style.display=(state==='scanning')?'block':'none';
+  document.getElementById('apStateSent').style.display=(state==='sent')?'block':'none';
+  document.getElementById('apNextBtn').style.display=(state==='form')?'':'none';
+  document.getElementById('apCancelBtn').textContent=tr(state==='sent'?'profiles.done':'linkPractice.cancel');
+}
+function showApError(key){
+  const el=document.getElementById('addProfileError');
+  el.textContent=tr(key);
+  el.style.display='block';
+}
+async function startAddProfileScan(){
+  const vorname=document.getElementById('apVorname').value.trim();
+  const nachname=document.getElementById('apNachname').value.trim();
+  document.getElementById('addProfileError').style.display='none';
+  if(!vorname||!nachname){
+    showApError('request.err.missing');
+    return;
+  }
+  setApState('scanning');
+  const video=document.getElementById('apQrVideo');
+  try{
+    _apStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  }catch(e){
+    console.error('getUserMedia failed',e);
+    setApState('form');
+    showApError('linkPractice.err.camera');
+    return;
+  }
+  video.srcObject=_apStream;
+  try{ await video.play(); }catch(e){ /* autoplay quirks -- readyState check in the scan loop below covers it either way */ }
+  apScanFrame();
+}
+function stopApQrScan(){
+  if(_apScanRAF!==null){ cancelAnimationFrame(_apScanRAF); _apScanRAF=null; }
+  if(_apStream){ _apStream.getTracks().forEach(t=>t.stop()); _apStream=null; }
+}
+function apScanFrame(){
+  const video=document.getElementById('apQrVideo');
+  const canvas=document.getElementById('apQrCanvas');
+  if(video.readyState===video.HAVE_ENOUGH_DATA&&video.videoWidth>0){
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    const ctx=canvas.getContext('2d');
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    const code=jsQR(imageData.data,imageData.width,imageData.height);
+    if(code&&code.data){
+      handleApQrDecoded(code.data);
+      return;
+    }
+  }
+  _apScanRAF=requestAnimationFrame(apScanFrame);
+}
+// Only ever accepts the exact scheme secretary.html's own QR generator
+// produces (.../patient-register/<id>, see vercel.json's rewrite) -- same
+// contract as patient-login.html's extractPracticeIdFromScannedText(),
+// duplicated here rather than shared since these are two independent pages
+// (same reasoning as this file's own VACCINE_SCHEDULE duplication).
+function extractApPracticeId(text){
+  if(!text) return null;
+  const m=String(text).match(/\/patient-register\/([^/?#]+)/);
+  return (m&&m[1])?decodeURIComponent(m[1]):null;
+}
+async function handleApQrDecoded(text){
+  stopApQrScan();
+  const practiceId=extractApPracticeId(text);
+  if(!practiceId){
+    setApState('form');
+    showApError('linkPractice.err.invalid');
+    return;
+  }
+  const vorname=document.getElementById('apVorname').value.trim();
+  const nachname=document.getElementById('apNachname').value.trim();
+  const adresse=document.getElementById('apAdresse').value.trim();
+  const svnr=document.getElementById('apSvnr').value.trim();
+  const relation=_apType==='child'?'child':document.getElementById('apRelation').value;
+  const relationLabelInput=document.getElementById('apRelationLabel').value.trim();
+  const relationLabel=(relation==='other')?relationLabelInput:null;
+  try{
+    await patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel);
+  }catch(e){
+    console.error('patientSubmitProfileJoinRequest failed',e);
+    setApState('form');
+    showApError('request.err.submitFailed');
+    return;
+  }
+  setApState('sent');
+}
+// Safety net -- releases the camera if the patient navigates away (back/
+// forward, closing the tab) while mid-scan instead of leaving it running.
+window.addEventListener('pagehide',stopApQrScan);
 
 // Init
 document.getElementById('langSwitcherWrap').innerHTML=langSwitcherHtml('langSwitcher');
