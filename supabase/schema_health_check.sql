@@ -55,7 +55,11 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
+  -- phase64: schema-only so far -- no app code reads/writes these yet (see
+  -- that file's own header), but they still need to actually exist for the
+  -- migration to have applied at all, so they're checked here too.
+  'patient_account_profiles','patient_active_profile'
 ]) as t
 
 union all
@@ -81,7 +85,10 @@ from unnest(array[
   'anonymize_practice','run_scheduled_practice_deletions',
   'flag_expired_unpaid_trials',
   'patient_get_booking_enabled','patient_get_staff_roster',
-  'public_get_practice_join_info','record_consent','patient_update_profile'
+  'public_get_practice_join_info','record_consent','patient_update_profile',
+  -- phase64: not called by any app code yet (schema/RPC foundation only)
+  'patient_get_profiles','patient_switch_profile',
+  'patient_submit_profile_join_request','staff_link_account_profile'
 ]) as f
 
 union all
@@ -150,7 +157,14 @@ from (values
   -- phase63: catches a deployed version that's missing the ownership check
   -- (current_patient_id()) -- without it, a patient could edit ANY row's
   -- contact details, not just their own.
-  ('patient_update_profile', 'current_patient_id')
+  ('patient_update_profile', 'current_patient_id'),
+  -- phase64: catches a deployed current_patient_id() that's still the OLD
+  -- pre-phase64 coalesce (own row, then guardian_active_child) -- without
+  -- patient_active_profile checked FIRST, an account can never actually
+  -- switch into a linked child/adult profile no matter what the rest of
+  -- this phase's schema/RPCs say, since this function is the single place
+  -- every patient_*/RPC resolves "who is the caller" from.
+  ('current_patient_id', 'patient_active_profile')
 ) as f(name, expect)
 
 union all
@@ -314,7 +328,8 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
+  'patient_account_profiles','patient_active_profile'
 ]) as t
 
 union all
@@ -333,6 +348,7 @@ select 'RLS policy exists' as check_type, t as name,
   case
     when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
     when t='staff_pilot_login_links' then 'N/A -- intentionally zero policies (service-role Edge Functions only, see phase60_pilot_login_links.sql)'
+    when t in ('patient_account_profiles','patient_active_profile') then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, same trust boundary as guardian_active_child, see phase64_unified_account_profiles.sql)'
     when exists (select 1 from pg_policies where schemaname='public' and tablename=t) then 'OK'
     else 'MISSING -- RLS is enabled but has zero policies -- this table is completely inaccessible to every real caller, likely breaking whatever feature reads/writes it'
   end as status
@@ -342,7 +358,8 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
+  'patient_account_profiles','patient_active_profile'
 ]) as t
 
 union all
@@ -366,6 +383,7 @@ select 'RLS actually scopes access' as check_type, t as name,
     when t='guardian_active_child' then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, see phase31_patient_auth.sql)'
     when t='staff_pilot_login_links' then 'N/A -- intentionally zero policies (service-role Edge Functions only, see phase60_pilot_login_links.sql)'
     when t='client_error_log' then 'N/A -- insert-only with a deliberately unscoped with_check; scoping is enforced by the trg_set_practice_id trigger, not this policy (see phase46_client_error_log.sql)'
+    when t in ('patient_account_profiles','patient_active_profile') then 'N/A -- intentionally zero policies (RPC-only access via SECURITY DEFINER functions, same trust boundary as guardian_active_child, see phase64_unified_account_profiles.sql)'
     when not exists (select 1 from pg_policies where schemaname='public' and tablename=t)
       then 'MISSING (see the RLS policy exists check above)'
     when exists (
@@ -381,7 +399,8 @@ from unnest(array[
   'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
-  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links'
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
+  'patient_account_profiles','patient_active_profile'
 ]) as t
 
 order by check_type, name;
