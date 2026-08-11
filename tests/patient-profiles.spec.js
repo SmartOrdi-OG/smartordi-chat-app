@@ -76,6 +76,46 @@ test('a local/demo (non-token) account never shows the profiles card at all', as
   expect(visible).toBe(false);
 });
 
+// Real report (2026-08-11): a child added and approved while the parent's
+// tab was already open/already logged in never showed up in "Meine
+// Profile" -- there's no realtime push for this, and an installed PWA has
+// no obvious "refresh" gesture (no pull-to-refresh/reload button), so a
+// full app relaunch was the only workaround, which nobody would think to
+// try. Opening/re-opening the Profil tab (even switching back to it, not
+// just the very first load) now always re-fetches.
+test('opening the Profil tab re-fetches the profiles list every time, not just on the very first load', async ({ page }) => {
+  await setupRemote(page);
+  const result = await page.evaluate(async () => {
+    let calls = 0;
+    sb.rpc = (name) => {
+      if (name === 'patient_get_profiles') { calls += 1; return Promise.resolve({ data: [], error: null }); }
+      return Promise.resolve({ data: [], error: null });
+    };
+    switchView('chat');
+    switchView('profil');
+    switchView('chat');
+    switchView('profil');
+    return { calls };
+  });
+  expect(result.calls, 'switching to the Profil tab must re-fetch every time, not just once').toBeGreaterThanOrEqual(2);
+});
+
+test('the 🔄 refresh button on "Meine Profile" re-fetches on demand', async ({ page }) => {
+  await setupRemote(page);
+  const result = await page.evaluate(async () => {
+    let calls = 0;
+    sb.rpc = (name) => {
+      if (name === 'patient_get_profiles') { calls += 1; return Promise.resolve({ data: [], error: null }); }
+      return Promise.resolve({ data: [], error: null });
+    };
+    const before = calls;
+    document.querySelector('#profilProfilesCard button[onclick="renderProfilesCard()"]').click();
+    await new Promise(r => setTimeout(r, 100));
+    return { before, after: calls };
+  });
+  expect(result.after).toBeGreaterThan(result.before);
+});
+
 test('clicking a non-active profile switches it, without a page reload -- the whole Profil view now reflects the NEW profile', async ({ page }) => {
   await setupRemote(page, profileRow({ full_name: 'Maria Huber' }));
   const result = await page.evaluate(async () => {
