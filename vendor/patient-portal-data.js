@@ -261,6 +261,40 @@ async function patientUpdateProfile(fields){
   if(error){ console.error('patientUpdateProfile failed',error); return false; }
   return !!data;
 }
+// supabase/phase64_unified_account_profiles.sql -- one login can hold
+// several independent patient profiles (own + any linked child/adult).
+// patientGetProfiles() lists every profile this login can switch to;
+// patientSwitchProfile() changes which one current_patient_id() resolves to
+// for every subsequent patient_*/RPC call, for the rest of this session.
+async function patientGetProfiles(){
+  const {data,error}=await sb.rpc('patient_get_profiles');
+  if(error){ console.error('patientGetProfiles failed',error); return []; }
+  return (data||[]).map(function(r){
+    return {
+      patientId:r.patient_id, fullName:r.full_name, relation:r.relation,
+      relationLabel:r.relation_label, practiceId:r.practice_id,
+      practiceName:r.practice_name, isActive:r.is_active,
+    };
+  });
+}
+async function patientSwitchProfile(patientId){
+  const {data,error}=await sb.rpc('patient_switch_profile',{p_patient_id:patientId});
+  if(error){ console.error('patientSwitchProfile failed',error); return false; }
+  return !!data;
+}
+// Submits a request to add a new profile (a child, or another adult like a
+// father/mother) onto THIS login -- still goes through the exact same staff
+// review as any new patient (patient_join_requests/secretary.html's
+// Beitrittsanfragen), just carrying which existing account it should attach
+// to once approved.
+async function patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel){
+  const {data,error}=await sb.rpc('patient_submit_profile_join_request',{
+    p_practice_id:practiceId, p_vorname:vorname, p_nachname:nachname,
+    p_adresse:adresse, p_svnr:svnr, p_relation:relation, p_relation_label:relationLabel||null,
+  });
+  if(error){ console.error('patientSubmitProfileJoinRequest failed',error); throw error; }
+  return data;
+}
 // supabase/phase2_patient_documents.sql -- documents a staff member uploaded
 // for this patient (lab results, referrals...). patientGetDocuments() only
 // returns metadata; the base64 file body is fetched separately per document
