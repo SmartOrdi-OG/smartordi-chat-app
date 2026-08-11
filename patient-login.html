@@ -563,7 +563,7 @@ async function doLogin(){
           document.getElementById('screen-changepw').classList.add('active');
           document.getElementById('newPw').focus();
         }else{
-          await showChildPickerScreen();
+          await routeGuardianAfterLogin();
         }
         return;
       }
@@ -974,7 +974,7 @@ async function saveNewPw(){
       errorEl.classList.add('show');return;
     }
     document.getElementById('screen-changepw').classList.remove('active');
-    await showChildPickerScreen();
+    await routeGuardianAfterLogin();
     return;
   }
 
@@ -1119,13 +1119,47 @@ async function submitAnamnese(){
   window.location.href='patient.html';
 }
 
-// ── GUARDIAN: pick which child to view (supabase/phase28_guardian_child_
-// accounts.sql) -- shown right after a real guardian logs in (and, if it
-// was their first login, changes their temp password). Selecting a child
-// records it as the child this guardian's own Auth session is "acting as"
-// (guardian_active_child, phase31) -- from that point on patient.html
-// treats this exactly like any real patient login, no guardian-specific
-// code needed there at all. ──
+// supabase/phase66_retire_guardian_login_system.sql (Phase C, explicit
+// decision 2026-08-11: soft/safe deprecation, not a hard removal) --
+// called right after a real guardian logs in (and, if it was their first
+// login, changes their temp password), replacing the direct call to the
+// old child-picker screen below. That migration carried each guardian's
+// existing children into patient_account_profiles, so patientGetProfiles()
+// -- the exact same RPC patient.html's own "Meine Profile" card already
+// uses -- now sees them like any other linked profile. Routes straight
+// into patient.html via that unified system when it finds something;
+// falls back to the old, guardian-specific screen unmodified when it
+// doesn't (e.g. this guardian's auth_user_id wasn't set yet when the
+// migration ran) -- an unmigrated guardian must keep working exactly as
+// before, never break.
+async function routeGuardianAfterLogin(){
+  const switched=await ensureActiveProfile();
+  if(!switched){
+    await showChildPickerScreen();
+    return;
+  }
+  const profile=await patientGetProfile();
+  if(!profile||!profile.username){
+    await showChildPickerScreen();
+    return;
+  }
+  setPatientToken('1');
+  // Stale-flag defense (same reasoning as saveNewPw()'s local-guardian
+  // branch elsewhere in this file) -- this route never sets it, but a
+  // previous old-style guardian session in this same browser tab could
+  // have left it behind.
+  sessionStorage.removeItem('smartordi_guardian_session');
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:profile.name,username:profile.username}));
+  window.location.href='patient.html';
+}
+
+// ── GUARDIAN (legacy fallback): pick which child to view (supabase/
+// phase28_guardian_child_accounts.sql) -- only reached now via
+// routeGuardianAfterLogin() above, for a guardian phase66's migration
+// hasn't (yet) covered. Selecting a child records it as the child this
+// guardian's own Auth session is "acting as" (guardian_active_child,
+// phase31) -- from that point on patient.html treats this exactly like
+// any real patient login, no guardian-specific code needed there at all. ──
 async function showChildPickerScreen(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-child-picker').classList.add('active');

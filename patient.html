@@ -1829,16 +1829,30 @@ async function rehydrateSessionFromRealAuth(){
         if(!refreshErr&&refreshed&&refreshed.session) profile=await patientGetProfile();
       }catch(e){ console.error('rehydrateSessionFromRealAuth: refreshSession retry failed',e); }
     }
+    // supabase/phase66_retire_guardian_login_system.sql -- a real Auth
+    // session with current_patient_id() resolving to nothing isn't
+    // necessarily "no session": a guardian who authenticated but hasn't
+    // had a child selected yet THIS tab (patient_active_profile/
+    // guardian_active_child both empty for this auth session), or any
+    // multi-profile account rehydrating fresh, both look exactly like
+    // this. Auto-switch to this account's first available profile before
+    // giving up -- ensureActiveProfile() is a no-op (returns null
+    // straight away) for a genuinely profile-less session, so this never
+    // masks an actually-logged-out visitor.
+    if(!profile||!profile.username){
+      const switched=await ensureActiveProfile();
+      if(switched) profile=await patientGetProfile();
+    }
     if(!profile||!profile.username){
       // Diagnostic-only (never the visible banner -- a real Auth session
-      // with a legitimately empty profile is NOT always a bug, e.g. a
-      // guardian who hasn't picked a child yet, so this must stay silent to
-      // the patient the same way patientGetProfile()'s own zero-row case
-      // does). This just makes the "real session, but rehydrate still
-      // couldn't recover it" combination visible in client_error_log for
-      // us, instead of being indistinguishable from a normal logged-out
-      // load with no trace left anywhere.
-      logClientErrorRemotely('rehydrateSessionFromRealAuth: real auth session but no patient profile resolved (even after refresh retry)', null);
+      // with a genuinely empty profile can still be legitimate, e.g. an
+      // unmigrated guardian with no children linked yet, so this must stay
+      // silent to the patient the same way patientGetProfile()'s own
+      // zero-row case does). This just makes the "real session, but
+      // rehydrate still couldn't recover it" combination visible in
+      // client_error_log for us, instead of being indistinguishable from a
+      // normal logged-out load with no trace left anywhere.
+      logClientErrorRemotely('rehydrateSessionFromRealAuth: real auth session but no patient profile resolved (even after refresh retry and profile auto-switch)', null);
       return null;
     }
     const user={role:'patient', name:profile.name, username:profile.username};

@@ -303,6 +303,27 @@ async function patientSwitchProfile(patientId){
   if(error){ console.error('patientSwitchProfile failed',error); return false; }
   return !!data;
 }
+// supabase/phase66_retire_guardian_login_system.sql -- current_patient_id()
+// can resolve to nothing even though this login DOES have at least one
+// real profile available: a guardian who just authenticated and hasn't
+// had a child selected yet this session (patient_active_profile/
+// guardian_active_child both empty for this auth_user_id), or any
+// multi-profile account rehydrating in a fresh tab with no active-profile
+// row set. Auto-switches to the first profile patient_get_profiles()
+// returns (its own existing ordering: a "self" row first if this login
+// has one, then alphabetical) instead of leaving the account looking
+// sessionless. Shared by patient-login.html's guardian-login routing and
+// patient.html's rehydrateSessionFromRealAuth(). Returns the profile
+// switched to, or null if this account genuinely has zero profiles at all
+// yet (e.g. an unmigrated guardian) -- callers decide their own fallback.
+async function ensureActiveProfile(){
+  const profiles=await patientGetProfiles();
+  if(!profiles.length) return null;
+  const active=profiles.find(p=>p.isActive);
+  if(active) return active;
+  const ok=await patientSwitchProfile(profiles[0].patientId);
+  return ok?profiles[0]:null;
+}
 // Submits a request to add a new profile (a child, or another adult like a
 // father/mother) onto THIS login -- still goes through the exact same staff
 // review as any new patient (patient_join_requests/secretary.html's
