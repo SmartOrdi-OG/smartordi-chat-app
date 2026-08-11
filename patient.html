@@ -1865,8 +1865,16 @@ async function initPatientData(){
     session=await rehydrateSessionFromRealAuth();
   }
   if(!session||!session.username){
-    document.getElementById('messages').innerHTML=FALLBACK_MESSAGES.map(msgRowHtml).join('');
-    return; // no session/account found -- keep the rest of the static demo markup as a safe fallback
+    // Real user report (2026-08-11): a fresh visitor opening a shared link
+    // for the very first time has no session anywhere (sessionStorage
+    // empty AND no real Supabase Auth session to rehydrate from above) --
+    // rendering this page's static demo/fallback markup left them staring
+    // at what looked like a broken, empty page instead of being sent to
+    // the login/register screen. patient-login.html is where every other
+    // "not authenticated" exit in this file already sends patients (see
+    // logout() below) -- send fresh, session-less visitors there too.
+    window.location.href='patient-login.html';
+    return;
   }
   const accounts=loadPatientAccounts();
   const baseAccount=accounts[session.username];
