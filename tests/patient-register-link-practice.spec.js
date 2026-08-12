@@ -190,3 +190,86 @@ test('"← Zurück zu Ihren Daten" preserves the entered form values and release
   expect(state.vorname).toBe('Max');
   expect(state.username).toBe('freshuser5');
 });
+
+// Real user report (2026-08-11): a phone that reached this screen by
+// scanning a QR code with its OWN camera app first (external hand-off into
+// the browser), then tried to scan the practice's QR with THIS in-app
+// scanner, saw a live camera image but nothing was ever recognized -- even
+// standing still, well-lit, right on target. The same scanner worked
+// immediately when reached without that prior external hand-off. See
+// startQrScan()'s own comment for the suspected mechanism: mobile browsers
+// can throttle requestAnimationFrame indefinitely on a tab they misjudge
+// as not fully "active", which a native <video> element's own playback
+// (what the user actually SEES) is completely unaffected by -- making the
+// stall invisible until you look at whether the JS-side scan loop is
+// actually still running.
+test('a stalled scan loop (requestAnimationFrame silently stopped) recovers when the tab becomes visible again', async ({ page }) => {
+  await gotoFresh(page);
+  await page.click('text=Neu hier?');
+  await fillJoinRequestForm(page, 'freshuser6');
+  await page.click('#screen-request .btn-main');
+  await page.waitForTimeout(300);
+
+  const result = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 100; canvas.height = 100;
+    // Actually paint something -- a canvas whose 2D context is never
+    // touched can leave captureStream()'s track perpetually "waiting"
+    // for a first frame in a real browser, which hangs video.play()
+    // indefinitely instead of resolving. The existing "real camera frame"
+    // test above draws a real QR code for the same reason.
+    canvas.getContext('2d').fillRect(0, 0, canvas.width, canvas.height);
+    const stream = canvas.captureStream(10);
+    navigator.mediaDevices.getUserMedia = async () => stream;
+
+    await startQrScan();
+    // Simulate the exact real-world symptom: the video keeps rendering on
+    // its own (native playback, left completely untouched here) but the
+    // JS-side scan loop has silently stopped being scheduled.
+    cancelAnimationFrame(qrScanRAF);
+    qrScanRAF = null;
+
+    let playCalled = false;
+    const video = document.getElementById('qrVideo');
+    const origPlay = video.play.bind(video);
+    video.play = () => { playCalled = true; return origPlay(); };
+
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await new Promise((r) => setTimeout(r, 50));
+
+    return { playCalled, resumedRAF: qrScanRAF !== null };
+  });
+  expect(result.playCalled, 'video.play() must be retried once the tab is visible again').toBe(true);
+  expect(result.resumedRAF, 'the scan loop must be kicked back into motion').toBe(true);
+});
+
+test('a manual "restart the camera" hint appears after a few seconds of no detection, and cancelling clears it', async ({ page }) => {
+  await gotoFresh(page);
+  await page.click('text=Neu hier?');
+  await fillJoinRequestForm(page, 'freshuser7');
+  await page.click('#screen-request .btn-main');
+  await page.waitForTimeout(300);
+
+  await page.evaluate(async () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 100; canvas.height = 100;
+    // A plain filled square -- a real frame for captureStream() to
+    // deliver (see the sibling test above for why an untouched canvas
+    // hangs video.play()), but never a decodable QR code.
+    canvas.getContext('2d').fillRect(0, 0, canvas.width, canvas.height);
+    const stream = canvas.captureStream(10);
+    navigator.mediaDevices.getUserMedia = async () => stream;
+    await startQrScan();
+  });
+  const beforeHint = await page.evaluate(() => getComputedStyle(document.getElementById('qrScanStuckHint')).display !== 'none');
+  expect(beforeHint, 'must not show immediately -- the scan is given a fair chance first').toBe(false);
+
+  await page.waitForTimeout(6300);
+  const afterHint = await page.evaluate(() => getComputedStyle(document.getElementById('qrScanStuckHint')).display !== 'none');
+  expect(afterHint).toBe(true);
+
+  await page.click('text=Abbrechen');
+  const afterCancel = await page.evaluate(() => getComputedStyle(document.getElementById('qrScanStuckHint')).display !== 'none');
+  expect(afterCancel, 'cancelling must not leave the hint showing on the intro screen behind it').toBe(false);
+});
