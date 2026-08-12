@@ -1,0 +1,217 @@
+// Parser for the Austrian Ärztekammer's Legacy Export-Normdatensatz (ENDS 1,
+// "Export-NormDatenSatz ENDS", Version IX, Stand 6.5.2008) -- the format
+// most current Austrian practice software still exports for switching to a
+// new system (the newer ENDS 2 / CDA format, "Normativ" only since 2021, is
+// a separate parser -- see the project plan in TODO.md).
+//
+// This is NOT a CSV. Every line in the file is exactly one field's value,
+// prefixed with a fixed 27-character header:
+//   10-digit patient number (numeric; the spec says a source system with
+//     alphanumeric patient IDs must sort and renumber patients sequentially
+//     before export)
+//   5-character field code: '#' + 1-letter block code (see ENDS1_BLOCK_NAMES)
+//     + 3-letter field code (e.g. FNM, VNM -- see ENDS1_P_FIELDS)
+//   8-digit date (TTMMJJJJ), zero-padded for master data
+//   4-digit time (HHMM), zero-padded
+// followed immediately by the field's content, terminated by CR/LF. Per the
+// spec, a patient's data is grouped block by block (#P, then #H, #B, #D...)
+// before the next patient's data begins, and repeatable blocks (multiple
+// diagnoses, multiple prescriptions) simply repeat within that patient.
+
+const ENDS1_LINE_RE = /^(\d{10})(#[PHBDKLVGFEAZ][A-Z]{3})(\d{8})(\d{4})/;
+
+// #P (PatientenstammDaten) field dictionary -- complete, per the official
+// spec's field table. Phase 1 only reads this block; other blocks (#D
+// Diagnosen, #V Verordnungen, ...) are counted for the preview but not yet
+// parsed field-by-field -- that's later phases of the same project.
+const ENDS1_P_FIELDS = {
+  NMR: { label: 'Patientennummer', type: 'N' },
+  FNM: { label: 'Familienname', type: 'T' },
+  VNM: { label: 'Vorname', type: 'T' },
+  GNM: { label: 'Geburtsname', type: 'T' },
+  TTL: { label: 'Titel', type: 'T' },
+  GBD: { label: 'Geburtsdatum', type: 'D' },
+  VNR: { label: 'Versicherungsnummer', type: 'N' },
+  MGN: { label: 'Mitgliedsnummer', type: 'T' },
+  VKT: { label: 'Versicherten-Kategorie', type: 'N' },
+  SKV: { label: 'Sachleistungs-/Kostenersatz', type: 'N' },
+  TL1: { label: 'Telefon 1', type: 'T' },
+  TL2: { label: 'Telefon 2', type: 'T' },
+  MAL: { label: 'E-Mail', type: 'T' },
+  FAX: { label: 'Fax', type: 'T' },
+  EKM: { label: 'Entfernung (km)', type: 'N' },
+  STR: { label: 'Straße', type: 'T' },
+  LND: { label: 'Land', type: 'T' },
+  PLZ: { label: 'Postleitzahl', type: 'N' },
+  ORT: { label: 'Ort', type: 'T' },
+  KCD: { label: 'Kassencode', type: 'T' },
+  BLD: { label: 'Bundesland', type: 'N' },
+  GES: { label: 'Geschlecht', type: 'N' },
+  BER: { label: 'Beruf', type: 'T' },
+  GRS: { label: 'Größe (cm)', type: 'N' },
+  GEW: { label: 'Gewicht (g)', type: 'N' },
+  HTF: { label: 'Bes. Kennzeichen/Hautfarbe', type: 'T' },
+  VRW: { label: 'Verwandtschaft z. Hauptversicherten', type: 'T' },
+  ZSV: { label: 'Zusatzversicherung', type: 'T' },
+  RZG: { label: 'Rezeptgebühren befreit', type: 'T' },
+  RZD: { label: 'Befreit bis', type: 'D' },
+  ZUW: { label: 'Zuweisender Arzt', type: 'T' },
+  DDG: { label: 'Dauerdiagnose', type: 'T' },
+  CAV: { label: 'Cave', type: 'T' },
+  DMK: { label: 'Dauermedikation', type: 'T' },
+  ALL: { label: 'Allergie', type: 'T' },
+  BSA: { label: 'Behandlungsscheinart', type: 'N' },
+  BGR: { label: 'Behandlungsschein-Begründung', type: 'N' },
+  VON: { label: 'Schein von', type: 'D' },
+  BIS: { label: 'Schein bis', type: 'D' },
+  KAS: { label: 'Behandlungsschein-Kassencode', type: 'T' },
+  SDS: { label: 'Fremdstaaten-Kennzeichen', type: 'T' },
+  SAD: { label: 'Schein-Abgabedatum', type: 'D' },
+  UWD: { label: 'Überweisungsdatum', type: 'D' },
+  SZW: { label: 'Schein-Zuweisender Arzt', type: 'T' },
+  FRG: { label: 'Fragestellung', type: 'T' },
+  DGB: { label: 'Dienstgeber', type: 'T' },
+  DGS: { label: 'DG Straße', type: 'T' },
+  DGO: { label: 'DG Ort', type: 'T' },
+  DGP: { label: 'DG Postleitzahl', type: 'N' },
+  DGT: { label: 'DG Telefon', type: 'T' },
+  GSD: { label: 'Geld-Saldo', type: 'N' },
+  SDU: { label: 'Saldo-Ursache', type: 'T' },
+  HVN: { label: 'Patientennr. Hauptversicherter', type: 'N' },
+};
+
+const ENDS1_BLOCK_NAMES = {
+  P: 'Patientenstammdaten', H: 'Hauptversicherten-Daten', B: 'Behandlung/Positionen',
+  D: 'Diagnosen', K: 'Karteieintragungen', L: 'Laborbefunde', V: 'Verordnungen/Rezepte',
+  G: 'Geldfluss', F: 'Befunde', E: 'eCard-Konsultationsdaten', A: 'ABS-Daten', Z: 'Zahn-Daten',
+};
+
+// The spec doesn't state a text encoding. Austrian DOS/Windows practice
+// software of this era conventionally used Windows-1252, so that's the
+// fallback -- but we try strict UTF-8 first in case a modern export used it.
+function decodeEnds1Bytes(bytes) {
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), encoding: 'utf-8' };
+  } catch (e) {
+    return { text: new TextDecoder('windows-1252').decode(bytes), encoding: 'windows-1252' };
+  }
+}
+
+// Content-based detection (not filename-based): the spec never mandates a
+// specific filename for the main export file, unlike ENDS 2's fixed
+// README.TXT/IHE_XDM structure. A handful of lines matching the exact
+// 27-character header is a strong, cheap signal.
+function looksLikeEnds1(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  let hits = 0;
+  for (let i = 0; i < Math.min(lines.length, 200); i++) {
+    if (ENDS1_LINE_RE.test(lines[i])) hits++;
+    if (hits >= 3) return true;
+  }
+  return false;
+}
+
+// Parses every line into {patientNr, block, field, date, time, value}.
+// Each field is exactly one line (CR/LF-terminated) per the spec, so this
+// is a plain line-by-line parse -- no multi-line lookahead needed. Lines
+// that don't match the header at all (stray blank lines, a corrupted
+// line) are kept separately rather than silently dropped.
+function parseEnds1Lines(text) {
+  const lines = text.split(/\r\n|\r|\n/);
+  const records = [];
+  const unrecognizedLines = [];
+  for (const line of lines) {
+    if (!line) continue;
+    const m = ENDS1_LINE_RE.exec(line);
+    if (!m) {
+      if (line.trim()) unrecognizedLines.push(line);
+      continue;
+    }
+    const [, patientNr, fieldCode, date, time] = m;
+    records.push({
+      patientNr,
+      block: fieldCode[1],
+      field: fieldCode.slice(2),
+      date,
+      time,
+      value: line.slice(27),
+    });
+  }
+  return { records, unrecognizedLines };
+}
+
+// Groups parsed records by patient number. #P fields not in ENDS1_P_FIELDS
+// (e.g. a future spec revision's field code) are preserved under
+// unknownFields instead of being dropped, per the "never destroy unmapped
+// source data" principle. Every other block is only counted for now
+// (Phase 1 is master-data-only; #D/#V/#L etc. parsing is a later phase).
+function buildEnds1PatientPreview(records) {
+  const byPatient = new Map();
+  for (const rec of records) {
+    if (!byPatient.has(rec.patientNr)) {
+      byPatient.set(rec.patientNr, { patientNr: rec.patientNr, stammdaten: {}, unknownFields: [], blockCounts: {} });
+    }
+    const p = byPatient.get(rec.patientNr);
+    p.blockCounts[rec.block] = (p.blockCounts[rec.block] || 0) + 1;
+    if (rec.block === 'P') {
+      const trimmed = rec.value.trim();
+      if (ENDS1_P_FIELDS[rec.field]) p.stammdaten[rec.field] = trimmed;
+      else p.unknownFields.push({ field: rec.field, value: trimmed });
+    }
+  }
+  return [...byPatient.values()];
+}
+
+// base64 -> Uint8Array, browser-native (atob + charCodeAt) -- no Buffer
+// dependency, matches how this codebase already decodes base64 elsewhere.
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+// Top-level entry point: given a File (the uploaded ZIP), extracts every
+// entry, runs looksLikeEnds1() detection on each text-like entry, and
+// parses the ones that match. Tolerant of the export containing more than
+// one matching file (e.g. Stammdaten + a separate Adressdaten file, which
+// the spec explicitly allows for multi-mandant setups) by merging results
+// per patient number across all matching files.
+//
+// maxTotalBytes guards against a zip bomb-style archive (a tiny ZIP that
+// decompresses to gigabytes) -- extraction is aborted once the running
+// total of decompressed bytes read exceeds this bound. Reads each entry via
+// .async('base64') (not 'uint8array') to match the same JSZip entry API
+// this codebase's other zip-reading code (secretary.html's confirmDocImport)
+// already uses, including in tests/helpers/jszipStub.js's fake JSZip.
+async function parseEnds1Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}) {
+  const buf = await zipFile.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  let totalBytes = 0;
+  let encoding = null;
+  const allRecords = [];
+  const matchedFiles = [];
+  const entryNames = Object.keys(zip.files).filter(name => !zip.files[name].dir);
+  for (const name of entryNames) {
+    // Skip anything that's obviously not a text export (documents/images
+    // referenced from #F/#E/#A path fields live alongside the main file).
+    if (/\.(pdf|jpe?g|png|gif|bmp|tiff?|docx?|xlsx?|csv)$/i.test(name)) continue;
+    const base64 = await zip.files[name].async('base64');
+    const bytes = base64ToBytes(base64);
+    totalBytes += bytes.length;
+    if (totalBytes > maxTotalBytes) {
+      throw new Error('Archiv zu groß (Limit: ' + Math.round(maxTotalBytes / 1024 / 1024) + ' MB entpackt).');
+    }
+    const decoded = decodeEnds1Bytes(bytes);
+    if (!looksLikeEnds1(decoded.text)) continue;
+    encoding = encoding || decoded.encoding;
+    matchedFiles.push(name);
+    const { records } = parseEnds1Lines(decoded.text);
+    allRecords.push(...records);
+  }
+  if (matchedFiles.length === 0) return null;
+  const patients = buildEnds1PatientPreview(allRecords);
+  const blockTotals = {};
+  for (const rec of allRecords) blockTotals[rec.block] = (blockTotals[rec.block] || 0) + 1;
+  return { format: 'ends1', matchedFiles, encoding, patients, blockTotals, totalRecords: allRecords.length };
+}
