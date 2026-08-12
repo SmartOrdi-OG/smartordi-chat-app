@@ -94,6 +94,8 @@ test('patient-login.html records a patient_join_request consent with the real pr
     joinRequestPracticeId = 'prac1';
     document.getElementById('reqVorname').value = 'Maria';
     document.getElementById('reqNachname').value = 'Huber';
+    document.getElementById('reqDob').value = '1990-01-01';
+    document.getElementById('reqTel').value = '+43 1 2345678';
     document.getElementById('reqAdresse').value = 'Teststraße 1, Linz';
     document.getElementById('reqSvnr').value = '1234 010190';
     document.getElementById('reqUsername').value = 'maria.huber';

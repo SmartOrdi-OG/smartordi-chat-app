@@ -98,17 +98,25 @@ body{
   border-bottom:1px solid #E4DFD3;
   box-shadow:0 1px 8px rgba(0,0,0,0.06);
 }
-.topbar-logo{display:flex;align-items:center;gap:8px;}
-.topbar-icon{width:52px;height:52px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:16px;}
-.topbar-name{font-size:15px;font-weight:800;color:#16211F;letter-spacing:-0.3px;}
+.topbar-logo{display:flex;align-items:center;gap:9px;min-width:0;flex-shrink:1;}
+/* Was 52px in a 56px-tall bar -- 2px of breathing room top and bottom,
+   which read as cramped/overflowing rather than a deliberate size (real
+   user feedback, 2026-08-12). 36px leaves real padding either side. */
+.topbar-icon{width:36px;height:36px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;}
+.topbar-name{font-size:15px;font-weight:800;color:#16211F;letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .topbar-name span{color:#0E5E56;}
-.topbar-user{display:flex;align-items:center;gap:8px;min-width:0;}
-.topbar-avatar{width:34px;height:34px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:white;flex-shrink:0;}
+.topbar-user{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0;}
+.topbar-avatar{width:32px;height:32px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
 .topbar-username{font-size:12px;font-weight:600;color:#5B6B66;white-space:nowrap;}
-.topbar-logout{background:#EDE9DE;border:none;color:#5B6B66;padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
+.topbar-logout{background:#EDE9DE;border:none;color:#5B6B66;padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
 .topbar-logout:hover{background:#E4DFD3;color:#16211F;}
-@media(max-width:400px){
+@media(max-width:480px){
+  /* Narrowest screens: drop the least essential pieces first (username
+     text, then the wordmark) so the controls that matter -- avatar,
+     language, logout -- always stay fully visible instead of clipping. */
   .topbar-username{display:none;}
+}
+@media(max-width:400px){
   /* The Arabic "Abmelden" translation ("تسجيل الخروج") is noticeably wider
      than the other languages' -- combined with the wordmark text, avatar
      and language switcher it no longer fit a narrow phone screen even with
@@ -1031,7 +1039,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       </div>
 
       <div class="info-card" id="profilImpfungenCard" style="display:none;">
-        <div class="info-card-header" data-i18n="impfungen.title">Impfungen</div>
+        <div class="info-card-header" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg><span data-i18n="impfungen.title">Impfungen</span></div>
         <div id="profilImpfungenRows"></div>
       </div>
 
@@ -1082,7 +1090,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     <span data-i18n="nav.termine">Termine</span>
   </button>
   <button class="nav-item" id="nav-dokumente" onclick="switchView('dokumente')">
-    <span class="nav-icon"></span>
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
     <span data-i18n="nav.dokumente">Dokumente</span>
   </button>
   <button class="nav-item" id="nav-profil" onclick="switchView('profil')">
@@ -1647,11 +1655,23 @@ function renderProfilImpfungen(){
   const root=document.getElementById('profilImpfungenRows');
   if(!card||!root) return;
   if(!_remoteImpfungen){ card.style.display='none'; return; }
-  card.style.display='';
   const account=getCurrentAccount();
   const ageDays=ageInDaysFromDob(account?account.dob:null);
   const given=_remoteImpfungen||[];
-  root.innerHTML=VACCINE_SCHEDULE.map(function(v){
+  // Real user feedback (2026-08-12): the full standard (pediatric)
+  // vaccination schedule used to show for EVERY account regardless of age
+  // -- a wall of "Noch nicht fällig" rows for vaccines nobody ever recorded,
+  // even on an adult who will never be tracked against a child's schedule.
+  // An adult only sees this card once staff has actually added at least
+  // one real Impfung record for them; a child keeps the full tracked
+  // schedule (due/overdue/upcoming) -- that's the whole point for them.
+  const isChild=!!(account&&account.isChild);
+  const rows=VACCINE_SCHEDULE.filter(function(v){
+    return isChild || given.some(function(i){ return i.vaccineKey===v.key; });
+  });
+  if(!rows.length){ card.style.display='none'; return; }
+  card.style.display='';
+  root.innerHTML=rows.map(function(v){
     const givenForV=given.filter(function(i){ return i.vaccineKey===v.key; });
     const status=vaccineStatusFor(v,ageDays,givenForV);
     const dosesStr=givenForV.length+'/'+v.doses.length+' '+tr('impfungen.doses');
@@ -1667,6 +1687,7 @@ function getCurrentAccount(){
       fullName:_remoteProfile.fullName, name:_remoteProfile.name, fach:_remoteProfile.fach,
       dob:_remoteProfile.dob, adresse:_remoteProfile.adresse, tel:_remoteProfile.tel,
       email:_remoteProfile.email, versicherung:_remoteProfile.versicherung, svnr:_remoteProfile.svnr,
+      isChild:_remoteProfile.isChild,
       messages:_remoteMessages||[],
     });
   }
