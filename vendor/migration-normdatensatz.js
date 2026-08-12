@@ -18,7 +18,15 @@
 // before the next patient's data begins, and repeatable blocks (multiple
 // diagnoses, multiple prescriptions) simply repeat within that patient.
 
-const ENDS1_LINE_RE = /^(\d{10})(#[PHBDKLVGFEAZ][A-Z]{3})(\d{8})(\d{4})/;
+// Field code is 3 chars after the block letter -- almost always letters
+// (FNM, VNM, ...), but a couple of real spec codes end in a digit (TL1,
+// TL2 -- "Telefon 1"/"Telefon 2"), so this must allow digits too, not just
+// [A-Z]{3}. Missed on the first pass (Phase 1): TL1/TL2 lines silently
+// never matched at all, so a patient's phone number was dropped from every
+// import without any error -- found while testing the write phase, which
+// is the first code path that actually depends on TL1 reaching a real
+// patients.tel column.
+const ENDS1_LINE_RE = /^(\d{10})(#[PHBDKLVGFEAZ][A-Z0-9]{3})(\d{8})(\d{4})/;
 
 // #P (PatientenstammDaten) field dictionary -- complete, per the official
 // spec's field table. Phase 1 only reads this block; other blocks (#D
@@ -160,6 +168,20 @@ function buildEnds1PatientPreview(records) {
     }
   }
   return [...byPatient.values()];
+}
+
+// Converts an ENDS1 date value (TTMMJJJJ, 8 digits, no separators -- the
+// spec's format for #P GBD/RZD/VON/BIS etc.) to the ISO 'YYYY-MM-DD' this
+// app's `patients.dob` column expects. Returns '' for anything that isn't
+// exactly 8 digits (missing/placeholder dates like '00000000' included)
+// rather than guessing, so a caller can tell "no usable date" apart from a
+// real one instead of writing a wrong date silently.
+function ends1DateToIso(value) {
+  const digits = (value || '').trim();
+  if (!/^\d{8}$/.test(digits)) return '';
+  const day = digits.slice(0, 2), month = digits.slice(2, 4), year = digits.slice(4, 8);
+  if (day === '00' || month === '00') return '';
+  return year + '-' + month + '-' + day;
 }
 
 // base64 -> Uint8Array, browser-native (atob + charCodeAt) -- no Buffer

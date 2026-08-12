@@ -19,6 +19,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-data.js"></script>
+<script src="vendor/patient-account-creation.js"></script>
 <script src="vendor/kartei-visits.js"></script>
 <script src="vendor/icd10-data.js"></script>
 <script src="vendor/icd10.js"></script>
@@ -3218,7 +3219,23 @@ body.windows-mode #karteiBtn{display:none;}
             <tbody id="migrationPreviewTableBody"></tbody>
           </table>
         </div>
-        <div style="font-size:12px;color:#94a3b8;margin-top:10px;">Vorschau — es wurde noch nichts importiert.</div>
+        <div style="font-size:12px;color:#94a3b8;margin:10px 0;">Bereits bestehende Patient/innen (per SV-Nummer oder Name+Geburtsdatum erkannt) werden aktualisiert, nicht doppelt angelegt. Nur Patientenstammdaten werden übernommen — noch keine Diagnosen/Verordnungen/Befunde.</div>
+        <button class="btn-primary" id="migrationConfirmBtn" onclick="confirmMigrationImport()">Diese Patienten importieren</button>
+        <div id="migrationImportProgress" style="font-size:13px;color:#334155;margin-top:10px;"></div>
+      </div>
+      <div id="migrationResultsArea" style="display:none;">
+        <div id="migrationResultSummary" style="font-size:13.5px;color:#334155;line-height:1.7;margin-bottom:10px;"></div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;">Name</th>
+                <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="migrationResultTableBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -5740,11 +5757,20 @@ async function exportPracticeDataZip(){
 // the database -- see vendor/migration-normdatensatz.js for the parser and
 // TODO.md for the full multi-phase project plan (Legacy first, ENDS 2/CDA
 // as a separate parser later).
+// Holds the most recently parsed ZIP's result ({patients,...} from
+// parseEnds1Zip()) so confirmMigrationImport() can act on it without
+// re-parsing -- reset every time the modal is (re)opened or a new file is
+// chosen, so a stale previous file's data can never get imported by mistake.
+let migrationParsedResult=null;
+
 function openMigrationImportModal(){
   if(!isCurrentUserAdmin()){ showToast('Nur für Admins verfügbar.','error'); return; }
+  migrationParsedResult=null;
   document.getElementById('migrationZipInput').value='';
   document.getElementById('migrationZipStatus').textContent='';
   document.getElementById('migrationPreviewArea').style.display='none';
+  document.getElementById('migrationResultsArea').style.display='none';
+  document.getElementById('migrationImportProgress').textContent='';
   document.getElementById('migrationImportModal').classList.add('show');
 }
 
@@ -5752,7 +5778,9 @@ async function handleMigrationZipFile(event){
   const file=event.target.files[0];
   const statusEl=document.getElementById('migrationZipStatus');
   const previewArea=document.getElementById('migrationPreviewArea');
+  migrationParsedResult=null;
   previewArea.style.display='none';
+  document.getElementById('migrationResultsArea').style.display='none';
   if(!file) return;
   statusEl.textContent='Analysiere ZIP-Datei...';
   try{
@@ -5762,6 +5790,7 @@ async function handleMigrationZipFile(event){
       return;
     }
     statusEl.textContent='Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
+    migrationParsedResult=result;
     renderMigrationPreview(result);
   }catch(err){
     console.error('handleMigrationZipFile failed',err);
@@ -5783,6 +5812,118 @@ function renderMigrationPreview(result){
       +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.GBD||'—')+'</td></tr>';
   }).join('');
   document.getElementById('migrationPreviewArea').style.display='block';
+}
+
+// Builds the composed 'Straße, PLZ Ort' address string createPatientAccount()
+// expects in extra.adresse from the separate STR/PLZ/ORT #P fields -- ENDS1
+// keeps them as distinct fields (see ENDS1_P_FIELDS), this app stores address
+// as one free-text field like the rest of the patient-creation flows already do.
+function ends1ComposeAdresse(s){
+  const strasse=(s.STR||'').trim();
+  const plzOrt=[(s.PLZ||'').trim(),(s.ORT||'').trim()].filter(Boolean).join(' ');
+  return [strasse,plzOrt].filter(Boolean).join(', ');
+}
+
+// Writes the parsed Stammdaten (#P block only -- Phase 1's scope, see
+// TODO.md) into real patient accounts, reusing the exact same account-
+// creation/duplicate-matching logic secretary.html's CSV import already
+// uses (vendor/patient-account-creation.js) so a patient imported here
+// behaves identically to one added any other way -- same login mechanics,
+// same plan-limit enforcement, same SVNr/name+DOB duplicate detection.
+async function confirmMigrationImport(){
+  if(!migrationParsedResult||!migrationParsedResult.patients.length) return;
+  const confirmBtn=document.getElementById('migrationConfirmBtn');
+  const progressEl=document.getElementById('migrationImportProgress');
+  confirmBtn.disabled=true; confirmBtn.style.opacity='0.5'; confirmBtn.style.cursor='not-allowed';
+
+  const planLimit=getPlanPatientLimit();
+  let remainingCapacity=null;
+  if(planLimit!==null&&planLimit!==undefined){
+    const {count,error:countErr}=await sb.from('patients').select('id',{count:'exact',head:true});
+    remainingCapacity=countErr?null:Math.max(0,planLimit-(count||0));
+  }
+
+  const patients=migrationParsedResult.patients;
+  const results=[];let skipped=0;
+  // Sequential and fully awaited, same reasoning as secretary.html's
+  // confirmImport(): createPatientAccount()'s username-uniqueness check
+  // reads loadPatients()'s cache, which only reflects an earlier row of
+  // THIS loop once its identity write has actually resolved.
+  for(let i=0;i<patients.length;i++){
+    const s=patients[i].stammdaten;
+    progressEl.textContent='Importiere '+(i+1)+' von '+patients.length+' Patient(en)...';
+    const vorname=(s.VNM||'').trim(), nachname=(s.FNM||'').trim();
+    if(!vorname||!nachname){ skipped++; continue; }
+    const dobIso=ends1DateToIso(s.GBD||'');
+    const unmapped=patients[i].unknownFields;
+    const extra={
+      adresse:ends1ComposeAdresse(s)||undefined,
+      dob:dobIso||undefined,
+      tel:(s.TL1||'').trim()||undefined,
+      email:(s.MAL||'').trim()||undefined,
+      versicherung:(s.KCD||'').trim()||undefined,
+      svnr:(s.VNR||'').trim()||undefined,
+      allergie:(s.ALL||'').trim()||undefined,
+      diagnosen:(s.DDG||'').trim()||undefined,
+      // Fields the current #P dictionary doesn't map -- preserved as text
+      // instead of silently dropped, per the parser's own "never destroy
+      // unmapped source data" principle (see vendor/migration-normdatensatz.js).
+      legacyHistory:unmapped.length?('Nicht zugeordnete Felder aus Altsystem: '+unmapped.map(f=>f.field+'='+f.value).join('; ')):undefined,
+    };
+    Object.keys(extra).forEach(k=>{ if(extra[k]===undefined) delete extra[k]; });
+
+    const existing=await findExistingPatientForImportRow(vorname,nachname,extra.svnr,dobIso);
+    if(existing){
+      const identity=await upsertPatientIdentity(existing.username,{
+        name:vorname, full_name:vorname+' '+nachname,
+        adresse:extra.adresse||existing.record.adresse||null,
+        tel:extra.tel||existing.record.tel||null,
+        email:extra.email||existing.record.email||null,
+        versicherung:extra.versicherung||existing.record.versicherung||null,
+        svnr:extra.svnr||existing.record.svnr||null,
+        dob:extra.dob||existing.record.dob||null,
+        diagnosen:extra.diagnosen||existing.record.diagnosen||null,
+        allergie:extra.allergie||existing.record.allergie||null,
+        legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
+      }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
+      results.push({name:vorname+' '+nachname,updated:true,syncFailed:!identity});
+      continue;
+    }
+
+    if(remainingCapacity!==null){
+      if(remainingCapacity<=0){ results.push({name:vorname+' '+nachname,limitReached:true}); continue; }
+      remainingCapacity--;
+    }
+    const {identityPromise,authPromise}=createPatientAccount(vorname,nachname,extra);
+    const identity=await identityPromise;
+    const authOk=identity?await authPromise:false;
+    results.push({name:vorname+' '+nachname,syncFailed:!identity||!authOk});
+  }
+
+  confirmBtn.disabled=false; confirmBtn.style.opacity=''; confirmBtn.style.cursor='';
+  progressEl.textContent='';
+  renderMigrationImportResults(results,skipped);
+}
+
+function renderMigrationImportResults(results,skipped){
+  const createdCount=results.filter(r=>!r.updated&&!r.limitReached).length;
+  const updatedCount=results.filter(r=>r.updated).length;
+  const failedCount=results.filter(r=>r.syncFailed).length;
+  const limitReachedCount=results.filter(r=>r.limitReached).length;
+  document.getElementById('migrationResultSummary').innerHTML=
+    '<strong>'+createdCount+' neue(r) Patient(en) angelegt.</strong>'
+    +(updatedCount?' '+updatedCount+' bereits bestehende(r) Patient(en) aktualisiert (per SV-Nummer/Name+Geburtsdatum erkannt, kein neues Konto angelegt).':'')
+    +(skipped?' '+skipped+' Zeile(n) übersprungen (Vor-/Nachname fehlte).':'')
+    +(failedCount?' '+failedCount+' Patient(en): Serverabgleich fehlgeschlagen (Internetverbindung prüfen und erneut versuchen).':'')
+    +(limitReachedCount?' '+limitReachedCount+' Patient(en) übersprungen: Patientenlimit des '+PLAN_FEATURES[getPlan()].label+'-Pakets erreicht ('+getPlanPatientLimit()+' Patienten). Bitte auf Enterprise upgraden.':'');
+  document.getElementById('migrationResultTableBody').innerHTML=results.map(r=>{
+    const status=r.limitReached?'Übersprungen (Limit erreicht)':r.syncFailed?'Fehlgeschlagen':r.updated?'Aktualisiert':'Neu angelegt';
+    const color=r.limitReached?'#d97706':r.syncFailed?'#dc2626':'#16a34a';
+    return '<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(r.name)+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:'+color+';font-weight:600;">'+status+'</td></tr>';
+  }).join('');
+  document.getElementById('migrationPreviewArea').style.display='none';
+  document.getElementById('migrationResultsArea').style.display='block';
 }
 
 // Human-readable counterpart to exportPatientCsv() -- for handing a patient's
