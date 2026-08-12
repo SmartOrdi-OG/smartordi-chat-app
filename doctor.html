@@ -32,6 +32,7 @@
 <script src="vendor/kartei-rezept-ueberweisung.js"></script>
 <script src="vendor/kartei-atteste.js"></script>
 <script src="vendor/cdss-medication-alerts.js"></script>
+<script src="vendor/migration-normdatensatz.js"></script>
 <style>
 @font-face{
   font-family:'IBM Plex Sans';
@@ -2966,6 +2967,18 @@ body.windows-mode #karteiBtn{display:none;}
       </div>
     </div>
 
+    <!-- Praxisdaten-Migration (Admin only) -- Phase 1: ZIP hochladen, Format
+         erkennen (Legacy Normdatensatz ENDS 1), Patientenstammdaten lesen
+         und als Vorschau anzeigen. Schreibt noch NICHTS in die Datenbank --
+         siehe TODO.md für den vollständigen Projektplan. -->
+    <div class="dash-card" style="margin-bottom:20px;" id="migrationImportCard">
+      <div class="dash-card-header"><span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Praxisdaten importieren</span> <span style="font-size:13px;color:#64748b;font-weight:400;">— von einer vorherigen Praxissoftware übernehmen</span></div>
+      <div class="dash-card-body">
+        <p style="font-size:14px;color:#64748b;margin-bottom:12px;line-height:1.6;">Lädt den Export-Normdatensatz (ENDS) Ihrer vorherigen Praxissoftware und zeigt eine Vorschau der gefundenen Patient/innen — noch ohne etwas zu übernehmen.</p>
+        <button onclick="openMigrationImportModal()" style="background:#f8fafc;border:1px solid #e2e8f0;color:#475569;padding:8px 14px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Normdatensatz-ZIP hochladen</button>
+      </div>
+    </div>
+
     <!-- Stempel -->
     <div class="dash-card" style="margin-bottom:20px;">
       <div class="dash-card-header">Praxisstempel <span style="font-size:13px;color:#64748b;font-weight:400;">— wird automatisch auf jede Überweisung gedruckt</span></div>
@@ -3170,6 +3183,46 @@ body.windows-mode #karteiBtn{display:none;}
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeKarteiReportModal()">Abbrechen</button>
       <button class="btn-primary" id="rptSendBtn" onclick="sendKarteiReport()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Senden</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MIGRATION IMPORT MODAL: Phase 1 of the Normdatensatz migration
+     project (see TODO.md) -- upload a ZIP, detect Legacy Normdatensatz
+     (ENDS 1) content, parse #P (Patientenstammdaten) and show a preview.
+     Does NOT write to the database yet -- later phases add #D/#V/#L
+     parsing, then an actual test-migration/final-import step. ══ -->
+<div class="modal-overlay" id="migrationImportModal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <div class="modal-title"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Praxisdaten importieren</div>
+      <button class="modal-close" onclick="document.getElementById('migrationImportModal').classList.remove('show')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Export-ZIP der vorherigen Praxissoftware</label>
+        <input type="file" class="form-input" accept=".zip,application/zip" id="migrationZipInput" onchange="handleMigrationZipFile(event)">
+        <div id="migrationZipStatus" style="font-size:12px;color:#64748b;margin-top:6px;"></div>
+      </div>
+      <div id="migrationPreviewArea" style="display:none;">
+        <div id="migrationPreviewSummary" style="font-size:13.5px;color:#334155;line-height:1.7;margin-bottom:10px;"></div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+            <thead>
+              <tr style="background:#f8fafc;">
+                <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;">Familienname</th>
+                <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;">Vorname</th>
+                <th style="text-align:left;padding:8px 10px;border-bottom:1px solid #e2e8f0;">Geburtsdatum</th>
+              </tr>
+            </thead>
+            <tbody id="migrationPreviewTableBody"></tbody>
+          </table>
+        </div>
+        <div style="font-size:12px;color:#94a3b8;margin-top:10px;">Vorschau — es wurde noch nichts importiert.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="document.getElementById('migrationImportModal').classList.remove('show')">Schließen</button>
     </div>
   </div>
 </div>
@@ -5679,6 +5732,57 @@ async function exportPracticeDataZip(){
   }finally{
     if(btn){ btn.disabled=false; btn.textContent='Alle Patientendaten exportieren (ZIP)'; }
   }
+}
+
+// ══ Praxisdaten-Migration (Normdatensatz-Import), Phase 1 ══
+// Upload a ZIP -> detect Legacy Normdatensatz (ENDS 1) content -> parse
+// #P (Patientenstammdaten) -> show a read-only preview. Does not write to
+// the database -- see vendor/migration-normdatensatz.js for the parser and
+// TODO.md for the full multi-phase project plan (Legacy first, ENDS 2/CDA
+// as a separate parser later).
+function openMigrationImportModal(){
+  if(!isCurrentUserAdmin()){ showToast('Nur für Admins verfügbar.','error'); return; }
+  document.getElementById('migrationZipInput').value='';
+  document.getElementById('migrationZipStatus').textContent='';
+  document.getElementById('migrationPreviewArea').style.display='none';
+  document.getElementById('migrationImportModal').classList.add('show');
+}
+
+async function handleMigrationZipFile(event){
+  const file=event.target.files[0];
+  const statusEl=document.getElementById('migrationZipStatus');
+  const previewArea=document.getElementById('migrationPreviewArea');
+  previewArea.style.display='none';
+  if(!file) return;
+  statusEl.textContent='Analysiere ZIP-Datei...';
+  try{
+    const result=await parseEnds1Zip(file);
+    if(!result){
+      statusEl.textContent='Kein Export-Normdatensatz (Legacy/ENDS 1) in dieser ZIP-Datei erkannt.';
+      return;
+    }
+    statusEl.textContent='Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
+    renderMigrationPreview(result);
+  }catch(err){
+    console.error('handleMigrationZipFile failed',err);
+    statusEl.textContent='Fehler beim Lesen der Datei: '+err.message;
+  }
+}
+
+function renderMigrationPreview(result){
+  const summaryEl=document.getElementById('migrationPreviewSummary');
+  const tbody=document.getElementById('migrationPreviewTableBody');
+  const otherBlocks=Object.keys(result.blockTotals).filter(b=>b!=='P')
+    .map(b=>result.blockTotals[b]+' × '+(ENDS1_BLOCK_NAMES[b]||b)).join(', ');
+  summaryEl.innerHTML='<strong>'+result.patients.length+' Patient(en) gefunden</strong>'
+    +(otherBlocks?'<br>Weitere gefundene Daten (noch nicht ausgewertet): '+escapeHtml(otherBlocks):'');
+  tbody.innerHTML=result.patients.slice(0,50).map(p=>{
+    const s=p.stammdaten;
+    return '<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.FNM||'—')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.VNM||'—')+'</td>'
+      +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.GBD||'—')+'</td></tr>';
+  }).join('');
+  document.getElementById('migrationPreviewArea').style.display='block';
 }
 
 // Human-readable counterpart to exportPatientCsv() -- for handing a patient's
