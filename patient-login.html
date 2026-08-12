@@ -217,6 +217,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
         <div style="position:absolute;inset:16%;border:2.5px solid rgba(255,255,255,0.75);border-radius:12px;pointer-events:none;"></div>
       </div>
       <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:14px;" data-i18n="linkPractice.scanning.sub">Halten Sie den QR-Code Ihrer Ordination in den Rahmen.</div>
+      <!-- Real user report (2026-08-11): a live camera preview gives zero
+           indication when the scan loop itself has silently stalled (see
+           startQrScan()'s own comment) -- shown after a few seconds of no
+           detection so there's an actual way out besides guessing. -->
+      <div id="qrScanStuckHint" style="display:none;text-align:center;margin-bottom:10px;">
+        <a href="#" onclick="startQrScan();return false;" style="font-size:12px;color:#1e40af;font-weight:600;text-decoration:none;" data-i18n="linkPractice.scanning.restart">🔄 Kamera erkennt nichts? Neu starten</a>
+      </div>
       <button class="btn-main" style="width:100%;background:#f1f5f9;color:#334155;box-shadow:none;" onclick="cancelQrScan()" data-i18n="linkPractice.cancel">Abbrechen</button>
     </div>
 
@@ -844,6 +851,7 @@ async function performJoinRequestSubmit(fields,practiceId){
 let scannedPracticeId=null;
 let qrStream=null;
 let qrScanRAF=null;
+let qrScanStuckHintTimer=null;
 function setLinkPracticeState(state){
   ['Intro','Scanning','Found','Error'].forEach(s=>{
     document.getElementById('linkState'+s).style.display=(s.toLowerCase()===state)?'block':'none';
@@ -863,6 +871,8 @@ function backToRequestFromLinkPractice(){
 }
 async function startQrScan(){
   document.getElementById('linkErrorMsg').classList.remove('show');
+  document.getElementById('qrScanStuckHint').style.display='none';
+  if(qrScanStuckHintTimer!==null){ clearTimeout(qrScanStuckHintTimer); qrScanStuckHintTimer=null; }
   setLinkPracticeState('scanning');
   const video=document.getElementById('qrVideo');
   try{
@@ -879,10 +889,44 @@ async function startQrScan(){
   video.srcObject=qrStream;
   try{ await video.play(); }catch(e){ /* autoplay quirks -- readyState check in the scan loop below covers it either way */ }
   scanQrFrame();
+  // See scanQrFrame()'s own report comment -- a live preview alone can't
+  // tell the patient the scan loop has silently stalled, so offer a
+  // manual restart once it's had a fair chance to work on its own.
+  qrScanStuckHintTimer=setTimeout(function(){
+    document.getElementById('qrScanStuckHint').style.display='block';
+  },6000);
 }
+// Real user report (2026-08-11): a phone that reached this screen by
+// scanning a QR code with its OWN camera app first (external hand-off into
+// the browser), then tried to scan the practice's QR with THIS in-app
+// scanner, saw a live camera image but the code was never recognized --
+// even standing still, well-lit, right on target. The same scanner worked
+// immediately when the page was opened normally (typed/bookmarked URL,
+// no prior external hand-off) right before this exact screen. The video
+// element itself keeps rendering the live feed regardless (that's native
+// <video> playback, not gated by our JS) -- what silently stalls is the
+// requestAnimationFrame-driven scanQrFrame() loop below: mobile browsers
+// throttle (sometimes indefinitely) rAF callbacks while they consider a
+// tab not fully "active", and a tab that just received an external
+// app-to-browser hand-off can get stuck reporting exactly that for a
+// while, even though it's visibly on-screen and in the user's hand. The
+// visible camera preview gives zero indication anything is actually
+// wrong. document.visibilitychange firing (e.g. the OS finishes settling
+// on this tab) is what actually clears that state -- kick the video's
+// playback and the scan loop again right then, in case either one is
+// sitting stalled from before this fired.
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible'||!qrStream) return;
+  const video=document.getElementById('qrVideo');
+  if(video) video.play().catch(function(){});
+  if(qrScanRAF===null) scanQrFrame();
+});
 function stopQrScan(){
   if(qrScanRAF!==null){ cancelAnimationFrame(qrScanRAF); qrScanRAF=null; }
   if(qrStream){ qrStream.getTracks().forEach(t=>t.stop()); qrStream=null; }
+  if(qrScanStuckHintTimer!==null){ clearTimeout(qrScanStuckHintTimer); qrScanStuckHintTimer=null; }
+  const hint=document.getElementById('qrScanStuckHint');
+  if(hint) hint.style.display='none';
 }
 function cancelQrScan(){
   stopQrScan();
