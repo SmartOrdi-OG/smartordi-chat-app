@@ -90,7 +90,9 @@ from unnest(array[
   'patient_get_profiles','patient_switch_profile',
   'patient_submit_profile_join_request','staff_link_account_profile',
   -- phase65
-  'patient_change_username'
+  'patient_change_username',
+  -- phase69
+  'patient_get_mkp_exams'
 ]) as f
 
 union all
@@ -166,7 +168,13 @@ from (values
   -- switch into a linked child/adult profile no matter what the rest of
   -- this phase's schema/RPCs say, since this function is the single place
   -- every patient_*/RPC resolves "who is the caller" from.
-  ('current_patient_id', 'patient_active_profile')
+  ('current_patient_id', 'patient_active_profile'),
+  -- phase68: catches a deployed version that still never writes is_child
+  -- onto the join request it creates -- without it, every child added via
+  -- patient.html's own "+ Kind hinzufügen" ends up with is_child=false
+  -- despite relation='child' being recorded correctly, which silently hid
+  -- their Impfungen card the same way phase67 hides it for a real adult.
+  ('patient_submit_profile_join_request', 'p_relation = ''child''')
 ) as f(name, expect)
 
 union all

@@ -146,6 +146,33 @@ test('approving a self-registration submitted as "Für mein Kind" copies is_chil
   expect(result.is_child).toBe(true);
 });
 
+// Real user feedback (2026-08-12): a child added via patient.html's own
+// "+ Kind hinzufügen" button (relation='child') showed up with the
+// Impfungen card missing entirely, same as a childless adult -- traced to
+// patient_submit_profile_join_request() (phase64) never having set
+// is_child on the request it creates, unlike the plain self-registration
+// "Für mein Kind" toggle above. supabase/phase68_fix_add_profile_is_child.sql
+// fixes the RPC itself (not exercised by this mocked-Supabase sandbox);
+// this test locks in that approveJoinRequest() correctly carries a linked
+// "Kind hinzufügen" request's is_child through once the request actually
+// has it set, same as it already does for a plain self-registration.
+test('approving a linked "Kind hinzufügen" request copies is_child onto the new patients row', async ({ page }) => {
+  await setupPage(page, [
+    { id: 'jr5', username: 'profil-kind', vorname: 'Tom', nachname: 'Huber', full_name: 'Tom Huber', adresse: null, svnr: null, pw_hash: 'h5', status: 'pending', submitted_at: '2026-08-05T10:00:00Z', linked_auth_user_id: 'auth-maria', relation: 'child', relation_label: null, is_child: true },
+  ]);
+  const result = await page.evaluate(async () => {
+    sb.rpc = (name) => {
+      if (name === 'staff_link_account_profile') return Promise.resolve({ data: true, error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    await approveJoinRequest('profil-kind');
+    await new Promise(r => setTimeout(r, 200));
+    return window.__store.patients.find(p => p.username === 'profil-kind');
+  });
+  expect(result).toBeTruthy();
+  expect(result.is_child).toBe(true);
+});
+
 test('approving an ordinary self-registration ("Für mich") stores is_child as false', async ({ page }) => {
   await setupPage(page, [
     { id: 'jr4', username: 'erwachsen.patient', vorname: 'Peter', nachname: 'Patient', full_name: 'Peter Patient', adresse: 'Musterstr 3', svnr: '3333333333', pw_hash: 'h4', status: 'pending', submitted_at: '2026-08-04T10:00:00Z', is_child: false },
