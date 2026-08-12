@@ -5,7 +5,9 @@
 // file, and checks the resulting preview -- format detection, encoding,
 // parsed Stammdaten (Familienname/Vorname/Geburtsdatum), and that other
 // (not-yet-parsed) block types are still counted rather than silently
-// dropped. This phase never writes to the database -- see TODO.md.
+// dropped. These specific tests only exercise the preview step (never call
+// confirmMigrationImport()), so nothing gets written to the database here --
+// see tests/migration-normdatensatz-write.spec.js for the write step itself.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
