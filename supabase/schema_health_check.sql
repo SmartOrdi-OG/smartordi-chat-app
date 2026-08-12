@@ -242,7 +242,9 @@ select 'patient_join_requests column', c,
 from unnest(array[
   'id','username','vorname','nachname','full_name','adresse','svnr','temp_password','pw_hash',
   'practice_id','status','submitted_at','reviewed_at','note','linked_auth_user_id','relation',
-  'relation_label','is_child'
+  'relation_label','is_child',
+  -- phase67
+  'dob','tel'
 ]) as c
 
 union all

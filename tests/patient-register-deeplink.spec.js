@@ -60,6 +60,8 @@ test('patient-login.html without the query param still shows the normal login sc
 async function fillJoinRequestForm(page, username) {
   await page.fill('#reqVorname', 'Max');
   await page.fill('#reqNachname', 'Mustermann');
+  await page.fill('#reqDob', '1990-01-01');
+  await page.fill('#reqTel', '+43 1 2345678');
   await page.fill('#reqAdresse', 'Teststr. 1, 1010 Wien');
   await page.fill('#reqSvnr', '1234010180');
   await page.fill('#reqUsername', username);

@@ -146,15 +146,27 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       </div>
     </div>
     <div class="form-group">
-      <label class="form-label" data-i18n="request.vorname.label">Vorname</label>
+      <label class="form-label" data-i18n="request.vorname.label">Vorname *</label>
       <input type="text" class="form-input" id="reqVorname" style="padding-left:14px;">
     </div>
     <div class="form-group">
-      <label class="form-label" data-i18n="request.nachname.label">Nachname</label>
+      <label class="form-label" data-i18n="request.nachname.label">Nachname *</label>
       <input type="text" class="form-input" id="reqNachname" style="padding-left:14px;">
     </div>
+    <!-- Real user feedback (2026-08-12): Geburtsdatum/Telefon had no field
+         at all here (only secretary.html's own "+ Neuer Patient" modal had
+         them, and even there only as optional) -- both are required now,
+         alongside Adresse (already present, now enforced too). -->
     <div class="form-group">
-      <label class="form-label" data-i18n="request.adresse.label">Adresse</label>
+      <label class="form-label" data-i18n="request.dob.label">Geburtsdatum *</label>
+      <input type="date" class="form-input" id="reqDob" style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="request.tel.label">Telefon *</label>
+      <input type="tel" class="form-input" id="reqTel" placeholder="+43 ..." style="padding-left:14px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="request.adresse.label">Adresse *</label>
       <input type="text" class="form-input" id="reqAdresse" style="padding-left:14px;">
     </div>
     <div class="form-group">
@@ -663,7 +675,7 @@ function setReqIsChild(isChild){
 
 function showRequestScreen(){
   resubmitUsername=null;
-  ['reqVorname','reqNachname','reqAdresse','reqSvnr','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
+  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
   setReqIsChild(false);
@@ -711,6 +723,8 @@ function resubmitJoinRequest(){
   setReqIsChild(false);
   document.getElementById('reqVorname').value=acc.name||'';
   document.getElementById('reqNachname').value=(acc.fullName||'').split(' ').slice(1).join(' ');
+  document.getElementById('reqDob').value=acc.dob||'';
+  document.getElementById('reqTel').value=acc.tel||'';
   document.getElementById('reqAdresse').value=acc.adresse||'';
   document.getElementById('reqSvnr').value=acc.svnr||'';
   document.getElementById('reqUsername').value=currentUser.username;
@@ -734,6 +748,8 @@ let pendingJoinRequestFields=null;
 async function submitJoinRequest(){
   const vorname=document.getElementById('reqVorname').value.trim();
   const nachname=document.getElementById('reqNachname').value.trim();
+  const dob=document.getElementById('reqDob').value;
+  const tel=document.getElementById('reqTel').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
   const svnr=document.getElementById('reqSvnr').value.trim();
   const username=document.getElementById('reqUsername').value.trim().toLowerCase();
@@ -744,7 +760,11 @@ async function submitJoinRequest(){
   const errorText=document.getElementById('reqErrorText');
   errorEl.classList.remove('show');
 
-  if(!vorname||!nachname||!adresse||!svnr||!username||!pw){
+  // Real user feedback (2026-08-12): Geburtsdatum/Telefon/Adresse used to
+  // be either missing entirely (dob/tel) or easy to skip past (adresse) --
+  // all three are mandatory now, same as secretary.html's own "+ Neuer
+  // Patient" modal (SVNr stays optional, unchanged).
+  if(!vorname||!nachname||!dob||!tel||!adresse||!svnr||!username||!pw){
     errorText.textContent=tr('request.err.missing');
     errorEl.classList.add('show');return;
   }
@@ -765,7 +785,7 @@ async function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
-  const fields={vorname,nachname,adresse,svnr,username,pw};
+  const fields={vorname,nachname,dob,tel,adresse,svnr,username,pw};
   if(joinRequestPracticeId||reqViaDeepLink){
     await performJoinRequestSubmit(fields,joinRequestPracticeId);
     return;
@@ -781,7 +801,7 @@ async function submitJoinRequest(){
 // already known" path (submitJoinRequest() above, unchanged from before)
 // and confirmLinkPractice() (the new QR-scan path) below.
 async function performJoinRequestSubmit(fields,practiceId){
-  const {vorname,nachname,adresse,svnr,username,pw}=fields;
+  const {vorname,nachname,dob,tel,adresse,svnr,username,pw}=fields;
   const fullName=vorname+' '+nachname;
   // Whichever screen is currently showing the trigger button -- screen-
   // request's "Antrag senden" for the practice-already-known path, or
@@ -798,7 +818,7 @@ async function performJoinRequestSubmit(fields,practiceId){
   // in a column that persists, and this is what lets patient_login
   // validate this patient's own chosen password once approved.
   const {error}=await sb.from('patient_join_requests').insert({
-    username, vorname, nachname, full_name:fullName, adresse, svnr, temp_password:pw,
+    username, vorname, nachname, full_name:fullName, dob, tel, adresse, svnr, temp_password:pw,
     practice_id:practiceId, is_child:reqIsChild,
   });
   if(submitBtn) submitBtn.disabled=false;

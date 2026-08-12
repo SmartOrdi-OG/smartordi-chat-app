@@ -63,6 +63,9 @@ test.describe('Standard plan: 250-patient cap enforcement', () => {
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
     await page.fill('#npNachname', 'Patient');
+    await page.fill('#npAdresse', 'Teststr. 1, 1010 Wien');
+    await page.fill('#npGeburtsdatum', '1990-01-01');
+    await page.fill('#npTelefon', '+43 1 2345678');
     const result = await page.evaluate(async () => {
       await confirmNewPatient();
       await new Promise(r => setTimeout(r, 100));
@@ -77,6 +80,9 @@ test.describe('Standard plan: 250-patient cap enforcement', () => {
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
     await page.fill('#npNachname', 'Patient');
+    await page.fill('#npAdresse', 'Teststr. 1, 1010 Wien');
+    await page.fill('#npGeburtsdatum', '1990-01-01');
+    await page.fill('#npTelefon', '+43 1 2345678');
     const result = await page.evaluate(async () => {
       await confirmNewPatient();
       await new Promise(r => setTimeout(r, 100));
@@ -112,6 +118,9 @@ test.describe('Enterprise plan: no patient cap', () => {
     await page.evaluate(() => openNewPatientModal());
     await page.fill('#npVorname', 'Neuer');
     await page.fill('#npNachname', 'Patient');
+    await page.fill('#npAdresse', 'Teststr. 1, 1010 Wien');
+    await page.fill('#npGeburtsdatum', '1990-01-01');
+    await page.fill('#npTelefon', '+43 1 2345678');
     const result = await page.evaluate(async () => {
       await confirmNewPatient();
       await new Promise(r => setTimeout(r, 100));

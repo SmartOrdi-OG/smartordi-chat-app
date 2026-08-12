@@ -60,6 +60,8 @@ test('confirmNewPatient() always creates an ordinary patient account, regardless
     document.getElementById('npVorname').value = 'Tom';
     document.getElementById('npNachname').value = 'Huber';
     document.getElementById('npGeburtsdatum').value = '2018-01-01';
+    document.getElementById('npAdresse').value = 'Teststr. 1, 1010 Wien';
+    document.getElementById('npTelefon').value = '+43 1 2345678';
     await confirmNewPatient();
     return {
       patients: window.__store.patients,

@@ -285,7 +285,7 @@ const I18N={
     'request.forWhom.label':'Für wen?','request.forWhom.self':'Für mich','request.forWhom.child':'Für mein Kind',
     'request.vorname.label':'Vorname',
     'request.nachname.label':'Nachname',
-    'request.adresse.label':'Adresse',
+    'request.adresse.label':'Adresse','request.dob.label':'Geburtsdatum','request.tel.label':'Telefon',
     'request.svnr.label':'Versicherungsnummer (SVNr)',
     'request.clinic.label':'Ordination',
     'linkPractice.title':'Mit Ordination verbinden','linkPractice.sub':'Scannen Sie den QR-Code Ihrer Ordination, um Ihren Antrag zu senden.',
@@ -583,7 +583,7 @@ const I18N={
     'request.forWhom.label':'For whom?','request.forWhom.self':'For me','request.forWhom.child':'For my child',
     'request.vorname.label':'First name',
     'request.nachname.label':'Last name',
-    'request.adresse.label':'Address',
+    'request.adresse.label':'Address','request.dob.label':'Date of birth','request.tel.label':'Phone',
     'request.svnr.label':'Social security number',
     'request.clinic.label':'Practice',
     'linkPractice.title':'Connect with your practice','linkPractice.sub':'Scan your practice\'s QR code to send your request.',
@@ -881,7 +881,7 @@ const I18N={
     'request.forWhom.label':'لمن؟','request.forWhom.self':'لنفسي','request.forWhom.child':'لطفلي',
     'request.vorname.label':'الاسم',
     'request.nachname.label':'الكنية',
-    'request.adresse.label':'العنوان',
+    'request.adresse.label':'العنوان','request.dob.label':'تاريخ الميلاد','request.tel.label':'الهاتف',
     'request.svnr.label':'رقم التأمين الصحي',
     'request.clinic.label':'العيادة',
     'linkPractice.title':'الربط بالعيادة','linkPractice.sub':'امسح رمز QR الخاص بعيادتك لإرسال طلبك.',
@@ -1179,7 +1179,7 @@ const I18N={
     'request.forWhom.label':'Kimin için?','request.forWhom.self':'Kendim için','request.forWhom.child':'Çocuğum için',
     'request.vorname.label':'Ad',
     'request.nachname.label':'Soyad',
-    'request.adresse.label':'Adres',
+    'request.adresse.label':'Adres','request.dob.label':'Doğum tarihi','request.tel.label':'Telefon',
     'request.svnr.label':'Sosyal güvenlik numarası',
     'request.clinic.label':'Muayenehane',
     'linkPractice.title':'Muayenehane ile bağlan','linkPractice.sub':'İsteğinizi göndermek için muayenehanenizin QR kodunu tarayın.',
@@ -1477,7 +1477,7 @@ const I18N={
     'request.forWhom.label':'Za koga?','request.forWhom.self':'Za mene','request.forWhom.child':'Za moje dijete',
     'request.vorname.label':'Ime',
     'request.nachname.label':'Prezime',
-    'request.adresse.label':'Adresa',
+    'request.adresse.label':'Adresa','request.dob.label':'Datum rođenja','request.tel.label':'Telefon',
     'request.svnr.label':'Broj socijalnog osiguranja',
     'request.clinic.label':'Ordinacija',
     'linkPractice.title':'Poveži se sa ordinacijom','linkPractice.sub':'Skenirajte QR kod svoje ordinacije da pošaljete zahtjev.',
@@ -1633,7 +1633,12 @@ function initPatientLanguage(){
 }
 function langSwitcherHtml(id){
   const lang=getPatientLang();
-  return `<select id="${id}" onchange="setPatientLanguage(this.value)" style="font-family:inherit;font-size:11px;font-weight:600;border:1px solid #e2e8f0;border-radius:7px;padding:4px 3px;background:white;color:#334155;cursor:pointer;max-width:58px;width:auto;flex-shrink:0;">`+
+  // Real user feedback (2026-08-12): max-width:58px was too narrow for the
+  // selected option's own text to render fully -- "Deutsch" (and every
+  // other language's own name) showed up visibly cut off ("Deutscl").
+  // width:auto without an artificial cap sizes to whichever label is
+  // actually showing.
+  return `<select id="${id}" onchange="setPatientLanguage(this.value)" style="font-family:inherit;font-size:11px;font-weight:600;border:1px solid #e2e8f0;border-radius:7px;padding:4px 6px;background:white;color:#334155;cursor:pointer;width:auto;flex-shrink:0;">`+
     PATIENT_LANGS.map(l=>`<option value="${l.code}"${l.code===lang?' selected':''}>${l.label}</option>`).join('')+
     `</select>`;
 }
