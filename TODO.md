@@ -1,5 +1,18 @@
 # Smartordi – قائمة المهام
 
+## 🔐 اشتغلت مباشرة على Supabase الحقيقي (وصلتيه بيّ) — فحص شامل + تصليح ثغرة صغيرة حقيقية
+
+طلبتِ أشتغل لوحدي على Supabase بما إنه متصل بيّ فعليًا (`smartordi-chat-app`, `ewilgwndhpxibkogxqbk`). استغليت الاتصال المباشر (مش بس كتابة ملفات SQL تنتظر تشغيل يدوي) عشان أتأكد وأصلّح مباشرة على القاعدة الحقيقية.
+
+- **شغّلت `schema_health_check.sql` مباشرة على قاعدتك الحقيقية**: كل صف رجع "OK" (أو استثناء موثق بالكود نفسه) — صفر "MISSING"، صفر "STALE"، صفر "WARNING". يعني `phase68`/`phase69`/`phase70` (وكل الباقي لحد هلق) فعلاً متطبقين صح، معندكيش أي migration معلقة.
+- **شغّلت فحص Supabase الأمني/الأدائي الرسمي (Advisors) مباشرة**: راجعت كل تحذير طلع:
+  - أغلبها نيّة تصميم موثقة أصلاً بـTODO.md (RLS بدون policy على `guardian_sessions`/`patient_sessions` المتقاعدة، `practice_settings_backup` المحمي عمدًا بدون policy، جداول phase64 اللي وصولها RPC-only بالتصميم).
+  - دوال SECURITY DEFINER القابلة للاستدعاء (`patient_get_profile`, `current_patient_id`, إلخ) هي بالضبط تصميم الـRPC المتعمد لكل التطبيق، مش تسريب جديد.
+  - دوال trigger زي `audit_log_row`/`notify_client_error` بوستغرس نفسه بيرفض تنفيذها لو انادت عليها مباشرة برة سياق trigger — مش قابلة للاستغلال فعليًا عبر REST API رغم إنه الـlinter بيعلّم عليها.
+  - **ثغرة حقيقية صغيرة انلقت وانصلحت فورًا**: ٣ دوال trigger (`hash_patient_password`, `normalize_patient_svnr`, `set_patients_updated_at`) كانت من غير `search_path` ثابت — نظريًا بتسمح بـsearch_path hijacking لو حدا عندو صلاحية CREATE على schema تاني بنفس الجلسة. صلحتها فورًا مباشرة على القاعدة الحقيقية (`apply_migration`، نفس منطق الدوال بالضبط، بس إضافة `set search_path = public`)، وأضفت `supabase/phase71_pin_function_search_path.sql` بالريبو عشان الملف المحلي يطابق الواقع المطبق فعليًا. تأكدت بعدها (`pg_proc.proconfig`) إنه الثلاثة صاروا `search_path=public`.
+- **باقي عن قصد، مش لازم تصليح**: `pgcrypto`/`pg_trgm` مثبتين بـschema `public` (نقلهم لschema تاني ممكن يكسر أي استدعاء غير مؤهل موجود بكود قديم، خطر أكبر من الفايدة على تطبيق شغال بالإنتاج).
+- **محتاج تفعيل يدوي منك بلوحة Supabase (مش SQL)**: **Auth → Policies → فعّلي "Leaked password protection"** (بيتحقق من كلمات السر الجديدة ضد HaveIBeenPwned.org) — ضغطة واحدة بس، مش migration.
+
 ## 📥 المرحلة ٧ من استيراد Normdatensatz (ENDS 1): تقرير الاستيراد (قابل للتنزيل)
 
 بعد ما خلصنا كل بلوكات الاستيراد، صار فيه "تقرير هجرة" حقيقي — لأنه ملخص النتيجة يلي بيظهر بنافذة الاستيراد كان بيضيع لما تسكري النافذة، ومفيش أي سجل دائم يوثق شو صار بالضبط.
