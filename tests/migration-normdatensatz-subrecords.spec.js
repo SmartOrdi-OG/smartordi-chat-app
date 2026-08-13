@@ -16,10 +16,12 @@ function ends1Line(patientNr, field, value) {
   return String(patientNr).padStart(10, '0') + '#P' + field + '00000000' + '0000' + value + '\r\n';
 }
 
-async function setupAndImport(page, sampleText, seedPatients) {
+async function setupAndImport(page, sampleText, seedPatients, extraZipFiles) {
   const sampleBase64 = Buffer.from(sampleText, 'utf8').toString('base64');
   await installJsZipMock(page);
-  await page.addInitScript((b64) => { window.__fakeZipFiles = { 'normdata.txt': b64 }; }, sampleBase64);
+  await page.addInitScript(([b64, extra]) => {
+    window.__fakeZipFiles = Object.assign({ 'normdata.txt': b64 }, extra);
+  }, [sampleBase64, extraZipFiles || {}]);
   await installMockSupabase(page, {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
     practice_settings: [{ id: true }],
@@ -146,4 +148,44 @@ test('sub-records are written for an already-existing (matched) patient too, ref
 
   const patients = await page.evaluate(() => window.__store.patients);
   expect(patients.filter(p => p.svnr === '1234150380')).toHaveLength(1);
+});
+
+test('#F Befunde are written into patient_documents (category befund): text finding, found document, and not-found document', async ({ page }) => {
+  const text =
+    ends1Line(1, 'FNM', 'Wagner') + ends1Line(1, 'VNM', 'Petra') +
+    // Multi-line text finding.
+    ends1LineDated(1, 'F', 'TBI', '10012020', '1000', '0') +
+    ends1LineDated(1, 'F', 'ZLN', '10012020', '1000', '1') +
+    ends1LineDated(1, 'F', 'TXT', '10012020', '1000', 'Erste Zeile.') +
+    ends1LineDated(1, 'F', 'ZLN', '10012020', '1000', '2') +
+    ends1LineDated(1, 'F', 'TXT', '10012020', '1000', 'Zweite Zeile.') +
+    // Document finding whose file IS in the ZIP.
+    ends1LineDated(1, 'F', 'TBI', '15032021', '1100', '1') +
+    ends1LineDated(1, 'F', 'PFA', '15032021', '1100', 'e:/usr/dok/bef/bild.jpg') +
+    // Document finding whose file is NOT in the ZIP.
+    ends1LineDated(1, 'F', 'TBI', '01062022', '0900', '1') +
+    ends1LineDated(1, 'F', 'PFA', '01062022', '0900', 'c:/scan/missing.pdf');
+  await setupAndImport(page, text, [], { 'docs/BILD.JPG': Buffer.from('fake-image-bytes').toString('base64') });
+
+  const summary = await page.locator('#migrationResultSummary').textContent();
+  expect(summary).toContain('3 Befund(e) in Dokumente übernommen');
+
+  const docs = await page.evaluate(() => window.__store.patient_documents);
+  expect(docs).toHaveLength(3);
+  expect(docs.every(d => d.category === 'befund')).toBe(true);
+
+  const textDoc = docs.find(d => (d.body_text || '').includes('Erste Zeile.'));
+  expect(textDoc, 'the multi-line text finding must be one combined document, both lines present').toBeTruthy();
+  expect(textDoc.body_text).toContain('Zweite Zeile.');
+  expect(textDoc.filename).toBeFalsy();
+
+  const foundDoc = docs.find(d => d.filename === 'BILD.JPG');
+  expect(foundDoc, 'the found document must have real file content, not just a note').toBeTruthy();
+  expect(foundDoc.file_data).toBeTruthy();
+  expect(foundDoc.mime_type).toBe('image/jpeg');
+
+  const missingDoc = docs.find(d => (d.body_text || '').includes('nicht im Export-ZIP gefunden'));
+  expect(missingDoc, 'a document finding whose file could not be resolved must still get a row, not be silently dropped').toBeTruthy();
+  expect(missingDoc.body_text).toContain('missing.pdf');
+  expect(missingDoc.file_data).toBeFalsy();
 });

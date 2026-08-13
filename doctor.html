@@ -5197,12 +5197,44 @@ async function importMigrationLaborbefund(patientId,entry,uploadedBy){
   },uploadedBy);
   return true;
 }
-// Writes every #D/#V/#L entry parsed for one patient (Phase 4). Best-effort
-// per sub-record -- one failed entry is logged and flagged, not allowed to
-// abort the rest of that patient's import (same "don't let one bad row sink
-// the whole batch" spirit as secretary.html's CSV import).
+// Writes a #F entry into patient_documents (category 'befund') -- the same
+// table/category already backing the Dokumente tab and the Labor tab's
+// document list (see vendor/kartei-labor.js), so an imported finding shows
+// up there automatically, no new table needed. A text finding (TBI=0)
+// becomes a body_text note (ends1BefundText() joins its lines); a document
+// finding (TBI=1) whose file was actually found in the ZIP (see
+// matchEnds1BefundFiles()/loadEnds1BefundFileBytes() in the parser) is
+// uploaded as a real file. One that was NOT found still gets a row -- with
+// a note naming the original (now-missing) path -- instead of being
+// silently dropped, so staff can tell an old finding existed even though
+// its file didn't make it into this export.
+async function importMigrationBefund(patientId,entry,uploadedBy){
+  const title='Importierter Befund'+(ends1DateToIso(entry.date||'')?(' vom '+ends1DateToIso(entry.date)):'');
+  if(entry.TBI==='1'){
+    if(entry.fileFound){
+      const filename=entry.matchedZipEntry.split(/[\\/]/).pop();
+      await uploadPatientDocument(patientId,{
+        category:'befund', title:filename, filename, mimeType:entry.fileMimeType,
+        sizeBytes:entry.fileSizeBytes, base64Data:entry.fileBase64,
+      },uploadedBy);
+    }else{
+      await uploadPatientDocument(patientId,{
+        category:'befund', title, bodyText:'Datei aus dem Altsystem nicht im Export-ZIP gefunden (ursprünglicher Pfad: '+(entry.PFA||'unbekannt')+').',
+      },uploadedBy);
+    }
+  }else{
+    const text=ends1BefundText(entry);
+    if(!text) return false;
+    await uploadPatientDocument(patientId,{ category:'befund', title, bodyText:text },uploadedBy);
+  }
+  return true;
+}
+// Writes every #D/#V/#L/#F entry parsed for one patient (Phase 4/6).
+// Best-effort per sub-record -- one failed entry is logged and flagged, not
+// allowed to abort the rest of that patient's import (same "don't let one
+// bad row sink the whole batch" spirit as secretary.html's CSV import).
 async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
-  const counts={diagnosen:0,verordnungen:0,laborbefunde:0};let failed=false;
+  const counts={diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};let failed=false;
   for(const d of patientEntry.diagnosen){
     try{ if(await importMigrationDiagnose(patientId,d,uploadedBy)) counts.diagnosen++; }
     catch(err){ console.error('Normdatensatz-Import: Diagnose fehlgeschlagen',err); failed=true; }
@@ -5214,6 +5246,10 @@ async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
   for(const l of patientEntry.laborbefunde){
     try{ if(await importMigrationLaborbefund(patientId,l,uploadedBy)) counts.laborbefunde++; }
     catch(err){ console.error('Normdatensatz-Import: Laborbefund fehlgeschlagen',err); failed=true; }
+  }
+  for(const f of patientEntry.befunde){
+    try{ if(await importMigrationBefund(patientId,f,uploadedBy)) counts.befunde++; }
+    catch(err){ console.error('Normdatensatz-Import: Befund fehlgeschlagen',err); failed=true; }
   }
   return {counts,failed};
 }
@@ -5244,7 +5280,7 @@ async function confirmMigrationImport(){
 
   const patients=migrationParsedResult.patients;
   const results=[];let skipped=0;
-  const totals={diagnosen:0,verordnungen:0,laborbefunde:0};
+  const totals={diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};
   // Sequential and fully awaited, same reasoning as secretary.html's
   // confirmImport(): createPatientAccount()'s username-uniqueness check
   // reads loadPatients()'s cache, which only reflects an earlier row of
@@ -5290,7 +5326,7 @@ async function confirmMigrationImport(){
       const resultRow={name:vorname+' '+nachname,updated:true,syncFailed:!identity};
       if(identity){
         const sub=await importMigrationSubRecords(existing.record.id,patientEntry,uploadedBy);
-        totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde;
+        totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde; totals.befunde+=sub.counts.befunde;
         resultRow.historyFailed=sub.failed;
       }
       results.push(resultRow);
@@ -5307,7 +5343,7 @@ async function confirmMigrationImport(){
     const resultRow={name:vorname+' '+nachname,syncFailed:!identity||!authOk};
     if(identity&&identity.id){
       const sub=await importMigrationSubRecords(identity.id,patientEntry,uploadedBy);
-      totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde;
+      totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde; totals.befunde+=sub.counts.befunde;
       resultRow.historyFailed=sub.failed;
     }
     results.push(resultRow);
@@ -5324,23 +5360,24 @@ function renderMigrationImportResults(results,skipped,totals){
   const failedCount=results.filter(r=>r.syncFailed).length;
   const limitReachedCount=results.filter(r=>r.limitReached).length;
   const historyFailedCount=results.filter(r=>r.historyFailed).length;
-  const t=totals||{diagnosen:0,verordnungen:0,laborbefunde:0};
+  const t=totals||{diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};
   document.getElementById('migrationResultSummary').innerHTML=
     '<strong>'+createdCount+' neue(r) Patient(en) angelegt.</strong>'
     +(updatedCount?' '+updatedCount+' bereits bestehende(r) Patient(en) aktualisiert (per SV-Nummer/Name+Geburtsdatum erkannt, kein neues Konto angelegt).':'')
     +(skipped?' '+skipped+' Zeile(n) übersprungen (Vor-/Nachname fehlte).':'')
     +(failedCount?' '+failedCount+' Patient(en): Serverabgleich fehlgeschlagen (Internetverbindung prüfen und erneut versuchen).':'')
     +(limitReachedCount?' '+limitReachedCount+' Patient(en) übersprungen: Patientenlimit des '+PLAN_FEATURES[getPlan()].label+'-Pakets erreicht ('+getPlanPatientLimit()+' Patienten). Bitte auf Enterprise upgraden.':'')
-    +((t.diagnosen||t.verordnungen||t.laborbefunde)?'<br>'+[
+    +((t.diagnosen||t.verordnungen||t.laborbefunde||t.befunde)?'<br>'+[
         t.diagnosen?t.diagnosen+' Diagnose(n) in Verlauf übernommen':null,
         t.verordnungen?t.verordnungen+' Verordnung(en) in Rezepte übernommen':null,
         t.laborbefunde?t.laborbefunde+' Laborbefund(e) übernommen':null,
+        t.befunde?t.befunde+' Befund(e) in Dokumente übernommen':null,
       ].filter(Boolean).join(', ')+'.':'')
-    +(historyFailedCount?' '+historyFailedCount+' Patient(en): mind. eine Diagnose/Verordnung/ein Laborbefund konnte nicht gespeichert werden (Kartei manuell prüfen).':'');
+    +(historyFailedCount?' '+historyFailedCount+' Patient(en): mind. eine Diagnose/Verordnung/ein Laborbefund/ein Befund konnte nicht gespeichert werden (Kartei manuell prüfen).':'');
   document.getElementById('migrationResultTableBody').innerHTML=results.map(r=>{
     const status=r.limitReached?'Übersprungen (Limit erreicht)':r.syncFailed?'Fehlgeschlagen':r.updated?'Aktualisiert':'Neu angelegt';
     const color=r.limitReached?'#d97706':r.syncFailed?'#dc2626':'#16a34a';
-    const warnIcon=' <span style="color:#d97706;" title="Diagnose/Verordnung/Laborbefund konnte nicht gespeichert werden -- Kartei manuell prüfen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>';
+    const warnIcon=' <span style="color:#d97706;" title="Diagnose/Verordnung/Laborbefund/Befund konnte nicht gespeichert werden -- Kartei manuell prüfen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>';
     return '<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(r.name)+'</td>'
       +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:'+color+';font-weight:600;">'+status+(r.historyFailed?warnIcon:'')+'</td></tr>';
   }).join('');

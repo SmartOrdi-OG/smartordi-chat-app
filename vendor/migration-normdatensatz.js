@@ -369,9 +369,56 @@ async function parseEnds1Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
   if (matchedFiles.length === 0) return null;
   const patients = buildEnds1PatientPreview(allRecords);
   matchEnds1BefundFiles(patients, entryNames);
+  // Only NOW read the actual bytes of whichever files got matched above --
+  // reading every image/PDF/etc. in the ZIP up front (most exports won't
+  // even have #F document references) would waste memory and budget
+  // against maxTotalBytes for files nothing ends up needing.
+  totalBytes = await loadEnds1BefundFileBytes(zip, patients, totalBytes, maxTotalBytes);
   const blockTotals = {};
   for (const rec of allRecords) blockTotals[rec.block] = (blockTotals[rec.block] || 0) + 1;
   return { format: 'ends1', matchedFiles, encoding, patients, blockTotals, totalRecords: allRecords.length };
+}
+
+// Maps a matched document's extension to a MIME type for the Dokumente tab
+// to render/download correctly -- the same extension set parseEnds1Zip()
+// itself already treats as "not a text export" above.
+function ends1MimeTypeFor(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', bmp: 'image/bmp', tif: 'image/tiff', tiff: 'image/tiff' };
+  return map[ext] || 'application/octet-stream';
+}
+
+// Reads the base64 content of every #F document-type entry's matched ZIP
+// file (see matchEnds1BefundFiles()), attaching {fileBase64, fileMimeType,
+// fileSizeBytes} directly onto each entry so the write step (doctor.html's
+// confirmMigrationImport()) can upload it without needing the JSZip
+// instance itself. The same file matched by more than one entry (unlikely,
+// but not impossible) is only read from the archive once. Shares the
+// caller's running totalBytes budget/maxTotalBytes guard -- an export whose
+// referenced documents alone exceed the limit fails the same loud way a
+// text file that did would, rather than silently truncating.
+async function loadEnds1BefundFileBytes(zip, patients, totalBytes, maxTotalBytes) {
+  const cache = new Map();
+  for (const p of patients) {
+    for (const entry of p.befunde) {
+      if (!entry.fileFound) continue;
+      const name = entry.matchedZipEntry;
+      if (!cache.has(name)) {
+        const base64 = await zip.files[name].async('base64');
+        const sizeBytes = base64ToBytes(base64).length;
+        totalBytes += sizeBytes;
+        if (totalBytes > maxTotalBytes) {
+          throw new Error('Archiv zu groß (Limit: ' + Math.round(maxTotalBytes / 1024 / 1024) + ' MB entpackt).');
+        }
+        cache.set(name, { base64, sizeBytes });
+      }
+      const cached = cache.get(name);
+      entry.fileBase64 = cached.base64;
+      entry.fileMimeType = ends1MimeTypeFor(name);
+      entry.fileSizeBytes = cached.sizeBytes;
+    }
+  }
+  return totalBytes;
 }
 
 // Resolves a #F document-type entry's PFA (Pfad) against the ZIP's actual
