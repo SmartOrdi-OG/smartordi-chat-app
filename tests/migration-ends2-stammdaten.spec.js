@@ -24,9 +24,105 @@ const PATIENT_INDEX_HTM = `<html><body><table>
 <tr><td>Laborbefund</td><td>15.04.2018</td><td><a href="LAB01.XML">LAB01.XML</a></td><td>text/xml</td></tr>
 </table></body></html>`;
 
-function cdaDoc({ given = 'Maximilian', family = 'Mustermann', svnr = '1234260826', birth = '20010826', gender = 'M' } = {}) {
+// Sections below are trimmed but otherwise byte-faithful excerpts from the
+// real official ENDS 2 sample (github.com/TechnikumWienAcademy/cda-ends2,
+// xdm-beispiel/IHE_XDM/00000036/00000036.xml) -- same table structure,
+// column headers, and German field labels a real export would carry.
+const SECTIONS_BODY = `
+<component><structuredBody>
+  <component><section>
+    <templateId root="1.2.40.0.34.6.0.11.2.96"/>
+    <code code="439401001" codeSystem="2.16.840.1.113883.6.96" displayName="Diagnosis"/>
+    <title>Diagnose</title>
+    <text>
+      <table>
+        <thead><tr><th>Zeitraum oder Zeitpunkt</th><th>Diagnosetext</th><th>Code [Codesystem]</th><th>Diagnoseart</th><th>Kürzel</th></tr></thead>
+        <tbody>
+          <tr><td>Seit Mai 1980</td><td>arterielle Hypertonie</td><td>I10.0 [ICD-10]</td><td>Dauerdiagnose</td><td>ahyp</td></tr>
+          <tr><td>25.6.2010</td><td>Bandscheibenvorfall</td><td>M50 [ICD-10]</td><td>Überweisungsdiagnose</td><td>-</td></tr>
+        </tbody>
+      </table>
+    </text>
+  </section></component>
+  <component><section>
+    <templateId root="1.2.40.0.34.6.0.11.2.34"/>
+    <code code="KARTEI_EINTRAGUNGEN" codeSystem="1.2.40.0.34.5.194" displayName="Karteineintragungen"/>
+    <title>Karteineintragungen</title>
+    <text>
+      <table>
+        <thead><tr><th>Zeilennummer</th><th>Text</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>GW 1/2004 ÜW</td></tr>
+          <tr><td>2</td><td>Otitis</td></tr>
+        </tbody>
+      </table>
+    </text>
+    <entry typeCode="DRIV">
+      <organizer classCode="BATTERY" moodCode="EVN">
+        <templateId root="1.2.40.0.34.6.0.11.3.137"/>
+        <code code="Karteieintragungen" codeSystem="1.2.40.0.34.5.195"/>
+        <component typeCode="COMP">
+          <observation classCode="OBS" moodCode="EVN">
+            <templateId root="1.2.40.0.34.6.0.11.3.136"/>
+            <effectiveTime><low value="20201006113228"/></effectiveTime>
+            <value xsi:type="INT" value="1"/>
+          </observation>
+        </component>
+        <component typeCode="COMP">
+          <observation classCode="OBS" moodCode="EVN">
+            <templateId root="1.2.40.0.34.6.0.11.3.136"/>
+            <effectiveTime><low value="20201006113228"/></effectiveTime>
+            <value xsi:type="INT" value="2"/>
+          </observation>
+        </component>
+      </organizer>
+    </entry>
+  </section></component>
+  <component><section>
+    <templateId root="1.2.40.0.34.6.0.11.2.104"/>
+    <code code="LabSpecContainer" codeSystem="1.2.40.0.34.5.194" displayName="Laboratory Speciality Container"/>
+    <title>Laborparameter</title>
+    <component><section>
+      <templateId root="1.3.6.1.4.1.19376.1.3.3.2.1"/>
+      <code code="300" codeSystem="1.2.40.0.34.5.11" displayName="Hämatologie"/>
+      <title>Hämatologie</title>
+      <text>
+        <table>
+          <thead><tr><th>Analyse</th><th>Ergebnis</th><th>Einheit</th><th>Referenzbereiche</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Leukozyten</td><td>26</td><td>10^9/L</td><td>4-10</td><td>+</td></tr>
+            <tr><td>Thrombozyten</td><td>165</td><td>10^9/L</td><td>150-360</td><td/></tr>
+          </tbody>
+        </table>
+      </text>
+    </section></component>
+  </section></component>
+  <component><section>
+    <templateId root="1.2.40.0.34.6.0.11.2.101"/>
+    <code code="57828-6" displayName="Prescription list" codeSystem="2.16.840.1.113883.6.1"/>
+    <title>Rezept</title>
+    <text>
+      <table>
+        <thead><tr><th>Rezeptart</th><th>Gültig von</th><th>Gültig bis</th></tr></thead>
+        <tbody><tr><td>Kassenrezept</td><td>2013-03-26</td><td>2014-04-27</td></tr></tbody>
+      </table>
+      <table ID="vpos-1">
+        <tbody>
+          <tr><td>Arznei Bezeichnung</td><td>Ciproxin 500mg Tabletten</td></tr>
+          <tr><td>Arznei Pharmazentralnummer</td><td><content ID="prodcode-1">981417</content></td></tr>
+          <tr><td>Arznei Wirkstoffname (ATC Code)</td><td>Ciprofloxacin (J01MA02)</td></tr>
+          <tr><td>Einnahmedauer</td><td>2 Wochen</td></tr>
+          <tr><td>Dosierung</td><td>2 - 0 - 1 - 0, täglich</td></tr>
+          <tr><td>Anzahl der Packungen</td><td>1</td></tr>
+        </tbody>
+      </table>
+    </text>
+  </section></component>
+</structuredBody></component>`;
+
+function cdaDoc({ given = 'Maximilian', family = 'Mustermann', svnr = '1234260826', birth = '20010826', gender = 'M', withSections = false } = {}) {
   return `<?xml version="1.0" encoding="UTF-8"?>
-<ClinicalDocument xmlns="urn:hl7-org:v3">
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <id root="1.2.40.0.34.99.4613.3.1" extension="1234567.1" assigningAuthorityName="Amadeus Spital"/>
   <code code="EXNDS_Patientendaten" displayName="Datenbankexport EXNDS - Patientendaten" codeSystem="1.2.40.0.34.5.195"/>
   <title>Datenbankexport</title>
@@ -49,6 +145,7 @@ function cdaDoc({ given = 'Maximilian', family = 'Mustermann', svnr = '123426082
       </patient>
     </patientRole>
   </recordTarget>
+  ${withSections ? SECTIONS_BODY : ''}
 </ClinicalDocument>`;
 }
 
@@ -92,6 +189,46 @@ test('an ENDS 2 (CDA/XML, IHE XDM) export is detected and the patient Stammdaten
   expect(row).toContain('Mustermann');
   expect(row).toContain('Maximilian');
   expect(row).toContain('26.08.2001');
+});
+
+test('Diagnose/Karteineintragungen/Rezept/Laborparameter sections are parsed field-by-field from the CDA Level 2 tables', async ({ page }) => {
+  await setupModal(page, {
+    'INDEX.HTM': b64(ROOT_INDEX_HTM),
+    'IHE_XDM/00000036/INDEX.HTM': b64(PATIENT_INDEX_HTM),
+    'IHE_XDM/00000036/00000036.xml': b64(cdaDoc({ withSections: true })),
+  });
+  await page.waitForFunction(() => document.getElementById('migrationZipStatus').textContent.includes('ENDS 2'));
+
+  const patient = await page.evaluate(() => migrationParsedResult.patients[0]);
+
+  expect(patient.diagnosen).toHaveLength(2);
+  expect(patient.diagnosen[0]).toMatchObject({ zeitraum: 'Seit Mai 1980', text: 'arterielle Hypertonie', code: 'I10.0 [ICD-10]', art: 'Dauerdiagnose' });
+  expect(patient.diagnosen[1]).toMatchObject({ text: 'Bandscheibenvorfall', code: 'M50 [ICD-10]', art: 'Überweisungsdiagnose' });
+
+  expect(patient.karteineintragungen).toHaveLength(2);
+  expect(patient.karteineintragungen[0]).toMatchObject({ nr: '1', text: 'GW 1/2004 ÜW', datum: '06.10.2020' });
+  expect(patient.karteineintragungen[1]).toMatchObject({ nr: '2', text: 'Otitis', datum: '06.10.2020' });
+
+  expect(patient.verordnungen).toHaveLength(1);
+  expect(patient.verordnungen[0]).toMatchObject({
+    bezeichnung: 'Ciproxin 500mg Tabletten',
+    dosierung: '2 - 0 - 1 - 0, täglich',
+    packungen: '1',
+    pzn: '981417',
+    wirkstoff: 'Ciprofloxacin (J01MA02)',
+    dauer: '2 Wochen',
+    datum: '2013-03-26',
+  });
+
+  expect(patient.laborbefunde).toHaveLength(2);
+  expect(patient.laborbefunde[0]).toMatchObject({ bezeichnung: 'Leukozyten', ergebnis: '26', einheit: '10^9/L', referenz: '4-10', gruppe: 'Hämatologie' });
+  expect(patient.laborbefunde[1]).toMatchObject({ bezeichnung: 'Thrombozyten', ergebnis: '165', einheit: '10^9/L', referenz: '150-360' });
+
+  const summary = await page.locator('#migrationPreviewTableBody tr').first().textContent();
+  expect(summary).toContain('2 Diagnose(n)');
+  expect(summary).toContain('2 Karteineintragung(en)');
+  expect(summary).toContain('1 Verordnung(en)');
+  expect(summary).toContain('2 Laborbefund(e)');
 });
 
 test('a patient row whose per-patient INDEX.HTM link is broken is skipped, not shown blank', async ({ page }) => {

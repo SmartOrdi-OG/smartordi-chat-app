@@ -105,10 +105,19 @@ function ends2CdaDateToDisplay(value) {
   return day + '.' + month + '.' + year;
 }
 
+// Parses XML text into a Document, or null if it doesn't parse cleanly --
+// shared by the Stammdaten and section parsers below so a CDA document is
+// only ever parsed once per patient.
+function ends2ParseXml(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+  return doc;
+}
+
 // Parses recordTarget/patientRole out of one patient's main CDA document
 // into the same field keys ENDS 1's #P Stammdaten preview already uses.
-// Returns null if the XML doesn't parse or has no recordTarget at all --
-// callers skip that patient rather than showing a broken/blank row.
+// Returns null if there's no recordTarget at all -- callers skip that
+// patient rather than showing a broken/blank row.
 //
 // SVNR: the sample export's Sozialversicherungsnummer id carries a fixed,
 // government-assigned OID (1.2.40.0.10.1.4.3.1, "Österreichische
@@ -117,9 +126,7 @@ function ends2CdaDateToDisplay(value) {
 // from among a patient's other ids (local software id, etc.) even though
 // id order isn't guaranteed by the spec.
 const ENDS2_SVNR_ROOT = '1.2.40.0.10.1.4.3.1';
-function ends2ParseCdaStammdaten(xmlText) {
-  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
-  if (doc.querySelector('parsererror')) return null;
+function ends2ParseCdaStammdaten(doc) {
   const patientRole = doc.querySelector('recordTarget > patientRole');
   if (!patientRole) return null;
   const nameEl = patientRole.querySelector('patient > name');
@@ -140,6 +147,193 @@ function ends2ParseCdaStammdaten(xmlText) {
     SVN: svnrId?.getAttribute('extension') || '',
     SoftwareId: localId?.getAttribute('extension') || '',
   };
+}
+
+// ── Phase 2: Diagnose/Karteineintragungen/Rezept/Laborbefunde ──
+//
+// Every one of these CDA sections carries its content TWICE: a "Level 3"
+// fully-coded <entry> structure (deeply nested, uses shared ELGA/IHE
+// templateIds that vary a lot between vendors) and a "Level 2" human-
+// readable <text><table> right above it (the same table a person reading
+// the document in a browser would see). The ENDS 2 wiki minutes explicitly
+// call Level 2 tables an accepted representation on their own ("derzeit in
+// CDA als L2 (Tabelle) abgebildet ... L3 Abbildung der Tabelle möglich"),
+// meaning some real vendor exports may have ONLY the table, no Level 3 at
+// all. Parsing the table is therefore not just simpler than decoding every
+// section's own Level 3 entry shape -- it's also the more robust target,
+// so that's what every parser below does, falling back to the entry-level
+// data only where the table genuinely doesn't carry a value the app needs
+// (Karteineintragungen's per-row date, below).
+//
+// Columns are matched by keyword against the table's own <th> text rather
+// than by fixed position -- resilient to column reordering/renaming
+// between vendors without guessing at values a header doesn't actually
+// name.
+
+// Finds the (first) <section> anywhere in the document carrying a direct
+// child <templateId root="templateId">. CDA sections can have several
+// templateIds on one <section> (e.g. Rezept has five), so this checks
+// direct children rather than assuming there's exactly one.
+function ends2FindSectionByTemplateId(doc, templateId) {
+  const sections = Array.from(doc.querySelectorAll('section'));
+  return sections.find(function (s) {
+    return s.querySelector(':scope > templateId[root="' + templateId + '"]') !== null;
+  }) || null;
+}
+
+// Reads one <table>'s header names (null if it has no <thead>, e.g. the
+// label/value tables Rezept uses per medication) and body rows (each a
+// plain array of cell text, whitespace-collapsed).
+function ends2ParseTableRows(tableEl) {
+  const theadCells = Array.from(tableEl.querySelectorAll(':scope > thead > tr > th'));
+  const headers = theadCells.length ? theadCells.map(function (th) { return ends2TextOf(th); }) : null;
+  const bodyRows = Array.from(tableEl.querySelectorAll(':scope > tbody > tr'));
+  const rows = bodyRows.map(function (tr) {
+    return Array.from(tr.querySelectorAll(':scope > td')).map(function (td) {
+      return (td.textContent || '').trim().replace(/\s+/g, ' ');
+    });
+  });
+  return { headers: headers, rows: rows };
+}
+
+// Finds the first header whose text contains any of the given keywords
+// (case-insensitive), returning its column index or -1 if the table has no
+// header row or none matches -- callers leave that field blank rather than
+// reading the wrong column.
+function ends2ColumnIndex(headers, keywords) {
+  if (!headers) return -1;
+  return headers.findIndex(function (h) {
+    const lower = h.toLowerCase();
+    return keywords.some(function (kw) { return lower.includes(kw); });
+  });
+}
+
+// #D-equivalent: the Diagnose section's table has one row per diagnosis
+// (Zeitraum oder Zeitpunkt/Diagnosetext/Code [Codesystem]/Diagnoseart).
+// "Zeitraum" is kept as the source's own free text (e.g. "Seit Mai 1980",
+// "25.6.2010") rather than force-parsed into a date -- unlike ENDS 1's
+// fixed TTMMJJJJ format, ENDS 2's Level 2 table has no fixed date format
+// specified, and guessing at ambiguous German date phrases risks a wrong
+// date more than showing the source text as-is does.
+function ends2ParseDiagnosen(doc) {
+  const section = ends2FindSectionByTemplateId(doc, '1.2.40.0.34.6.0.11.2.96');
+  if (!section) return [];
+  const table = section.querySelector(':scope > text > table');
+  if (!table) return [];
+  const { headers, rows } = ends2ParseTableRows(table);
+  const idxZeitraum = ends2ColumnIndex(headers, ['zeitraum', 'zeitpunkt']);
+  const idxText = ends2ColumnIndex(headers, ['diagnosetext']);
+  const idxCode = ends2ColumnIndex(headers, ['code']);
+  const idxArt = ends2ColumnIndex(headers, ['diagnoseart']);
+  return rows.map(function (cells) {
+    return {
+      zeitraum: idxZeitraum >= 0 ? (cells[idxZeitraum] || '') : '',
+      text: idxText >= 0 ? (cells[idxText] || '') : '',
+      code: idxCode >= 0 ? (cells[idxCode] || '') : '',
+      art: idxArt >= 0 ? (cells[idxArt] || '') : '',
+    };
+  }).filter(function (d) { return d.text; });
+}
+
+// Karteineintragungen ("Verlauf"-equivalent free-text chart entries): the
+// table itself only has Zeilennummer/Text, no date column -- but the
+// section's own Level 3 <entry> DOES record each row's real date
+// (effectiveTime/low), correlated back to its table row via a shared
+// integer (value[xsi:type=INT]) matching Zeilennummer. This is reading
+// real, already-present correlated data (not inventing one), so it's kept
+// unlike the Diagnose "Zeitraum" case above, which has no such structured
+// counterpart to fall back on.
+function ends2ParseKarteineintragungen(doc) {
+  const section = ends2FindSectionByTemplateId(doc, '1.2.40.0.34.6.0.11.2.34');
+  if (!section) return [];
+  const table = section.querySelector(':scope > text > table');
+  if (!table) return [];
+  const { headers, rows } = ends2ParseTableRows(table);
+  const idxNr = ends2ColumnIndex(headers, ['zeilennummer']);
+  const idxText = ends2ColumnIndex(headers, ['text']);
+  const dateByNr = {};
+  Array.from(section.querySelectorAll('observation')).forEach(function (obs) {
+    const valueEl = obs.querySelector(':scope > value');
+    if (!valueEl || valueEl.getAttribute('xsi:type') !== 'INT') return;
+    const nr = valueEl.getAttribute('value');
+    const dateVal = obs.querySelector(':scope > effectiveTime > low')?.getAttribute('value');
+    if (nr && dateVal) dateByNr[nr] = ends2CdaDateToDisplay(dateVal);
+  });
+  return rows.map(function (cells) {
+    const nr = idxNr >= 0 ? (cells[idxNr] || '') : '';
+    return {
+      nr: nr,
+      text: idxText >= 0 ? (cells[idxText] || '') : '',
+      datum: dateByNr[nr] || '',
+    };
+  }).filter(function (k) { return k.text; });
+}
+
+// #V-equivalent: the Rezept section's <text> holds one overview table
+// (Rezeptart/Gültig von/Gültig bis) followed by one label/value table per
+// medication (<table ID="vpos-N">, no <thead> -- each row is [label,
+// value], e.g. "Arznei Bezeichnung" -> "Ciproxin 500mg Tabletten"). Known
+// German field labels are read directly (not guessed at); a vendor using
+// different label text for the same concept simply won't populate that
+// field, same "skip rather than guess" behavior as everywhere else here.
+function ends2ParseVerordnungen(doc) {
+  const section = ends2FindSectionByTemplateId(doc, '1.2.40.0.34.6.0.11.2.101');
+  if (!section) return [];
+  const tables = Array.from(section.querySelectorAll(':scope > text > table'));
+  if (tables.length < 2) return [];
+  const overview = ends2ParseTableRows(tables[0]);
+  const idxVon = ends2ColumnIndex(overview.headers, ['gültig von']);
+  const gueltigVon = idxVon >= 0 && overview.rows[0] ? (overview.rows[0][idxVon] || '') : '';
+  return tables.slice(1).map(function (t) {
+    const { rows } = ends2ParseTableRows(t);
+    const kv = {};
+    rows.forEach(function (cells) { if (cells.length >= 2) kv[cells[0]] = cells[1]; });
+    return {
+      bezeichnung: kv['Arznei Bezeichnung'] || '',
+      dosierung: kv['Dosierung'] || '',
+      packungen: kv['Anzahl der Packungen'] || '',
+      pzn: kv['Arznei Pharmazentralnummer'] || '',
+      wirkstoff: kv['Arznei Wirkstoffname (ATC Code)'] || '',
+      dauer: kv['Einnahmedauer'] || '',
+      datum: gueltigVon,
+    };
+  }).filter(function (v) { return v.bezeichnung; });
+}
+
+// #L-equivalent: "Laborparameter" is a container section holding one
+// <component><section> per lab group (e.g. "Hämatologie"), each with its
+// own Analyse/Ergebnis/Einheit/Referenzbereiche table -- one row per lab
+// value. No per-result date exists at this level (unlike the standalone
+// Laborbefund CDA documents like LAB01.XML, which are a separate,
+// not-yet-parsed document type -- see TODO.md); left blank here rather
+// than guessed from e.g. the document's own creation date, which need not
+// be when the sample was actually drawn.
+function ends2ParseLaborbefunde(doc) {
+  const container = ends2FindSectionByTemplateId(doc, '1.2.40.0.34.6.0.11.2.104');
+  if (!container) return [];
+  const results = [];
+  Array.from(container.querySelectorAll(':scope > component > section')).forEach(function (sub) {
+    const gruppe = ends2TextOf(sub.querySelector(':scope > title'));
+    Array.from(sub.querySelectorAll(':scope > text > table')).forEach(function (t) {
+      const { headers, rows } = ends2ParseTableRows(t);
+      const idxAnalyse = ends2ColumnIndex(headers, ['analyse']);
+      const idxErgebnis = ends2ColumnIndex(headers, ['ergebnis']);
+      const idxEinheit = ends2ColumnIndex(headers, ['einheit']);
+      const idxReferenz = ends2ColumnIndex(headers, ['referenz']);
+      rows.forEach(function (cells) {
+        const bezeichnung = idxAnalyse >= 0 ? (cells[idxAnalyse] || '') : '';
+        if (!bezeichnung) return;
+        results.push({
+          bezeichnung: bezeichnung,
+          ergebnis: idxErgebnis >= 0 ? (cells[idxErgebnis] || '') : '',
+          einheit: idxEinheit >= 0 ? (cells[idxEinheit] || '') : '',
+          referenz: idxReferenz >= 0 ? (cells[idxReferenz] || '') : '',
+          gruppe: gruppe,
+        });
+      });
+    });
+  });
+  return results;
 }
 
 // Quick, cheap format check -- used by handleMigrationZipFile() to decide
@@ -199,14 +393,19 @@ async function parseEnds2Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
     const cdaPath = cdaJoined && ends2FindEntry(entryNames, cdaJoined);
     if (!cdaPath) continue;
     const cdaXml = await readText(cdaPath);
-    const stammdaten = ends2ParseCdaStammdaten(cdaXml);
+    const cdaDoc = ends2ParseXml(cdaXml);
+    if (!cdaDoc) continue;
+    const stammdaten = ends2ParseCdaStammdaten(cdaDoc);
     if (!stammdaten) continue;
     patients.push({
       stammdaten,
-      // Not parsed yet (later phases) -- present as empty arrays so the
-      // shared preview renderer's `.length` checks work unchanged for
-      // either format.
-      diagnosen: [], verordnungen: [], laborbefunde: [], befunde: [],
+      diagnosen: ends2ParseDiagnosen(cdaDoc),
+      karteineintragungen: ends2ParseKarteineintragungen(cdaDoc),
+      verordnungen: ends2ParseVerordnungen(cdaDoc),
+      laborbefunde: ends2ParseLaborbefunde(cdaDoc),
+      // Not parsed yet (later phases) -- empty array so the shared preview
+      // renderer's `.length` checks work unchanged for either format.
+      befunde: [],
     });
   }
   if (!patients.length) return null;
