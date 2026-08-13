@@ -5156,6 +5156,9 @@ function renderMigrationPreview(result){
     const dokumenteFehlend=dokumente.filter(b=>!b.fileFound).length;
     const dvl=[
       p.diagnosen.length?p.diagnosen.length+' Diagnose(n)':null,
+      // Karteineintragungen only exists on ENDS 2 patients (see
+      // parseEnds2Zip()) -- undefined, not an empty array, on ENDS 1 ones.
+      (p.karteineintragungen||[]).length?p.karteineintragungen.length+' Karteineintragung(en)':null,
       p.verordnungen.length?p.verordnungen.length+' Verordnung(en)':null,
       p.laborbefunde.length?p.laborbefunde.length+' Laborbefund(e)':null,
       p.befunde.length?p.befunde.length+' Befund(e)'+(dokumenteFehlend?' ('+dokumenteFehlend+' Datei(en) nicht in ZIP gefunden)':''):null,
