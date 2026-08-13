@@ -5253,25 +5253,91 @@ async function importMigrationBefund(patientId,entry,uploadedBy){
   }
   return true;
 }
-// Writes every #D/#V/#L/#F entry parsed for one patient (Phase 4/6).
+// ENDS 2 equivalents of the four writers above (Phase 3) -- same patient_
+// visits/patient_rezepte/patient_lab_results targets, but reading the
+// entry shapes vendor/migration-normdatensatz2.js's section parsers
+// produce (see ends2ParseDiagnosen/ends2ParseKarteineintragungen/
+// ends2ParseVerordnungen/ends2ParseLaborbefunde) instead of ENDS 1's #P
+// dictionary fields.
+async function importMigrationDiagnose2(patientId,entry,uploadedBy){
+  const date=ends2DiagnoseZeitraumToIso(entry.zeitraum||'');
+  if(!date) return false;
+  const notesParts=[];
+  if(entry.code) notesParts.push('Code: '+entry.code);
+  if(entry.art) notesParts.push(entry.art);
+  await createPatientVisit(patientId,{
+    date, type:'Diagnose (ENDS 2-Import)', diag:entry.text||'', notes:notesParts.join(', ')||undefined,
+  },uploadedBy);
+  return true;
+}
+// Karteineintragungen have no ENDS 1 equivalent block -- written into the
+// same Verlauf table as Diagnose entries (distinct type label), and their
+// count is folded into counts.diagnosen by importMigrationSubRecords()
+// below rather than adding a new bucket to the report/UI.
+async function importMigrationKarteineintragung2(patientId,entry,uploadedBy){
+  const date=ends2DisplayDateToIso(entry.datum||'');
+  if(!date) return false;
+  await createPatientVisit(patientId,{
+    date, type:'Karteieintrag (ENDS 2-Import)', diag:entry.text||'',
+  },uploadedBy);
+  return true;
+}
+async function importMigrationVerordnung2(patientId,entry,uploadedBy){
+  // entry.datum is the Rezept section's own free-text "Gültig von" table
+  // cell, not a fixed-format field like ENDS 1's -- only used if it
+  // actually looks like an ISO date, left blank otherwise rather than
+  // trusting arbitrary Level 2 table text.
+  const datum=/^\d{4}-\d{2}-\d{2}$/.test(entry.datum||'')?entry.datum:undefined;
+  await createPatientRezept(patientId,{
+    datum, med1:entry.bezeichnung||'', pack1:entry.packungen||undefined, dose1:entry.dosierung||undefined,
+    notes:[entry.pzn?('PZN: '+entry.pzn):'',entry.wirkstoff?('Wirkstoff: '+entry.wirkstoff):''].filter(Boolean).join(', ')||undefined,
+  },uploadedBy);
+  return true;
+}
+async function importMigrationLaborbefund2(patientId,entry,uploadedBy){
+  const bezeichnung=(entry.bezeichnung||'').trim();
+  if(!bezeichnung) return false;
+  const {wert,ergebnisText}=ends1ParseLabValue(entry.ergebnis,'');
+  const extra=[];
+  if(entry.einheit) extra.push(entry.einheit);
+  if(entry.referenz) extra.push('Referenz: '+entry.referenz);
+  const finalText=[ergebnisText,extra.join(', ')].filter(Boolean).join(' — ')||undefined;
+  await insertPatientLabResult(patientId,{
+    bezeichnung, wert, ergebnisText:finalText,
+    gruppe:entry.gruppe||undefined, quelle:'Normdatensatz-Import (ENDS 2)',
+  },uploadedBy);
+  return true;
+}
+// Writes every #D/#V/#L/#F entry parsed for one patient (Phase 4/6), or
+// (since Phase 3) every ENDS 2 Diagnose/Karteineintragung/Verordnung/
+// Laborbefund entry -- branches once on patientEntry.format rather than
+// forking this whole function, since both formats share the same target
+// tables and the same per-record try/catch discipline.
 // Best-effort per sub-record -- one failed entry is logged and flagged, not
 // allowed to abort the rest of that patient's import (same "don't let one
 // bad row sink the whole batch" spirit as secretary.html's CSV import).
 async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
   const counts={diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};let failed=false;
+  const isEnds2=migrationParsedResult&&migrationParsedResult.format==='ends2';
   for(const d of patientEntry.diagnosen){
-    try{ if(await importMigrationDiagnose(patientId,d,uploadedBy)) counts.diagnosen++; }
+    try{ if(await (isEnds2?importMigrationDiagnose2(patientId,d,uploadedBy):importMigrationDiagnose(patientId,d,uploadedBy))) counts.diagnosen++; }
     catch(err){ console.error('Normdatensatz-Import: Diagnose fehlgeschlagen',err); failed=true; }
   }
+  if(isEnds2){
+    for(const k of patientEntry.karteineintragungen||[]){
+      try{ if(await importMigrationKarteineintragung2(patientId,k,uploadedBy)) counts.diagnosen++; }
+      catch(err){ console.error('Normdatensatz-Import: Karteieintrag fehlgeschlagen',err); failed=true; }
+    }
+  }
   for(const v of patientEntry.verordnungen){
-    try{ await importMigrationVerordnung(patientId,v,uploadedBy); counts.verordnungen++; }
+    try{ await (isEnds2?importMigrationVerordnung2(patientId,v,uploadedBy):importMigrationVerordnung(patientId,v,uploadedBy)); counts.verordnungen++; }
     catch(err){ console.error('Normdatensatz-Import: Verordnung fehlgeschlagen',err); failed=true; }
   }
   for(const l of patientEntry.laborbefunde){
-    try{ if(await importMigrationLaborbefund(patientId,l,uploadedBy)) counts.laborbefunde++; }
+    try{ if(await (isEnds2?importMigrationLaborbefund2(patientId,l,uploadedBy):importMigrationLaborbefund(patientId,l,uploadedBy))) counts.laborbefunde++; }
     catch(err){ console.error('Normdatensatz-Import: Laborbefund fehlgeschlagen',err); failed=true; }
   }
-  for(const f of patientEntry.befunde){
+  for(const f of patientEntry.befunde||[]){
     try{ if(await importMigrationBefund(patientId,f,uploadedBy)) counts.befunde++; }
     catch(err){ console.error('Normdatensatz-Import: Befund fehlgeschlagen',err); failed=true; }
   }
@@ -5315,7 +5381,10 @@ async function confirmMigrationImport(){
     progressEl.textContent='Importiere '+(i+1)+' von '+patients.length+' Patient(en)...';
     const vorname=(s.VNM||'').trim(), nachname=(s.FNM||'').trim();
     if(!vorname||!nachname){ skipped++; continue; }
-    const dobIso=ends1DateToIso(s.GBD||'');
+    // ENDS 2's GBD is already "DD.MM.YYYY" display text (see
+    // ends2CdaDateToDisplay()), unlike ENDS 1's raw 8-digit TTMMJJJJ --
+    // needs the inverse converter, not ends1DateToIso().
+    const dobIso=migrationParsedResult.format==='ends2'?ends2DisplayDateToIso(s.GBD||''):ends1DateToIso(s.GBD||'');
     const unmapped=patientEntry.unknownFields;
     const extra={
       adresse:ends1ComposeAdresse(s)||undefined,
@@ -5383,7 +5452,7 @@ async function confirmMigrationImport(){
   // or to send back to the old system's vendor as proof of a completed
   // transfer). sourceFiles names which file(s) inside the ZIP were
   // actually recognized as ENDS1 and parsed, for traceability.
-  migrationLastReport={results,skipped,totals,sourceFiles:migrationParsedResult.matchedFiles};
+  migrationLastReport={results,skipped,totals,sourceFiles:migrationParsedResult.matchedFiles,format:migrationParsedResult.format};
   renderMigrationImportResults(results,skipped,totals);
 }
 
@@ -5428,11 +5497,11 @@ function renderMigrationImportResults(results,skipped,totals){
 // export, same reasoning as that function's own comment.
 function downloadMigrationReport(){
   if(!migrationLastReport) return;
-  const {results,skipped,totals,sourceFiles}=migrationLastReport;
+  const {results,skipped,totals,sourceFiles,format}=migrationLastReport;
   const createdCount=results.filter(r=>!r.updated&&!r.limitReached&&!r.syncFailed).length;
   const updatedCount=results.filter(r=>r.updated&&!r.syncFailed).length;
   const lines=[
-    ['Migrationsbericht -- Normdatensatz (ENDS 1) Import'],
+    ['Migrationsbericht -- Normdatensatz ('+(format==='ends2'?'ENDS 2':'ENDS 1')+') Import'],
     ['Erstellt am',new Date().toLocaleString('de-AT')],
     ['Quelldatei(en)',sourceFiles.join('; ')],
     ['Neue Patienten',String(createdCount)],
