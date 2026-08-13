@@ -1738,17 +1738,20 @@ function renderProfilImpfungen(){
   const tileEl=document.getElementById('homeTileImpfpass');
   const navTabEl=document.getElementById('navTabImpfpass');
   if(!card||!root) return;
-  // Real user feedback (2026-08-12): Impfpass is now its own top-level
-  // section (view-impfpass), reached from a home tile/desktop nav tab --
-  // both stay hidden until there's actually something to show, same
-  // condition as the card itself always used.
-  function setHidden(){
+  // Real user feedback (2026-08-13): the Impfungen icon/tile itself (home
+  // tile + desktop nav tab) must always be reachable, even before the
+  // practice has recorded a single vaccine -- it should fill in as
+  // vaccines get added, not stay hidden until the first one exists. Only
+  // the VIEW's own content (the card vs. the "Noch keine Impfungen
+  // erfasst" empty state, both already built for exactly this) toggles on
+  // whether there's real data; the entry point to reach it never does.
+  if(tileEl) tileEl.style.display='';
+  if(navTabEl) navTabEl.style.display='';
+  function setEmpty(){
     card.style.display='none';
     if(emptyEl) emptyEl.style.display='';
-    if(tileEl) tileEl.style.display='none';
-    if(navTabEl) navTabEl.style.display='none';
   }
-  if(!_remoteImpfungen){ setHidden(); return; }
+  if(!_remoteImpfungen){ setEmpty(); return; }
   const account=getCurrentAccount();
   const ageDays=ageInDaysFromDob(account?account.dob:null);
   const given=_remoteImpfungen||[];
@@ -1756,8 +1759,6 @@ function renderProfilImpfungen(){
   function showCard(){
     card.style.display='';
     if(emptyEl) emptyEl.style.display='none';
-    if(tileEl) tileEl.style.display='';
-    if(navTabEl) navTabEl.style.display='';
   }
   if(!isChild){
     // Real user feedback (2026-08-12, then again 2026-08-13): an adult
@@ -1775,7 +1776,7 @@ function renderProfilImpfungen(){
     // series. Adults get a plain, honest log instead: every vaccine staff
     // actually recorded, most recent first, by name and date -- no
     // schedule, no due/overdue guessing.
-    if(!given.length){ setHidden(); return; }
+    if(!given.length){ setEmpty(); return; }
     showCard();
     const sorted=given.slice().sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||''); });
     root.innerHTML=sorted.map(function(i){
@@ -1788,7 +1789,7 @@ function renderProfilImpfungen(){
   // A child keeps the full tracked schedule (due/overdue/upcoming) -- that's
   // the whole point for them, unchanged from before.
   const rows=VACCINE_SCHEDULE;
-  if(!rows.length){ setHidden(); return; }
+  if(!rows.length){ setEmpty(); return; }
   showCard();
   root.innerHTML=rows.map(function(v){
     const givenForV=given.filter(function(i){ return i.vaccineKey===v.key; });

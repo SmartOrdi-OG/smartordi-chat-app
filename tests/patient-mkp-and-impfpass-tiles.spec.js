@@ -84,14 +84,27 @@ test('an incomplete MKP exam never shows staff-only editing controls, just a "no
   expect(state.html).toContain('Allgemeine Untersuchung'); // first exam's title still listed, just as "not yet recorded"
 });
 
-test('the vaccination record (Impfpass) tile lives on the home screen, not inside Profil -- hidden for an adult with zero records', async ({ page }) => {
+// Real user feedback (2026-08-13): the icon must always be reachable, even
+// for an adult with zero real Impfung records -- it should fill in as
+// vaccines get added, not stay hidden until the first one exists (reversed
+// from the earlier 2026-08-12 "hide until there's something to show"
+// behavior this same tile started with).
+test('the vaccination record (Impfpass) tile lives on the home screen, not inside Profil -- always visible, even for an adult with zero records', async ({ page }) => {
   await setupRemote(page, profileRow({ is_child: false }), []);
   const state = await page.evaluate(() => ({
     tileVisible: getComputedStyle(document.getElementById('homeTileImpfpass')).display !== 'none',
+    navTabVisible: getComputedStyle(document.getElementById('navTabImpfpass')).display !== 'none',
+    cardVisible: getComputedStyle(document.getElementById('profilImpfungenCard')).display !== 'none',
+    emptyVisible: getComputedStyle(document.getElementById('profilImpfungenEmpty')).display !== 'none',
     cardInsideProfil: document.getElementById('view-profil').contains(document.getElementById('profilImpfungenCard')),
     cardInsideImpfpassView: document.getElementById('view-impfpass').contains(document.getElementById('profilImpfungenCard')),
   }));
-  expect(state.tileVisible).toBe(false);
+  expect(state.tileVisible, 'the icon itself must always be reachable').toBe(true);
+  expect(state.navTabVisible).toBe(true);
+  // Opening it with zero records shows the "Noch keine Impfungen erfasst"
+  // empty state, not the (empty) card.
+  expect(state.cardVisible).toBe(false);
+  expect(state.emptyVisible).toBe(true);
   expect(state.cardInsideProfil).toBe(false);
   expect(state.cardInsideImpfpassView).toBe(true);
 });
