@@ -88,6 +88,46 @@ const ENDS1_P_FIELDS = {
   HVN: { label: 'Patientennr. Hauptversicherter', type: 'N' },
 };
 
+// #D (Diagnosen), #V (Verordnungen/Rezepte) and #L (Laborbefunde) field
+// dictionaries -- like ENDS1_P_FIELDS, transcribed directly from the
+// official spec's field table (page 7-8), not guessed. Unlike #P (one value
+// per patient per field), these are REPEATABLE blocks: a patient can have
+// many diagnoses/prescriptions/lab results. The spec's own field list marks
+// each block's STD (Systemdatum) as "Datum der Leistungserbringung... ist
+// nicht das Systemdatum" for non-#P blocks (point 9.2.5) -- i.e. for these
+// blocks the 27-char header's date/time is the real event date, not a
+// zero-padded placeholder like it is for #P. That's the only grouping key
+// the spec actually defines for telling separate repeatable entries apart,
+// so buildEnds1PatientPreview() below groups a block's lines into one entry
+// per distinct (date,time) pair.
+const ENDS1_D_FIELDS = {
+  STD: { label: 'Systemdatum der Eintragung', type: 'D' },
+  TXT: { label: 'Text Diagnose', type: 'T' },
+  WHO: { label: 'WHO-Code', type: 'T' },
+  DGN: { label: 'andere Diagnose-Codes', type: 'T' },
+  ART: { label: 'Art (Dauer/Temporär)', type: 'N' },
+};
+const ENDS1_V_FIELDS = {
+  STD: { label: 'Systemdatum', type: 'D' },
+  TXT: { label: 'Text', type: 'T' },
+  MNG: { label: 'Menge', type: 'N' },
+  ART: { label: 'Art (Stk., GT), Einheit', type: 'T' },
+  PHN: { label: 'Pharmazentralnr.', type: 'N' },
+  ANZ: { label: 'Anzahl Packungen', type: 'N' },
+  TXG: { label: 'Tax-Preis (in Cent)', type: 'N' },
+  AVP: { label: 'Apotheken-Verkaufspreis (in Cent)', type: 'N' },
+  SIG: { label: 'Signatur (Einheit/Menge/Zeit)', type: 'T' },
+  RZB: { label: 'Rezeptgebühren befreit', type: 'N' },
+  PAR: { label: 'Packungsart', type: 'T' },
+};
+const ENDS1_L_FIELDS = {
+  BEZ: { label: 'Bezeichnung', type: 'T' },
+  WTX: { label: 'Wert oder Text folgt im nächsten Feld', type: 'T' },
+  WRT: { label: 'Wert (mit 3 Nachkommastellen)', type: 'N' },
+  TXT: { label: 'Text: Ergebnis', type: 'T' },
+  GRP: { label: 'Gruppe', type: 'T' },
+};
+
 const ENDS1_BLOCK_NAMES = {
   P: 'Patientenstammdaten', H: 'Hauptversicherten-Daten', B: 'Behandlung/Positionen',
   D: 'Diagnosen', K: 'Karteieintragungen', L: 'Laborbefunde', V: 'Verordnungen/Rezepte',
@@ -148,24 +188,65 @@ function parseEnds1Lines(text) {
   return { records, unrecognizedLines };
 }
 
+// Block letter -> {dictionary, entry-list property name} for the
+// repeatable blocks parsed field-by-field (Phase 3). Blocks not listed here
+// (#B, #H, #K, #G, #F, #E, #A, #Z) are still counted in blockCounts, just
+// not broken down field-by-field yet.
+const ENDS1_REPEATABLE_BLOCKS = {
+  D: { fields: ENDS1_D_FIELDS, listKey: 'diagnosen' },
+  V: { fields: ENDS1_V_FIELDS, listKey: 'verordnungen' },
+  L: { fields: ENDS1_L_FIELDS, listKey: 'laborbefunde' },
+};
+
 // Groups parsed records by patient number. #P fields not in ENDS1_P_FIELDS
 // (e.g. a future spec revision's field code) are preserved under
 // unknownFields instead of being dropped, per the "never destroy unmapped
-// source data" principle. Every other block is only counted for now
-// (Phase 1 is master-data-only; #D/#V/#L etc. parsing is a later phase).
+// source data" principle. #D/#V/#L lines are grouped into entry objects and
+// pushed onto that patient's diagnosen/verordnungen/laborbefunde array, in
+// the order seen. Every other block (#B, #H, #K, #G, #F, #E, #A, #Z) is
+// still only counted, not parsed field-by-field yet -- not this phase's scope.
+//
+// Boundary rule for where one repeatable entry ends and the next begins: a
+// field code repeating within the same block+patient marks the start of a
+// new entry (the standard rule for this kind of flat, fixed-field-order
+// repeating-group format -- one entry's fields are written together, in a
+// consistent order, then the next entry's fields follow). Deliberately NOT
+// grouped by the (date,time) header instead: real diagnoses/prescriptions
+// entered in the same visit can legitimately share the exact same
+// date+time, and grouping by that would silently merge two real, distinct
+// entries into one, losing data -- exactly the kind of silent loss this
+// parser is built to avoid.
 function buildEnds1PatientPreview(records) {
   const byPatient = new Map();
+  // openEntry: patientNr -> block -> the in-progress entry object (or
+  // undefined once no entry is open yet for that block).
+  const openEntry = new Map();
   for (const rec of records) {
     if (!byPatient.has(rec.patientNr)) {
-      byPatient.set(rec.patientNr, { patientNr: rec.patientNr, stammdaten: {}, unknownFields: [], blockCounts: {} });
+      byPatient.set(rec.patientNr, {
+        patientNr: rec.patientNr, stammdaten: {}, unknownFields: [], blockCounts: {},
+        diagnosen: [], verordnungen: [], laborbefunde: [],
+      });
+      openEntry.set(rec.patientNr, {});
     }
     const p = byPatient.get(rec.patientNr);
     p.blockCounts[rec.block] = (p.blockCounts[rec.block] || 0) + 1;
+    const trimmed = rec.value.trim();
     if (rec.block === 'P') {
-      const trimmed = rec.value.trim();
       if (ENDS1_P_FIELDS[rec.field]) p.stammdaten[rec.field] = trimmed;
       else p.unknownFields.push({ field: rec.field, value: trimmed });
+      continue;
     }
+    const repeatable = ENDS1_REPEATABLE_BLOCKS[rec.block];
+    if (!repeatable || !repeatable.fields[rec.field]) continue;
+    const patientOpenEntries = openEntry.get(rec.patientNr);
+    let entry = patientOpenEntries[rec.block];
+    if (!entry || rec.field in entry) {
+      entry = { date: rec.date, time: rec.time };
+      patientOpenEntries[rec.block] = entry;
+      p[repeatable.listKey].push(entry);
+    }
+    entry[rec.field] = trimmed;
   }
   return [...byPatient.values()];
 }
