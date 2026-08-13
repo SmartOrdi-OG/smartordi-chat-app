@@ -141,6 +141,61 @@ test('#V (Verordnungen) and #L (Laborbefunde) are also parsed field-by-field, an
   expect(parsed.laborbefunde[0].WRT).toBe('120');
 });
 
+test('#F (Befunde) parses a multi-line text finding as one entry and resolves a document finding\'s file against the ZIP', async ({ page }) => {
+  const text =
+    ends1Line(1, 'FNM', 'Wagner') +
+    ends1Line(1, 'VNM', 'Petra') +
+    // A text finding (TBI=0) with 2 lines -- must stay ONE entry, not split
+    // by TXT repeating.
+    ends1LineDated(1, 'F', 'TBI', '10012020', '1000', '0') +
+    ends1LineDated(1, 'F', 'ZLN', '10012020', '1000', '1') +
+    ends1LineDated(1, 'F', 'TXT', '10012020', '1000', 'Erste Zeile.') +
+    ends1LineDated(1, 'F', 'ZLN', '10012020', '1000', '2') +
+    ends1LineDated(1, 'F', 'TXT', '10012020', '1000', 'Zweite Zeile.') +
+    // A document finding (TBI=1) whose PFA basename matches a real file in
+    // the ZIP -- must be resolved.
+    ends1LineDated(1, 'F', 'TBI', '15032021', '1100', '1') +
+    ends1LineDated(1, 'F', 'PFA', '15032021', '1100', 'e:/usr/dok/bef/bild.jpg') +
+    // A second document finding whose PFA basename has NO match in the ZIP.
+    ends1LineDated(1, 'F', 'TBI', '01062022', '0900', '1') +
+    ends1LineDated(1, 'F', 'PFA', '01062022', '0900', 'c:/scan/missing.pdf');
+  const base64 = Buffer.from(text, 'utf8').toString('base64');
+
+  await installJsZipMock(page);
+  await page.addInitScript((b64) => {
+    window.__fakeZipFiles = { 'normdata.txt': b64, 'docs/BILD.JPG': btoa('dummy-image-bytes') };
+  }, base64);
+  await installMockSupabase(page, seed(), () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-settings').classList.add('active');
+    openMigrationImportModal();
+  });
+  await page.setInputFiles('#migrationZipInput', { name: 'export.zip', mimeType: 'application/zip', buffer: Buffer.from('dummy') });
+  await page.waitForFunction(() => document.getElementById('migrationZipStatus').textContent.includes('Format erkannt'));
+
+  const row = await page.locator('#migrationPreviewTableBody tr').first().textContent();
+  expect(row).toContain('3 Befund(e)');
+  expect(row).toContain('1 Datei(en) nicht in ZIP gefunden');
+
+  const summary = await page.locator('#migrationPreviewSummary').textContent();
+  expect(summary).not.toContain('Befunde');
+
+  const befunde = await page.evaluate(() => migrationParsedResult.patients[0].befunde);
+  expect(befunde).toHaveLength(3);
+  expect(befunde[0].TBI).toBe('0');
+  expect(befunde[0].textLines.map(l => l.text)).toEqual(['Erste Zeile.', 'Zweite Zeile.']);
+  expect(befunde[1].TBI).toBe('1');
+  expect(befunde[1].fileFound).toBe(true);
+  expect(befunde[1].matchedZipEntry).toBe('docs/BILD.JPG');
+  expect(befunde[2].TBI).toBe('1');
+  expect(befunde[2].fileFound).toBe(false);
+});
+
 test('a ZIP with no recognizable Normdatensatz content shows a clear "not detected" message', async ({ page }) => {
   await installJsZipMock(page);
   await page.addInitScript(() => {

@@ -3225,7 +3225,7 @@ body.windows-mode #karteiBtn{display:none;}
             <tbody id="migrationPreviewTableBody"></tbody>
           </table>
         </div>
-        <div style="font-size:12px;color:#94a3b8;margin:10px 0;">Bereits bestehende Patient/innen (per SV-Nummer oder Name+Geburtsdatum erkannt) werden aktualisiert, nicht doppelt angelegt. Nur Patientenstammdaten werden übernommen — Diagnosen/Verordnungen/Laborbefunde sind hier nur zur Vorschau, sie werden noch nicht importiert.</div>
+        <div style="font-size:12px;color:#94a3b8;margin:10px 0;">Bereits bestehende Patient/innen (per SV-Nummer oder Name+Geburtsdatum erkannt) werden aktualisiert, nicht doppelt angelegt. Nur Patientenstammdaten werden übernommen — Diagnosen/Verordnungen/Laborbefunde/Befunde sind hier nur zur Vorschau, sie werden noch nicht importiert.</div>
         <button class="btn-primary" id="migrationConfirmBtn" onclick="confirmMigrationImport()">Diese Patienten importieren</button>
         <div id="migrationImportProgress" style="font-size:13px;color:#334155;margin-top:10px;"></div>
       </div>
@@ -5122,19 +5122,22 @@ async function handleMigrationZipFile(event){
 function renderMigrationPreview(result){
   const summaryEl=document.getElementById('migrationPreviewSummary');
   const tbody=document.getElementById('migrationPreviewTableBody');
-  // #D/#V/#L are now parsed field-by-field (Phase 3) and shown in the table
-  // below -- only the STILL-unparsed blocks belong in the "not evaluated
-  // yet" line now.
-  const otherBlocks=Object.keys(result.blockTotals).filter(b=>b!=='P'&&b!=='D'&&b!=='V'&&b!=='L')
+  // #D/#V/#L/#F are now parsed field-by-field (Phase 3/5) and shown in the
+  // table below -- only the STILL-unparsed blocks belong in the "not
+  // evaluated yet" line now.
+  const otherBlocks=Object.keys(result.blockTotals).filter(b=>b!=='P'&&b!=='D'&&b!=='V'&&b!=='L'&&b!=='F')
     .map(b=>result.blockTotals[b]+' × '+(ENDS1_BLOCK_NAMES[b]||b)).join(', ');
   summaryEl.innerHTML='<strong>'+result.patients.length+' Patient(en) gefunden</strong>'
     +(otherBlocks?'<br>Weitere gefundene Daten (noch nicht ausgewertet): '+escapeHtml(otherBlocks):'');
   tbody.innerHTML=result.patients.slice(0,50).map(p=>{
     const s=p.stammdaten;
+    const dokumente=p.befunde.filter(b=>b.TBI==='1');
+    const dokumenteFehlend=dokumente.filter(b=>!b.fileFound).length;
     const dvl=[
       p.diagnosen.length?p.diagnosen.length+' Diagnose(n)':null,
       p.verordnungen.length?p.verordnungen.length+' Verordnung(en)':null,
       p.laborbefunde.length?p.laborbefunde.length+' Laborbefund(e)':null,
+      p.befunde.length?p.befunde.length+' Befund(e)'+(dokumenteFehlend?' ('+dokumenteFehlend+' Datei(en) nicht in ZIP gefunden)':''):null,
     ].filter(Boolean).join(', ')||'—';
     return '<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.FNM||'—')+'</td>'
       +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(s.VNM||'—')+'</td>'
