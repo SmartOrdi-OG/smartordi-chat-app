@@ -47,28 +47,32 @@ async function setupRemote(page, profile, mkpRows) {
   await page.waitForTimeout(300);
 }
 
-test('an adult account never shows the Mutter-Kind-Pass tile, on the home screen or the desktop sidebar', async ({ page }) => {
+test('an adult account never shows the Mutter-Kind-Pass tile, on the home screen, desktop sidebar, or mobile bottom nav', async ({ page }) => {
   await setupRemote(page, profileRow({ is_child: false }), []);
   const state = await page.evaluate(() => ({
     tileVisible: getComputedStyle(document.getElementById('homeTileMkp')).display !== 'none',
     navTabVisible: getComputedStyle(document.getElementById('navTabMkp')).display !== 'none',
+    navBottomVisible: getComputedStyle(document.getElementById('nav-mkp')).display !== 'none',
   }));
   expect(state.tileVisible).toBe(false);
   expect(state.navTabVisible).toBe(false);
+  expect(state.navBottomVisible).toBe(false);
 });
 
-test('a child account shows the Mutter-Kind-Pass tile, and its view lists all 13 exams with a real record shown read-only', async ({ page }) => {
+test('a child account shows the Mutter-Kind-Pass tile (home, desktop sidebar, mobile bottom nav), and its view lists all 13 exams with a real record shown read-only', async ({ page }) => {
   await setupRemote(page, profileRow({ is_child: true, dob: '2020-01-01' }), [
     { exam_key: 'lw4_7_allgemein', data: { gewicht: 4200, stillen: 'ja', diagnose: 'Unauffällig' }, completed_at: '2020-02-01T10:00:00Z' },
   ]);
   const state = await page.evaluate(() => ({
     tileVisible: getComputedStyle(document.getElementById('homeTileMkp')).display !== 'none',
     navTabVisible: getComputedStyle(document.getElementById('navTabMkp')).display !== 'none',
+    navBottomVisible: getComputedStyle(document.getElementById('nav-mkp')).display !== 'none',
     examCardCount: document.getElementById('mkpContent').querySelectorAll('.info-card').length,
     html: document.getElementById('mkpContent').innerHTML,
   }));
   expect(state.tileVisible).toBe(true);
   expect(state.navTabVisible).toBe(true);
+  expect(state.navBottomVisible).toBe(true);
   expect(state.examCardCount).toBe(13); // MKP_EXAMS.length
   expect(state.html).toContain('4200');
   expect(state.html).toContain('Ja'); // 'stillen' yn field rendered as a translated Ja/Nein, not the raw 'ja'
@@ -94,6 +98,7 @@ test('the vaccination record (Impfpass) tile lives on the home screen, not insid
   const state = await page.evaluate(() => ({
     tileVisible: getComputedStyle(document.getElementById('homeTileImpfpass')).display !== 'none',
     navTabVisible: getComputedStyle(document.getElementById('navTabImpfpass')).display !== 'none',
+    navBottomVisible: getComputedStyle(document.getElementById('nav-impfpass')).display !== 'none',
     cardVisible: getComputedStyle(document.getElementById('profilImpfungenCard')).display !== 'none',
     emptyVisible: getComputedStyle(document.getElementById('profilImpfungenEmpty')).display !== 'none',
     cardInsideProfil: document.getElementById('view-profil').contains(document.getElementById('profilImpfungenCard')),
@@ -101,6 +106,7 @@ test('the vaccination record (Impfpass) tile lives on the home screen, not insid
   }));
   expect(state.tileVisible, 'the icon itself must always be reachable').toBe(true);
   expect(state.navTabVisible).toBe(true);
+  expect(state.navBottomVisible, 'the mobile bottom-nav entry must also always be reachable').toBe(true);
   // Opening it with zero records shows the "Noch keine Impfungen erfasst"
   // empty state, not the (empty) card.
   expect(state.cardVisible).toBe(false);
