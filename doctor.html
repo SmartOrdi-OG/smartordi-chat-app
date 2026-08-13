@@ -5152,8 +5152,11 @@ function renderMigrationPreview(result){
     +(otherBlocks?'<br>Weitere gefundene Daten (noch nicht ausgewertet): '+escapeHtml(otherBlocks):'');
   tbody.innerHTML=result.patients.slice(0,50).map(p=>{
     const s=p.stammdaten;
-    const dokumente=p.befunde.filter(b=>b.TBI==='1');
-    const dokumenteFehlend=dokumente.filter(b=>!b.fileFound).length;
+    // fileFound is only ever set on entries that actually reference a
+    // separate file (ENDS 1's #F document findings, TBI==='1'; ENDS 2's
+    // secondary documents, see parseEnds2Zip()) -- undefined (not counted)
+    // on everything else, so this check works for either format unchanged.
+    const dokumenteFehlend=p.befunde.filter(b=>b.fileFound===false).length;
     const dvl=[
       p.diagnosen.length?p.diagnosen.length+' Diagnose(n)':null,
       // Karteineintragungen only exists on ENDS 2 patients (see
@@ -5253,6 +5256,30 @@ async function importMigrationBefund(patientId,entry,uploadedBy){
   }
   return true;
 }
+// ENDS 2's Befund equivalent (Phase 4): a secondary document referenced
+// from a patient's own document INDEX.HTM besides the main NDS CDA (e.g. a
+// standalone Laborbefund CDA like the real sample's LAB01.XML), already
+// rendered to readable text by parseEnds2Zip() (see
+// ends2RenderCdaDocumentText() in vendor/migration-normdatensatz2.js --
+// deliberately text, not a field-by-field lab-result write, to avoid
+// double-counting values already captured from the main document's own
+// Laborparameter section). A row whose file couldn't be resolved in the
+// ZIP, or that parsed to no readable content, still gets a document noting
+// that -- same "never silently drop a reference" discipline as
+// importMigrationBefund() above.
+async function importMigrationNebendokument2(patientId,entry,uploadedBy){
+  const title=entry.title||'Dokument';
+  let bodyText;
+  if(entry.fileFound&&entry.bodyText){
+    bodyText=(entry.datum?('Datum: '+entry.datum+'\n\n'):'')+entry.bodyText;
+  }else if(entry.fileFound){
+    bodyText='Dokument aus dem Export-ZIP konnte nicht gelesen werden.';
+  }else{
+    bodyText='Dokument aus dem Export-ZIP nicht gefunden.';
+  }
+  await uploadPatientDocument(patientId,{ category:'befund', title, bodyText },uploadedBy);
+  return true;
+}
 // ENDS 2 equivalents of the four writers above (Phase 3) -- same patient_
 // visits/patient_rezepte/patient_lab_results targets, but reading the
 // entry shapes vendor/migration-normdatensatz2.js's section parsers
@@ -5338,7 +5365,7 @@ async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
     catch(err){ console.error('Normdatensatz-Import: Laborbefund fehlgeschlagen',err); failed=true; }
   }
   for(const f of patientEntry.befunde||[]){
-    try{ if(await importMigrationBefund(patientId,f,uploadedBy)) counts.befunde++; }
+    try{ if(await (isEnds2?importMigrationNebendokument2(patientId,f,uploadedBy):importMigrationBefund(patientId,f,uploadedBy))) counts.befunde++; }
     catch(err){ console.error('Normdatensatz-Import: Befund fehlgeschlagen',err); failed=true; }
   }
   return {counts,failed};
