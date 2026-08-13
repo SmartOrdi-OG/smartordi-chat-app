@@ -2265,9 +2265,9 @@ body.windows-mode #karteiBtn{display:none;}
           <!-- Neuer Befund: PDF-Upload, keine manuelle Eingabe -->
           <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
             <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Neuer Befund</div>
-            <div class="k-form-label">Titel</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Titel</div>
             <input class="k-form-input" id="kLaborTitel" placeholder="z.B. Blutbild Juni 2026" style="margin-bottom:10px;">
-            <div class="k-form-label" id="kLaborMaxLabel">PDF-Datei vom Labor (max. 8 MB)</div>
+            <div class="k-form-label k-form-label-icon" id="kLaborMaxLabel"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span id="kLaborMaxLabelText">PDF-Datei vom Labor (max. 8 MB)</span></div>
             <input type="file" id="kLaborFile" accept="application/pdf" style="margin-bottom:10px;">
             <button class="k-form-save" id="kLaborUploadBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="uploadKarteiLaborDoc()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Hochladen
@@ -2278,9 +2278,9 @@ body.windows-mode #karteiBtn{display:none;}
                wo es keinen Laborbericht zum Hochladen gibt -->
           <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
             <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Schnellnotiz (Test vor Ort, z.B. Urin-Streifentest)</div>
-            <div class="k-form-label">Titel</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Titel</div>
             <input class="k-form-input" id="kLaborNoteTitel" placeholder="z.B. Urin-Streifentest" style="margin-bottom:10px;">
-            <div class="k-form-label">Ergebnis</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 17.01"/></svg>Ergebnis</div>
             <textarea class="k-form-input" id="kLaborNoteText" rows="2" placeholder="z.B. Protein: negativ, Glukose: negativ, pH: 6.0" style="resize:none;margin-bottom:10px;"></textarea>
             <button class="k-form-save" id="kLaborNoteBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="saveKarteiLaborNote()">
               Notiz speichern
@@ -2308,7 +2308,7 @@ body.windows-mode #karteiBtn{display:none;}
             <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Neues Dokument</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
               <div>
-                <div class="k-form-label">Kategorie</div>
+                <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Kategorie</div>
                 <select class="k-form-input" id="kDokKategorie">
                   <option value="befund">Befund</option>
                   <option value="ueberweisung">Überweisung</option>
@@ -2317,11 +2317,11 @@ body.windows-mode #karteiBtn{display:none;}
                 </select>
               </div>
               <div>
-                <div class="k-form-label">Titel</div>
+                <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Titel</div>
                 <input class="k-form-input" id="kDokTitel" placeholder="z.B. Blutbild Juni 2026">
               </div>
             </div>
-            <div class="k-form-label" id="kDokMaxLabel">PDF-Datei (max. 8 MB)</div>
+            <div class="k-form-label k-form-label-icon" id="kDokMaxLabel"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span id="kDokMaxLabelText">PDF-Datei (max. 8 MB)</span></div>
             <input type="file" id="kDokFile" accept="application/pdf" style="margin-bottom:10px;">
             <button class="k-form-save" id="kDokUploadBtn" onclick="uploadKarteiDocument()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Hochladen
@@ -4680,9 +4680,9 @@ function renderPlanSettings(){
   // Stripe checkout redirect that may have changed the plan) -- separate
   // from the #planSettingsBody early-return below since these labels exist
   // regardless of whether Einstellungen has ever been opened yet.
-  const laborLabel=document.getElementById('kLaborMaxLabel');
+  const laborLabel=document.getElementById('kLaborMaxLabelText');
   if(laborLabel) laborLabel.textContent='PDF-Datei vom Labor (max. '+formatUploadMaxLabel()+')';
-  const dokLabel=document.getElementById('kDokMaxLabel');
+  const dokLabel=document.getElementById('kDokMaxLabelText');
   if(dokLabel) dokLabel.textContent='PDF-Datei (max. '+formatUploadMaxLabel()+')';
   const body=document.getElementById('planSettingsBody');
   if(!body) return;
