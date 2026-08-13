@@ -52,7 +52,7 @@ select 'table' as check_type, t as name,
 from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
-  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads','patient_lab_results',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
@@ -267,6 +267,15 @@ from unnest(array[
 
 union all
 
+select 'patient_lab_results column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_lab_results' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'bezeichnung','wert','ergebnis_text','gruppe','quelle','datum'
+]) as c
+
+union all
+
 -- patient_rezepte's own sibling table (phase38) never got the same column
 -- check -- found in a full app-wide bug audit (2026-07-29). Every one of
 -- these is explicitly selected/inserted by createPatientUeberweisung()/
@@ -351,7 +360,7 @@ select 'RLS enabled' as check_type, t as name,
 from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
-  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads','patient_lab_results',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
@@ -381,7 +390,7 @@ select 'RLS policy exists' as check_type, t as name,
 from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
-  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads','patient_lab_results',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
@@ -422,7 +431,7 @@ select 'RLS actually scopes access' as check_type, t as name,
 from unnest(array[
   'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
   'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
-  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads','patient_lab_results',
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',

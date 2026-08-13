@@ -5836,17 +5836,83 @@ function ends1ComposeAdresse(s){
   return [strasse,plzOrt].filter(Boolean).join(', ');
 }
 
-// Writes the parsed Stammdaten (#P block only -- Phase 1's scope, see
-// TODO.md) into real patient accounts, reusing the exact same account-
-// creation/duplicate-matching logic secretary.html's CSV import already
-// uses (vendor/patient-account-creation.js) so a patient imported here
-// behaves identically to one added any other way -- same login mechanics,
-// same plan-limit enforcement, same SVNr/name+DOB duplicate detection.
+// Writes a #D entry into Verlauf (patient_visits). visit_date is NOT NULL
+// with no default (unlike patient_rezepte/patient_lab_results below) -- an
+// entry whose header date didn't convert cleanly is skipped rather than
+// defaulted to "today", which would misrepresent when the diagnosis was
+// actually made.
+async function importMigrationDiagnose(patientId,entry,uploadedBy){
+  const date=ends1DateToIso(entry.date||'');
+  if(!date) return false;
+  const notesParts=[];
+  if(entry.WHO) notesParts.push('WHO-Code: '+entry.WHO);
+  if(entry.DGN) notesParts.push('Weiterer Code: '+entry.DGN);
+  if(entry.ART==='1') notesParts.push('Dauerdiagnose (Altsystem)');
+  await createPatientVisit(patientId,{
+    date, type:'Diagnose (Altsystem-Import)', diag:entry.TXT||'', notes:notesParts.join(', ')||undefined,
+  },uploadedBy);
+  return true;
+}
+// Writes a #V entry as its own patient_rezepte row (med1/packungen1/
+// dosierung1 only) -- one row per entry rather than trying to group several
+// Verordnungen into one Rezept's 4 medication slots, since the source data
+// doesn't indicate which entries (if any) were actually prescribed together.
+async function importMigrationVerordnung(patientId,entry,uploadedBy){
+  const datum=ends1DateToIso(entry.date||'')||undefined;
+  await createPatientRezept(patientId,{
+    datum, med1:entry.TXT||'', pack1:entry.ANZ||entry.MNG||undefined, dose1:entry.SIG||entry.ART||undefined,
+    notes:entry.PHN?('Pharmazentralnr.: '+entry.PHN):undefined,
+  },uploadedBy);
+}
+// Writes a #L entry into patient_lab_results -- skipped if BEZ (the
+// value's label) is missing, since a nameless lab value isn't usable.
+async function importMigrationLaborbefund(patientId,entry,uploadedBy){
+  const bezeichnung=(entry.BEZ||'').trim();
+  if(!bezeichnung) return false;
+  const {wert,ergebnisText}=ends1ParseLabValue(entry.WRT,entry.TXT);
+  await insertPatientLabResult(patientId,{
+    datum:ends1DateToIso(entry.date||'')||undefined, bezeichnung, wert, ergebnisText,
+    gruppe:entry.GRP||undefined, quelle:'Normdatensatz-Import',
+  },uploadedBy);
+  return true;
+}
+// Writes every #D/#V/#L entry parsed for one patient (Phase 4). Best-effort
+// per sub-record -- one failed entry is logged and flagged, not allowed to
+// abort the rest of that patient's import (same "don't let one bad row sink
+// the whole batch" spirit as secretary.html's CSV import).
+async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
+  const counts={diagnosen:0,verordnungen:0,laborbefunde:0};let failed=false;
+  for(const d of patientEntry.diagnosen){
+    try{ if(await importMigrationDiagnose(patientId,d,uploadedBy)) counts.diagnosen++; }
+    catch(err){ console.error('Normdatensatz-Import: Diagnose fehlgeschlagen',err); failed=true; }
+  }
+  for(const v of patientEntry.verordnungen){
+    try{ await importMigrationVerordnung(patientId,v,uploadedBy); counts.verordnungen++; }
+    catch(err){ console.error('Normdatensatz-Import: Verordnung fehlgeschlagen',err); failed=true; }
+  }
+  for(const l of patientEntry.laborbefunde){
+    try{ if(await importMigrationLaborbefund(patientId,l,uploadedBy)) counts.laborbefunde++; }
+    catch(err){ console.error('Normdatensatz-Import: Laborbefund fehlgeschlagen',err); failed=true; }
+  }
+  return {counts,failed};
+}
+
+// Writes the parsed Stammdaten (#P block) into real patient accounts,
+// reusing the exact same account-creation/duplicate-matching logic
+// secretary.html's CSV import already uses (vendor/patient-account-
+// creation.js) so a patient imported here behaves identically to one added
+// any other way -- same login mechanics, same plan-limit enforcement, same
+// SVNr/name+DOB duplicate detection. Since Phase 4, also writes that same
+// patient's #D/#V/#L entries (Verlauf/Rezepte/Laborwerte -- see
+// importMigrationSubRecords() above) once the patient row itself exists.
 async function confirmMigrationImport(){
   if(!migrationParsedResult||!migrationParsedResult.patients.length) return;
   const confirmBtn=document.getElementById('migrationConfirmBtn');
   const progressEl=document.getElementById('migrationImportProgress');
   confirmBtn.disabled=true; confirmBtn.style.opacity='0.5'; confirmBtn.style.cursor='not-allowed';
+
+  let uploadedBy=null;
+  try{ uploadedBy=JSON.parse(sessionStorage.getItem('smartordi_user'))?.username||null; }catch(e){}
 
   const planLimit=getPlanPatientLimit();
   let remainingCapacity=null;
@@ -5857,17 +5923,19 @@ async function confirmMigrationImport(){
 
   const patients=migrationParsedResult.patients;
   const results=[];let skipped=0;
+  const totals={diagnosen:0,verordnungen:0,laborbefunde:0};
   // Sequential and fully awaited, same reasoning as secretary.html's
   // confirmImport(): createPatientAccount()'s username-uniqueness check
   // reads loadPatients()'s cache, which only reflects an earlier row of
   // THIS loop once its identity write has actually resolved.
   for(let i=0;i<patients.length;i++){
-    const s=patients[i].stammdaten;
+    const patientEntry=patients[i];
+    const s=patientEntry.stammdaten;
     progressEl.textContent='Importiere '+(i+1)+' von '+patients.length+' Patient(en)...';
     const vorname=(s.VNM||'').trim(), nachname=(s.FNM||'').trim();
     if(!vorname||!nachname){ skipped++; continue; }
     const dobIso=ends1DateToIso(s.GBD||'');
-    const unmapped=patients[i].unknownFields;
+    const unmapped=patientEntry.unknownFields;
     const extra={
       adresse:ends1ComposeAdresse(s)||undefined,
       dob:dobIso||undefined,
@@ -5898,7 +5966,13 @@ async function confirmMigrationImport(){
         allergie:extra.allergie||existing.record.allergie||null,
         legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
       }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
-      results.push({name:vorname+' '+nachname,updated:true,syncFailed:!identity});
+      const resultRow={name:vorname+' '+nachname,updated:true,syncFailed:!identity};
+      if(identity){
+        const sub=await importMigrationSubRecords(existing.record.id,patientEntry,uploadedBy);
+        totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde;
+        resultRow.historyFailed=sub.failed;
+      }
+      results.push(resultRow);
       continue;
     }
 
@@ -5909,30 +5983,45 @@ async function confirmMigrationImport(){
     const {identityPromise,authPromise}=createPatientAccount(vorname,nachname,extra);
     const identity=await identityPromise;
     const authOk=identity?await authPromise:false;
-    results.push({name:vorname+' '+nachname,syncFailed:!identity||!authOk});
+    const resultRow={name:vorname+' '+nachname,syncFailed:!identity||!authOk};
+    if(identity&&identity.id){
+      const sub=await importMigrationSubRecords(identity.id,patientEntry,uploadedBy);
+      totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde;
+      resultRow.historyFailed=sub.failed;
+    }
+    results.push(resultRow);
   }
 
   confirmBtn.disabled=false; confirmBtn.style.opacity=''; confirmBtn.style.cursor='';
   progressEl.textContent='';
-  renderMigrationImportResults(results,skipped);
+  renderMigrationImportResults(results,skipped,totals);
 }
 
-function renderMigrationImportResults(results,skipped){
+function renderMigrationImportResults(results,skipped,totals){
   const createdCount=results.filter(r=>!r.updated&&!r.limitReached).length;
   const updatedCount=results.filter(r=>r.updated).length;
   const failedCount=results.filter(r=>r.syncFailed).length;
   const limitReachedCount=results.filter(r=>r.limitReached).length;
+  const historyFailedCount=results.filter(r=>r.historyFailed).length;
+  const t=totals||{diagnosen:0,verordnungen:0,laborbefunde:0};
   document.getElementById('migrationResultSummary').innerHTML=
     '<strong>'+createdCount+' neue(r) Patient(en) angelegt.</strong>'
     +(updatedCount?' '+updatedCount+' bereits bestehende(r) Patient(en) aktualisiert (per SV-Nummer/Name+Geburtsdatum erkannt, kein neues Konto angelegt).':'')
     +(skipped?' '+skipped+' Zeile(n) übersprungen (Vor-/Nachname fehlte).':'')
     +(failedCount?' '+failedCount+' Patient(en): Serverabgleich fehlgeschlagen (Internetverbindung prüfen und erneut versuchen).':'')
-    +(limitReachedCount?' '+limitReachedCount+' Patient(en) übersprungen: Patientenlimit des '+PLAN_FEATURES[getPlan()].label+'-Pakets erreicht ('+getPlanPatientLimit()+' Patienten). Bitte auf Enterprise upgraden.':'');
+    +(limitReachedCount?' '+limitReachedCount+' Patient(en) übersprungen: Patientenlimit des '+PLAN_FEATURES[getPlan()].label+'-Pakets erreicht ('+getPlanPatientLimit()+' Patienten). Bitte auf Enterprise upgraden.':'')
+    +((t.diagnosen||t.verordnungen||t.laborbefunde)?'<br>'+[
+        t.diagnosen?t.diagnosen+' Diagnose(n) in Verlauf übernommen':null,
+        t.verordnungen?t.verordnungen+' Verordnung(en) in Rezepte übernommen':null,
+        t.laborbefunde?t.laborbefunde+' Laborbefund(e) übernommen':null,
+      ].filter(Boolean).join(', ')+'.':'')
+    +(historyFailedCount?' '+historyFailedCount+' Patient(en): mind. eine Diagnose/Verordnung/ein Laborbefund konnte nicht gespeichert werden (Kartei manuell prüfen).':'');
   document.getElementById('migrationResultTableBody').innerHTML=results.map(r=>{
     const status=r.limitReached?'Übersprungen (Limit erreicht)':r.syncFailed?'Fehlgeschlagen':r.updated?'Aktualisiert':'Neu angelegt';
     const color=r.limitReached?'#d97706':r.syncFailed?'#dc2626':'#16a34a';
+    const warnIcon=' <span style="color:#d97706;" title="Diagnose/Verordnung/Laborbefund konnte nicht gespeichert werden -- Kartei manuell prüfen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>';
     return '<tr><td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;">'+escapeHtml(r.name)+'</td>'
-      +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:'+color+';font-weight:600;">'+status+'</td></tr>';
+      +'<td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:'+color+';font-weight:600;">'+status+(r.historyFailed?warnIcon:'')+'</td></tr>';
   }).join('');
   document.getElementById('migrationPreviewArea').style.display='none';
   document.getElementById('migrationResultsArea').style.display='block';

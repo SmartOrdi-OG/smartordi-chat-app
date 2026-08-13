@@ -37,12 +37,41 @@ async function renderKarteiLabor(){
     listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Dieser Patient hat noch kein Cloud-Konto — Befunde können erst hochgeladen werden, sobald ein echtes Patientenkonto besteht.</div>';
     return;
   }
-  const docs=(await getDocumentsForPatient(patientId)).filter(function(d){ return d.category==='befund'; });
-  if(!docs.length){
+  const [docs,labResults]=await Promise.all([
+    getDocumentsForPatient(patientId).then(function(d){ return d.filter(function(x){ return x.category==='befund'; }); }),
+    getLabResultsForPatient(patientId),
+  ]);
+  const resultsHtml=labResults.length?karteiLaborResultsHtml(labResults):'';
+  if(!docs.length&&!labResults.length){
     listEl.innerHTML='<div style="color:#94a3b8;font-size:12px;">Noch keine Befunde hochgeladen.</div>';
     return;
   }
-  listEl.innerHTML=docs.map(function(d){ return karteiLaborRowHtml(d); }).join('');
+  const docsHtml=docs.length?docs.map(function(d){ return karteiLaborRowHtml(d); }).join(''):'';
+  listEl.innerHTML=resultsHtml+docsHtml;
+}
+// Structured lab VALUES (patient_lab_results, supabase/phase70_patient_
+// lab_results.sql) -- distinct from the uploaded-PDF rows above. First
+// (and so far only) writer is the Normdatensatz (ENDS 1) import's #L block
+// (doctor.html's confirmMigrationImport()), which has no PDF to attach,
+// just a plain value from the old system. Read-only here on purpose --
+// correcting a value entered wrong at import time is a manual Kartei
+// review task, not something this list needs to support editing for.
+function karteiLaborResultsHtml(results){
+  const rows=results.map(function(r){
+    const df=new Date(r.datum).toLocaleDateString('de-AT');
+    const value=r.wert!==null&&r.wert!==undefined?String(r.wert):(r.ergebnis_text||'—');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px;">
+      <div style="color:#0f172a;font-weight:600;">${escapeHtml(r.bezeichnung)}${r.gruppe?' <span style="color:#94a3b8;font-weight:400;">('+escapeHtml(r.gruppe)+')</span>':''}</div>
+      <div style="display:flex;align-items:center;gap:10px;color:#475569;">
+        <span>${escapeHtml(value)}</span>
+        <span style="color:#94a3b8;font-size:11px;">${df}</span>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+    <div style="font-size:11.5px;font-weight:700;color:#64748b;margin-bottom:4px;">Importierte Laborwerte</div>
+    ${rows}
+  </div>`;
 }
 // A row is either a real uploaded PDF (file_data, downloadable) or a quick
 // free-text note jotted down for an in-office test with no report to

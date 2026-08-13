@@ -959,6 +959,34 @@ async function getUeberweisungenForPatient(patientId){
   return data||[];
 }
 
+// ── LABORWERTE (structured), supabase/phase70_patient_lab_results.sql --
+// distinct from lab_result_uploads above (that's a PDF/document upload
+// inbox waiting to be matched to a patient). This stores an actual
+// measured value directly, for sources that never had an attached PDF to
+// begin with -- first (and so far only) writer is the Normdatensatz
+// (ENDS 1) import's #L block (doctor.html's confirmMigrationImport()).
+const LAB_RESULT_COLUMNS='id,datum,bezeichnung,wert,ergebnis_text,gruppe,quelle,created_at';
+async function insertPatientLabResult(patientId,fields,createdBy){
+  const row={
+    patient_id: patientId,
+    datum: fields.datum||new Date().toISOString().slice(0,10),
+    bezeichnung: fields.bezeichnung,
+    wert: fields.wert===undefined||fields.wert===''?null:fields.wert,
+    ergebnis_text: fields.ergebnisText||null,
+    gruppe: fields.gruppe||null,
+    quelle: fields.quelle||null,
+    created_by: createdBy||null,
+  };
+  const {data,error}=await sb.from('patient_lab_results').insert(row).select(LAB_RESULT_COLUMNS).single();
+  if(error){ console.error('insertPatientLabResult failed',error); throw error; }
+  return data;
+}
+async function getLabResultsForPatient(patientId){
+  const {data,error}=await sb.from('patient_lab_results').select(LAB_RESULT_COLUMNS).eq('patient_id',patientId).order('datum',{ascending:false});
+  if(error){ console.error('getLabResultsForPatient failed',error); return []; }
+  return data||[];
+}
+
 // ── ATTESTE (supabase/phase51_atteste.sql) -- "Antrag auf
 // Pflegefreistellung" (§16 UrlG, care leave for a sick relative) and
 // "Arbeitsunfähigkeitsmeldung" (sick note). Same structured-storage
