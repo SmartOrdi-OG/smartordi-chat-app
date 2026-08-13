@@ -42,8 +42,14 @@ test('shows the deletion card for a real account and requests immediate anonymiz
     sb.rpc = (name) => name === 'patient_request_deletion'
       ? Promise.resolve({ data: [{ anonymized_immediately: true, effective_or_scheduled_date: '2026-07-19' }], error: null })
       : Promise.resolve({ data: [], error: null });
-    window.confirm = () => true;
-    await requestOwnDataDeletion();
+    // showConfirmDialog() replaced window.confirm() (real user feedback,
+    // 2026-08-13) -- it runs synchronously up to opening the modal and
+    // returning its pending promise, so resolveGenericConfirm(true) right
+    // after starting the call (not awaited yet) approves it, same as the
+    // old window.confirm stub used to.
+    const p = requestOwnDataDeletion();
+    resolveGenericConfirm(true);
+    await p;
     await new Promise(r => setTimeout(r, 50));
     return { resultText: document.getElementById('profilDeletionResult').textContent };
   });
@@ -53,11 +59,12 @@ test('shows the deletion card for a real account and requests immediate anonymiz
 test('a still-running retention period is reported with the scheduled date and legal reason', async ({ page }) => {
   await setup(page);
   const result = await page.evaluate(async () => {
-    window.confirm = () => true;
     sb.rpc = (name) => name === 'patient_request_deletion'
       ? Promise.resolve({ data: [{ anonymized_immediately: false, effective_or_scheduled_date: '2031-03-05' }], error: null })
       : Promise.resolve({ data: [], error: null });
-    await requestOwnDataDeletion();
+    const p = requestOwnDataDeletion();
+    resolveGenericConfirm(true);
+    await p;
     await new Promise(r => setTimeout(r, 50));
     return { resultText: document.getElementById('profilDeletionResult').textContent };
   });

@@ -13,10 +13,15 @@ test('logging out of patient.html redirects to patient-login.html, not the staff
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
   await page.waitForTimeout(500);
-  page.once('dialog', d => d.accept());
+  // logout() now shows its own in-app confirm modal (showConfirmDialog())
+  // instead of a native window.confirm() -- real user feedback, 2026-08-13
+  // (a screenshot showed the native dialog looking out of place). Click
+  // its own OK button instead of relying on Playwright's dialog handler.
+  await page.click('.topbar-logout');
+  await page.waitForSelector('#genericConfirmModal.show');
   await Promise.all([
     page.waitForNavigation(),
-    page.click('.topbar-logout'),
+    page.click('#genericConfirmOkBtn'),
   ]);
   expect(page.url().endsWith('/patient-login.html')).toBe(true);
 });
