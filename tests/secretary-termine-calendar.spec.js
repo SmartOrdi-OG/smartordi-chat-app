@@ -179,12 +179,21 @@ test('a real click opens the floating window right next to the clicked day cell,
   await page.locator('.sec-cal-day').nth(cellIndex).click();
   await expect(page.locator('#secCalWindow')).toBeVisible();
   const winBox = await page.evaluate(() => document.getElementById('secCalWindow').getBoundingClientRect());
-  // Should open right beside the clicked cell (left edge close to the cell's
-  // right edge, or the cell's own left edge if it flipped to the other
-  // side), not the old fixed-corner default (bottom-right, far away from a
-  // cell near the grid's top).
-  const nearRight = Math.abs(winBox.left - cellBox.right) < 30;
-  const nearLeft = Math.abs(winBox.left - cellBox.left) < 450;
-  expect(nearRight || nearLeft, `window left=${winBox.left} should be near cell right=${cellBox.right} or left=${cellBox.left}`).toBe(true);
-  expect(Math.abs(winBox.top - cellBox.top)).toBeLessThan(200);
+  // Real bug found running this test on a later real-world date (2026-08-13):
+  // a flat "<30/<450/<200" pixel budget only holds for a cell near the grid's
+  // TOP -- ymdOffset(4) lands in a different calendar ROW depending on which
+  // weekday the 1st of the currently-shown month falls on, and a cell several
+  // rows down a 6-row month is legitimately far from where a viewport-clamped
+  // 420x600 window can still fit on screen. That's secCalPositionWindow()
+  // working as designed (never letting the window run off-screen), not a
+  // bug -- so assert against ITS OWN documented clamping formula instead of
+  // an approximate pixel budget, which makes this deterministic regardless
+  // of what day it happens to run.
+  const winWidth = 420, winHeight = 600, margin = 12;
+  let expLeft = cellBox.right + margin;
+  if (expLeft + winWidth > 1600 - margin) expLeft = cellBox.left - winWidth - margin;
+  expLeft = Math.max(margin, Math.min(expLeft, 1600 - winWidth - margin));
+  const expTop = Math.max(margin, Math.min(cellBox.top, 1000 - winHeight - margin));
+  expect(Math.abs(winBox.left - expLeft), `window left=${winBox.left} should match secCalPositionWindow()'s own formula (expected ${expLeft})`).toBeLessThan(2);
+  expect(Math.abs(winBox.top - expTop), `window top=${winBox.top} should match secCalPositionWindow()'s own formula (expected ${expTop})`).toBeLessThan(2);
 });
