@@ -74,3 +74,56 @@ test('a child account still shows the full standard schedule even with zero real
   expect(state.cardVisible, 'a child\'s own tracked schedule must not be hidden the same way an adult\'s empty one is').toBe(true);
   expect(state.rowCount).toBeGreaterThan(1);
 });
+
+// Real user feedback (2026-08-13): doctor.html's "Sonstige" free-text
+// vaccine option (a flu shot, tetanus booster, travel vaccine -- exactly
+// what an adult actually gets, not a pediatric primary-series vaccine) has
+// no matching VACCINE_SCHEDULE key -- it's stored with vaccine_key=null.
+// The old adult filter (VACCINE_SCHEDULE.filter(v => given.some(i =>
+// i.vaccineKey===v.key))) silently dropped it since it can never match any
+// schedule entry's key. It must show up like any other recorded vaccine.
+test('an adult\'s free-text ("Sonstige") vaccine with no matching schedule key still shows up', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: false }), [
+    { id: 'i1', vaccine_key: null, vaccine_name: 'Gelbfieber-Impfung (Reise)', dose_label: null, datum: '2026-02-10', next_due: null, created_at: '2026-02-10' },
+  ]);
+  const state = await page.evaluate(() => ({
+    cardVisible: getComputedStyle(document.getElementById('profilImpfungenCard')).display !== 'none',
+    html: document.getElementById('profilImpfungenRows').innerHTML,
+    rowCount: document.getElementById('profilImpfungenRows').querySelectorAll('.info-row').length,
+  }));
+  expect(state.cardVisible).toBe(true);
+  expect(state.html).toContain('Gelbfieber-Impfung (Reise)');
+  expect(state.rowCount).toBe(1);
+  // Not run through the pediatric due/overdue schedule logic -- just
+  // confirms it's on file.
+  expect(state.html).not.toContain('Überfällig');
+  expect(state.html).not.toContain('Fällig');
+});
+
+// Real user feedback (2026-08-13): a single adult flu shot used to get run
+// through vaccineStatusFor()'s pediatric 2-dose-series logic (since
+// "Influenza" DOES match a VACCINE_SCHEDULE entry by name/key) and came out
+// "Überfällig" forever, since an adult's one-off shot never completes a
+// child's 2-dose infant series. Adults get a plain given-vaccine log
+// instead, regardless of whether the name happens to match a schedule
+// entry or not.
+test('an adult\'s single dose of a vaccine that DOES match a schedule entry (e.g. Influenza) is shown as given, not tracked as overdue for a 2nd pediatric dose', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: false, dob: '1985-01-01' }), [
+    { id: 'i1', vaccine_key: 'influenza', vaccine_name: 'Influenza', dose_label: 'D1', datum: '2026-01-01', next_due: null, created_at: '2026-01-01' },
+  ]);
+  const html = await page.evaluate(() => document.getElementById('profilImpfungenRows').innerHTML);
+  expect(html).toContain('Influenza');
+  expect(html).not.toContain('Überfällig');
+  expect(html).toContain('Gegeben');
+});
+
+// XSS discipline established elsewhere in the codebase (vaccine names are
+// staff-entered free text via "Sonstige") -- must be escaped here too.
+test('a free-text vaccine name is HTML-escaped, not injected raw', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: false }), [
+    { id: 'i1', vaccine_key: null, vaccine_name: '<img src=x onerror=alert(1)>', dose_label: null, datum: '2026-02-10', next_due: null, created_at: '2026-02-10' },
+  ]);
+  const html = await page.evaluate(() => document.getElementById('profilImpfungenRows').innerHTML);
+  expect(html).not.toContain('<img src=x onerror=alert(1)>');
+  expect(html).toContain('&lt;img');
+});

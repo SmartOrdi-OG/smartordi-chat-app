@@ -1723,6 +1723,10 @@ function impfungenStatusBadge(state){
     due:{bg:'#fef9c3',fg:'#854d0e',key:'impfungen.due'},
     overdue:{bg:'#fee2e2',fg:'#dc2626',key:'impfungen.overdue'},
     upcoming:{bg:'#f1f5f9',fg:'#64748b',key:'impfungen.upcoming'},
+    // Real user feedback (2026-08-13): adults, no fixed dose schedule to
+    // track against (see renderProfilImpfungen()'s adult branch below) --
+    // just confirms the shot is on file, same green as 'complete'.
+    given:{bg:'#dcfce7',fg:'#16a34a',key:'impfungen.given'},
   };
   const s=map[state]||map.upcoming;
   return `<span style="background:${s.bg};color:${s.fg};font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;flex-shrink:0;">${tr(s.key)}</span>`;
@@ -1748,22 +1752,44 @@ function renderProfilImpfungen(){
   const account=getCurrentAccount();
   const ageDays=ageInDaysFromDob(account?account.dob:null);
   const given=_remoteImpfungen||[];
-  // Real user feedback (2026-08-12): the full standard (pediatric)
-  // vaccination schedule used to show for EVERY account regardless of age
-  // -- a wall of "Noch nicht fällig" rows for vaccines nobody ever recorded,
-  // even on an adult who will never be tracked against a child's schedule.
-  // An adult only sees this card once staff has actually added at least
-  // one real Impfung record for them; a child keeps the full tracked
-  // schedule (due/overdue/upcoming) -- that's the whole point for them.
   const isChild=!!(account&&account.isChild);
-  const rows=VACCINE_SCHEDULE.filter(function(v){
-    return isChild || given.some(function(i){ return i.vaccineKey===v.key; });
-  });
+  function showCard(){
+    card.style.display='';
+    if(emptyEl) emptyEl.style.display='none';
+    if(tileEl) tileEl.style.display='';
+    if(navTabEl) navTabEl.style.display='';
+  }
+  if(!isChild){
+    // Real user feedback (2026-08-12, then again 2026-08-13): an adult
+    // isn't tracked against the fixed pediatric VACCINE_SCHEDULE, so this
+    // used to only show a vaccine if it happened to match one of that
+    // schedule's own entries by vaccineKey -- but doctor.html's own
+    // "Sonstige" free-text option (e.g. a flu shot, tetanus booster, travel
+    // vaccine -- exactly what an adult actually gets) is stored with
+    // vaccineKey=null, so it silently never appeared here (or in the home
+    // tile/nav tab's own visibility check, which used the same filter).
+    // Worse, a vaccine that DID happen to match a schedule entry (e.g.
+    // "Influenza") still got run through vaccineStatusFor()'s pediatric
+    // dose-count/age-threshold logic, which could brand a single real adult
+    // flu shot "overdue" forever since it never completes a 2-dose infant
+    // series. Adults get a plain, honest log instead: every vaccine staff
+    // actually recorded, most recent first, by name and date -- no
+    // schedule, no due/overdue guessing.
+    if(!given.length){ setHidden(); return; }
+    showCard();
+    const sorted=given.slice().sort(function(a,b){ return (b.datum||'').localeCompare(a.datum||''); });
+    root.innerHTML=sorted.map(function(i){
+      const dateStr=i.datum?new Date(i.datum+'T00:00:00').toLocaleDateString('de-AT'):'—';
+      const doseStr=i.doseLabel?` · ${escapeHtml(i.doseLabel)}`:'';
+      return `<div class="info-row"><span class="info-label">${escapeHtml(i.vaccineName||'')}</span><span class="info-value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end;"><span style="color:#94a3b8;font-weight:400;">${dateStr}${doseStr}</span>${impfungenStatusBadge('given')}</span></div>`;
+    }).join('');
+    return;
+  }
+  // A child keeps the full tracked schedule (due/overdue/upcoming) -- that's
+  // the whole point for them, unchanged from before.
+  const rows=VACCINE_SCHEDULE;
   if(!rows.length){ setHidden(); return; }
-  card.style.display='';
-  if(emptyEl) emptyEl.style.display='none';
-  if(tileEl) tileEl.style.display='';
-  if(navTabEl) navTabEl.style.display='';
+  showCard();
   root.innerHTML=rows.map(function(v){
     const givenForV=given.filter(function(i){ return i.vaccineKey===v.key; });
     const status=vaccineStatusFor(v,ageDays,givenForV);
@@ -3074,6 +3100,14 @@ function onPatientLanguageChanged(){
   renderProfilArztRows();
   renderProfilImpfungen();
   renderMkpView();
+  // "Meine Profile" (renderProfilesCard()) builds its relation label
+  // ("Kind"/"طفل"/...) and "Aktiv"/"نشط" badge via tr() at render time too --
+  // real user feedback (2026-08-13): switching language left this card
+  // showing whatever language was active the last time it happened to
+  // render (page load, or the manual 🔄 refresh), since nothing here ever
+  // re-ran it. It's async but fire-and-forget is fine -- this function's
+  // other calls are all synchronous DOM updates anyway.
+  renderProfilesCard();
   // renderPatientMessages()'s own empty/disabled states were hardcoded
   // German strings until now (chat.empty.*/chat.disabled.*) -- also not
   // caught by applyI18n()'s static [data-i18n] walk since they're built in
