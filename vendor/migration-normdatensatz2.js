@@ -1,0 +1,214 @@
+// Praxisdaten-Migration -- ENDS 2 (Export-Normdatensatz 2, HL7 Austria)
+// parser. Phase 1: detect an IHE XDM export container inside the uploaded
+// ZIP, walk it down to each patient's main CDA (Clinical Document
+// Architecture) document, and parse just the patient Stammdaten
+// (recordTarget/patientRole) for a read-only preview -- same scope and same
+// "never guess, skip what can't be read cleanly" discipline as
+// vendor/migration-normdatensatz.js's ENDS 1 Phase 1 had.
+//
+// Unlike ENDS 1 (flat fixed-format text lines), ENDS 2 is a folder-based
+// container (IHE XDM: https://www.ihe.net/ "Distribute Document Set on
+// Media") holding one or more HL7 CDA XML documents per patient, discovered
+// via HTML index files rather than by scanning file contents:
+//   <root>/INDEX.HTM                        -- lists every patient + a link
+//                                               to their own folder's index
+//   <root>/IHE_XDM/<patientFolder>/INDEX.HTM -- lists that patient's
+//                                               documents (Dokumentart,
+//                                               Datum, Link, MIME-Type);
+//                                               the main "NDS (CDA)" row is
+//                                               the patient's core document
+//   <root>/IHE_XDM/<patientFolder>/<file>.xml -- the actual CDA document(s)
+// <root> itself may be '' (XDM folders directly at the ZIP root) or a
+// wrapper folder (e.g. a real export zipped from its own top-level folder)
+// -- detected from wherever "IHE_XDM/" actually appears, not assumed fixed.
+//
+// Verified against a real, official ENDS 2 sample export (not a guess at
+// the format): github.com/TechnikumWienAcademy/cda-ends2 (the working group
+// that ran HL7 Austria's ENDS 2 workshops), xdm-beispiel/ folder.
+//
+// The parsed patient shape below deliberately reuses ENDS 1's stammdaten
+// field keys (FNM/VNM/GBD/STR/PLZ/ORT/...) even though the source format is
+// entirely different, so doctor.html's existing renderMigrationPreview()
+// (and later write-phase helpers) can render/consume either format without
+// forking that code per-format.
+
+// Locates the IHE_XDM folder inside the archive and returns everything
+// before it (the "root" prefix, possibly '') -- or null if this ZIP has no
+// such folder at all, meaning it isn't an ENDS 2 export.
+function ends2FindXdmRoot(entryNames) {
+  for (const name of entryNames) {
+    const norm = name.replace(/\\/g, '/');
+    const idx = norm.toUpperCase().indexOf('IHE_XDM/');
+    if (idx !== -1) return norm.slice(0, idx);
+  }
+  return null;
+}
+
+// Case-insensitive exact-path lookup against the archive's real entry names
+// -- exporters vary in casing (INDEX.HTM vs Index.htm, 00000036.xml vs
+// .XML in the real sample itself), so an exact-case match would silently
+// miss real files rather than just being pickier.
+function ends2FindEntry(entryNames, path) {
+  const target = (path || '').replace(/\\/g, '/').toLowerCase();
+  return entryNames.find(function (n) { return n.toLowerCase() === target; }) || null;
+}
+
+// Joins a directory prefix (already ending in '/', or '') with a relative
+// href from an INDEX.HTM link -- normalizes backslashes (Windows-authored
+// exports) and collapses accidental double slashes. Returns null for an
+// absolute URL (http://...), which never points inside the archive.
+function ends2JoinPath(baseDir, rel) {
+  const relNorm = String(rel || '').replace(/\\/g, '/');
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(relNorm)) return null;
+  return (baseDir + relNorm).replace(/\/{2,}/g, '/');
+}
+
+function ends2Dirname(path) {
+  const idx = path.lastIndexOf('/');
+  return idx === -1 ? '' : path.slice(0, idx + 1);
+}
+
+// Parses an ENDS 2 INDEX.HTM (both the top-level patient list and each
+// patient's own document list use the same shape: an HTML table with one
+// link per real data row). Returns only rows that actually contain a link
+// -- the header row never does, so this doubles as header-skipping without
+// needing to assume <th> vs. styled <td> markup.
+function ends2ParseIndexRows(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const rows = Array.from(doc.querySelectorAll('table tr'));
+  const out = [];
+  rows.forEach(function (tr) {
+    const cells = Array.from(tr.querySelectorAll('td'));
+    if (!cells.length) return;
+    const link = tr.querySelector('a[href]');
+    if (!link) return;
+    out.push({
+      texts: cells.map(function (td) { return (td.textContent || '').trim(); }),
+      href: link.getAttribute('href'),
+    });
+  });
+  return out;
+}
+
+function ends2TextOf(el) {
+  return el ? (el.textContent || '').trim() : '';
+}
+
+// CDA birthTime/effectiveTime values are YYYYMMDD[hhmmss[+zone]] -- only the
+// date portion matters here. Returns '' (not a guess) for anything that
+// isn't a real calendar date, same discipline as ends1DateToIso().
+function ends2CdaDateToDisplay(value) {
+  const digits = (value || '').trim();
+  if (!/^\d{8}/.test(digits)) return '';
+  const year = digits.slice(0, 4), month = digits.slice(4, 6), day = digits.slice(6, 8);
+  if (month === '00' || day === '00') return '';
+  return day + '.' + month + '.' + year;
+}
+
+// Parses recordTarget/patientRole out of one patient's main CDA document
+// into the same field keys ENDS 1's #P Stammdaten preview already uses.
+// Returns null if the XML doesn't parse or has no recordTarget at all --
+// callers skip that patient rather than showing a broken/blank row.
+//
+// SVNR: the sample export's Sozialversicherungsnummer id carries a fixed,
+// government-assigned OID (1.2.40.0.10.1.4.3.1, "Österreichische
+// Sozialversicherung") rather than anything software-specific, so matching
+// on that root -- not just "the first id" -- reliably picks the SVNR out
+// from among a patient's other ids (local software id, etc.) even though
+// id order isn't guaranteed by the spec.
+const ENDS2_SVNR_ROOT = '1.2.40.0.10.1.4.3.1';
+function ends2ParseCdaStammdaten(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) return null;
+  const patientRole = doc.querySelector('recordTarget > patientRole');
+  if (!patientRole) return null;
+  const nameEl = patientRole.querySelector('patient > name');
+  const genderEl = patientRole.querySelector('patient > administrativeGenderCode');
+  const birthEl = patientRole.querySelector('patient > birthTime');
+  const addrEl = patientRole.querySelector('addr');
+  const ids = Array.from(patientRole.querySelectorAll('id'));
+  const svnrId = ids.find(function (el) { return el.getAttribute('root') === ENDS2_SVNR_ROOT; });
+  const localId = ids[0];
+  return {
+    FNM: ends2TextOf(nameEl?.querySelector('family')),
+    VNM: ends2TextOf(nameEl?.querySelector('given')),
+    GBD: ends2CdaDateToDisplay(birthEl?.getAttribute('value')),
+    GES: genderEl?.getAttribute('code') || '',
+    STR: ends2TextOf(addrEl?.querySelector('streetAddressLine')),
+    PLZ: ends2TextOf(addrEl?.querySelector('postalCode')),
+    ORT: ends2TextOf(addrEl?.querySelector('city')),
+    SVN: svnrId?.getAttribute('extension') || '',
+    SoftwareId: localId?.getAttribute('extension') || '',
+  };
+}
+
+// Quick, cheap format check -- used by handleMigrationZipFile() to decide
+// whether to even attempt the (more expensive) full parseEnds2Zip() walk,
+// same role looksLikeEnds1() plays for the other format.
+function looksLikeEnds2Zip(entryNames) {
+  return ends2FindXdmRoot(entryNames) !== null;
+}
+
+// Top-level entry point, mirroring parseEnds1Zip()'s shape (same
+// {format, matchedFiles, patients, blockTotals, totalRecords, encoding}
+// result contract) so doctor.html's handleMigrationZipFile() can try one
+// parser, then the other, without needing per-format branches beyond that.
+// Reads INDEX.HTM/CDA files at once (not lazily) since Phase 1 is preview
+// scope only -- a handful of small HTML/XML files, not a whole archive's
+// worth of attached documents like ENDS 1's #F handling has to guard
+// against; maxTotalBytes still guards the decompressed-size budget.
+async function parseEnds2Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}) {
+  const buf = await zipFile.arrayBuffer();
+  const zip = await JSZip.loadAsync(buf);
+  const entryNames = Object.keys(zip.files).filter(function (name) { return !zip.files[name].dir; });
+  const root = ends2FindXdmRoot(entryNames);
+  if (root === null) return null;
+  const rootIndexPath = ends2FindEntry(entryNames, root + 'INDEX.HTM');
+  if (!rootIndexPath) return null;
+
+  let totalBytes = 0;
+  async function readText(entryPath) {
+    const base64 = await zip.files[entryPath].async('base64');
+    const bytes = base64ToBytes(base64);
+    totalBytes += bytes.length;
+    if (totalBytes > maxTotalBytes) {
+      throw new Error('Archiv zu groß (Limit: ' + Math.round(maxTotalBytes / 1024 / 1024) + ' MB entpackt).');
+    }
+    // ENDS 2's workshops explicitly settled on UTF-8 as mandatory for all
+    // content (unlike ENDS 1, which needed real encoding sniffing) -- see
+    // TODO.md/the ENDS 2 wiki minutes.
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  const rootHtml = await readText(rootIndexPath);
+  const patientRows = ends2ParseIndexRows(rootHtml);
+  const patients = [];
+  for (const row of patientRows) {
+    const joined = ends2JoinPath(root, row.href);
+    const patientIndexPath = joined && ends2FindEntry(entryNames, joined);
+    if (!patientIndexPath) continue;
+    const patientDir = ends2Dirname(patientIndexPath);
+    const patientHtml = await readText(patientIndexPath);
+    const docRows = ends2ParseIndexRows(patientHtml);
+    if (!docRows.length) continue;
+    // The wiki's Meeting 6 decision fixes "Datenbankexport" (the main NDS
+    // CDA doc) as the index's first row, but matching by Dokumentart
+    // containing "NDS" is more robust than blindly trusting row order.
+    const mainDocRow = docRows.find(function (r) { return /nds/i.test(r.texts[0] || ''); }) || docRows[0];
+    const cdaJoined = ends2JoinPath(patientDir, mainDocRow.href);
+    const cdaPath = cdaJoined && ends2FindEntry(entryNames, cdaJoined);
+    if (!cdaPath) continue;
+    const cdaXml = await readText(cdaPath);
+    const stammdaten = ends2ParseCdaStammdaten(cdaXml);
+    if (!stammdaten) continue;
+    patients.push({
+      stammdaten,
+      // Not parsed yet (later phases) -- present as empty arrays so the
+      // shared preview renderer's `.length` checks work unchanged for
+      // either format.
+      diagnosen: [], verordnungen: [], laborbefunde: [], befunde: [],
+    });
+  }
+  if (!patients.length) return null;
+  return { format: 'ends2', matchedFiles: [rootIndexPath], encoding: 'utf-8', patients, blockTotals: {}, totalRecords: patients.length };
+}
