@@ -1,5 +1,15 @@
 # Smartordi – قائمة المهام
 
+## 🎨 Icon Pass PR4: أيقونات فورمات الـRezept والـÜberweisung
+
+رابع PR من سلسلة استبدال الإيموجي بأيقونات SVG احترافية (PR1 Praxisprofil، PR2 Stammdaten، PR3 Anamnese). هالمرة الدور على فورم "Rezept ausstellen" وفورم "Überweisungsschein" بالـKartei.
+
+- كل حقل بالفورمين (Kostenträger، Status، Überweisender Arzt، Überweisung an، Anschrift/Telefon، Fachrichtung، Dringlichkeit، Diagnose، wegen، Klinische Informationen، Arbeitsunfähig، Rezeptgebührenbefreit، Datum، E-Mail، Patient، Medikament/Wirkstoff×٤، Packungsanzahl×٤، Dosierung×٤، Anmerkungen) صار إله أيقونة SVG صغيرة جنب اسمه.
+- استخدمنا نفس القاعدة الموجودة أصلاً (`.k-form-label-icon`) — صفر تغيير بالمنطق أو بالـJS، تصميم بس.
+- صفر تأثير على الاختبارات: كل الـ٥٩٦ تست بالمشروع عدّوا زي ما هني.
+
+الباقي من سلسلة الأيقونات: PR5 (MKP+Impfung)، PR6 (Labor+Dokumente)، PR7 (Atteste).
+
 ## 🔐 اشتغلت مباشرة على Supabase الحقيقي (وصلتيه بيّ) — فحص شامل + تصليح ثغرة صغيرة حقيقية
 
 طلبتِ أشتغل لوحدي على Supabase بما إنه متصل بيّ فعليًا (`smartordi-chat-app`, `ewilgwndhpxibkogxqbk`). استغليت الاتصال المباشر (مش بس كتابة ملفات SQL تنتظر تشغيل يدوي) عشان أتأكد وأصلّح مباشرة على القاعدة الحقيقية.
