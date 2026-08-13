@@ -16,6 +16,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-portal-data.js"></script>
+<script src="vendor/mkp-exams.js"></script>
 <!-- jsQR (vendored, not CDN -- same self-hosting convention as patient-
      login.html's own QR-scan screen, which this reuses the same scan-loop
      shape from) -- used only by the "Kind/Erwachsene:n hinzufügen" QR-scan
@@ -601,7 +602,6 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
   <div class="topbar-user">
-    <span id="langSwitcherWrap"></span>
     <div class="topbar-avatar" id="topbarAvatar"></div>
     <div class="topbar-username" id="topbarUsername"></div>
     <button class="topbar-logout" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
@@ -621,6 +621,14 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
   <button class="nav-tab" data-view="dokumente" onclick="switchView('dokumente')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
     <span data-i18n="nav.dokumente">Dokumente</span>
+  </button>
+  <button class="nav-tab" id="navTabImpfpass" data-view="impfpass" style="display:none;" onclick="switchView('impfpass')">
+    <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg></span>
+    <span data-i18n="impfungen.title">Impfungen</span>
+  </button>
+  <button class="nav-tab" id="navTabMkp" data-view="mkp" style="display:none;" onclick="switchView('mkp')">
+    <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M12 9v6"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4"/></svg></span>
+    <span data-i18n="mkp.title">Mutter-Kind-Pass</span>
   </button>
   <button class="nav-tab" data-view="profil" onclick="switchView('profil')">
     <span class="nav-tab-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -653,6 +661,25 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       <button class="home-tile" onclick="goToSection('dokumente')">
         <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
         <span class="home-tile-label" data-i18n="nav.dokumente">Dokumente</span>
+      </button>
+      <!-- Real user feedback (2026-08-12): the vaccination record used to
+           live buried inside Profil -- now its own top-level section, same
+           tile treatment as Chat/Termine/Dokumente. Hidden the same way the
+           card itself used to be (updateHomeTilesVisibility()): a real
+           adult with zero recorded vaccinations has nothing to show here at
+           all, a child always does. -->
+      <button class="home-tile" id="homeTileImpfpass" style="display:none;" onclick="goToSection('impfpass')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg></span>
+        <span class="home-tile-label" data-i18n="impfungen.title">Impfungen</span>
+      </button>
+      <!-- Real user feedback (2026-08-12): a child's own Mutter-Kind-Pass
+           (filled in by the pediatrician, supabase/phase4_mkp_
+           untersuchungen.sql) should show up here too, read-only -- adults
+           never had one to begin with, so this tile only ever shows for a
+           child account (updateHomeTilesVisibility()). -->
+      <button class="home-tile" id="homeTileMkp" style="display:none;" onclick="goToSection('mkp')">
+        <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6M12 9v6"/><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4"/></svg></span>
+        <span class="home-tile-label" data-i18n="mkp.title">Mutter-Kind-Pass</span>
       </button>
       <button class="home-tile" onclick="goToSection('profil')">
         <span class="home-tile-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
@@ -1000,6 +1027,17 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         </div>
       </div>
 
+      <!-- Real user feedback (2026-08-12): the language switcher used to
+           live in the topbar, where it kept crowding out the app's own
+           wordmark on narrower phones (and, on the narrowest ones, hiding
+           it outright). It's a settings-type control, not something needed
+           on every screen -- moved here instead, so the topbar always has
+           room for the wordmark. -->
+      <div class="info-card">
+        <div class="info-card-header" data-i18n="profil.settings">Einstellungen</div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.language">Sprache</span><span id="langSwitcherWrap"></span></div>
+      </div>
+
       <!-- supabase/phase64_unified_account_profiles.sql -- one login can
            hold several independent patient profiles (own + any linked
            child/adult). Hidden until renderProfilesCard() actually resolves
@@ -1038,11 +1076,6 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         <div class="info-row"><span class="info-label" data-i18n="profil.email">E-Mail</span><span class="info-value" id="profilEmail">—</span></div>
       </div>
 
-      <div class="info-card" id="profilImpfungenCard" style="display:none;">
-        <div class="info-card-header" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg><span data-i18n="impfungen.title">Impfungen</span></div>
-        <div id="profilImpfungenRows"></div>
-      </div>
-
       <div class="info-card">
         <div class="info-card-header" data-i18n="profil.versicherung">Versicherung</div>
         <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">—</span></div>
@@ -1070,6 +1103,42 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       <button class="logout-btn" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
 
     </div>
+  </div>
+
+  <!-- ── IMPFPASS (real user feedback, 2026-08-12: promoted out of Profil
+       into its own top-level section, same treatment as Chat/Termine/
+       Dokumente). Markup/ids unchanged from the old Profil card --
+       renderProfilImpfungen() only had to learn to also toggle the new
+       home tile + desktop nav tab, not change how it fills this in. ── -->
+  <div class="view" id="view-impfpass">
+    <div class="view-header">
+      <div class="view-title" data-i18n="impfungen.title">Impfungen</div>
+      <div class="view-sub" data-i18n="impfungen.sub">Impfpass</div>
+    </div>
+    <div class="profil-content">
+      <div class="info-card" id="profilImpfungenCard" style="display:none;">
+        <div class="info-card-header" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg><span data-i18n="impfungen.title">Impfungen</span></div>
+        <div id="profilImpfungenRows"></div>
+      </div>
+      <div class="empty-state" id="profilImpfungenEmpty">
+        <div class="empty-icon">💉</div>
+        <div class="empty-text" data-i18n="impfungen.empty.title">Noch keine Impfungen erfasst</div>
+        <div class="empty-sub" data-i18n="impfungen.empty.sub">Sobald Ihre Ordination eine Impfung einträgt, erscheint sie hier.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MUTTER-KIND-PASS (real user feedback, 2026-08-12: a child's own
+       MKP, filled in by the pediatrician on the staff side -- kartei-
+       mkp.js/doctor.html -- now shows up here read-only. Only ever
+       populated for a child account; the tile that opens this view stays
+       hidden entirely for an adult (updateHomeTilesVisibility()). ── -->
+  <div class="view" id="view-mkp">
+    <div class="view-header">
+      <div class="view-title" data-i18n="mkp.title">Mutter-Kind-Pass</div>
+      <div class="view-sub" data-i18n="mkp.sub">Nur zur Ansicht -- ausgefüllt von Ihrer Kinderärztin/Ihrem Kinderarzt</div>
+    </div>
+    <div class="profil-content" id="mkpContent"></div>
   </div>
 
 </div>
@@ -1581,11 +1650,19 @@ async function refreshRemoteImpfungen(){
   if(!getPatientToken()){ _remoteImpfungen=null; return; }
   _remoteImpfungen=await patientGetImpfungen();
 }
+// supabase/phase69_patient_mkp_readonly.sql -- a child's own Mutter-Kind-
+// Pass, read-only (real user request, 2026-08-12). Only ever fetched for a
+// child account: mkp_untersuchungen is pediatric-only to begin with (see
+// vendor/mkp-exams.js's own header), and there's nothing to show an adult.
+let _remoteMkpExams=null;
+async function refreshRemoteMkpExams(){
+  if(!getPatientToken()||!(_remoteProfile&&_remoteProfile.isChild)){ _remoteMkpExams=null; return; }
+  _remoteMkpExams=await patientGetMkpExams();
+}
 // Same Österreichischer Impfplan data as doctor.html/secretary.html's
 // VACCINE_SCHEDULE (see doctor.html's own comment for the full sourcing
 // rationale) -- duplicated per this codebase's established pattern for
-// shared-but-standalone data logic across pages. Parents explicitly want
-// to see this themselves (daycare/school proof), unlike MKP.
+// shared-but-standalone data logic across pages.
 const VACCINE_SCHEDULE=[
   {key:'sechsfach',name:'6-fach (Diphtherie-Tetanus-Pertussis-Hib-Polio-Hepatitis B)',doses:[
     {label:'D1',minDay:90},{label:'D2',minDay:150},{label:'D3',minDay:330},
@@ -1653,8 +1730,21 @@ function impfungenStatusBadge(state){
 function renderProfilImpfungen(){
   const card=document.getElementById('profilImpfungenCard');
   const root=document.getElementById('profilImpfungenRows');
+  const emptyEl=document.getElementById('profilImpfungenEmpty');
+  const tileEl=document.getElementById('homeTileImpfpass');
+  const navTabEl=document.getElementById('navTabImpfpass');
   if(!card||!root) return;
-  if(!_remoteImpfungen){ card.style.display='none'; return; }
+  // Real user feedback (2026-08-12): Impfpass is now its own top-level
+  // section (view-impfpass), reached from a home tile/desktop nav tab --
+  // both stay hidden until there's actually something to show, same
+  // condition as the card itself always used.
+  function setHidden(){
+    card.style.display='none';
+    if(emptyEl) emptyEl.style.display='';
+    if(tileEl) tileEl.style.display='none';
+    if(navTabEl) navTabEl.style.display='none';
+  }
+  if(!_remoteImpfungen){ setHidden(); return; }
   const account=getCurrentAccount();
   const ageDays=ageInDaysFromDob(account?account.dob:null);
   const given=_remoteImpfungen||[];
@@ -1669,13 +1759,74 @@ function renderProfilImpfungen(){
   const rows=VACCINE_SCHEDULE.filter(function(v){
     return isChild || given.some(function(i){ return i.vaccineKey===v.key; });
   });
-  if(!rows.length){ card.style.display='none'; return; }
+  if(!rows.length){ setHidden(); return; }
   card.style.display='';
+  if(emptyEl) emptyEl.style.display='none';
+  if(tileEl) tileEl.style.display='';
+  if(navTabEl) navTabEl.style.display='';
   root.innerHTML=rows.map(function(v){
     const givenForV=given.filter(function(i){ return i.vaccineKey===v.key; });
     const status=vaccineStatusFor(v,ageDays,givenForV);
     const dosesStr=givenForV.length+'/'+v.doses.length+' '+tr('impfungen.doses');
     return `<div class="info-row"><span class="info-label">${v.name}</span><span class="info-value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end;"><span style="color:#94a3b8;font-weight:400;">${dosesStr}</span>${impfungenStatusBadge(status.state)}</span></div>`;
+  }).join('');
+}
+// ── Mutter-Kind-Pass (real user feedback, 2026-08-12): read-only view of
+// the pediatrician's own MKP exam records (supabase/phase69_patient_mkp_
+// readonly.sql). MKP_EXAMS/mkpAgeDays/mkpStatusFor come from vendor/mkp-
+// exams.js, the same exam list doctor.html's staff-side Kartei "MKP" tab
+// fills in -- one single source of truth for the exam/field definitions.
+function updateMkpTileVisibility(){
+  const account=getCurrentAccount();
+  const isChild=!!(account&&account.isChild);
+  const tileEl=document.getElementById('homeTileMkp');
+  const navTabEl=document.getElementById('navTabMkp');
+  if(tileEl) tileEl.style.display=isChild?'':'none';
+  if(navTabEl) navTabEl.style.display=isChild?'':'none';
+}
+function mkpStatusBadge(cls){
+  const map={
+    done:{bg:'#dcfce7',fg:'#16a34a',key:'mkp.status.done'},
+    due:{bg:'#fef9c3',fg:'#854d0e',key:'mkp.status.due'},
+    upcoming:{bg:'#f1f5f9',fg:'#64748b',key:'mkp.status.upcoming'},
+  };
+  const s=map[cls]||map.upcoming;
+  return `<span style="background:${s.bg};color:${s.fg};font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px;flex-shrink:0;white-space:nowrap;">${tr(s.key)}</span>`;
+}
+function mkpFieldValueText(f,val){
+  if(val===null||val===undefined||val===''){ return tr('mkp.notFilled'); }
+  if(f.type==='yn'){ return val==='ja'?tr('mkp.yes'):tr('mkp.no'); }
+  if(f.type==='status'){ return val==='auffaellig'?tr('mkp.statusAbnormal'):tr('mkp.statusNormal'); }
+  if(f.type==='check'){ return val===true?tr('mkp.yes'):tr('mkp.no'); }
+  return String(val);
+}
+function mkpToggleExam(key){
+  const el=document.getElementById('mkpBody-'+key);
+  if(!el) return;
+  el.style.display=el.style.display==='none'?'':'none';
+}
+function renderMkpView(){
+  const root=document.getElementById('mkpContent');
+  if(!root) return;
+  const account=getCurrentAccount();
+  if(!(account&&account.isChild)){ root.innerHTML=''; return; }
+  const ageDays=mkpAgeDays(account.dob);
+  const records=_remoteMkpExams||[];
+  root.innerHTML=MKP_EXAMS.map(function(exam){
+    const record=records.find(function(r){ return r.examKey===exam.key; });
+    const status=mkpStatusFor(exam,record&&record.completedAt?{completed_at:record.completedAt}:null,ageDays);
+    const fieldsHtml=(record&&record.completedAt)
+      ? exam.fields.map(function(f){
+          return `<div class="info-row"><span class="info-label">${escapeHtml(f.label)}</span><span class="info-value">${escapeHtml(mkpFieldValueText(f,record.data[f.id]))}</span></div>`;
+        }).join('')
+      : `<div style="padding:10px 16px;font-size:12px;color:var(--text-muted);">${tr('mkp.examEmpty')}</div>`;
+    return `<div class="info-card">
+      <div class="info-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="mkpToggleExam('${exam.key}')">
+        <span>${escapeHtml(exam.title)}<span style="display:block;font-size:10px;font-weight:600;color:var(--text-muted);text-transform:none;letter-spacing:0;margin-top:2px;">${escapeHtml(exam.ageLabel)}</span></span>
+        ${mkpStatusBadge(status.cls)}
+      </div>
+      <div id="mkpBody-${exam.key}" style="display:none;">${fieldsHtml}</div>
+    </div>`;
   }).join('');
 }
 function getCurrentAccount(){
@@ -1936,6 +2087,7 @@ async function initPatientData(){
     await refreshRemoteTermine();
     await refreshRemoteDocuments();
     await refreshRemoteImpfungen();
+    await refreshRemoteMkpExams();
     // Must resolve before populateArztSelect()/renderProfilArztRows() run
     // below -- see patientRefreshStaffRoster()'s own comment for why the
     // plain staffRosterReady (from vendor/staff-accounts.js) always
@@ -2016,6 +2168,8 @@ async function initPatientData(){
   updatePracticeIdentityUI();
   renderDokumente();
   renderProfilImpfungen();
+  updateMkpTileVisibility();
+  renderMkpView();
   renderProfilesCard();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
@@ -2896,6 +3050,7 @@ async function pollPatientData(){
   await refreshRemoteTermine();
   await refreshRemoteDocuments();
   await refreshRemoteImpfungen();
+  await refreshRemoteMkpExams();
   renderPatientMessages();
   updateChatBadge();
   renderPatientTermine();
@@ -2903,6 +3058,8 @@ async function pollPatientData(){
   renderTimeSlots();
   renderDokumente();
   renderProfilImpfungen();
+  updateMkpTileVisibility();
+  renderMkpView();
 }
 document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') pollPatientData(); });
 window.addEventListener('focus',pollPatientData);
@@ -2916,6 +3073,7 @@ function onPatientLanguageChanged(){
   renderPatientTermine();
   renderProfilArztRows();
   renderProfilImpfungen();
+  renderMkpView();
   // renderPatientMessages()'s own empty/disabled states were hardcoded
   // German strings until now (chat.empty.*/chat.disabled.*) -- also not
   // caught by applyI18n()'s static [data-i18n] walk since they're built in
