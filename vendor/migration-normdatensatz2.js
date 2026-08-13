@@ -374,6 +374,60 @@ function ends2ParseLaborbefunde(doc) {
   return results;
 }
 
+// Phase 4: secondary documents referenced from a patient's document
+// INDEX.HTM besides the main NDS CDA (e.g. a standalone Laborbefund CDA
+// like the real sample's LAB01.XML -- a full external lab report, much
+// richer than the abbreviated Laborparameter table already embedded in the
+// main document). Deliberately NOT parsed field-by-field into
+// patient_lab_results: the real sample's standalone Laborbefund repeats
+// several of the same values already captured from the main document's own
+// Laborparameter section (e.g. the same Leukozyten/Thrombozyten row),
+// and this parser has no reliable way to tell "genuinely new result" from
+// "the same one restated in more detail" without guessing. Rendered as
+// readable text instead and written as a Befund/document (see
+// importMigrationNebendokument2() in doctor.html) -- same role ENDS 1's #F
+// document findings play, and avoids ever double-counting a lab value.
+//
+// Renders one CDA section's Level 2 content (title + free text / tables)
+// as a single readable text block. Deliberately generic (not tied to any
+// specific section templateId) -- same "read what a browser/stylesheet
+// would show" Level 2 discipline used everywhere else here, so any CDA
+// document type ENDS 2/ELGA might reference renders sensibly instead of
+// needing a bespoke parser per document type.
+function ends2RenderCdaSectionText(sectionEl) {
+  const title = ends2TextOf(sectionEl.querySelector(':scope > title'));
+  const textEl = sectionEl.querySelector(':scope > text');
+  if (!textEl) return '';
+  const lines = [];
+  Array.from(textEl.children).forEach(function (child) {
+    const tag = child.tagName.toLowerCase();
+    if (tag === 'table') {
+      const { headers, rows } = ends2ParseTableRows(child);
+      if (headers) lines.push(headers.join(' | '));
+      rows.forEach(function (r) { if (r.some(Boolean)) lines.push(r.join(' | ')); });
+    } else if (tag === 'paragraph' || tag === 'content') {
+      const t = ends2TextOf(child);
+      if (t) lines.push(t);
+    }
+  });
+  if (!lines.length) {
+    const plain = ends2TextOf(textEl);
+    if (plain) lines.push(plain);
+  }
+  if (!lines.length) return '';
+  return (title ? title + ':\n' : '') + lines.join('\n');
+}
+
+// Walks every titled section in a CDA document and joins their rendered
+// Level 2 text, section by section -- the full readable content of a
+// document this parser has no dedicated field-by-field reader for.
+function ends2RenderCdaDocumentText(doc) {
+  const sections = Array.from(doc.querySelectorAll('section')).filter(function (s) {
+    return s.querySelector(':scope > title');
+  });
+  return sections.map(ends2RenderCdaSectionText).filter(Boolean).join('\n\n');
+}
+
 // Quick, cheap format check -- used by handleMigrationZipFile() to decide
 // whether to even attempt the (more expensive) full parseEnds2Zip() walk,
 // same role looksLikeEnds1() plays for the other format.
@@ -435,15 +489,37 @@ async function parseEnds2Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
     if (!cdaDoc) continue;
     const stammdaten = ends2ParseCdaStammdaten(cdaDoc);
     if (!stammdaten) continue;
+
+    // Phase 4: every OTHER document row in this patient's own index (e.g.
+    // "Laborbefund" -> LAB01.XML) besides the main NDS CDA already handled
+    // above -- rendered as readable text (see ends2RenderCdaDocumentText())
+    // rather than field-parsed, for the duplicate-data reason explained on
+    // that function. A row whose file can't be resolved in the ZIP still
+    // gets an entry (fileFound:false) instead of being silently dropped,
+    // same discipline as ENDS 1's #F document findings.
+    const befunde = [];
+    for (const docRow of docRows) {
+      if (docRow === mainDocRow) continue;
+      const title = docRow.texts[0] || 'Dokument';
+      const datum = docRow.texts[1] || '';
+      const otherJoined = ends2JoinPath(patientDir, docRow.href);
+      const otherPath = otherJoined && ends2FindEntry(entryNames, otherJoined);
+      if (!otherPath) {
+        befunde.push({ title, datum, bodyText: '', fileFound: false });
+        continue;
+      }
+      const otherXml = await readText(otherPath);
+      const otherDoc = ends2ParseXml(otherXml);
+      befunde.push({ title, datum, bodyText: otherDoc ? ends2RenderCdaDocumentText(otherDoc) : '', fileFound: true });
+    }
+
     patients.push({
       stammdaten,
       diagnosen: ends2ParseDiagnosen(cdaDoc),
       karteineintragungen: ends2ParseKarteineintragungen(cdaDoc),
       verordnungen: ends2ParseVerordnungen(cdaDoc),
       laborbefunde: ends2ParseLaborbefunde(cdaDoc),
-      // Not parsed yet (later phases) -- empty array so the shared preview
-      // renderer's `.length` checks work unchanged for either format.
-      befunde: [],
+      befunde,
       // ENDS 1's #P dictionary can contain fields this app doesn't map
       // (see legacyHistory in doctor.html's confirmMigrationImport());
       // ENDS 2's Stammdaten comes from fixed CDA elements with no such
