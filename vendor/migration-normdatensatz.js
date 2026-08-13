@@ -96,10 +96,10 @@ const ENDS1_P_FIELDS = {
 // each block's STD (Systemdatum) as "Datum der Leistungserbringung... ist
 // nicht das Systemdatum" for non-#P blocks (point 9.2.5) -- i.e. for these
 // blocks the 27-char header's date/time is the real event date, not a
-// zero-padded placeholder like it is for #P. That's the only grouping key
-// the spec actually defines for telling separate repeatable entries apart,
-// so buildEnds1PatientPreview() below groups a block's lines into one entry
-// per distinct (date,time) pair.
+// zero-padded placeholder like it is for #P. buildEnds1PatientPreview()
+// below groups each block's lines into entries using field-code repetition
+// as the boundary (see its own comment) -- NOT the header date/time, since
+// two genuinely distinct entries can share the exact same event date+time.
 const ENDS1_D_FIELDS = {
   STD: { label: 'Systemdatum der Eintragung', type: 'D' },
   TXT: { label: 'Text Diagnose', type: 'T' },
@@ -126,6 +126,20 @@ const ENDS1_L_FIELDS = {
   WRT: { label: 'Wert (mit 3 Nachkommastellen)', type: 'N' },
   TXT: { label: 'Text: Ergebnis', type: 'T' },
   GRP: { label: 'Gruppe', type: 'T' },
+};
+// #F (Befunde) -- structurally different from #D/#V/#L above: TBI
+// ("BefundArt": 0 = Text, 1 = Dokument) and PFA (Pfad, only meaningful for
+// TBI=1) are metadata that appear ONCE per finding; TXT is the one field
+// that legitimately REPEATS within a single TBI=0 finding (one line of
+// report text per TXT, ordered by the accompanying ZLN). Parsed by a
+// dedicated branch in buildEnds1PatientPreview(), not the generic
+// field-repeat-boundary rule #D/#V/#L share (that rule would wrongly treat
+// each new line of the same finding's text as a brand-new finding).
+const ENDS1_F_FIELDS = {
+  TBI: { label: 'BefundArt (0=Text, 1=Dokument)', type: 'N' },
+  ZLN: { label: 'Zeilennummer', type: 'N' },
+  TXT: { label: 'Text', type: 'T' },
+  PFA: { label: 'Pfad', type: 'T' },
 };
 
 const ENDS1_BLOCK_NAMES = {
@@ -225,7 +239,7 @@ function buildEnds1PatientPreview(records) {
     if (!byPatient.has(rec.patientNr)) {
       byPatient.set(rec.patientNr, {
         patientNr: rec.patientNr, stammdaten: {}, unknownFields: [], blockCounts: {},
-        diagnosen: [], verordnungen: [], laborbefunde: [],
+        diagnosen: [], verordnungen: [], laborbefunde: [], befunde: [],
       });
       openEntry.set(rec.patientNr, {});
     }
@@ -235,6 +249,38 @@ function buildEnds1PatientPreview(records) {
     if (rec.block === 'P') {
       if (ENDS1_P_FIELDS[rec.field]) p.stammdaten[rec.field] = trimmed;
       else p.unknownFields.push({ field: rec.field, value: trimmed });
+      continue;
+    }
+    if (rec.block === 'F') {
+      if (!ENDS1_F_FIELDS[rec.field]) continue;
+      const patientOpenEntries = openEntry.get(rec.patientNr);
+      let entry = patientOpenEntries.F;
+      if (rec.field === 'TXT' || rec.field === 'ZLN') {
+        // TXT/ZLN accumulate onto whatever #F entry is currently open --
+        // they're the one pair of fields legitimately repeated within a
+        // single finding (see ENDS1_F_FIELDS' own comment), never a
+        // boundary. If none is open yet (a text-only finding with no
+        // preceding TBI line, which the spec doesn't strictly forbid),
+        // start one here instead of dropping the line.
+        if (!entry) { entry = { date: rec.date, time: rec.time, textLines: [] }; patientOpenEntries.F = entry; p.befunde.push(entry); }
+        const lines = entry.textLines;
+        if (rec.field === 'ZLN') {
+          lines.push({ zln: trimmed, text: '' });
+        } else if (lines.length && lines[lines.length - 1].text === '') {
+          lines[lines.length - 1].text = trimmed;
+        } else {
+          lines.push({ zln: null, text: trimmed });
+        }
+        continue;
+      }
+      // TBI/PFA are metadata that appear once per finding -- seeing either
+      // again (or nothing open yet) marks the start of a new finding.
+      if (!entry || rec.field in entry) {
+        entry = { date: rec.date, time: rec.time, textLines: [] };
+        patientOpenEntries.F = entry;
+        p.befunde.push(entry);
+      }
+      entry[rec.field] = trimmed;
       continue;
     }
     const repeatable = ENDS1_REPEATABLE_BLOCKS[rec.block];
@@ -249,6 +295,14 @@ function buildEnds1PatientPreview(records) {
     entry[rec.field] = trimmed;
   }
   return [...byPatient.values()];
+}
+
+// Joins a #F entry's accumulated text lines into one display/storage
+// string, in the order they were encountered (ZLN is kept on each line for
+// reference but not used to re-sort -- the spec never guarantees ZLN is
+// numeric-sequential rather than just a distinguishing tag).
+function ends1BefundText(entry) {
+  return (entry.textLines || []).map(function (l) { return l.text; }).filter(Boolean).join('\n');
 }
 
 // Converts an ENDS1 date value (TTMMJJJJ, 8 digits, no separators -- the
@@ -314,9 +368,38 @@ async function parseEnds1Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
   }
   if (matchedFiles.length === 0) return null;
   const patients = buildEnds1PatientPreview(allRecords);
+  matchEnds1BefundFiles(patients, entryNames);
   const blockTotals = {};
   for (const rec of allRecords) blockTotals[rec.block] = (blockTotals[rec.block] || 0) + 1;
   return { format: 'ends1', matchedFiles, encoding, patients, blockTotals, totalRecords: allRecords.length };
+}
+
+// Resolves a #F document-type entry's PFA (Pfad) against the ZIP's actual
+// file list. PFA is an absolute path from the OLD system's own filesystem
+// (the spec's own example: "e:/usr/dok/bef/bild.jpg") -- it will essentially
+// never match a real path inside this ZIP, so this only ever compares
+// basenames (case-insensitive), best-effort. Per spec point 11, an export
+// that includes extra files at all places them in the same directory as the
+// main Stammdateien, so a flat basename match is the right level of
+// strictness -- neither stricter (exact path, which would never match
+// anything real) nor looser (fuzzy/substring, which risks attaching the
+// WRONG file to a patient). Every entry gets an explicit fileFound flag
+// either way, never a silent guess.
+function matchEnds1BefundFiles(patients, entryNames) {
+  const basenameToEntry = new Map();
+  for (const name of entryNames) {
+    const base = name.split(/[\\/]/).pop().toLowerCase();
+    if (!basenameToEntry.has(base)) basenameToEntry.set(base, name);
+  }
+  for (const p of patients) {
+    for (const entry of p.befunde) {
+      if (entry.TBI !== '1' || !entry.PFA) continue;
+      const base = entry.PFA.split(/[\\/]/).pop().toLowerCase();
+      const matched = basenameToEntry.get(base);
+      entry.fileFound = !!matched;
+      entry.matchedZipEntry = matched || null;
+    }
+  }
 }
 
 // Interprets a #L entry's WRT ("Wert (mit 3 Nachkommastellen)") and TXT
