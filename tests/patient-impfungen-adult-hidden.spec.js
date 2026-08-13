@@ -41,12 +41,22 @@ async function setupRemote(page, profile, impfungenRows) {
   await page.waitForTimeout(300);
 }
 
-test('an adult account with zero real Impfung records never shows the vaccination card at all', async ({ page }) => {
+// Real user feedback (2026-08-13): reversed from the earlier "hide the
+// icon until there's something to show" behavior -- the icon/tile must
+// always be reachable, even with zero records; only the card (vs. the
+// built-in "Noch keine Impfungen erfasst" empty state) toggles on data.
+test('an adult account with zero real Impfung records: the icon stays visible, but the card is empty (shows the empty state instead)', async ({ page }) => {
   await setupRemote(page, profileRow({ is_child: false }), []);
   const state = await page.evaluate(() => ({
+    tileVisible: getComputedStyle(document.getElementById('homeTileImpfpass')).display !== 'none',
+    navTabVisible: getComputedStyle(document.getElementById('navTabImpfpass')).display !== 'none',
     cardVisible: getComputedStyle(document.getElementById('profilImpfungenCard')).display !== 'none',
+    emptyVisible: getComputedStyle(document.getElementById('profilImpfungenEmpty')).display !== 'none',
   }));
+  expect(state.tileVisible).toBe(true);
+  expect(state.navTabVisible).toBe(true);
   expect(state.cardVisible).toBe(false);
+  expect(state.emptyVisible).toBe(true);
 });
 
 test('an adult account with one real Impfung record shows only that vaccine, not the full default schedule', async ({ page }) => {
@@ -54,11 +64,15 @@ test('an adult account with one real Impfung record shows only that vaccine, not
     { id: 'i1', vaccine_key: 'influenza', vaccine_name: 'Influenza', dose_label: 'D1', datum: '2026-01-01', next_due: null, created_at: '2026-01-01' },
   ]);
   const state = await page.evaluate(() => ({
+    tileVisible: getComputedStyle(document.getElementById('homeTileImpfpass')).display !== 'none',
     cardVisible: getComputedStyle(document.getElementById('profilImpfungenCard')).display !== 'none',
+    emptyVisible: getComputedStyle(document.getElementById('profilImpfungenEmpty')).display !== 'none',
     html: document.getElementById('profilImpfungenRows').innerHTML,
     rowCount: document.getElementById('profilImpfungenRows').querySelectorAll('.info-row').length,
   }));
+  expect(state.tileVisible).toBe(true);
   expect(state.cardVisible).toBe(true);
+  expect(state.emptyVisible).toBe(false);
   expect(state.html).toContain('Influenza');
   // Only the vaccine actually on file -- not the whole standard schedule
   // (6-fach, Rotavirus, MMR, ... all absent since none were ever recorded).
