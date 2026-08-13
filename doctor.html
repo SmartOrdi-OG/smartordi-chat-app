@@ -36,6 +36,7 @@
 <script src="vendor/kartei-atteste.js"></script>
 <script src="vendor/cdss-medication-alerts.js"></script>
 <script src="vendor/migration-normdatensatz.js"></script>
+<script src="vendor/migration-normdatensatz2.js"></script>
 <script src="vendor/kartei-advanced-search.js"></script>
 <script src="vendor/kartei-tagesuhr.js"></script>
 <script src="vendor/mobile-nav.js"></script>
@@ -5074,15 +5075,18 @@ async function exportPracticeDataZip(){
   }
 }
 
-// ══ Praxisdaten-Migration (Normdatensatz-Import), Phase 1 ══
-// Upload a ZIP -> detect Legacy Normdatensatz (ENDS 1) content -> parse
-// #P (Patientenstammdaten) -> show a read-only preview. Does not write to
-// the database -- see vendor/migration-normdatensatz.js for the parser and
-// TODO.md for the full multi-phase project plan (Legacy first, ENDS 2/CDA
-// as a separate parser later).
-// Holds the most recently parsed ZIP's result ({patients,...} from
-// parseEnds1Zip()) so confirmMigrationImport() can act on it without
-// re-parsing -- reset every time the modal is (re)opened or a new file is
+// ══ Praxisdaten-Migration (Normdatensatz-Import) ══
+// Upload a ZIP -> detect either Legacy Normdatensatz (ENDS 1, flat text) or
+// Export-Normdatensatz 2 (ENDS 2, CDA/XML in an IHE XDM container) -> parse
+// Stammdaten -> show a read-only preview. Does not write to the database --
+// see vendor/migration-normdatensatz.js (ENDS 1) and
+// vendor/migration-normdatensatz2.js (ENDS 2, Phase 1: Stammdaten preview
+// only so far) for the parsers, and TODO.md for the full multi-phase
+// project plan.
+// Holds the most recently parsed ZIP's result ({format,patients,...} from
+// parseEnds1Zip()/parseEnds2Zip()) so confirmMigrationImport() can act on it
+// without re-parsing -- reset every time the modal is (re)opened or a new
+// file is
 // chosen, so a stale previous file's data can never get imported by mistake.
 let migrationParsedResult=null;
 // Set once confirmMigrationImport() finishes -- see its own comment for why
@@ -5112,12 +5116,22 @@ async function handleMigrationZipFile(event){
   if(!file) return;
   statusEl.textContent='Analysiere ZIP-Datei...';
   try{
-    const result=await parseEnds1Zip(file);
+    // Try ENDS 1 (Legacy, flat text) first, then ENDS 2 (CDA/XML, IHE XDM
+    // container) -- the two formats are structurally different enough
+    // (looksLikeEnds1()/ends2FindXdmRoot()) that a file can only ever match
+    // one, so trying both in sequence is safe and needs no separate format
+    // picker from the user.
+    let result=await parseEnds1Zip(file);
     if(!result){
-      statusEl.textContent='Kein Export-Normdatensatz (Legacy/ENDS 1) in dieser ZIP-Datei erkannt.';
+      result=await parseEnds2Zip(file);
+    }
+    if(!result){
+      statusEl.textContent='Kein Export-Normdatensatz (ENDS 1 oder ENDS 2) in dieser ZIP-Datei erkannt.';
       return;
     }
-    statusEl.textContent='Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
+    statusEl.textContent=result.format==='ends2'
+      ?'Format erkannt: Export-Normdatensatz 2 (ENDS 2, CDA/XML)'
+      :'Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
     migrationParsedResult=result;
     renderMigrationPreview(result);
   }catch(err){
