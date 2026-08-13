@@ -105,6 +105,30 @@ function ends2CdaDateToDisplay(value) {
   return day + '.' + month + '.' + year;
 }
 
+// Inverse of ends2CdaDateToDisplay() -- converts the "DD.MM.YYYY" strings
+// this parser puts in Stammdaten.GBD and Karteineintragungen entries' datum
+// back to the ISO 'YYYY-MM-DD' the app's date columns expect. Used by
+// doctor.html's write phase (confirmMigrationImport() et al.); kept here
+// alongside the format it inverts rather than in doctor.html itself.
+function ends2DisplayDateToIso(value) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec((value || '').trim());
+  return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+}
+
+// The Diagnose section's "Zeitraum oder Zeitpunkt" column is free text --
+// real values in the wild range from an exact date ("25.6.2010") to a
+// vague period ("Seit Mai 1980"). Only the unambiguous D(D).M(M).YYYY shape
+// is converted; anything else (including genuinely just a year or month) is
+// left unparsed so the write phase skips that diagnosis rather than
+// guessing which day within "Mai 1980" it actually happened.
+function ends2DiagnoseZeitraumToIso(value) {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((value || '').trim());
+  if (!m) return '';
+  const day = m[1].padStart(2, '0'), month = m[2].padStart(2, '0'), year = m[3];
+  if (month === '00' || day === '00' || Number(month) > 12 || Number(day) > 31) return '';
+  return year + '-' + month + '-' + day;
+}
+
 // Parses XML text into a Document, or null if it doesn't parse cleanly --
 // shared by the Stammdaten and section parsers below so a CDA document is
 // only ever parsed once per patient.
@@ -115,9 +139,12 @@ function ends2ParseXml(xmlText) {
 }
 
 // Parses recordTarget/patientRole out of one patient's main CDA document
-// into the same field keys ENDS 1's #P Stammdaten preview already uses.
-// Returns null if there's no recordTarget at all -- callers skip that
-// patient rather than showing a broken/blank row.
+// into the same field keys ENDS 1's #P Stammdaten preview already uses
+// (VNR for the insurance number, TL1 for phone, etc., not ENDS-2-specific
+// names) -- so doctor.html's confirmMigrationImport() write phase can stay
+// one shared code path instead of forking per format. Returns null if
+// there's no recordTarget at all -- callers skip that patient rather than
+// showing a broken/blank row.
 //
 // SVNR: the sample export's Sozialversicherungsnummer id carries a fixed,
 // government-assigned OID (1.2.40.0.10.1.4.3.1, "Österreichische
@@ -136,6 +163,15 @@ function ends2ParseCdaStammdaten(doc) {
   const ids = Array.from(patientRole.querySelectorAll('id'));
   const svnrId = ids.find(function (el) { return el.getAttribute('root') === ENDS2_SVNR_ROOT; });
   const localId = ids[0];
+  // telecom values are "tel:..."/"mailto:..." URIs -- strip the scheme so
+  // the stored value matches what ENDS 1's TL1/MAL fields (and the rest of
+  // the app) already expect: a bare phone number/address, no "tel:" prefix.
+  const telEl = Array.from(patientRole.querySelectorAll('telecom')).find(function (t) {
+    return (t.getAttribute('value') || '').startsWith('tel:');
+  });
+  const mailEl = Array.from(patientRole.querySelectorAll('telecom')).find(function (t) {
+    return (t.getAttribute('value') || '').startsWith('mailto:');
+  });
   return {
     FNM: ends2TextOf(nameEl?.querySelector('family')),
     VNM: ends2TextOf(nameEl?.querySelector('given')),
@@ -144,7 +180,9 @@ function ends2ParseCdaStammdaten(doc) {
     STR: ends2TextOf(addrEl?.querySelector('streetAddressLine')),
     PLZ: ends2TextOf(addrEl?.querySelector('postalCode')),
     ORT: ends2TextOf(addrEl?.querySelector('city')),
-    SVN: svnrId?.getAttribute('extension') || '',
+    VNR: svnrId?.getAttribute('extension') || '',
+    TL1: (telEl?.getAttribute('value') || '').replace(/^tel:/, ''),
+    MAL: (mailEl?.getAttribute('value') || '').replace(/^mailto:/, ''),
     SoftwareId: localId?.getAttribute('extension') || '',
   };
 }
@@ -406,6 +444,13 @@ async function parseEnds2Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
       // Not parsed yet (later phases) -- empty array so the shared preview
       // renderer's `.length` checks work unchanged for either format.
       befunde: [],
+      // ENDS 1's #P dictionary can contain fields this app doesn't map
+      // (see legacyHistory in doctor.html's confirmMigrationImport());
+      // ENDS 2's Stammdaten comes from fixed CDA elements with no such
+      // open-ended dictionary, so there's nothing to preserve here -- kept
+      // as an empty array (not omitted) so confirmMigrationImport()'s
+      // shared unmapped.length/legacyFieldCount logic works unchanged.
+      unknownFields: [],
     });
   }
   if (!patients.length) return null;
