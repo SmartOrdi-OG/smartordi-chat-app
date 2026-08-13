@@ -318,3 +318,32 @@ async function parseEnds1Zip(zipFile, { maxTotalBytes = 100 * 1024 * 1024 } = {}
   for (const rec of allRecords) blockTotals[rec.block] = (blockTotals[rec.block] || 0) + 1;
   return { format: 'ends1', matchedFiles, encoding, patients, blockTotals, totalRecords: allRecords.length };
 }
+
+// Interprets a #L entry's WRT ("Wert (mit 3 Nachkommastellen)") and TXT
+// ("Text: Ergebnis") fields into {wert, ergebnisText}. WTX ("Wert oder Text
+// folgt im nächsten Feld") is a separate type-indicator flag per the spec,
+// not a value itself -- not needed here since WRT/TXT are independently
+// checked anyway.
+//
+// The spec (point 7) says lab values avoid a literal decimal point by using
+// a fixed "11-stellig, rechtsbündig, 8 + 3 Nachkomma-Stellen" encoding --
+// i.e. an 11-digit, zero-padded integer whose last 3 digits are an IMPLIED
+// decimal fraction (so "00000120000" would mean 120.000). We have no real
+// sample file to confirm that interpretation against, and guessing wrong on
+// a clinical lab VALUE (not just a name or address) is a real
+// patient-safety risk, not just a cosmetic one -- unlike the date/encoding
+// guesses elsewhere in this parser, which are always safely visible/
+// correctable at a glance. So WRT is only ever treated as numeric when it's
+// unambiguous (a plain decimal the source wrote out directly, comma or dot
+// separator, no implied-scaling guesswork involved); a genuine 11-digit
+// fixed-width encoding is left as text instead of being silently written
+// into a numeric column as the wrong number.
+function ends1ParseLabValue(rawWrt, rawTxt) {
+  const wrt = (rawWrt || '').trim();
+  const txt = (rawTxt || '').trim();
+  if (wrt && /^-?\d{1,7}([.,]\d{1,3})?$/.test(wrt)) {
+    return { wert: Number(wrt.replace(',', '.')), ergebnisText: txt || null };
+  }
+  const text = [wrt, txt].filter(Boolean).join(' ').trim();
+  return { wert: null, ergebnisText: text || null };
+}
