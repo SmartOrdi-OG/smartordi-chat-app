@@ -27,6 +27,12 @@ function seed() {
 function ends1Line(patientNr, field, value) {
   return String(patientNr).padStart(10, '0') + '#P' + field + '00000000' + '0000' + value + '\r\n';
 }
+// Same header shape, but for a repeatable block (#D/#V/#L) where the
+// date/time are the real event date, not zero-padding -- see
+// vendor/migration-normdatensatz.js's ENDS1_REPEATABLE_BLOCKS comment.
+function ends1LineDated(patientNr, block, field, date, time, value) {
+  return String(patientNr).padStart(10, '0') + '#' + block + field + date + time + value + '\r\n';
+}
 
 const sampleText =
   ends1Line(1, 'FNM', 'Mustermann') +
@@ -35,10 +41,10 @@ const sampleText =
   ends1Line(2, 'FNM', 'Musterfrau') +
   ends1Line(2, 'VNM', 'Erika') +
   ends1Line(2, 'GBD', '20071975') +
-  // #D (Diagnosen) block lines for patient 1 -- not yet parsed field-by-field
-  // in Phase 1, but must still be counted in the preview, not dropped.
-  '0000000001#DTXT0000000000001100Diabetes mellitus\r\n' +
-  '0000000001#DTXT0000000000001200Hypertonie\r\n';
+  // #D (Diagnosen) block lines for patient 1 -- Phase 3 parses these
+  // field-by-field into a real diagnosen[] list, not just a raw count.
+  ends1LineDated(1, 'D', 'TXT', '10012020', '1000', 'Diabetes mellitus') +
+  ends1LineDated(1, 'D', 'TXT', '15032021', '1100', 'Hypertonie');
 const sampleBase64 = Buffer.from(sampleText, 'utf8').toString('base64');
 
 async function setupAdmin(page) {
@@ -73,7 +79,9 @@ test('uploading a real Legacy Normdatensatz ZIP shows a correct patient preview 
 
   const summary = await page.locator('#migrationPreviewSummary').textContent();
   expect(summary).toContain('2 Patient(en) gefunden');
-  expect(summary).toContain('Diagnosen');
+  // #D is now parsed field-by-field (Phase 3), so it must NOT show up in
+  // the "not yet evaluated" line anymore.
+  expect(summary).not.toContain('Diagnosen');
 
   const rows = page.locator('#migrationPreviewTableBody tr');
   await expect(rows).toHaveCount(2);
@@ -81,12 +89,56 @@ test('uploading a real Legacy Normdatensatz ZIP shows a correct patient preview 
   expect(firstRow).toContain('Mustermann');
   expect(firstRow).toContain('Max');
   expect(firstRow).toContain('15031980');
+  expect(firstRow).toContain('2 Diagnose(n)');
   const secondRow = await rows.nth(1).textContent();
   expect(secondRow).toContain('Musterfrau');
 
   // Phase 1 never touches the database -- confirm nothing was written.
   const patientsWritten = await page.evaluate(() => window.__store.patients.length);
   expect(patientsWritten).toBe(0);
+});
+
+test('#V (Verordnungen) and #L (Laborbefunde) are also parsed field-by-field, and two entries sharing the same date+time are not merged', async ({ page }) => {
+  const text =
+    ends1Line(1, 'FNM', 'Gruber') +
+    ends1Line(1, 'VNM', 'Tom') +
+    ends1LineDated(1, 'V', 'TXT', '01022021', '0900', 'Ibuprofen 400mg') +
+    ends1LineDated(1, 'V', 'MNG', '01022021', '0900', '1') +
+    ends1LineDated(1, 'L', 'BEZ', '05012022', '0800', 'Blutbild') +
+    ends1LineDated(1, 'L', 'WRT', '05012022', '0800', '120') +
+    // Two DISTINCT diagnoses entered in the same visit (realistic case) --
+    // same date+time, TXT repeats: must produce 2 entries, not 1 merged one.
+    ends1LineDated(1, 'D', 'TXT', '10012020', '1000', 'Diabetes mellitus') +
+    ends1LineDated(1, 'D', 'TXT', '10012020', '1000', 'Hypertonie');
+  const base64 = Buffer.from(text, 'utf8').toString('base64');
+
+  await installJsZipMock(page);
+  await page.addInitScript((b64) => { window.__fakeZipFiles = { 'normdata.txt': b64 }; }, base64);
+  await installMockSupabase(page, seed(), () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-settings').classList.add('active');
+    openMigrationImportModal();
+  });
+  await page.setInputFiles('#migrationZipInput', { name: 'export.zip', mimeType: 'application/zip', buffer: Buffer.from('dummy') });
+  await page.waitForFunction(() => document.getElementById('migrationZipStatus').textContent.includes('Format erkannt'));
+
+  const row = await page.locator('#migrationPreviewTableBody tr').first().textContent();
+  expect(row).toContain('2 Diagnose(n)');
+  expect(row).toContain('1 Verordnung(en)');
+  expect(row).toContain('1 Laborbefund(e)');
+
+  const parsed = await page.evaluate(() => migrationParsedResult.patients[0]);
+  expect(parsed.diagnosen).toHaveLength(2);
+  expect(parsed.diagnosen.map(d => d.TXT).sort()).toEqual(['Diabetes mellitus', 'Hypertonie']);
+  expect(parsed.verordnungen[0].TXT).toBe('Ibuprofen 400mg');
+  expect(parsed.verordnungen[0].MNG).toBe('1');
+  expect(parsed.laborbefunde[0].BEZ).toBe('Blutbild');
+  expect(parsed.laborbefunde[0].WRT).toBe('120');
 });
 
 test('a ZIP with no recognizable Normdatensatz content shows a clear "not detected" message', async ({ page }) => {
