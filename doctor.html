@@ -3242,6 +3242,7 @@ body.windows-mode #karteiBtn{display:none;}
             <tbody id="migrationResultTableBody"></tbody>
           </table>
         </div>
+        <button class="btn-secondary" style="margin-top:10px;" onclick="downloadMigrationReport()">Bericht herunterladen (CSV)</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -5083,10 +5084,14 @@ async function exportPracticeDataZip(){
 // re-parsing -- reset every time the modal is (re)opened or a new file is
 // chosen, so a stale previous file's data can never get imported by mistake.
 let migrationParsedResult=null;
+// Set once confirmMigrationImport() finishes -- see its own comment for why
+// this is kept around instead of only rendering the results live.
+let migrationLastReport=null;
 
 function openMigrationImportModal(){
   if(!isCurrentUserAdmin()){ showToast('Nur für Admins verfügbar.','error'); return; }
   migrationParsedResult=null;
+  migrationLastReport=null;
   document.getElementById('migrationZipInput').value='';
   document.getElementById('migrationZipStatus').textContent='';
   document.getElementById('migrationPreviewArea').style.display='none';
@@ -5100,6 +5105,7 @@ async function handleMigrationZipFile(event){
   const statusEl=document.getElementById('migrationZipStatus');
   const previewArea=document.getElementById('migrationPreviewArea');
   migrationParsedResult=null;
+  migrationLastReport=null;
   previewArea.style.display='none';
   document.getElementById('migrationResultsArea').style.display='none';
   if(!file) return;
@@ -5323,11 +5329,12 @@ async function confirmMigrationImport(){
         allergie:extra.allergie||existing.record.allergie||null,
         legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
       }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
-      const resultRow={name:vorname+' '+nachname,updated:true,syncFailed:!identity};
+      const resultRow={name:vorname+' '+nachname,updated:true,syncFailed:!identity,username:existing.username,legacyFieldCount:unmapped.length,counts:{diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0}};
       if(identity){
         const sub=await importMigrationSubRecords(existing.record.id,patientEntry,uploadedBy);
         totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde; totals.befunde+=sub.counts.befunde;
         resultRow.historyFailed=sub.failed;
+        resultRow.counts=sub.counts;
       }
       results.push(resultRow);
       continue;
@@ -5337,20 +5344,28 @@ async function confirmMigrationImport(){
       if(remainingCapacity<=0){ results.push({name:vorname+' '+nachname,limitReached:true}); continue; }
       remainingCapacity--;
     }
-    const {identityPromise,authPromise}=createPatientAccount(vorname,nachname,extra);
+    const {username,identityPromise,authPromise}=createPatientAccount(vorname,nachname,extra);
     const identity=await identityPromise;
     const authOk=identity?await authPromise:false;
-    const resultRow={name:vorname+' '+nachname,syncFailed:!identity||!authOk};
+    const resultRow={name:vorname+' '+nachname,syncFailed:!identity||!authOk,username,legacyFieldCount:unmapped.length,counts:{diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0}};
     if(identity&&identity.id){
       const sub=await importMigrationSubRecords(identity.id,patientEntry,uploadedBy);
       totals.diagnosen+=sub.counts.diagnosen; totals.verordnungen+=sub.counts.verordnungen; totals.laborbefunde+=sub.counts.laborbefunde; totals.befunde+=sub.counts.befunde;
       resultRow.historyFailed=sub.failed;
+      resultRow.counts=sub.counts;
     }
     results.push(resultRow);
   }
 
   confirmBtn.disabled=false; confirmBtn.style.opacity=''; confirmBtn.style.cursor='';
   progressEl.textContent='';
+  // Kept for downloadMigrationReport() -- the on-screen summary/table above
+  // disappears the moment this modal is closed, but a practice may want a
+  // permanent record of exactly what an import did (e.g. to keep on file,
+  // or to send back to the old system's vendor as proof of a completed
+  // transfer). sourceFiles names which file(s) inside the ZIP were
+  // actually recognized as ENDS1 and parsed, for traceability.
+  migrationLastReport={results,skipped,totals,sourceFiles:migrationParsedResult.matchedFiles};
   renderMigrationImportResults(results,skipped,totals);
 }
 
@@ -5383,6 +5398,55 @@ function renderMigrationImportResults(results,skipped,totals){
   }).join('');
   document.getElementById('migrationPreviewArea').style.display='none';
   document.getElementById('migrationResultsArea').style.display='block';
+}
+
+// Downloadable permanent record of an import, since the on-screen summary/
+// table above disappears the moment this modal is closed -- a practice may
+// want to keep this on file (e.g. as proof of a completed transfer to send
+// back to the old system's vendor, or just for their own records). Reuses
+// csvEscape() (formula-injection-safe, same as exportPatientCsv()) since
+// free-text fields here (patient names, the legacy-field dump) could
+// themselves originate from attacker-controlled data in the OLD system's
+// export, same reasoning as that function's own comment.
+function downloadMigrationReport(){
+  if(!migrationLastReport) return;
+  const {results,skipped,totals,sourceFiles}=migrationLastReport;
+  const createdCount=results.filter(r=>!r.updated&&!r.limitReached&&!r.syncFailed).length;
+  const updatedCount=results.filter(r=>r.updated&&!r.syncFailed).length;
+  const lines=[
+    ['Migrationsbericht -- Normdatensatz (ENDS 1) Import'],
+    ['Erstellt am',new Date().toLocaleString('de-AT')],
+    ['Quelldatei(en)',sourceFiles.join('; ')],
+    ['Neue Patienten',String(createdCount)],
+    ['Aktualisierte Patienten',String(updatedCount)],
+    ['Übersprungene Zeilen (Vor-/Nachname fehlte)',String(skipped)],
+    ['Diagnosen in Verlauf übernommen',String(totals.diagnosen)],
+    ['Verordnungen in Rezepte übernommen',String(totals.verordnungen)],
+    ['Laborbefunde übernommen',String(totals.laborbefunde)],
+    ['Befunde in Dokumente übernommen',String(totals.befunde)],
+    [],
+    ['Name','Status','Benutzername','Diagnosen','Verordnungen','Laborbefunde','Befunde','Nicht zugeordnete Altdaten','Warnung'],
+  ];
+  for(const r of results){
+    const status=r.limitReached?'Übersprungen (Limit erreicht)':r.syncFailed?'Fehlgeschlagen':r.updated?'Aktualisiert':'Neu angelegt';
+    const c=r.counts||{diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};
+    lines.push([
+      r.name, status, r.username||'',
+      String(c.diagnosen), String(c.verordnungen), String(c.laborbefunde), String(c.befunde),
+      r.legacyFieldCount?String(r.legacyFieldCount):'',
+      r.historyFailed?'Diagnose/Verordnung/Laborbefund/Befund konnte nicht gespeichert werden':'',
+    ]);
+  }
+  const csv=lines.map(row=>row.map(csvEscape).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='Migrationsbericht_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // Human-readable counterpart to exportPatientCsv() -- for handing a patient's
