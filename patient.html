@@ -146,7 +146,14 @@ body.on-home .bottom-nav{display:none;}
   border-top:1px solid #E4DFD3;
   display:flex;
   flex-shrink:0;
-  padding:4px 2px calc(4px + env(safe-area-inset-bottom));
+  /* Real user feedback (2026-08-14): a tap on the bottom-most nav icons
+     could land close enough to the iOS home-indicator swipe-up gesture
+     zone to risk triggering it (backgrounding/closing the app) instead of
+     just registering as a tap. env(safe-area-inset-bottom) alone is the
+     OS-reported keep-out zone, not extra breathing room on top of it --
+     added a real 14px buffer above that so the icons sit further from the
+     very bottom edge. */
+  padding:4px 2px calc(14px + env(safe-area-inset-bottom));
   gap:0;
   box-shadow:0 -2px 12px rgba(0,0,0,0.06);
 }
@@ -508,8 +515,14 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
    section (animateViewTransition() in the script below); the topbar back
    button slides back. ── */
 #view-home{background:var(--bg);}
-.home-greeting{padding:22px 20px 4px;}
-.home-greeting-sub{font-size:13px;font-weight:600;color:var(--text);}
+/* Real user feedback (2026-08-14): follow-up on the topbar-name change --
+   the name belongs here too, as a clear heading above the tiles (not just
+   in the topbar), with extra bottom padding so the tile grid starts lower
+   and actually uses the empty space under it instead of everything being
+   crammed at the very top. */
+.home-greeting{padding:26px 20px 18px;}
+.home-greeting-name{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--text);}
+.home-greeting-sub{font-size:13px;font-weight:600;color:var(--text-muted);margin-top:3px;}
 /* Real user feedback (2026-08-13): the home-tile grid used to wrap each
    icon in its own white bordered/shadowed "card" -- asked to drop the
    card entirely and keep just the icon + label, professionally styled
@@ -663,6 +676,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
   <!-- ── HOME (app-launcher landing screen, mobile only) ── -->
   <div class="view active" id="view-home">
     <div class="home-greeting">
+      <div class="home-greeting-name" id="homeGreetingName">—</div>
       <div class="home-greeting-sub" data-i18n="home.sub">Wählen Sie einen Bereich</div>
     </div>
     <div class="home-tiles">
@@ -2196,11 +2210,14 @@ async function initPatientData(){
   }
   const fullName=account.fullName||account.name||'Patient';
   const initial=fullName[0]||'P';
-  // Real user feedback (2026-08-13): the topbar avatar circle (just an
-  // initial letter) is gone -- the full name (Vorname + Nachname) is
-  // written out as plain text instead, and the "Hallo, {name}" home
-  // greeting (which duplicated the same name) is gone too.
+  // Real user feedback (2026-08-13, then a follow-up on 2026-08-14): the
+  // topbar avatar circle (just an initial letter) is gone -- the full name
+  // (Vorname + Nachname) is written out as plain text instead, in BOTH the
+  // topbar and as a clear heading above the home-screen tile grid (not the
+  // old "Hallo, {name}" greeting -- just the name itself).
   document.getElementById('topbarUsername').textContent=fullName;
+  const homeGreetingNameEl=document.getElementById('homeGreetingName');
+  if(homeGreetingNameEl) homeGreetingNameEl.textContent=fullName;
   document.getElementById('profilAvatar').textContent=initial;
   document.getElementById('profilName').textContent=fullName;
   document.getElementById('profilSub').textContent='Patient · '+(account.versicherung||'—')+(account.adresse?' · '+account.adresse.split(',').pop().trim():'');
