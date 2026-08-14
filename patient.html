@@ -106,17 +106,18 @@ body{
 .topbar-icon{width:36px;height:36px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;}
 .topbar-name{font-size:15px;font-weight:800;color:#16211F;letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .topbar-name span{color:#0E5E56;}
-.topbar-user{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:0;}
-.topbar-avatar{width:32px;height:32px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;}
-.topbar-username{font-size:12px;font-weight:600;color:#5B6B66;white-space:nowrap;}
+.topbar-user{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:1;}
+/* Real user feedback (2026-08-13): the avatar-circle-with-initial is gone
+   -- the patient's full name (Vorname + Nachname) is written out as plain
+   text instead, replacing both the avatar and the separate "Hallo, {name}"
+   home-screen greeting that used to duplicate it. Now that it's the one
+   thing identifying the patient in the topbar, it stays visible down to
+   the narrowest screens instead of being the first thing dropped -- it
+   just truncates with an ellipsis if a long name won't fit, the same way
+   .topbar-name already handles the wordmark. */
+.topbar-username{font-size:12px;font-weight:600;color:#5B6B66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .topbar-logout{background:#EDE9DE;border:none;color:#5B6B66;padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
 .topbar-logout:hover{background:#E4DFD3;color:#16211F;}
-@media(max-width:480px){
-  /* Narrowest screens: drop the least essential pieces first (username
-     text, then the wordmark) so the controls that matter -- avatar,
-     language, logout -- always stay fully visible instead of clipping. */
-  .topbar-username{display:none;}
-}
 @media(max-width:400px){
   /* The Arabic "Abmelden" translation ("تسجيل الخروج") is noticeably wider
      than the other languages' -- combined with the wordmark text, avatar
@@ -468,8 +469,13 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .profil-name{font-size:18px;font-weight:800;color:white;}
 .profil-sub{font-size:12px;color:rgba(255,255,255,0.6);margin-top:3px;}
 
+/* Real user feedback (2026-08-13): the Profil/Einstellungen cards had a
+   4px colored accent bar down the left edge (green normally, red for the
+   destructive data-deletion card via an inline border-left-color
+   override -- see #profilDeletionCard below) -- asked for a plain
+   rectangular card with no color accent, same border on all sides. */
 .info-card{
-  background:white;border-radius:16px;border-left:4px solid #0E5E56;
+  background:white;border-radius:16px;border:1px solid var(--border);
   overflow:hidden;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);
 }
 .info-card-header{
@@ -503,14 +509,18 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
    button slides back. ── */
 #view-home{background:var(--bg);}
 .home-greeting{padding:22px 20px 4px;}
-.home-greeting-hello{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--text);}
-.home-greeting-sub{font-size:12.5px;color:var(--text-muted);margin-top:4px;}
-.home-tiles{flex:1;overflow-y:auto;padding:16px 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start;}
-.home-tile{background:white;border:1px solid var(--border);border-radius:18px;padding:22px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:11px;cursor:pointer;font-family:inherit;box-shadow:0 2px 14px rgba(0,0,0,0.05);transition:transform 0.15s;position:relative;}
-.home-tile:active{transform:scale(0.96);}
-.home-tile-icon{width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,var(--teal),#12746A);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.home-tile-label{font-size:13.5px;font-weight:700;color:var(--text);}
-.home-tile-badge{position:absolute;top:12px;inset-inline-end:12px;background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;min-width:17px;text-align:center;}
+.home-greeting-sub{font-size:13px;font-weight:600;color:var(--text);}
+/* Real user feedback (2026-08-13): the home-tile grid used to wrap each
+   icon in its own white bordered/shadowed "card" -- asked to drop the
+   card entirely and keep just the icon + label, professionally styled
+   (the colored icon badge itself already reads as a deliberate icon, not
+   a generic square, so it stays -- only the card wrapper around it goes). */
+.home-tiles{flex:1;overflow-y:auto;padding:20px 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px 14px;align-content:start;}
+.home-tile{background:none;border:none;box-shadow:none;padding:2px;display:flex;flex-direction:column;align-items:center;gap:9px;cursor:pointer;font-family:inherit;transition:transform 0.15s,opacity 0.15s;position:relative;}
+.home-tile:active{transform:scale(0.93);opacity:0.85;}
+.home-tile-icon{width:52px;height:52px;border-radius:15px;background:linear-gradient(135deg,var(--teal),#12746A);color:white;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(14,94,86,0.22);}
+.home-tile-label{font-size:12.5px;font-weight:700;color:var(--text);}
+.home-tile-badge{position:absolute;top:-3px;inset-inline-end:calc(50% - 33px);background:var(--red);color:white;font-size:10px;font-weight:800;padding:2px 6px;border-radius:9px;min-width:17px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
 
 @media(min-width:1024px){
   #view-home{display:none!important;}
@@ -611,7 +621,6 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
   <div class="topbar-user">
-    <div class="topbar-avatar" id="topbarAvatar"></div>
     <div class="topbar-username" id="topbarUsername"></div>
     <button class="topbar-logout" onclick="logout()" data-i18n="topbar.logout">Abmelden</button>
   </div>
@@ -654,7 +663,6 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
   <!-- ── HOME (app-launcher landing screen, mobile only) ── -->
   <div class="view active" id="view-home">
     <div class="home-greeting">
-      <div class="home-greeting-hello" id="homeGreeting">—</div>
       <div class="home-greeting-sub" data-i18n="home.sub">Wählen Sie einen Bereich</div>
     </div>
     <div class="home-tiles">
@@ -1120,7 +1128,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         <div class="info-row"><span class="info-label" data-i18n="profil.tel">Telefon</span><span class="info-value" id="profilOrdTel">—</span></div>
       </div>
 
-      <div class="info-card" id="profilDeletionCard" style="display:none;border-left-color:var(--red);">
+      <div class="info-card" id="profilDeletionCard" style="display:none;">
         <div class="info-card-header" data-i18n="profil.deletion.title">Datenlöschung beantragen</div>
         <div style="padding:0 16px 12px;font-size:12px;color:var(--text-muted);line-height:1.6;" data-i18n="profil.deletion.desc">Sie können jederzeit die Löschung Ihrer Daten beantragen (Art. 17 DSGVO). Ärztliche Aufzeichnungen müssen gesetzlich mindestens 10 Jahre nach der letzten Behandlung aufbewahrt werden (§ 51 ÄrzteG) — ist diese Frist bereits abgelaufen, werden Ihre Daten sofort anonymisiert; andernfalls zum frühestmöglichen gesetzlich zulässigen Zeitpunkt.</div>
         <div id="profilDeletionResult" style="display:none;margin:0 16px 12px;padding:8px 10px;background:var(--bg);border:1.5px dashed var(--red);border-radius:8px;font-size:12px;font-weight:700;color:var(--text);"></div>
@@ -2188,10 +2196,11 @@ async function initPatientData(){
   }
   const fullName=account.fullName||account.name||'Patient';
   const initial=fullName[0]||'P';
-  document.getElementById('topbarAvatar').textContent=initial;
-  document.getElementById('topbarUsername').textContent=(account.name||fullName.split(' ')[0]);
-  const homeGreetingEl=document.getElementById('homeGreeting');
-  if(homeGreetingEl) homeGreetingEl.textContent=tr('home.greeting').replace('{name}',account.name||fullName.split(' ')[0]);
+  // Real user feedback (2026-08-13): the topbar avatar circle (just an
+  // initial letter) is gone -- the full name (Vorname + Nachname) is
+  // written out as plain text instead, and the "Hallo, {name}" home
+  // greeting (which duplicated the same name) is gone too.
+  document.getElementById('topbarUsername').textContent=fullName;
   document.getElementById('profilAvatar').textContent=initial;
   document.getElementById('profilName').textContent=fullName;
   document.getElementById('profilSub').textContent='Patient · '+(account.versicherung||'—')+(account.adresse?' · '+account.adresse.split(',').pop().trim():'');
@@ -3197,15 +3206,6 @@ function onPatientLanguageChanged(){
   // caught by applyI18n()'s static [data-i18n] walk since they're built in
   // JS, same reasoning as the other calls in this function.
   renderPatientMessages();
-  // homeGreeting interpolates {name} into home.greeting -- not a plain
-  // [data-i18n] element for that reason, so applyI18n()'s static walk can't
-  // catch it on its own.
-  const homeGreetingEl=document.getElementById('homeGreeting');
-  if(homeGreetingEl){
-    const account=getCurrentAccount();
-    const name=account?(account.name||(account.fullName||'').split(' ')[0]):'';
-    homeGreetingEl.textContent=name?tr('home.greeting').replace('{name}',name):tr('home.greeting').replace('{name}','').trim();
-  }
   // termineSub has no data-i18n anymore (see the HTML comment there), but
   // re-running this defensively costs nothing and guards against any
   // future data-i18n reintroduction silently overwriting it again.
