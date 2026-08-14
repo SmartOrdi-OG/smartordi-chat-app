@@ -36,6 +36,7 @@
 <script src="vendor/kartei-atteste.js"></script>
 <script src="vendor/cdss-medication-alerts.js"></script>
 <script src="vendor/migration-normdatensatz.js"></script>
+<script src="vendor/migration-normdatensatz2.js"></script>
 <script src="vendor/kartei-advanced-search.js"></script>
 <script src="vendor/kartei-tagesuhr.js"></script>
 <script src="vendor/mobile-nav.js"></script>
@@ -2347,30 +2348,30 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <div class="k-form-section">
-          <div class="k-form-label">Zu pflegende Person (Patient/in)</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Zu pflegende Person (Patient/in)</div>
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;font-weight:600;" id="pf-patient-info">— Patient wählen —</div>
         </div>
 
         <div class="k-form-section">
-          <div class="k-form-label">Antragsteller/in (pflegende, berufstätige Person)</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Antragsteller/in (pflegende, berufstätige Person)</div>
           <input class="k-form-input" id="pf-antragsteller" placeholder="Vor- und Nachname">
         </div>
         <div class="k-form-section">
-          <div class="k-form-label">Verwandtschaftsverhältnis zum/zur Patient/in</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Verwandtschaftsverhältnis zum/zur Patient/in</div>
           <input class="k-form-input" id="pf-verwandtschaft" placeholder="z.B. Mutter, Vater, Ehepartner/in">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="k-form-section">
-            <div class="k-form-label">Pflege erforderlich von</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Pflege erforderlich von</div>
             <input class="k-form-input" id="pf-von" type="date">
           </div>
           <div class="k-form-section">
-            <div class="k-form-label">bis</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>bis</div>
             <input class="k-form-input" id="pf-bis" type="date">
           </div>
         </div>
         <div class="k-form-section">
-          <div class="k-form-label">Ausstellungsort</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Ausstellungsort</div>
           <input class="k-form-input" id="pf-ort" placeholder="z.B. Linz">
         </div>
 
@@ -2396,26 +2397,26 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <div class="k-form-section">
-          <div class="k-form-label">Patient/in</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Patient/in</div>
           <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px;font-size:13px;color:#0f172a;font-weight:600;" id="au2-patient-info">— Patient wählen —</div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="k-form-section">
-            <div class="k-form-label">Arbeitsunfähig von</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Arbeitsunfähig von</div>
             <input class="k-form-input" id="au2-von" type="date">
           </div>
           <div class="k-form-section">
-            <div class="k-form-label">bis</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>bis</div>
             <input class="k-form-input" id="au2-bis" type="date">
           </div>
         </div>
         <div class="k-form-section">
-          <div class="k-form-label">Grund</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Grund</div>
           <input class="k-form-input" id="au2-grund" value="Krankheit">
         </div>
         <div class="k-form-section">
-          <div class="k-form-label">Krankenstandsadresse</div>
+          <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Krankenstandsadresse</div>
           <input class="k-form-input" id="au2-adresse" placeholder="Adresse während des Krankenstands">
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;margin-bottom:14px;">
@@ -2424,21 +2425,21 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="k-form-section">
-            <div class="k-form-label">Ausgehzeit von (falls erlaubt)</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Ausgehzeit von (falls erlaubt)</div>
             <input class="k-form-input" id="au2-ausgehVon" placeholder="z.B. 10:00">
           </div>
           <div class="k-form-section">
-            <div class="k-form-label">bis</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>bis</div>
             <input class="k-form-input" id="au2-ausgehBis" placeholder="z.B. 12:00">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div class="k-form-section">
-            <div class="k-form-label">Versicherungsträger</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Versicherungsträger</div>
             <input class="k-form-input" id="au2-versicherungstraeger">
           </div>
           <div class="k-form-section">
-            <div class="k-form-label">Versicherungsnummer</div>
+            <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>Versicherungsnummer</div>
             <input class="k-form-input" id="au2-versicherungsnummer">
           </div>
         </div>
@@ -5074,15 +5075,18 @@ async function exportPracticeDataZip(){
   }
 }
 
-// ══ Praxisdaten-Migration (Normdatensatz-Import), Phase 1 ══
-// Upload a ZIP -> detect Legacy Normdatensatz (ENDS 1) content -> parse
-// #P (Patientenstammdaten) -> show a read-only preview. Does not write to
-// the database -- see vendor/migration-normdatensatz.js for the parser and
-// TODO.md for the full multi-phase project plan (Legacy first, ENDS 2/CDA
-// as a separate parser later).
-// Holds the most recently parsed ZIP's result ({patients,...} from
-// parseEnds1Zip()) so confirmMigrationImport() can act on it without
-// re-parsing -- reset every time the modal is (re)opened or a new file is
+// ══ Praxisdaten-Migration (Normdatensatz-Import) ══
+// Upload a ZIP -> detect either Legacy Normdatensatz (ENDS 1, flat text) or
+// Export-Normdatensatz 2 (ENDS 2, CDA/XML in an IHE XDM container) -> parse
+// Stammdaten -> show a read-only preview. Does not write to the database --
+// see vendor/migration-normdatensatz.js (ENDS 1) and
+// vendor/migration-normdatensatz2.js (ENDS 2, Phase 1: Stammdaten preview
+// only so far) for the parsers, and TODO.md for the full multi-phase
+// project plan.
+// Holds the most recently parsed ZIP's result ({format,patients,...} from
+// parseEnds1Zip()/parseEnds2Zip()) so confirmMigrationImport() can act on it
+// without re-parsing -- reset every time the modal is (re)opened or a new
+// file is
 // chosen, so a stale previous file's data can never get imported by mistake.
 let migrationParsedResult=null;
 // Set once confirmMigrationImport() finishes -- see its own comment for why
@@ -5112,12 +5116,22 @@ async function handleMigrationZipFile(event){
   if(!file) return;
   statusEl.textContent='Analysiere ZIP-Datei...';
   try{
-    const result=await parseEnds1Zip(file);
+    // Try ENDS 1 (Legacy, flat text) first, then ENDS 2 (CDA/XML, IHE XDM
+    // container) -- the two formats are structurally different enough
+    // (looksLikeEnds1()/ends2FindXdmRoot()) that a file can only ever match
+    // one, so trying both in sequence is safe and needs no separate format
+    // picker from the user.
+    let result=await parseEnds1Zip(file);
     if(!result){
-      statusEl.textContent='Kein Export-Normdatensatz (Legacy/ENDS 1) in dieser ZIP-Datei erkannt.';
+      result=await parseEnds2Zip(file);
+    }
+    if(!result){
+      statusEl.textContent='Kein Export-Normdatensatz (ENDS 1 oder ENDS 2) in dieser ZIP-Datei erkannt.';
       return;
     }
-    statusEl.textContent='Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
+    statusEl.textContent=result.format==='ends2'
+      ?'Format erkannt: Export-Normdatensatz 2 (ENDS 2, CDA/XML)'
+      :'Format erkannt: Legacy Export-Normdatensatz (ENDS 1) — Zeichenkodierung: '+result.encoding;
     migrationParsedResult=result;
     renderMigrationPreview(result);
   }catch(err){
@@ -5138,10 +5152,16 @@ function renderMigrationPreview(result){
     +(otherBlocks?'<br>Weitere gefundene Daten (noch nicht ausgewertet): '+escapeHtml(otherBlocks):'');
   tbody.innerHTML=result.patients.slice(0,50).map(p=>{
     const s=p.stammdaten;
-    const dokumente=p.befunde.filter(b=>b.TBI==='1');
-    const dokumenteFehlend=dokumente.filter(b=>!b.fileFound).length;
+    // fileFound is only ever set on entries that actually reference a
+    // separate file (ENDS 1's #F document findings, TBI==='1'; ENDS 2's
+    // secondary documents, see parseEnds2Zip()) -- undefined (not counted)
+    // on everything else, so this check works for either format unchanged.
+    const dokumenteFehlend=p.befunde.filter(b=>b.fileFound===false).length;
     const dvl=[
       p.diagnosen.length?p.diagnosen.length+' Diagnose(n)':null,
+      // Karteineintragungen only exists on ENDS 2 patients (see
+      // parseEnds2Zip()) -- undefined, not an empty array, on ENDS 1 ones.
+      (p.karteineintragungen||[]).length?p.karteineintragungen.length+' Karteineintragung(en)':null,
       p.verordnungen.length?p.verordnungen.length+' Verordnung(en)':null,
       p.laborbefunde.length?p.laborbefunde.length+' Laborbefund(e)':null,
       p.befunde.length?p.befunde.length+' Befund(e)'+(dokumenteFehlend?' ('+dokumenteFehlend+' Datei(en) nicht in ZIP gefunden)':''):null,
@@ -5236,26 +5256,116 @@ async function importMigrationBefund(patientId,entry,uploadedBy){
   }
   return true;
 }
-// Writes every #D/#V/#L/#F entry parsed for one patient (Phase 4/6).
+// ENDS 2's Befund equivalent (Phase 4): a secondary document referenced
+// from a patient's own document INDEX.HTM besides the main NDS CDA (e.g. a
+// standalone Laborbefund CDA like the real sample's LAB01.XML), already
+// rendered to readable text by parseEnds2Zip() (see
+// ends2RenderCdaDocumentText() in vendor/migration-normdatensatz2.js --
+// deliberately text, not a field-by-field lab-result write, to avoid
+// double-counting values already captured from the main document's own
+// Laborparameter section). A row whose file couldn't be resolved in the
+// ZIP, or that parsed to no readable content, still gets a document noting
+// that -- same "never silently drop a reference" discipline as
+// importMigrationBefund() above.
+async function importMigrationNebendokument2(patientId,entry,uploadedBy){
+  const title=entry.title||'Dokument';
+  let bodyText;
+  if(entry.fileFound&&entry.bodyText){
+    bodyText=(entry.datum?('Datum: '+entry.datum+'\n\n'):'')+entry.bodyText;
+  }else if(entry.fileFound){
+    bodyText='Dokument aus dem Export-ZIP konnte nicht gelesen werden.';
+  }else{
+    bodyText='Dokument aus dem Export-ZIP nicht gefunden.';
+  }
+  await uploadPatientDocument(patientId,{ category:'befund', title, bodyText },uploadedBy);
+  return true;
+}
+// ENDS 2 equivalents of the four writers above (Phase 3) -- same patient_
+// visits/patient_rezepte/patient_lab_results targets, but reading the
+// entry shapes vendor/migration-normdatensatz2.js's section parsers
+// produce (see ends2ParseDiagnosen/ends2ParseKarteineintragungen/
+// ends2ParseVerordnungen/ends2ParseLaborbefunde) instead of ENDS 1's #P
+// dictionary fields.
+async function importMigrationDiagnose2(patientId,entry,uploadedBy){
+  const date=ends2DiagnoseZeitraumToIso(entry.zeitraum||'');
+  if(!date) return false;
+  const notesParts=[];
+  if(entry.code) notesParts.push('Code: '+entry.code);
+  if(entry.art) notesParts.push(entry.art);
+  await createPatientVisit(patientId,{
+    date, type:'Diagnose (ENDS 2-Import)', diag:entry.text||'', notes:notesParts.join(', ')||undefined,
+  },uploadedBy);
+  return true;
+}
+// Karteineintragungen have no ENDS 1 equivalent block -- written into the
+// same Verlauf table as Diagnose entries (distinct type label), and their
+// count is folded into counts.diagnosen by importMigrationSubRecords()
+// below rather than adding a new bucket to the report/UI.
+async function importMigrationKarteineintragung2(patientId,entry,uploadedBy){
+  const date=ends2DisplayDateToIso(entry.datum||'');
+  if(!date) return false;
+  await createPatientVisit(patientId,{
+    date, type:'Karteieintrag (ENDS 2-Import)', diag:entry.text||'',
+  },uploadedBy);
+  return true;
+}
+async function importMigrationVerordnung2(patientId,entry,uploadedBy){
+  // entry.datum is the Rezept section's own free-text "Gültig von" table
+  // cell, not a fixed-format field like ENDS 1's -- only used if it
+  // actually looks like an ISO date, left blank otherwise rather than
+  // trusting arbitrary Level 2 table text.
+  const datum=/^\d{4}-\d{2}-\d{2}$/.test(entry.datum||'')?entry.datum:undefined;
+  await createPatientRezept(patientId,{
+    datum, med1:entry.bezeichnung||'', pack1:entry.packungen||undefined, dose1:entry.dosierung||undefined,
+    notes:[entry.pzn?('PZN: '+entry.pzn):'',entry.wirkstoff?('Wirkstoff: '+entry.wirkstoff):''].filter(Boolean).join(', ')||undefined,
+  },uploadedBy);
+  return true;
+}
+async function importMigrationLaborbefund2(patientId,entry,uploadedBy){
+  const bezeichnung=(entry.bezeichnung||'').trim();
+  if(!bezeichnung) return false;
+  const {wert,ergebnisText}=ends1ParseLabValue(entry.ergebnis,'');
+  const extra=[];
+  if(entry.einheit) extra.push(entry.einheit);
+  if(entry.referenz) extra.push('Referenz: '+entry.referenz);
+  const finalText=[ergebnisText,extra.join(', ')].filter(Boolean).join(' — ')||undefined;
+  await insertPatientLabResult(patientId,{
+    bezeichnung, wert, ergebnisText:finalText,
+    gruppe:entry.gruppe||undefined, quelle:'Normdatensatz-Import (ENDS 2)',
+  },uploadedBy);
+  return true;
+}
+// Writes every #D/#V/#L/#F entry parsed for one patient (Phase 4/6), or
+// (since Phase 3) every ENDS 2 Diagnose/Karteineintragung/Verordnung/
+// Laborbefund entry -- branches once on patientEntry.format rather than
+// forking this whole function, since both formats share the same target
+// tables and the same per-record try/catch discipline.
 // Best-effort per sub-record -- one failed entry is logged and flagged, not
 // allowed to abort the rest of that patient's import (same "don't let one
 // bad row sink the whole batch" spirit as secretary.html's CSV import).
 async function importMigrationSubRecords(patientId,patientEntry,uploadedBy){
   const counts={diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0};let failed=false;
+  const isEnds2=migrationParsedResult&&migrationParsedResult.format==='ends2';
   for(const d of patientEntry.diagnosen){
-    try{ if(await importMigrationDiagnose(patientId,d,uploadedBy)) counts.diagnosen++; }
+    try{ if(await (isEnds2?importMigrationDiagnose2(patientId,d,uploadedBy):importMigrationDiagnose(patientId,d,uploadedBy))) counts.diagnosen++; }
     catch(err){ console.error('Normdatensatz-Import: Diagnose fehlgeschlagen',err); failed=true; }
   }
+  if(isEnds2){
+    for(const k of patientEntry.karteineintragungen||[]){
+      try{ if(await importMigrationKarteineintragung2(patientId,k,uploadedBy)) counts.diagnosen++; }
+      catch(err){ console.error('Normdatensatz-Import: Karteieintrag fehlgeschlagen',err); failed=true; }
+    }
+  }
   for(const v of patientEntry.verordnungen){
-    try{ await importMigrationVerordnung(patientId,v,uploadedBy); counts.verordnungen++; }
+    try{ await (isEnds2?importMigrationVerordnung2(patientId,v,uploadedBy):importMigrationVerordnung(patientId,v,uploadedBy)); counts.verordnungen++; }
     catch(err){ console.error('Normdatensatz-Import: Verordnung fehlgeschlagen',err); failed=true; }
   }
   for(const l of patientEntry.laborbefunde){
-    try{ if(await importMigrationLaborbefund(patientId,l,uploadedBy)) counts.laborbefunde++; }
+    try{ if(await (isEnds2?importMigrationLaborbefund2(patientId,l,uploadedBy):importMigrationLaborbefund(patientId,l,uploadedBy))) counts.laborbefunde++; }
     catch(err){ console.error('Normdatensatz-Import: Laborbefund fehlgeschlagen',err); failed=true; }
   }
-  for(const f of patientEntry.befunde){
-    try{ if(await importMigrationBefund(patientId,f,uploadedBy)) counts.befunde++; }
+  for(const f of patientEntry.befunde||[]){
+    try{ if(await (isEnds2?importMigrationNebendokument2(patientId,f,uploadedBy):importMigrationBefund(patientId,f,uploadedBy))) counts.befunde++; }
     catch(err){ console.error('Normdatensatz-Import: Befund fehlgeschlagen',err); failed=true; }
   }
   return {counts,failed};
@@ -5298,7 +5408,10 @@ async function confirmMigrationImport(){
     progressEl.textContent='Importiere '+(i+1)+' von '+patients.length+' Patient(en)...';
     const vorname=(s.VNM||'').trim(), nachname=(s.FNM||'').trim();
     if(!vorname||!nachname){ skipped++; continue; }
-    const dobIso=ends1DateToIso(s.GBD||'');
+    // ENDS 2's GBD is already "DD.MM.YYYY" display text (see
+    // ends2CdaDateToDisplay()), unlike ENDS 1's raw 8-digit TTMMJJJJ --
+    // needs the inverse converter, not ends1DateToIso().
+    const dobIso=migrationParsedResult.format==='ends2'?ends2DisplayDateToIso(s.GBD||''):ends1DateToIso(s.GBD||'');
     const unmapped=patientEntry.unknownFields;
     const extra={
       adresse:ends1ComposeAdresse(s)||undefined,
@@ -5366,7 +5479,7 @@ async function confirmMigrationImport(){
   // or to send back to the old system's vendor as proof of a completed
   // transfer). sourceFiles names which file(s) inside the ZIP were
   // actually recognized as ENDS1 and parsed, for traceability.
-  migrationLastReport={results,skipped,totals,sourceFiles:migrationParsedResult.matchedFiles};
+  migrationLastReport={results,skipped,totals,sourceFiles:migrationParsedResult.matchedFiles,format:migrationParsedResult.format};
   renderMigrationImportResults(results,skipped,totals);
 }
 
@@ -5411,11 +5524,11 @@ function renderMigrationImportResults(results,skipped,totals){
 // export, same reasoning as that function's own comment.
 function downloadMigrationReport(){
   if(!migrationLastReport) return;
-  const {results,skipped,totals,sourceFiles}=migrationLastReport;
+  const {results,skipped,totals,sourceFiles,format}=migrationLastReport;
   const createdCount=results.filter(r=>!r.updated&&!r.limitReached&&!r.syncFailed).length;
   const updatedCount=results.filter(r=>r.updated&&!r.syncFailed).length;
   const lines=[
-    ['Migrationsbericht -- Normdatensatz (ENDS 1) Import'],
+    ['Migrationsbericht -- Normdatensatz ('+(format==='ends2'?'ENDS 2':'ENDS 1')+') Import'],
     ['Erstellt am',new Date().toLocaleString('de-AT')],
     ['Quelldatei(en)',sourceFiles.join('; ')],
     ['Neue Patienten',String(createdCount)],
