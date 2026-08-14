@@ -63,14 +63,15 @@ test('sessionStorage empty but a real Supabase Auth session is still valid -- re
   const result = await page.evaluate(() => ({
     topbarUsername: document.getElementById('topbarUsername').textContent,
     profilName: document.getElementById('profilName').textContent,
-    homeGreeting: document.getElementById('homeGreeting').textContent,
     sessionUser: JSON.parse(sessionStorage.getItem('smartordi_user') || 'null'),
     token: sessionStorage.getItem('smartordi_patient_token'),
     bannerDisplay: getComputedStyle(document.getElementById('dataLoadErrorBanner')).display,
   }));
   expect(result.profilName).toBe('Maria Huber');
-  expect(result.topbarUsername).toBe('Maria');
-  expect(result.homeGreeting).toContain('Maria');
+  // Real user feedback (2026-08-13): the topbar now shows the full name
+  // (Vorname + Nachname) as plain text, replacing both the avatar-circle
+  // initial and the separate "Hallo, {name}" home greeting.
+  expect(result.topbarUsername).toBe('Maria Huber');
   expect(result.sessionUser && result.sessionUser.username).toBe('maria.huber');
   expect(result.token).toBeTruthy();
   // A successful recovery is silent -- no error banner just because the tab

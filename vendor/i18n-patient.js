@@ -23,7 +23,7 @@ const I18N={
   de:{
     'nav.chat':'Chat','nav.termine':'Termine','nav.dokumente':'Dokumente','nav.profil':'Profil','nav.impfpass':'Impfungen','nav.mkp':'Mutter-Kind-Pass',
     'nav.home':'Start','nav.back':'Zurück',
-    'home.greeting':'Hallo, {name}','home.sub':'Wählen Sie einen Bereich',
+    'home.sub':'Wählen Sie einen Bereich',
     'topbar.logout':'Abmelden','topbar.logoutConfirm':'Wirklich abmelden?',
     'win.minimize':'Minimieren','win.fullscreen':'Verkleinern','win.vollbild':'Vollbild','win.close':'Schließen',
     'chat.placeholder':'Nachricht schreiben...','chat.toast.sendFailed':'Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
@@ -324,7 +324,7 @@ const I18N={
   en:{
     'nav.chat':'Chat','nav.termine':'Appointments','nav.dokumente':'Documents','nav.profil':'Profile','nav.impfpass':'Vaccinations','nav.mkp':'Mutter-Kind-Pass',
     'nav.home':'Home','nav.back':'Back',
-    'home.greeting':'Hello, {name}','home.sub':'Choose an area',
+    'home.sub':'Choose an area',
     'topbar.logout':'Log out','topbar.logoutConfirm':'Really log out?',
     'win.minimize':'Minimize','win.fullscreen':'Restore','win.vollbild':'Fullscreen','win.close':'Close',
     'chat.placeholder':'Write a message...','chat.toast.sendFailed':'Could not send your message. Please try again.',
@@ -625,7 +625,7 @@ const I18N={
   ar:{
     'nav.chat':'محادثة','nav.termine':'المواعيد','nav.dokumente':'المستندات','nav.profil':'الملف الشخصي','nav.impfpass':'التطعيمات','nav.mkp':'Mutter-Kind-Pass',
     'nav.home':'الرئيسية','nav.back':'رجوع',
-    'home.greeting':'مرحبًا، {name}','home.sub':'اختر قسمًا',
+    'home.sub':'اختر قسمًا',
     'topbar.logout':'تسجيل الخروج','topbar.logoutConfirm':'هل تريد فعلاً تسجيل الخروج؟',
     'win.minimize':'تصغير','win.fullscreen':'استعادة','win.vollbild':'ملء الشاشة','win.close':'إغلاق',
     'chat.placeholder':'اكتب رسالة...','chat.toast.sendFailed':'تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى.',
@@ -926,7 +926,7 @@ const I18N={
   tr:{
     'nav.chat':'Sohbet','nav.termine':'Randevular','nav.dokumente':'Belgeler','nav.profil':'Profil','nav.impfpass':'Aşılar','nav.mkp':'Mutter-Kind-Pass',
     'nav.home':'Ana Sayfa','nav.back':'Geri',
-    'home.greeting':'Merhaba, {name}','home.sub':'Bir bölüm seçin',
+    'home.sub':'Bir bölüm seçin',
     'topbar.logout':'Çıkış yap','topbar.logoutConfirm':'Gerçekten çıkış yapmak istiyor musunuz?',
     'win.minimize':'Küçült','win.fullscreen':'Geri yükle','win.vollbild':'Tam ekran','win.close':'Kapat',
     'chat.placeholder':'Mesaj yazın...','chat.toast.sendFailed':'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
@@ -1227,7 +1227,7 @@ const I18N={
   bs:{
     'nav.chat':'Chat','nav.termine':'Termini','nav.dokumente':'Dokumenti','nav.profil':'Profil','nav.impfpass':'Vakcinacije','nav.mkp':'Mutter-Kind-Pass',
     'nav.home':'Početna','nav.back':'Nazad',
-    'home.greeting':'Zdravo, {name}','home.sub':'Odaberite oblast',
+    'home.sub':'Odaberite oblast',
     'topbar.logout':'Odjava','topbar.logoutConfirm':'Da li se zaista želite odjaviti?',
     'win.minimize':'Umanji','win.fullscreen':'Vrati','win.vollbild':'Puni ekran','win.close':'Zatvori',
     'chat.placeholder':'Napišite poruku...','chat.toast.sendFailed':'Poruka nije mogla biti poslata. Pokušajte ponovo.',
