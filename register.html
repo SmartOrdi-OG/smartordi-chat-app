@@ -396,6 +396,34 @@ async function doRegister(){
     return;
   }
   const userId=signUpData.user.id;
+  // Real bug found 2026-08-16 during a full walkthrough test: this practices
+  // insert intermittently failed with "new row violates row-level security
+  // policy for table \"practices\"" right after a genuinely successful
+  // signUp() -- confirmed via Supabase's own request logs: POST /auth/v1/
+  // signup 200, then POST /rest/v1/practices 403 fifty-five milliseconds
+  // later, same browser. The RLS policy itself is correct ("insert new
+  // practice": roles={authenticated}, with_check=true -- ANY authenticated
+  // user may insert), so a 403 against it can only mean this specific
+  // request didn't carry the new user's session yet -- a known supabase-js
+  // gotcha: the shared `sb` client's REST calls pick up a fresh session via
+  // an internal onAuthStateChange notification that is not guaranteed to
+  // have already landed by the time the awaited signUp() call above
+  // returns, so a write issued immediately afterward can race ahead of it
+  // and go out effectively unauthenticated (anon has no INSERT policy on
+  // this table at all, hence the RLS violation).
+  //
+  // Fixed by never depending on that ambient timing for the two writes
+  // that immediately follow signup: a one-off client built with THIS
+  // signup's own already-in-hand access token can't race against anything,
+  // since it never depends on the shared client's session state at all.
+  // Falls back to the shared `sb` client only if signUp() genuinely
+  // returned no session (e.g. email confirmation required) -- unchanged,
+  // pre-existing behavior for that case.
+  const authedSb=signUpData.session
+    ? window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+        global:{headers:{Authorization:'Bearer '+signUpData.session.access_token}},
+      })
+    : sb;
   // supabase/phase15_staff_practice_rls.sql -- registering here is the
   // moment a brand-new practice comes into existence, so there's no
   // existing practice_id to inherit; create its practices row first and
@@ -406,7 +434,7 @@ async function doRegister(){
   // row (id=true) that every registering practice clobbered together, and
   // it silently ignored the practice name the user actually typed
   // (f-ordination) in favor of a generic "Ordination <fullName>" fallback.
-  const {data:practiceRow,error:practiceError}=await sb.from('practices').insert({
+  const {data:practiceRow,error:practiceError}=await authedSb.from('practices').insert({
     name:ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString(),
   }).select().single();
   if(practiceError){
@@ -417,7 +445,7 @@ async function doRegister(){
     errorEl.classList.add('show');
     return;
   }
-  const {error:profileError}=await sb.from('staff_profiles').insert({
+  const {error:profileError}=await authedSb.from('staff_profiles').insert({
     id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email, practice_id:practiceRow.id,
   });
   if(profileError){

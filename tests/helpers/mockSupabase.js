@@ -355,7 +355,17 @@ function mockScript(seed) {
         // undefined" the moment a test reached it.
         functions: { invoke: () => Promise.resolve({ data: null, error: null }) },
         auth: {
-          signUp: () => Promise.resolve({ data: { user: { id: 'new-user-uuid' } }, error: null }),
+          // Real Supabase (autoconfirm on, as this project's project is
+          // configured) returns a real session alongside the new user, not
+          // just the user alone -- register.html's own signup flow now
+          // depends on that session.access_token being present (see its
+          // "Real bug found 2026-08-16" comment) to build a one-off client
+          // that can't race the shared client's own session-sync timing.
+          // Missing this field here would let that whole code path go
+          // permanently untested (always silently falling back to the
+          // shared sb client), exactly how the real bug went uncaught
+          // until a live walkthrough test found it.
+          signUp: () => Promise.resolve({ data: { user: { id: 'new-user-uuid' }, session: { access_token: 'mock-access-token', refresh_token: 'mock-refresh-token' } }, error: null }),
           signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'not mocked' } }),
           // Added for supabase/phase33_patient_login_cutover.sql -- real
           // patient/guardian login now drives sb.auth directly

@@ -44,6 +44,71 @@ test('register.html creates one practice with the real typed name and every fiel
   expect(after.practiceSettingsRows, 'practice_settings must never be written to').toHaveLength(0);
 });
 
+// Real bug found 2026-08-16 during a full walkthrough test: the practices
+// insert right after signUp() intermittently failed with a real "new row
+// violates row-level security policy" -- confirmed via Supabase's own
+// request logs (signup 200, then the very next insert 403, 55ms later,
+// same browser). A known supabase-js gotcha: the shared `sb` client's REST
+// calls only pick up a fresh session via an internal onAuthStateChange
+// notification that isn't guaranteed to have landed by the time the
+// awaited signUp() call returns, so a write issued immediately afterward
+// can race ahead of it and go out effectively unauthenticated. Fixed by
+// building a one-off client explicitly carrying the just-returned access
+// token for the two writes that immediately follow signup, instead of
+// depending on the shared client's session-sync timing at all.
+test('register.html builds a fresh client carrying signUp()\'s own access token for the practices/staff_profiles writes, instead of racing the shared client\'s session sync', async ({ page }) => {
+  await installMockSupabase(page, {}, () => {
+    // Records every window.supabase.createClient() call's options so the
+    // test can see exactly what each one was authenticated with -- the
+    // mock's own createClient() ignores its arguments (it has no concept
+    // of RLS/roles at all), so this is the only way to observe the fix
+    // from the outside: the FIX is "call createClient again with the
+    // fresh token", not any behavior the mock's fake backend can reject.
+    const realCreateClient = window.supabase.createClient;
+    window.__createClientCalls = [];
+    window.supabase.createClient = function (...args) {
+      window.__createClientCalls.push(args);
+      return realCreateClient.apply(window.supabase, args);
+    };
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
+  await page.waitForTimeout(1000);
+
+  const after = await page.evaluate(async () => {
+    document.getElementById('f-vorname').value = 'Sarah';
+    document.getElementById('f-nachname').value = 'Ahmed';
+    document.getElementById('f-fach').value = document.getElementById('f-fach').options[1]?.value || 'Allgemeinmedizin';
+    document.getElementById('f-ordination').value = 'Test Ordination';
+    document.getElementById('f-adresse').value = 'Teststraße 1, Linz';
+    document.getElementById('f-email').value = 'sarah@example.com';
+    document.getElementById('f-tel').value = '+43 660 1234567';
+    document.getElementById('f-password').value = 'sicheres-passwort-123';
+    document.getElementById('f-password-confirm').value = 'sicheres-passwort-123';
+    document.getElementById('cb-dsgvo').checked = true;
+    document.getElementById('cb-agb').checked = true;
+    await doRegister();
+    await new Promise(r => setTimeout(r, 300));
+    return {
+      createClientCalls: window.__createClientCalls,
+      practices: window.__store.practices,
+      staffProfiles: window.__store.staff_profiles,
+    };
+  });
+
+  // One createClient() call from the page's own top-level `const sb=...`
+  // (vendor/staff-accounts.js), plus at least one more from register.html's
+  // fix -- built AFTER signUp() resolved, carrying that exact access token.
+  expect(after.createClientCalls.length).toBeGreaterThanOrEqual(2);
+  const authedCall = after.createClientCalls[after.createClientCalls.length - 1];
+  const options = authedCall[2];
+  expect(options?.global?.headers?.Authorization, 'must carry signUp()\'s own just-returned access token, not rely on the shared client\'s session sync').toBe('Bearer mock-access-token');
+
+  // The writes themselves must still have gone through correctly.
+  expect(after.practices).toHaveLength(1);
+  expect(after.staffProfiles).toHaveLength(1);
+  expect(after.staffProfiles[0].practice_id).toBe(after.practices[0].id);
+});
+
 // Regression test for a gap found in the 2026-07-29 pricing restructure:
 // register.html's own "Paket wählen" plan cards were never updated when
 // PLAN_FEATURES was renamed from basic/pro/enterprise to standard/
