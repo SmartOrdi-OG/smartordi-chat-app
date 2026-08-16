@@ -1923,7 +1923,7 @@ function getCurrentAccount(){
       fullName:_remoteProfile.fullName, name:_remoteProfile.name, fach:_remoteProfile.fach,
       dob:_remoteProfile.dob, adresse:_remoteProfile.adresse, tel:_remoteProfile.tel,
       email:_remoteProfile.email, versicherung:_remoteProfile.versicherung, svnr:_remoteProfile.svnr,
-      isChild:_remoteProfile.isChild,
+      isChild:_remoteProfile.isChild, geschlecht:_remoteProfile.geschlecht,
       messages:_remoteMessages||[],
     });
   }
@@ -2691,14 +2691,23 @@ let activeRegions=new Set();
 let selectedSymptoms=new Set();
 let symptomTerminId=null;
 let showingBodyBack=false;
-// Real user request (2026-08-14): which adult figure (male/female) to show
-// in the symptom picker -- deliberately ephemeral UI state, never saved to
-// the patient's profile (no gender field exists anywhere on a patient
-// record to infer this from automatically; adding one just for this
-// picker would be a much bigger, unrelated change). Persists across modal
-// opens within the same session so picking it once is enough. A child
-// account skips this entirely and always gets the child figure instead.
+// Real user request (2026-08-14, extended 2026-08-16): which adult figure
+// (male/female) to show in the symptom picker. Originally purely ephemeral
+// UI state (no gender field existed on a patient record at all yet) --
+// supabase/phase72_patient_geschlecht.sql added one, so openSymptomModal()
+// now re-seeds this from the account's own real geschlecht on every open
+// (geschlechtToBodyVariant() below), the same way it already resets
+// activeRegions/showingBodyBack fresh each time. The manual Mann/Frau
+// toggle stays as the in-session override/fallback -- for an account with
+// no geschlecht set ("keine Angabe") or 'd' (divers, no dedicated figure
+// exists), and for anyone who just wants to look at the other figure once.
+// A child account skips this entirely and always gets the child figure.
 let bodyGenderVariant='male';
+function geschlechtToBodyVariant(g){
+  if(g==='m') return 'male';
+  if(g==='w') return 'female';
+  return null;
+}
 
 // Injects the right BODY_FIGURES (vendor/symptom-body-figures.js) variant
 // -- keyed off a real child account (isChild) or bodyGenderVariant
@@ -2735,6 +2744,12 @@ function openSymptomModal(terminId){
   activeRegions=new Set();
   selectedSymptoms=new Set();
   showingBodyBack=false;
+  // Auto-select the figure matching the patient's own registered gender
+  // (supabase/phase72_patient_geschlecht.sql) every time the picker opens --
+  // falls back to whatever was last manually picked (or 'male') when
+  // geschlecht is unset/'d', same as before this field existed.
+  const bodyAccount=getCurrentAccount();
+  bodyGenderVariant=geschlechtToBodyVariant(bodyAccount&&bodyAccount.geschlecht)||bodyGenderVariant||'male';
   document.getElementById('bodyFrontView').style.display='block';
   document.getElementById('bodyBackView').style.display='none';
   document.getElementById('bodyViewToggle').textContent=tr('symptom.toggleBack');

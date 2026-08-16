@@ -161,6 +161,23 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <label class="form-label" data-i18n="request.dob.label">Geburtsdatum *</label>
       <input type="date" class="form-input" id="reqDob" style="padding-left:14px;">
     </div>
+    <!-- Real user request (2026-08-16, supabase/phase72_patient_geschlecht.
+         sql): the ONLY place a patient's real gender is ever asked -- staff
+         entry (secretary.html "+ Neuer Patient") and imports only ever
+         carry through whatever this field (or an old system's own gender
+         field) already holds. Optional, "Keine Angabe" default -- never
+         forced -- since patient.html's symptom-picker body figure
+         (renderBodyFigure()) simply falls back to its existing manual
+         Mann/Frau toggle when this is unset. -->
+    <div class="form-group">
+      <label class="form-label" data-i18n="request.geschlecht.label">Geschlecht</label>
+      <select class="form-input" id="reqGeschlecht" style="padding-left:14px;">
+        <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
+        <option value="m" data-i18n="request.geschlecht.m">Männlich</option>
+        <option value="w" data-i18n="request.geschlecht.w">Weiblich</option>
+        <option value="d" data-i18n="request.geschlecht.d">Divers</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label" data-i18n="request.tel.label">Telefon *</label>
       <input type="tel" class="form-input" id="reqTel" placeholder="+43 ..." style="padding-left:14px;">
@@ -675,7 +692,7 @@ function setReqIsChild(isChild){
 
 function showRequestScreen(){
   resubmitUsername=null;
-  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
+  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
   setReqIsChild(false);
@@ -727,6 +744,7 @@ function resubmitJoinRequest(){
   document.getElementById('reqTel').value=acc.tel||'';
   document.getElementById('reqAdresse').value=acc.adresse||'';
   document.getElementById('reqSvnr').value=acc.svnr||'';
+  document.getElementById('reqGeschlecht').value=acc.geschlecht||'';
   document.getElementById('reqUsername').value=currentUser.username;
   document.getElementById('reqUsername').setAttribute('readonly','readonly');
   document.getElementById('reqPassword').value='';
@@ -752,6 +770,7 @@ async function submitJoinRequest(){
   const tel=document.getElementById('reqTel').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
   const svnr=document.getElementById('reqSvnr').value.trim();
+  const geschlecht=document.getElementById('reqGeschlecht').value;
   const username=document.getElementById('reqUsername').value.trim().toLowerCase();
   const pw=document.getElementById('reqPassword').value;
   const confirmPw=document.getElementById('reqConfirmPw').value;
@@ -785,7 +804,7 @@ async function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
-  const fields={vorname,nachname,dob,tel,adresse,svnr,username,pw};
+  const fields={vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw};
   if(joinRequestPracticeId||reqViaDeepLink){
     await performJoinRequestSubmit(fields,joinRequestPracticeId);
     return;
@@ -801,7 +820,7 @@ async function submitJoinRequest(){
 // already known" path (submitJoinRequest() above, unchanged from before)
 // and confirmLinkPractice() (the new QR-scan path) below.
 async function performJoinRequestSubmit(fields,practiceId){
-  const {vorname,nachname,dob,tel,adresse,svnr,username,pw}=fields;
+  const {vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw}=fields;
   const fullName=vorname+' '+nachname;
   // Whichever screen is currently showing the trigger button -- screen-
   // request's "Antrag senden" for the practice-already-known path, or
@@ -820,6 +839,10 @@ async function performJoinRequestSubmit(fields,practiceId){
   const {error}=await sb.from('patient_join_requests').insert({
     username, vorname, nachname, full_name:fullName, dob, tel, adresse, svnr, temp_password:pw,
     practice_id:practiceId, is_child:reqIsChild,
+    // supabase/phase72_patient_geschlecht.sql -- '' (Keine Angabe) becomes
+    // null, never an empty string, same as every other optional column
+    // here going through this same insert.
+    geschlecht:geschlecht||null,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){

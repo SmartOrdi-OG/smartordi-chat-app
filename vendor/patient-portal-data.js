@@ -227,6 +227,11 @@ async function patientGetProfile(){
     versicherung: row.versicherung, svnr: row.svnr, firstLogin: row.first_login,
     joinStatus: row.join_status, joinNote: row.join_note, anamnese: row.anamnese,
     isChild: !!row.is_child,
+    // supabase/phase72_patient_geschlecht.sql -- 'm'/'w'/'d', or null for
+    // "keine Angabe". Drives the symptom-picker's body figure auto-
+    // selection (patient.html's renderBodyFigure()) -- the manual Mann/
+    // Frau toggle there stays as the fallback/override for a null value.
+    geschlecht: row.geschlecht||null,
   };
 }
 async function patientGetMessages(){

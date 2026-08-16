@@ -119,6 +119,11 @@ function createPatientAccount(vorname,nachname,extra){
     // account-creation mechanics -- a child gets an ordinary account here
     // exactly like an adult (see "+ Neuer Patient"'s own comment above).
     is_child:!!(extra&&extra.isChild),
+    // supabase/phase72_patient_geschlecht.sql -- 'm'/'w'/'d', or null for
+    // "keine Angabe". Never forced by this function: secretary.html's "+
+    // Neuer Patient"/CSV import and doctor.html's Normdatensatz import all
+    // pass whatever (possibly nothing) they themselves collected/mapped.
+    geschlecht:(extra&&extra.geschlecht)||null,
     join_status:'approved', temp_password:password,
   }).then(function(result){
     if(result.collision){

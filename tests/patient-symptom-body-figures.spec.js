@@ -3,9 +3,14 @@
 // single generic body figure is now three body types (adult male, adult
 // female, child), each with front + back views, still built from
 // clickable SVG regions -- vendor/symptom-body-figures.js. A patient
-// account gets a Mann/Frau toggle (ephemeral UI state, not saved to the
-// profile -- there is no gender field on patients at all); a child account
-// skips the toggle and always gets the child figure.
+// account gets a Mann/Frau toggle; a child account skips it entirely and
+// always gets the child figure.
+//
+// Extended 2026-08-16 (supabase/phase72_patient_geschlecht.sql): a real
+// geschlecht field now exists on the patient record, so openSymptomModal()
+// auto-selects the matching figure from it every time the picker opens --
+// the toggle stays as the in-session override/fallback for an unset/'d'
+// value. See geschlechtToBodyVariant()/openSymptomModal() in patient.html.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -113,4 +118,77 @@ test('clicking a region on the female figure still records the canonical region 
   const html = await page.evaluate(() => document.getElementById('symptomRegions').innerHTML);
   expect(html).toContain('Brustschmerzen');
   expect(html).toContain('Herzrasen');
+});
+
+// ── supabase/phase72_patient_geschlecht.sql: auto-selection from the
+// patient's own real registered gender ──
+
+test('an account with geschlecht=w gets the female figure pre-selected on open, no manual toggle needed', async ({ page }) => {
+  await setup(page, profileRow({ is_child: false, geschlecht: 'w' }));
+  await page.evaluate(() => openSymptomModal(null));
+  const state = await page.evaluate(() => ({
+    femaleActive: document.getElementById('bodyGenderFemaleBtn').classList.contains('active'),
+    maleActive: document.getElementById('bodyGenderMaleBtn').classList.contains('active'),
+  }));
+  expect(state.femaleActive).toBe(true);
+  expect(state.maleActive).toBe(false);
+});
+
+test('an account with geschlecht=m gets the male figure pre-selected on open', async ({ page }) => {
+  await setup(page, profileRow({ is_child: false, geschlecht: 'm' }));
+  await page.evaluate(() => openSymptomModal(null));
+  const state = await page.evaluate(() => ({
+    maleActive: document.getElementById('bodyGenderMaleBtn').classList.contains('active'),
+    femaleActive: document.getElementById('bodyGenderFemaleBtn').classList.contains('active'),
+  }));
+  expect(state.maleActive).toBe(true);
+  expect(state.femaleActive).toBe(false);
+});
+
+// A manual toggle is still just an in-session override -- the NEXT time the
+// picker opens (a fresh Termin, or the same one reopened), it must go back
+// to the account's own real gender rather than "sticking" on whatever was
+// last clicked, since the whole point of this feature is "automatic".
+test('re-opening the picker resets back to the account\'s real gender even after a manual override', async ({ page }) => {
+  await setup(page, profileRow({ is_child: false, geschlecht: 'w' }));
+  await page.evaluate(() => openSymptomModal(null));
+  await page.evaluate(() => setBodyGenderVariant('male'));
+  let maleActive = await page.evaluate(() => document.getElementById('bodyGenderMaleBtn').classList.contains('active'));
+  expect(maleActive, 'manual override took effect').toBe(true);
+
+  await page.evaluate(() => closeSymptomModal());
+  await page.evaluate(() => openSymptomModal(null));
+  const state = await page.evaluate(() => ({
+    femaleActive: document.getElementById('bodyGenderFemaleBtn').classList.contains('active'),
+    maleActive: document.getElementById('bodyGenderMaleBtn').classList.contains('active'),
+  }));
+  expect(state.femaleActive, 'reopening must re-seed from the real geschlecht, not keep the last manual pick').toBe(true);
+  expect(state.maleActive).toBe(false);
+});
+
+// geschlecht='d' (divers) and geschlecht=null ("keine Angabe") both have no
+// dedicated figure -- must fall back gracefully (default 'male', still
+// toggleable) instead of crashing or rendering nothing.
+test('geschlecht=d (divers) falls back to the manual toggle default instead of crashing', async ({ page }) => {
+  await setup(page, profileRow({ is_child: false, geschlecht: 'd' }));
+  await page.evaluate(() => openSymptomModal(null));
+  const state = await page.evaluate(() => ({
+    toggleVisible: getComputedStyle(document.getElementById('bodyGenderToggle')).display !== 'none',
+    frontHtml: document.getElementById('bodyFrontView').innerHTML,
+    maleActive: document.getElementById('bodyGenderMaleBtn').classList.contains('active'),
+  }));
+  expect(state.toggleVisible).toBe(true);
+  expect(state.maleActive, 'falls back to the default variant').toBe(true);
+  expect(state.frontHtml.length).toBeGreaterThan(0);
+});
+
+test('a child account\'s figure is unaffected by geschlecht -- always the child figure, toggle never shown', async ({ page }) => {
+  await setup(page, profileRow({ is_child: true, dob: '2020-01-01', geschlecht: 'w' }));
+  await page.evaluate(() => openSymptomModal(null));
+  const state = await page.evaluate(() => ({
+    toggleVisible: getComputedStyle(document.getElementById('bodyGenderToggle')).display !== 'none',
+    viewBox: document.getElementById('bodyFrontView').getAttribute('viewBox'),
+  }));
+  expect(state.toggleVisible).toBe(false);
+  expect(state.viewBox).toBe('0 0 200 250');
 });
