@@ -13,6 +13,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Smartordi – Mein Bereich</title>
 <script src="vendor/i18n-patient.js"></script>
+<script src="vendor/symptom-body-figures.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="vendor/staff-accounts.js"></script>
 <script src="vendor/patient-portal-data.js"></script>
@@ -600,13 +601,22 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
 .modal-footer{padding:14px 20px;border-top:1px solid var(--border);}
 .btn-confirm{display:block;width:auto;min-width:200px;margin:0 auto;padding:11px 26px;border:1px solid #bfdbfe;border-radius:12px;background:#EAF4F1;color:#0E5E56;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
 
-.body-part{fill:url(#bodyWoodGrad);stroke:#a97d4d;stroke-width:1.4;cursor:pointer;transition:fill 0.15s;}
+.body-part{fill:url(#bodyFigGrad);stroke:#a97d4d;stroke-width:1.4;cursor:pointer;transition:fill 0.15s;}
 .body-part:hover{fill:#f0d9b0;}
 .body-part.active{fill:#B23A34;stroke:#9C332E;}
-#bodyBackView .body-part{fill:url(#bodyWoodGradBack);}
+#bodyBackView .body-part{fill:url(#bodyFigGradBack);}
 #bodyBackView .body-part.active{fill:#B23A34;stroke:#9C332E;}
 .region-chip{padding:8px 14px;border-radius:20px;border:1.5px solid #BFE0D9;background:white;color:#0E5E56;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .region-chip.active{background:#0E5E56;color:white;}
+/* Real user request (2026-08-14): three body figures (adult male, adult
+   female, child) instead of one -- a small pill toggle picks which adult
+   figure to use for the symptom picker (no gender field exists anywhere
+   in the patient record to infer this from automatically, and adding one
+   just for this picker would be a much bigger, unrelated change -- this
+   choice is deliberately ephemeral UI state, not saved to the patient's
+   profile). Hidden entirely for a child account, which always gets the
+   child figure instead. */
+.body-gender-toggle{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
 .symptom-chip{padding:6px 11px;border-radius:16px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
 .symptom-chip.active{background:#0E5E56;border-color:#0E5E56;color:white;}
 </style>
@@ -814,52 +824,21 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       </div>
       <div class="modal-body">
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;" data-i18n="symptom.hint">Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.</div>
+        <!-- Real user request (2026-08-14): the figure itself now comes in
+             3 body types (adult male, adult female, child), each with a
+             front + back view -- markup for all of them lives in
+             vendor/symptom-body-figures.js and gets injected into the two
+             (still-static) containers below by renderBodyFigure(), keyed
+             off bodyGenderVariant/getCurrentAccount().isChild. -->
+        <div class="body-gender-toggle" id="bodyGenderToggle">
+          <button type="button" class="region-chip" id="bodyGenderMaleBtn" onclick="setBodyGenderVariant('male')" data-i18n="symptom.figureMale">Mann</button>
+          <button type="button" class="region-chip" id="bodyGenderFemaleBtn" onclick="setBodyGenderVariant('female')" data-i18n="symptom.figureFemale">Frau</button>
+        </div>
         <div style="text-align:center;margin-bottom:8px;">
           <button type="button" class="region-chip" id="bodyViewToggle" onclick="toggleBodyView()" style="font-weight:700;" data-i18n="symptom.toggleBack">Rückansicht anzeigen</button>
         </div>
-        <svg id="bodyFrontView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;">
-          <defs>
-            <radialGradient id="bodyWoodGrad" cx="35%" cy="20%" r="90%">
-              <stop offset="0%" stop-color="#e9cea1"></stop>
-              <stop offset="100%" stop-color="#c19a68"></stop>
-            </radialGradient>
-          </defs>
-          <ellipse class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="30" rx="15" ry="19"></ellipse>
-          <ellipse class="body-part" data-region="gesicht" onclick="toggleRegion('gesicht')" cx="100" cy="34" rx="9" ry="11"></ellipse>
-          <path class="body-part" data-region="hals" onclick="toggleRegion('hals')" d="M94,49 L106,49 L109,64 L91,64 Z"></path>
-          <path class="body-part" data-region="nacken" onclick="toggleRegion('nacken')" d="M42,86 Q48,68 100,66 Q152,68 158,86 Q145,93 100,93 Q55,93 42,86 Z"></path>
-          <path class="body-part" data-region="brust" onclick="toggleRegion('brust')" d="M64,90 C61,108 62,126 68,140 L132,140 C138,126 139,108 136,90 C136,90 118,98 100,98 C82,98 64,90 64,90 Z"></path>
-          <path class="body-part" data-region="bauch" onclick="toggleRegion('bauch')" d="M68,140 C66,152 66,164 70,176 L130,176 C134,164 134,152 132,140 Z"></path>
-          <path class="body-part" data-region="becken" onclick="toggleRegion('becken')" d="M70,176 C68,187 70,198 78,208 L122,208 C130,198 132,187 130,176 Z"></path>
-          <path class="body-part" data-region="arme" onclick="toggleRegion('arme')" d="M36,88 C28,108 25,135 27,162 C28,178 31,190 35,200 L51,198 C48,185 46,170 46,150 C46,126 49,104 55,90 Z"></path>
-          <path class="body-part" data-region="arme" onclick="toggleRegion('arme')" d="M164,88 C172,108 175,135 173,162 C172,178 169,190 165,200 L149,198 C152,185 154,170 154,150 C154,126 151,104 145,90 Z"></path>
-          <ellipse class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="41" cy="207" rx="13" ry="11"></ellipse>
-          <ellipse class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="159" cy="207" rx="13" ry="11"></ellipse>
-          <path class="body-part" data-region="beine" onclick="toggleRegion('beine')" d="M78,208 C74,225 72,250 74,275 C75,290 77,300 80,308 L96,308 C94,296 93,282 93,265 C93,245 92,225 94,210 Z"></path>
-          <path class="body-part" data-region="beine" onclick="toggleRegion('beine')" d="M122,208 C126,225 128,250 126,275 C125,290 123,300 120,308 L104,308 C106,296 107,282 107,265 C107,245 108,225 106,210 Z"></path>
-          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="84" cy="316" rx="15" ry="9"></ellipse>
-          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="116" cy="316" rx="15" ry="9"></ellipse>
-        </svg>
-        <svg id="bodyBackView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:none;margin:0 auto 14px;">
-          <defs>
-            <radialGradient id="bodyWoodGradBack" cx="65%" cy="20%" r="90%">
-              <stop offset="0%" stop-color="#e9cea1"></stop>
-              <stop offset="100%" stop-color="#c19a68"></stop>
-            </radialGradient>
-          </defs>
-          <ellipse class="body-part" data-region="kopf" onclick="toggleRegion('kopf')" cx="100" cy="30" rx="15" ry="19"></ellipse>
-          <path fill="url(#bodyWoodGradBack)" stroke="#a97d4d" stroke-width="1.4" d="M94,49 L106,49 L109,68 L91,68 Z"></path>
-          <path class="body-part" data-region="nacken" onclick="toggleRegion('nacken')" d="M42,86 Q48,68 100,66 Q152,68 158,86 Q145,93 100,93 Q55,93 42,86 Z"></path>
-          <path class="body-part" data-region="ruecken" onclick="toggleRegion('ruecken')" d="M64,90 C60,110 60,140 62,170 C63,190 66,205 72,215 L128,215 C134,205 137,190 138,170 C140,140 140,110 136,90 C136,90 118,98 100,98 C82,98 64,90 64,90 Z"></path>
-          <path class="body-part" data-region="arme" onclick="toggleRegion('arme')" d="M36,88 C28,108 25,135 27,162 C28,178 31,190 35,200 L51,198 C48,185 46,170 46,150 C46,126 49,104 55,90 Z"></path>
-          <path class="body-part" data-region="arme" onclick="toggleRegion('arme')" d="M164,88 C172,108 175,135 173,162 C172,178 169,190 165,200 L149,198 C152,185 154,170 154,150 C154,126 151,104 145,90 Z"></path>
-          <ellipse class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="41" cy="207" rx="13" ry="11"></ellipse>
-          <ellipse class="body-part" data-region="haende" onclick="toggleRegion('haende')" cx="159" cy="207" rx="13" ry="11"></ellipse>
-          <path class="body-part" data-region="beine" onclick="toggleRegion('beine')" d="M78,208 C74,225 72,250 74,275 C75,290 77,300 80,308 L96,308 C94,296 93,282 93,265 C93,245 92,225 94,210 Z"></path>
-          <path class="body-part" data-region="beine" onclick="toggleRegion('beine')" d="M122,208 C126,225 128,250 126,275 C125,290 123,300 120,308 L104,308 C106,296 107,282 107,265 C107,245 108,225 106,210 Z"></path>
-          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="84" cy="316" rx="15" ry="9"></ellipse>
-          <ellipse class="body-part" data-region="fuesse" onclick="toggleRegion('fuesse')" cx="116" cy="316" rx="15" ry="9"></ellipse>
-        </svg>
+        <svg id="bodyFrontView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:block;margin:0 auto 14px;"></svg>
+        <svg id="bodyBackView" viewBox="0 0 200 340" style="width:100%;max-width:200px;display:none;margin:0 auto 14px;"></svg>
         <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px;">
           <button class="region-chip" data-region="haut" onclick="toggleRegion('haut')" data-i18n="region.label.haut">Haut (allgemein)</button>
         </div>
@@ -2712,6 +2691,44 @@ let activeRegions=new Set();
 let selectedSymptoms=new Set();
 let symptomTerminId=null;
 let showingBodyBack=false;
+// Real user request (2026-08-14): which adult figure (male/female) to show
+// in the symptom picker -- deliberately ephemeral UI state, never saved to
+// the patient's profile (no gender field exists anywhere on a patient
+// record to infer this from automatically; adding one just for this
+// picker would be a much bigger, unrelated change). Persists across modal
+// opens within the same session so picking it once is enough. A child
+// account skips this entirely and always gets the child figure instead.
+let bodyGenderVariant='male';
+
+// Injects the right BODY_FIGURES (vendor/symptom-body-figures.js) variant
+// -- keyed off a real child account (isChild) or bodyGenderVariant
+// otherwise -- into both #bodyFrontView/#bodyBackView (front/back
+// visibility itself stays exactly as toggleBodyView() already handled it).
+// Re-run on modal open and every gender-toggle click; re-applies 'active'
+// to whichever regions were already picked so switching figures mid-pick
+// doesn't lose the selection.
+function renderBodyFigure(){
+  const account=getCurrentAccount();
+  const isChild=!!(account&&account.isChild);
+  const variant=BODY_FIGURES[isChild?'child':bodyGenderVariant]||BODY_FIGURES.male;
+  const frontEl=document.getElementById('bodyFrontView');
+  const backEl=document.getElementById('bodyBackView');
+  frontEl.setAttribute('viewBox',variant.viewBox);
+  backEl.setAttribute('viewBox',variant.viewBox);
+  frontEl.innerHTML=variant.front;
+  backEl.innerHTML=variant.back;
+  activeRegions.forEach(r=>{
+    document.querySelectorAll('[data-region="'+r+'"]').forEach(el=>el.classList.add('active'));
+  });
+  const toggleEl=document.getElementById('bodyGenderToggle');
+  if(toggleEl) toggleEl.style.display=isChild?'none':'flex';
+  document.getElementById('bodyGenderMaleBtn').classList.toggle('active',bodyGenderVariant==='male');
+  document.getElementById('bodyGenderFemaleBtn').classList.toggle('active',bodyGenderVariant==='female');
+}
+function setBodyGenderVariant(variant){
+  bodyGenderVariant=variant;
+  renderBodyFigure();
+}
 
 function openSymptomModal(terminId){
   symptomTerminId=terminId;
@@ -2722,6 +2739,7 @@ function openSymptomModal(terminId){
   document.getElementById('bodyBackView').style.display='none';
   document.getElementById('bodyViewToggle').textContent=tr('symptom.toggleBack');
   document.querySelectorAll('.body-part,.region-chip').forEach(el=>el.classList.remove('active'));
+  renderBodyFigure();
   document.getElementById('symptomRegions').innerHTML='';
   document.getElementById('symptomNote').value='';
   updateSymptomNoteHint();
