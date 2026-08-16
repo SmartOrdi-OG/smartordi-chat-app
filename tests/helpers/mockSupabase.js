@@ -421,6 +421,44 @@ function mockScript(seed) {
         },
       }),
     };
+
+    // register.html's registration-RLS-race fix (2026-08-16) calls the
+    // REST API directly via fetch() for the practices/staff_profiles writes
+    // that immediately follow signUp() -- see that file's own comment for
+    // why (two earlier fix attempts through window.supabase.createClient()
+    // both looked right in code review but were STILL failing live, so this
+    // one deliberately bypasses the supabase-js client entirely instead of
+    // trusting its internal session/header logic again). Mocked here by
+    // routing any POST .../rest/v1/<table> request through the exact same
+    // __builder(table).insert(...).select().single() path sb.from() already
+    // uses, so it shares the same window.__store/__forceError semantics as
+    // every other insert in this mock. Every call (including its headers,
+    // so a test can assert on the exact Authorization actually sent) is
+    // recorded in window.__fetchCalls.
+    const __realFetch = window.fetch ? window.fetch.bind(window) : null;
+    window.__fetchCalls = [];
+    window.fetch = async function (input, init) {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      const method = (init && init.method) || 'GET';
+      const headersObj = {};
+      if (init && init.headers) {
+        Object.keys(init.headers).forEach(function (k) { headersObj[k] = init.headers[k]; });
+      }
+      window.__fetchCalls.push({ url: url, method: method, headers: headersObj, body: init && init.body });
+      const m = url.match(/\\/rest\\/v1\\/([a-zA-Z0-9_]+)/);
+      if (m && method === 'POST') {
+        const table = m[1];
+        let payload;
+        try { payload = JSON.parse(init.body); } catch (e) { payload = init.body; }
+        const result = await __builder(table).insert(payload).select().single();
+        if (result.error) {
+          return new Response(JSON.stringify(result.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
+        return new Response(JSON.stringify([result.data]), { status: 201, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (__realFetch) return __realFetch(input, init);
+      throw new Error('fetch() called for an unmocked URL by this test: ' + url);
+    };
   `;
 }
 

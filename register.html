@@ -400,30 +400,46 @@ async function doRegister(){
   // insert intermittently failed with "new row violates row-level security
   // policy for table \"practices\"" right after a genuinely successful
   // signUp() -- confirmed via Supabase's own request logs: POST /auth/v1/
-  // signup 200, then POST /rest/v1/practices 403 fifty-five milliseconds
-  // later, same browser. The RLS policy itself is correct ("insert new
-  // practice": roles={authenticated}, with_check=true -- ANY authenticated
-  // user may insert), so a 403 against it can only mean this specific
-  // request didn't carry the new user's session yet -- a known supabase-js
-  // gotcha: the shared `sb` client's REST calls pick up a fresh session via
-  // an internal onAuthStateChange notification that is not guaranteed to
-  // have already landed by the time the awaited signUp() call above
-  // returns, so a write issued immediately afterward can race ahead of it
-  // and go out effectively unauthenticated (anon has no INSERT policy on
-  // this table at all, hence the RLS violation).
+  // signup 200, then POST /rest/v1/practices 403 shortly after, same
+  // browser. The RLS policy itself is correct ("insert new practice":
+  // roles={authenticated}, with_check=true -- ANY authenticated user may
+  // insert), so a 403 against it can only mean this specific request
+  // didn't carry the new user's session yet.
   //
-  // Fixed by never depending on that ambient timing for the two writes
-  // that immediately follow signup: a one-off client built with THIS
-  // signup's own already-in-hand access token can't race against anything,
-  // since it never depends on the shared client's session state at all.
-  // Falls back to the shared `sb` client only if signUp() genuinely
-  // returned no session (e.g. email confirmation required) -- unchanged,
-  // pre-existing behavior for that case.
-  const authedSb=signUpData.session
-    ? window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
-        global:{headers:{Authorization:'Bearer '+signUpData.session.access_token}},
-      })
-    : sb;
+  // First fix attempt (building a second supabase-js client with the fresh
+  // access_token in its `global.headers.Authorization`) did NOT actually
+  // solve it -- confirmed still failing, same way, well after that fix had
+  // deployed. supabase-js's REST client computes its Authorization header
+  // per request from a live getAccessToken() callback tied to ITS OWN
+  // client's session state, not from a static header alone in every
+  // version -- a second, freshly-constructed client has no session of its
+  // own yet either, so it never reliably had the new user's token to send.
+  // No further guessing at supabase-js's exact internal session-sync
+  // timing (version-specific, undocumented, and already proven wrong once
+  // here) -- this calls the REST API directly instead, explicitly setting
+  // Authorization to signUp()'s own just-returned access_token by hand.
+  // That header is the ENTIRE, sole basis Postgrest uses to resolve the
+  // caller's role for RLS -- sending it ourselves, on a plain fetch() we
+  // build byte-for-byte, cannot possibly race against anything.
+  async function directRestInsert(table,payload,accessToken){
+    const res=await fetch(SUPABASE_URL+'/rest/v1/'+table,{
+      method:'POST',
+      headers:{
+        apikey:SUPABASE_ANON_KEY,
+        Authorization:'Bearer '+accessToken,
+        'Content-Type':'application/json',
+        Prefer:'return=representation',
+      },
+      body:JSON.stringify(payload),
+    });
+    let body=null;
+    try{ body=await res.json(); }catch(e){}
+    if(!res.ok){
+      const msg=(body&&(body.message||body.msg))||res.statusText||('HTTP '+res.status);
+      return {data:null,error:{message:msg}};
+    }
+    return {data:Array.isArray(body)?body[0]:body,error:null};
+  }
   // supabase/phase15_staff_practice_rls.sql -- registering here is the
   // moment a brand-new practice comes into existence, so there's no
   // existing practice_id to inherit; create its practices row first and
@@ -434,9 +450,15 @@ async function doRegister(){
   // row (id=true) that every registering practice clobbered together, and
   // it silently ignored the practice name the user actually typed
   // (f-ordination) in favor of a generic "Ordination <fullName>" fallback.
-  const {data:practiceRow,error:practiceError}=await authedSb.from('practices').insert({
-    name:ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString(),
-  }).select().single();
+  //
+  // Falls back to the shared `sb` client only if signUp() genuinely
+  // returned no session (e.g. email confirmation required) -- unchanged,
+  // pre-existing behavior for that case; there is no fresh access_token to
+  // send explicitly, and no race either, since no session exists yet at all.
+  const practiceFields={name:ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString()};
+  const {data:practiceRow,error:practiceError}=signUpData.session
+    ? await directRestInsert('practices',practiceFields,signUpData.session.access_token)
+    : await sb.from('practices').insert(practiceFields).select().single();
   if(practiceError){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
@@ -445,9 +467,10 @@ async function doRegister(){
     errorEl.classList.add('show');
     return;
   }
-  const {error:profileError}=await authedSb.from('staff_profiles').insert({
-    id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email, practice_id:practiceRow.id,
-  });
+  const staffProfileFields={id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email, practice_id:practiceRow.id};
+  const {error:profileError}=signUpData.session
+    ? await directRestInsert('staff_profiles',staffProfileFields,signUpData.session.access_token)
+    : await sb.from('staff_profiles').insert(staffProfileFields);
   if(profileError){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
