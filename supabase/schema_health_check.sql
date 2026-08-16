@@ -117,6 +117,12 @@ select 'function signature' as check_type, f.name,
   end as status
 from (values
   ('patient_get_profile', 'anamnese jsonb'),
+  -- phase72: catches a deployed version still missing geschlecht from its
+  -- return type -- without it, patient.html's symptom-picker figure
+  -- (renderBodyFigure()) can never auto-select from the patient's own
+  -- registered gender, silently falling back to the manual toggle forever
+  -- even for patients who DID specify one.
+  ('patient_get_profile', 'geschlecht text'),
   ('patient_get_documents', 'body_text text')
 ) as f(name, expect)
 
@@ -190,7 +196,9 @@ from unnest(array[
   'anamnese','diagnosen','allergie','blutgruppe','legacy_history','join_status','join_note',
   'practice_id','guardian_id','auth_user_id',
   -- phase65
-  'is_child'
+  'is_child',
+  -- phase72
+  'geschlecht'
 ]) as c
 
 union all
@@ -252,7 +260,9 @@ from unnest(array[
   'practice_id','status','submitted_at','reviewed_at','note','linked_auth_user_id','relation',
   'relation_label','is_child',
   -- phase67
-  'dob','tel'
+  'dob','tel',
+  -- phase72
+  'geschlecht'
 ]) as c
 
 union all

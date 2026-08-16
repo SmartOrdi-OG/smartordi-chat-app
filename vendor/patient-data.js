@@ -246,7 +246,19 @@ function localPatientAccountsRaw(){
 // notably excludes pw_hash/temp_password (zero legitimate use client-side,
 // even though RLS already keeps them within the same practice's own staff)
 // and practice_id/guardian_id (server-side/RPC-only bookkeeping).
-const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note';
+// Real bug found incidentally while adding `geschlecht` below (2026-08-16,
+// see supabase/phase72_patient_geschlecht.sql): is_child (supabase/phase65_
+// patient_username_change_and_is_child.sql) was NEVER in this explicit
+// column list at all -- unlike a genuinely missing column (which
+// selectWithColumnFallback() above catches and logs), an explicit select()
+// that simply doesn't ASK for a real column succeeds silently and just
+// never returns it, so every patientRowToJs() call below was falling
+// through to `local.isChild` (this device's own possibly-stale cache) for
+// EVERY patient, on every device, permanently -- never the real
+// server-side value. Not something this task was asked to fix, but a
+// one-line, obviously-correct addition while already touching this exact
+// line for a new column.
+const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note,is_child,geschlecht';
 // Factored out of refreshPatients() so searchPatientsServer()/
 // findPatientByFullNameServer() below (and refreshPatients() itself) share
 // exactly one row->JS mapping instead of drifting out of sync with each other.
@@ -278,8 +290,42 @@ function patientRowToJs(row,localAccounts){
     // supabase/phase65_patient_username_change_and_is_child.sql -- a plain
     // classification flag, staff's own reference only.
     isChild: row.is_child!=null?row.is_child:(local.isChild||false),
+    // supabase/phase72_patient_geschlecht.sql -- 'm'/'w'/'d', or null/
+    // undefined for "keine Angabe" (never forced on any entry path).
+    geschlecht: row.geschlecht||local.geschlecht||null,
   });
 }
+// Bounded, CONFIRMED synonym list only -- never a guess at an unconfirmed
+// numeric/free-text code. Used by two places that see gender as free text
+// a human (or another system) typed, not a value this app's own selects
+// produced: secretary.html's CSV import (a staff member maps an arbitrary
+// old-system column to "Geschlecht", so its cell values are whatever that
+// old system used) and vendor/migration-normdatensatz2.js's ENDS2 CDA
+// import, whose administrativeGenderCode IS a real, universally documented
+// HL7 codeSystem (2.16.840.1.113883.5.1: M/F/UN) -- not a guess, a
+// standard. ENDS1's legacy #P GES field is a bare numeric code with no
+// confirmed encoding table anywhere in this project's own reference
+// material, so it is deliberately NOT run through this (see doctor.html's
+// import mapping's own comment) -- preserved as raw text instead, per the
+// same "never destroy unmapped source data, never guess" principle
+// vendor/migration-normdatensatz.js already established for genuinely
+// unknown fields.
+const GESCHLECHT_SYNONYMS={
+  m:'m', male:'m', mann:'m', männlich:'m', maennlich:'m',
+  w:'w', f:'w', female:'w', frau:'w', weiblich:'w',
+  d:'d', x:'d', divers:'d', undifferentiated:'d', un:'d', other:'d', andere:'d',
+};
+function normalizeGeschlechtText(raw){
+  const key=(raw||'').trim().toLowerCase();
+  if(!key) return undefined;
+  return GESCHLECHT_SYNONYMS[key];
+}
+// Staff-facing display label for a stored 'm'/'w'/'d'/null geschlecht value
+// -- doctor.html's Kartei Stammdaten panel, secretary.html's patient rows if
+// ever needed. Deliberately German-only (unlike patient-login.html's own
+// i18n'd request.geschlecht.* keys) -- doctor.html/secretary.html are
+// staff-only pages with no language switcher anywhere else in them either.
+const GESCHLECHT_LABELS={m:'Männlich',w:'Weiblich',d:'Divers'};
 let _patients={};
 // Patient search-on-demand PR6 (final phase, see TODO.md): this used to
 // fetch EVERY patient row unconditionally, with only a console.warn past

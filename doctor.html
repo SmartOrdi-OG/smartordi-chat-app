@@ -1660,6 +1660,8 @@ body.windows-mode #karteiBtn{display:none;}
             <div class="k-section-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Stammdaten — vom Patienten ausgefüllt</div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="k-label">Name</span></span><span class="k-value" id="k-stamm-name">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="k-label">Geburtsdatum</span></span><span class="k-value" id="k-stamm-dob">—</span></div>
+            <!-- supabase/phase72_patient_geschlecht.sql -->
+            <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span class="k-label">Geschlecht</span></span><span class="k-value" id="k-stamm-geschlecht">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span class="k-label">Telefon</span></span><span class="k-value" id="k-stamm-tel">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span class="k-label">Adresse</span></span><span class="k-value" id="k-stamm-adresse">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><span class="k-label">Sprache</span></span><span class="k-value" id="k-stamm-sprache">—</span></div>
@@ -4880,7 +4882,7 @@ function accountToPatientRecord(a){
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null,geschlecht:a.geschlecht||null};
 }
 function findPatientRecord(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
@@ -5413,6 +5415,35 @@ async function confirmMigrationImport(){
     // needs the inverse converter, not ends1DateToIso().
     const dobIso=migrationParsedResult.format==='ends2'?ends2DisplayDateToIso(s.GBD||''):ends1DateToIso(s.GBD||'');
     const unmapped=patientEntry.unknownFields;
+    // GES ("Geschlecht") -- supabase/phase72_patient_geschlecht.sql. Real
+    // data-loss bug found 2026-08-16: ENDS1_P_FIELDS has always recognized
+    // this field (vendor/migration-normdatensatz.js), but nothing here ever
+    // read it back out of `stammdaten` -- silently discarded, and (unlike a
+    // genuinely unmapped field) NOT even preserved in legacyHistory, since
+    // "recognized" fields are excluded from `unmapped` by design.
+    //
+    // ENDS 2's administrativeGenderCode is a real, universally documented
+    // HL7 codeSystem (2.16.840.1.113883.5.1: M/F/UN) -- vendor/migration-
+    // normdatensatz2.js already extracts it verbatim into GES, so
+    // normalizeGeschlechtText() (vendor/patient-data.js, its own synonym
+    // list includes these exact codes) safely auto-maps it.
+    //
+    // ENDS 1's legacy #P GES is a bare numeric code (`type: 'N'`) with NO
+    // confirmed encoding table anywhere in this project's own reference
+    // material -- guessing an order (1=männlich/2=weiblich, or the
+    // reverse) risks silently writing a WRONG gender onto a real patient's
+    // medical record, which this project's own "zero guessing" principle
+    // exists specifically to prevent. Preserved as raw text in
+    // legacyHistory instead (never silently dropped, same as any other
+    // unmapped field) so staff can set it correctly by hand via
+    // secretary.html's "Patient bearbeiten" modal once the real code table
+    // is confirmed (or the patient/their old chart is asked directly).
+    const isEnds2=migrationParsedResult.format==='ends2';
+    const gesRaw=(s.GES||'').trim();
+    const geschlecht=isEnds2?normalizeGeschlechtText(gesRaw):undefined;
+    const legacyParts=[];
+    if(unmapped.length) legacyParts.push('Nicht zugeordnete Felder aus Altsystem: '+unmapped.map(f=>f.field+'='+f.value).join('; '));
+    if(gesRaw&&!isEnds2) legacyParts.push('Geschlecht (Altsystem-Code, Kodierung nicht bestätigt -- bitte manuell in "Patient bearbeiten" setzen): '+gesRaw);
     const extra={
       adresse:ends1ComposeAdresse(s)||undefined,
       dob:dobIso||undefined,
@@ -5422,10 +5453,12 @@ async function confirmMigrationImport(){
       svnr:(s.VNR||'').trim()||undefined,
       allergie:(s.ALL||'').trim()||undefined,
       diagnosen:(s.DDG||'').trim()||undefined,
-      // Fields the current #P dictionary doesn't map -- preserved as text
-      // instead of silently dropped, per the parser's own "never destroy
-      // unmapped source data" principle (see vendor/migration-normdatensatz.js).
-      legacyHistory:unmapped.length?('Nicht zugeordnete Felder aus Altsystem: '+unmapped.map(f=>f.field+'='+f.value).join('; ')):undefined,
+      geschlecht:geschlecht,
+      // Fields the current #P dictionary doesn't map, plus (ENDS1 only) the
+      // raw unconfirmed GES code -- preserved as text instead of silently
+      // dropped, per the parser's own "never destroy unmapped source data"
+      // principle (see vendor/migration-normdatensatz.js).
+      legacyHistory:legacyParts.length?legacyParts.join(' | '):undefined,
     };
     Object.keys(extra).forEach(k=>{ if(extra[k]===undefined) delete extra[k]; });
 
@@ -5442,6 +5475,7 @@ async function confirmMigrationImport(){
         diagnosen:extra.diagnosen||existing.record.diagnosen||null,
         allergie:extra.allergie||existing.record.allergie||null,
         legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
+        geschlecht:extra.geschlecht||existing.record.geschlecht||null,
       }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
       const resultRow={name:vorname+' '+nachname,updated:true,syncFailed:!identity,username:existing.username,legacyFieldCount:unmapped.length,counts:{diagnosen:0,verordnungen:0,laborbefunde:0,befunde:0}};
       if(identity){
@@ -5956,6 +5990,7 @@ function populateKarteiStamm(name){
   const dobFmt=p.dob?new Date(p.dob).toLocaleDateString('de-AT'):'—';
   document.getElementById('k-stamm-name').textContent=p.name;
   document.getElementById('k-stamm-dob').textContent=dobFmt+' ('+age+' J.)';
+  document.getElementById('k-stamm-geschlecht').textContent=GESCHLECHT_LABELS[p.geschlecht]||'—';
   document.getElementById('k-stamm-tel').textContent=p.tel;
   document.getElementById('k-stamm-adresse').textContent=p.adresse;
   document.getElementById('k-stamm-sprache').textContent=p.sprache;
