@@ -325,6 +325,32 @@ select.form-input{cursor:pointer;}
   <button class="success-btn" onclick="window.location.href='doctor.html'">Zur Ordination →</button>
 </div>
 
+<!-- Shown instead of successOverlay when this Supabase project requires
+     e-mail confirmation before a session exists -- see doRegister() below. -->
+<div class="success-overlay" id="confirmEmailOverlay">
+  <div class="success-logo-wrap">
+    <div class="success-logo-ring"></div>
+    <img src="logo..jpeg" alt="Logo" class="success-logo">
+  </div>
+  <div class="success-title">Fast geschafft!</div>
+  <div class="success-sub">Wir haben Ihnen eine Bestätigungs-E-Mail geschickt. Bitte klicken Sie auf den Link darin, um Ihre E-Mail-Adresse zu bestätigen.</div>
+  <div class="success-steps">
+    <div class="success-step">
+      <div class="success-step-num">1</div>
+      <div class="success-step-text">Bestätigungs-Link in Ihrem Posteingang öffnen</div>
+    </div>
+    <div class="success-step">
+      <div class="success-step-num">2</div>
+      <div class="success-step-text">Danach hier mit Ihrer E-Mail und Ihrem Passwort anmelden</div>
+    </div>
+    <div class="success-step">
+      <div class="success-step-num">3</div>
+      <div class="success-step-text">Ihre Ordination wird bei der ersten Anmeldung automatisch eingerichtet</div>
+    </div>
+  </div>
+  <button class="success-btn" onclick="window.location.href='login.html'">Zum Login →</button>
+</div>
+
 <script>
 let selectedPlan = 'standard';
 
@@ -383,8 +409,45 @@ async function doRegister(){
   document.getElementById('spinner').style.display = 'block';
   btn.classList.add('loading');
 
-  const fullName=(titel?titel+' ':'')+vorname+' '+nachname;
-  const {data:signUpData,error:signUpError}=await sb.auth.signUp({email,password});
+  // Real bug found 2026-08-16 during a full walkthrough test: the practices
+  // insert right after signUp() failed with "new row violates row-level
+  // security policy for table practices". Two attempts at working around
+  // supabase-js's own session/header timing (a second client with an
+  // explicit Authorization header, then a plain fetch() straight to the
+  // REST API with signUp()'s access_token set by hand) were BOTH confirmed
+  // still failing on a real, live re-test -- so the actual root cause was
+  // never a client-side race at all. It's simpler and matches this user's
+  // own Supabase project settings: "Confirm email" is ON, so signUp()
+  // creates the auth user but returns session:null until the confirmation
+  // link is clicked -- every request made without a session (including a
+  // hand-built fetch() with no valid token to put in it) is necessarily
+  // unauthenticated, and phase15's "insert new practice ... to
+  // authenticated" RLS policy rejects it every time, no race required.
+  //
+  // supabase/phase15_staff_practice_rls.sql -- registering here is the
+  // moment a brand-new practice comes into existence, so there's no
+  // existing practice_id to inherit; the practices/staff_profiles rows get
+  // created by completePendingPracticeRegistration() (vendor/staff-
+  // accounts.js) below, once a genuine authenticated session exists --
+  // either immediately (confirmation disabled) or, for this project (email
+  // confirmation required), on the user's first successful login.html
+  // sign-in after confirming, which is the realistic common case here.
+  //
+  // Every practice-wide field goes directly onto the practices row
+  // (supabase/phase18_practices_consolidation.sql) instead of a separate
+  // savePracticeSettings() call afterward -- that used to write into a
+  // single shared practice_settings row (id=true) that every registering
+  // practice clobbered together, and it silently ignored the practice name
+  // the user actually typed (f-ordination) in favor of a generic
+  // "Ordination <fullName>" fallback.
+  //
+  // POLICY_VERSION: keep in sync with datenschutz.html's own "Version"
+  // string whenever that page is revised.
+  const POLICY_VERSION='2.1';
+  const {data:signUpData,error:signUpError}=await sb.auth.signUp({email,password,options:{data:{
+    pending_practice_registration:true, titel, vorname, nachname, fach, ordination, adresse, tel,
+    plan:selectedPlan, policy_version:POLICY_VERSION,
+  }}});
   if(signUpError){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
@@ -395,145 +458,36 @@ async function doRegister(){
     errorEl.classList.add('show');
     return;
   }
-  const userId=signUpData.user.id;
-  // Real bug found 2026-08-16 during a full walkthrough test: this practices
-  // insert intermittently failed with "new row violates row-level security
-  // policy for table \"practices\"" right after a genuinely successful
-  // signUp() -- confirmed via Supabase's own request logs: POST /auth/v1/
-  // signup 200, then POST /rest/v1/practices 403 shortly after, same
-  // browser. The RLS policy itself is correct ("insert new practice":
-  // roles={authenticated}, with_check=true -- ANY authenticated user may
-  // insert), so a 403 against it can only mean this specific request
-  // didn't carry the new user's session yet.
-  //
-  // First fix attempt (building a second supabase-js client with the fresh
-  // access_token in its `global.headers.Authorization`) did NOT actually
-  // solve it -- confirmed still failing, same way, well after that fix had
-  // deployed. supabase-js's REST client computes its Authorization header
-  // per request from a live getAccessToken() callback tied to ITS OWN
-  // client's session state, not from a static header alone in every
-  // version -- a second, freshly-constructed client has no session of its
-  // own yet either, so it never reliably had the new user's token to send.
-  // No further guessing at supabase-js's exact internal session-sync
-  // timing (version-specific, undocumented, and already proven wrong once
-  // here) -- this calls the REST API directly instead, explicitly setting
-  // Authorization to signUp()'s own just-returned access_token by hand.
-  // That header is the ENTIRE, sole basis Postgrest uses to resolve the
-  // caller's role for RLS -- sending it ourselves, on a plain fetch() we
-  // build byte-for-byte, cannot possibly race against anything.
-  async function directRestInsert(table,payload,accessToken){
-    const res=await fetch(SUPABASE_URL+'/rest/v1/'+table,{
-      method:'POST',
-      headers:{
-        apikey:SUPABASE_ANON_KEY,
-        Authorization:'Bearer '+accessToken,
-        'Content-Type':'application/json',
-        Prefer:'return=representation',
-      },
-      body:JSON.stringify(payload),
-    });
-    let body=null;
-    try{ body=await res.json(); }catch(e){}
-    if(!res.ok){
-      const msg=(body&&(body.message||body.msg))||res.statusText||('HTTP '+res.status);
-      return {data:null,error:{message:msg,status:res.status,viaFetch:true}};
-    }
-    return {data:Array.isArray(body)?body[0]:body,error:null};
-  }
-  // TEMPORARY diagnostic instrumentation (2026-08-16): the fix right above
-  // this comment (calling the REST API directly instead of going through
-  // supabase-js) was supposed to be unconditionally correct -- yet it kept
-  // failing the exact same way on a real, live re-test after deploying,
-  // just like the fix before it. Rather than guess at a FOURTH theory
-  // blind, this makes the very next failure self-diagnosing: the on-screen
-  // error now states plainly whether signUp() actually returned a session
-  // at all (the single fact every theory so far has silently assumed was
-  // true), and the same details are also logged to client_error_log
-  // (supabase/phase46_client_error_log.sql -- insert-only, deliberately
-  // permissive RLS, so this logs successfully no matter which role this
-  // exact request is running as, even mid-bug). Remove once the real cause
-  // is confirmed and fixed for good.
-  function logRegistrationDiagnostic(step,err){
-    const info={
-      hadSession:!!(signUpData&&signUpData.session),
-      hasAccessToken:!!(signUpData&&signUpData.session&&signUpData.session.access_token),
-      viaFetch:!!(err&&err.viaFetch),
-      status:err&&err.status,
-      message:err&&err.message,
-    };
-    console.error('registration diagnostic ('+step+')',info);
-    try{
-      sb.from('client_error_log').insert({
-        context:'register:'+step,
-        error_message:JSON.stringify(info).slice(0,2000),
-        page:'register.html',
-      }).then(function(){},function(){});
-    }catch(e){ /* never let diagnostic logging itself block registration */ }
-    return info;
-  }
-  // supabase/phase15_staff_practice_rls.sql -- registering here is the
-  // moment a brand-new practice comes into existence, so there's no
-  // existing practice_id to inherit; create its practices row first and
-  // attach this new admin doctor to it explicitly. Every practice-wide
-  // field goes directly onto this row now (supabase/phase18_practices_
-  // consolidation.sql) instead of a separate savePracticeSettings() call
-  // afterward -- that used to write into a single shared practice_settings
-  // row (id=true) that every registering practice clobbered together, and
-  // it silently ignored the practice name the user actually typed
-  // (f-ordination) in favor of a generic "Ordination <fullName>" fallback.
-  //
-  // Falls back to the shared `sb` client only if signUp() genuinely
-  // returned no session (e.g. email confirmation required) -- unchanged,
-  // pre-existing behavior for that case; there is no fresh access_token to
-  // send explicitly, and no race either, since no session exists yet at all.
-  const practiceFields={name:ordination, adresse, tel, plan:selectedPlan, trial_start:new Date().toISOString()};
-  const {data:practiceRow,error:practiceError}=signUpData.session
-    ? await directRestInsert('practices',practiceFields,signUpData.session.access_token)
-    : await sb.from('practices').insert(practiceFields).select().single();
-  if(practiceError){
-    const diag=logRegistrationDiagnostic('practices',practiceError);
+
+  // No active session yet -- this Supabase project requires the user to
+  // click the confirmation link in their inbox first (sb.auth.signUp()
+  // still creates the auth user, but every request made without a session
+  // runs unauthenticated and would be rejected by the practices/
+  // staff_profiles RLS policies below). The pending_practice_registration
+  // metadata set above survives that wait, and login.html's doLogin()
+  // finishes the setup on their first successful sign-in.
+  if(!signUpData.session){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
-    errorText.textContent = 'Konto wurde erstellt, aber die Praxis konnte nicht angelegt werden: '+practiceError.message
-      +' [diag: session='+diag.hadSession+' token='+diag.hasAccessToken+' viaFetch='+diag.viaFetch+' status='+diag.status+']';
-    errorEl.classList.add('show');
+    document.getElementById('confirmEmailOverlay').classList.add('show');
     return;
   }
-  const staffProfileFields={id:userId, vorname, nachname, role:'arzt', fach, is_admin:true, email, practice_id:practiceRow.id};
-  const {error:profileError}=signUpData.session
-    ? await directRestInsert('staff_profiles',staffProfileFields,signUpData.session.access_token)
-    : await sb.from('staff_profiles').insert(staffProfileFields);
-  if(profileError){
-    const diag=logRegistrationDiagnostic('staff_profiles',profileError);
+
+  const result=await completePendingPracticeRegistration(signUpData.user);
+  if(!result.success){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
-    errorText.textContent = 'Konto wurde erstellt, aber das Praxisprofil konnte nicht gespeichert werden: '+profileError.message
-      +' [diag: session='+diag.hadSession+' token='+diag.hasAccessToken+' viaFetch='+diag.viaFetch+' status='+diag.status+']';
+    errorText.textContent = result.stage==='practice'
+      ? 'Konto wurde erstellt, aber die Praxis konnte nicht angelegt werden: '+result.error.message
+      : 'Konto wurde erstellt, aber das Praxisprofil konnte nicht gespeichert werden: '+result.error.message;
     errorEl.classList.add('show');
     return;
   }
 
   if(fach) localStorage.setItem('fachrichtung', fach);
-
-  // supabase/phase59_consent_records.sql -- the dsgvo/agb checkbox above
-  // only ever gated this submit button; the actual "yes, I agreed" moment
-  // was never written anywhere. record_consent() is the real, timestamped,
-  // append-only evidence (a Database Webhook on this table then emails the
-  // platform owner a copy -- see phase59's own header comment). Fire-and-
-  // forget: never blocks the registration success screen, and a failure
-  // here must not undo an already-created account.
-  // POLICY_VERSION: keep in sync with datenschutz.html's own "Version"
-  // string whenever that page is revised.
-  const POLICY_VERSION='2.1';
-  sb.rpc('record_consent',{
-    p_practice_id:practiceRow.id, p_consent_type:'doctor_registration',
-    p_full_name:fullName, p_email:email, p_policy_version:POLICY_VERSION,
-    p_user_agent:navigator.userAgent,
-  }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
-
-  sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:fullName, username:userId, isAdmin:true}));
+  sessionStorage.setItem('smartordi_user', JSON.stringify({role:'arzt', name:result.fullName, username:signUpData.user.id, isAdmin:true}));
 
   setTimeout(()=>{
     document.getElementById('successOverlay').classList.add('show');

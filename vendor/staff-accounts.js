@@ -238,6 +238,48 @@ async function saveStaffProfileFields(staffId,fields){
   return true;
 }
 
+// register.html used to create the practices + staff_profiles rows
+// immediately after sb.auth.signUp(), unconditionally. That silently broke
+// registration for anyone signing up on a Supabase project with "Confirm
+// email" enabled (the default): signUp() still creates the auth user, but
+// returns no active session until the confirmation link is clicked, so the
+// very next sb.from('practices').insert() ran as an unauthenticated
+// request and was rejected by phase15's "insert new practice ... to
+// authenticated" RLS policy -- "Konto wurde erstellt, aber die Praxis
+// konnte nicht angelegt werden: new row violates row-level security
+// policy for table practices".
+//
+// Fix: register.html now only stashes the submitted form fields as Auth
+// user_metadata (available immediately, survives the confirmation wait --
+// it's part of auth.users, not a table this RLS gap affects) and defers
+// actually creating the practice/profile until this function runs with a
+// genuine authenticated session -- either right away (confirmation
+// disabled, signUp() already returned a session) or on the user's first
+// successful login.html sign-in after confirming (see doLogin() there).
+// staff_profiles.full_name is a GENERATED column (vorname+nachname) --
+// never written directly, same as saveStaffProfileFields() above.
+async function completePendingPracticeRegistration(user){
+  const m=user.user_metadata||{};
+  const {data:practiceRow,error:practiceError}=await sb.from('practices').insert({
+    name:m.ordination, adresse:m.adresse, tel:m.tel, plan:m.plan||'standard', trial_start:new Date().toISOString(),
+  }).select().single();
+  if(practiceError) return {success:false, stage:'practice', error:practiceError};
+  const {error:profileError}=await sb.from('staff_profiles').insert({
+    id:user.id, vorname:m.vorname, nachname:m.nachname, role:'arzt', fach:m.fach, is_admin:true, email:user.email, practice_id:practiceRow.id,
+  });
+  if(profileError) return {success:false, stage:'profile', error:profileError};
+  const fullName=(m.titel?m.titel+' ':'')+m.vorname+' '+m.nachname;
+  // Fire-and-forget, same as register.html's original record_consent call --
+  // evidence-of-consent must never block/undo an already-created account.
+  sb.rpc('record_consent',{
+    p_practice_id:practiceRow.id, p_consent_type:'doctor_registration',
+    p_full_name:fullName, p_email:user.email, p_policy_version:m.policy_version||'2.1',
+    p_user_agent:navigator.userAgent,
+  }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
+  sb.auth.updateUser({data:{pending_practice_registration:false}}).catch(()=>{});
+  return {success:true, practiceId:practiceRow.id, fullName};
+}
+
 // Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
 // lives on the practice's own row in `practices` (supabase/phase18_practices_
 // consolidation.sql), scoped by the "view own practice"/"update own

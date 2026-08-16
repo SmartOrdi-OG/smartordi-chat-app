@@ -355,17 +355,15 @@ function mockScript(seed) {
         // undefined" the moment a test reached it.
         functions: { invoke: () => Promise.resolve({ data: null, error: null }) },
         auth: {
-          // Real Supabase (autoconfirm on, as this project's project is
-          // configured) returns a real session alongside the new user, not
-          // just the user alone -- register.html's own signup flow now
-          // depends on that session.access_token being present (see its
-          // "Real bug found 2026-08-16" comment) to build a one-off client
-          // that can't race the shared client's own session-sync timing.
-          // Missing this field here would let that whole code path go
-          // permanently untested (always silently falling back to the
-          // shared sb client), exactly how the real bug went uncaught
-          // until a live walkthrough test found it.
-          signUp: () => Promise.resolve({ data: { user: { id: 'new-user-uuid' }, session: { access_token: 'mock-access-token', refresh_token: 'mock-refresh-token' } }, error: null }),
+          // Default mimics a Supabase project with e-mail confirmation OFF:
+          // signUp() returns an active session immediately, same as the
+          // moment register.html's completePendingPracticeRegistration()
+          // relies on to happen right away. Echoes back options.data
+          // (user_metadata) since register.html stashes the submitted form
+          // fields there -- see register-deferred-registration.spec.js for
+          // the confirmation-ON case (this user's actual project setting),
+          // which overrides this per-test to return session:null.
+          signUp: (creds) => Promise.resolve({ data: { user: { id: 'new-user-uuid', email: creds && creds.email, user_metadata: (creds && creds.options && creds.options.data) || {} }, session: { user: { id: 'new-user-uuid' }, access_token: 'mock-access-token', refresh_token: 'mock-refresh-token' } }, error: null }),
           signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'not mocked' } }),
           // Added for supabase/phase33_patient_login_cutover.sql -- real
           // patient/guardian login now drives sb.auth directly
@@ -420,44 +418,6 @@ function mockScript(seed) {
           refreshSession: () => Promise.resolve({ data: { session: null }, error: { message: 'not mocked' } }),
         },
       }),
-    };
-
-    // register.html's registration-RLS-race fix (2026-08-16) calls the
-    // REST API directly via fetch() for the practices/staff_profiles writes
-    // that immediately follow signUp() -- see that file's own comment for
-    // why (two earlier fix attempts through window.supabase.createClient()
-    // both looked right in code review but were STILL failing live, so this
-    // one deliberately bypasses the supabase-js client entirely instead of
-    // trusting its internal session/header logic again). Mocked here by
-    // routing any POST .../rest/v1/<table> request through the exact same
-    // __builder(table).insert(...).select().single() path sb.from() already
-    // uses, so it shares the same window.__store/__forceError semantics as
-    // every other insert in this mock. Every call (including its headers,
-    // so a test can assert on the exact Authorization actually sent) is
-    // recorded in window.__fetchCalls.
-    const __realFetch = window.fetch ? window.fetch.bind(window) : null;
-    window.__fetchCalls = [];
-    window.fetch = async function (input, init) {
-      const url = typeof input === 'string' ? input : (input && input.url) || '';
-      const method = (init && init.method) || 'GET';
-      const headersObj = {};
-      if (init && init.headers) {
-        Object.keys(init.headers).forEach(function (k) { headersObj[k] = init.headers[k]; });
-      }
-      window.__fetchCalls.push({ url: url, method: method, headers: headersObj, body: init && init.body });
-      const m = url.match(/\\/rest\\/v1\\/([a-zA-Z0-9_]+)/);
-      if (m && method === 'POST') {
-        const table = m[1];
-        let payload;
-        try { payload = JSON.parse(init.body); } catch (e) { payload = init.body; }
-        const result = await __builder(table).insert(payload).select().single();
-        if (result.error) {
-          return new Response(JSON.stringify(result.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
-        }
-        return new Response(JSON.stringify([result.data]), { status: 201, headers: { 'Content-Type': 'application/json' } });
-      }
-      if (__realFetch) return __realFetch(input, init);
-      throw new Error('fetch() called for an unmocked URL by this test: ' + url);
     };
   `;
 }
