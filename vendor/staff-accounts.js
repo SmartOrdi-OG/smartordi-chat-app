@@ -442,19 +442,52 @@ const LAB_INBOUND_DOMAIN='labs.smartordi.eu';
 function labInboundEmailAddress(token){
   return `lab-${token}@${LAB_INBOUND_DOMAIN}`;
 }
-// Generates the practice's token once and persists it -- every call
-// after the first just returns the same address, same lazy-generate-once
-// shape as a staff invite link.
+// Turns the practice name into an ASCII, hyphenated, address-safe slug --
+// German umlauts are transliterated rather than dropped (stripping
+// "Müller" down to "mller" reads as a typo), everything else non-
+// alphanumeric collapses to a single hyphen. Capped at 24 chars so a long
+// practice name doesn't make the final address unwieldy again --
+// ensureLabEmailToken() still appends its own random suffix after this.
+function slugifyPracticeName(name){
+  const UMLAUTS={ä:'ae',ö:'oe',ü:'ue',Ä:'ae',Ö:'oe',Ü:'ue',ß:'ss'};
+  const transliterated=(name||'').replace(/[äöüÄÖÜß]/g,c=>UMLAUTS[c]);
+  const slug=transliterated.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24).replace(/-+$/,'');
+  return slug||'praxis';
+}
+// Generates the practice's token once and persists it -- every call after
+// the first just returns the same address, same lazy-generate-once shape
+// as a staff invite link. Format is <practice-name-slug>-<6 random hex
+// chars>, not genStaffInviteToken()'s full 128-bit hex string: this
+// address is read out over the phone or typed into a lab's LIS by hand,
+// not just clicked from a link, so it needs to stay short and readable.
+// ~16.7M combinations per slug is still impractical to guess by hand, and
+// a guess only gets an attacker into a "pending, needs staff review"
+// inbox (see receive-lab-email's own header comment) -- not direct
+// account/data access, unlike genStaffInviteToken()'s 128 bits.
 async function ensureLabEmailToken(){
   await practiceSettingsReady;
   const existing=getPracticeSettings()?.lab_email_token;
-  if(existing) return existing;
-  // Raw random hex, no prefix -- labInboundEmailAddress() already adds the
-  // "lab-" prefix that receive-lab-email's tokenFromRecipient() strips back
-  // off, so prefixing it here too would just double it up.
-  const token=genStaffInviteToken().slice(4);
-  const ok=await savePracticeSettings({lab_email_token:token});
-  return ok ? token : null;
+  // A bare 32-hex-char token (no hyphen) is the old, longer format from
+  // before this address was made readable -- one-time upgrade to the new
+  // shape below. Safe to replace unprompted: Cloudflare Email Routing for
+  // labs.smartordi.eu isn't live yet (see TODO.md), so no lab could
+  // already have been given the old address.
+  if(existing&&!/^[0-9a-f]{32}$/.test(existing)) return existing;
+  const slug=slugifyPracticeName(getPracticeSettings()?.name);
+  // lab_email_token is unique at the DB level (phase24_lab_result_inbox.sql)
+  // -- practically never collides given 3 random bytes, but retry on that
+  // specific error (23505/unique_violation) rather than surfacing "Fehler
+  // beim Erstellen" for something the doctor can't self-resolve.
+  for(let attempt=0;attempt<5;attempt++){
+    const suffixBytes=new Uint8Array(3);
+    crypto.getRandomValues(suffixBytes);
+    const suffix=Array.from(suffixBytes,b=>b.toString(16).padStart(2,'0')).join('');
+    const token=`${slug}-${suffix}`;
+    const ok=await savePracticeSettings({lab_email_token:token});
+    if(ok) return token;
+    if(getLastSaveError()?.code!=='23505') return null;
+  }
+  return null;
 }
 async function getPendingLabResults(){
   const {data,error}=await sb.from('lab_result_uploads').select('*').eq('status','pending').order('created_at',{ascending:false});
