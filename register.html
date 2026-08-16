@@ -436,9 +436,40 @@ async function doRegister(){
     try{ body=await res.json(); }catch(e){}
     if(!res.ok){
       const msg=(body&&(body.message||body.msg))||res.statusText||('HTTP '+res.status);
-      return {data:null,error:{message:msg}};
+      return {data:null,error:{message:msg,status:res.status,viaFetch:true}};
     }
     return {data:Array.isArray(body)?body[0]:body,error:null};
+  }
+  // TEMPORARY diagnostic instrumentation (2026-08-16): the fix right above
+  // this comment (calling the REST API directly instead of going through
+  // supabase-js) was supposed to be unconditionally correct -- yet it kept
+  // failing the exact same way on a real, live re-test after deploying,
+  // just like the fix before it. Rather than guess at a FOURTH theory
+  // blind, this makes the very next failure self-diagnosing: the on-screen
+  // error now states plainly whether signUp() actually returned a session
+  // at all (the single fact every theory so far has silently assumed was
+  // true), and the same details are also logged to client_error_log
+  // (supabase/phase46_client_error_log.sql -- insert-only, deliberately
+  // permissive RLS, so this logs successfully no matter which role this
+  // exact request is running as, even mid-bug). Remove once the real cause
+  // is confirmed and fixed for good.
+  function logRegistrationDiagnostic(step,err){
+    const info={
+      hadSession:!!(signUpData&&signUpData.session),
+      hasAccessToken:!!(signUpData&&signUpData.session&&signUpData.session.access_token),
+      viaFetch:!!(err&&err.viaFetch),
+      status:err&&err.status,
+      message:err&&err.message,
+    };
+    console.error('registration diagnostic ('+step+')',info);
+    try{
+      sb.from('client_error_log').insert({
+        context:'register:'+step,
+        error_message:JSON.stringify(info).slice(0,2000),
+        page:'register.html',
+      }).then(function(){},function(){});
+    }catch(e){ /* never let diagnostic logging itself block registration */ }
+    return info;
   }
   // supabase/phase15_staff_practice_rls.sql -- registering here is the
   // moment a brand-new practice comes into existence, so there's no
@@ -460,10 +491,12 @@ async function doRegister(){
     ? await directRestInsert('practices',practiceFields,signUpData.session.access_token)
     : await sb.from('practices').insert(practiceFields).select().single();
   if(practiceError){
+    const diag=logRegistrationDiagnostic('practices',practiceError);
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
-    errorText.textContent = 'Konto wurde erstellt, aber die Praxis konnte nicht angelegt werden: '+practiceError.message;
+    errorText.textContent = 'Konto wurde erstellt, aber die Praxis konnte nicht angelegt werden: '+practiceError.message
+      +' [diag: session='+diag.hadSession+' token='+diag.hasAccessToken+' viaFetch='+diag.viaFetch+' status='+diag.status+']';
     errorEl.classList.add('show');
     return;
   }
@@ -472,10 +505,12 @@ async function doRegister(){
     ? await directRestInsert('staff_profiles',staffProfileFields,signUpData.session.access_token)
     : await sb.from('staff_profiles').insert(staffProfileFields);
   if(profileError){
+    const diag=logRegistrationDiagnostic('staff_profiles',profileError);
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display = 'block';
     document.getElementById('spinner').style.display = 'none';
-    errorText.textContent = 'Konto wurde erstellt, aber das Praxisprofil konnte nicht gespeichert werden: '+profileError.message;
+    errorText.textContent = 'Konto wurde erstellt, aber das Praxisprofil konnte nicht gespeichert werden: '+profileError.message
+      +' [diag: session='+diag.hadSession+' token='+diag.hasAccessToken+' viaFetch='+diag.viaFetch+' status='+diag.status+']';
     errorEl.classList.add('show');
     return;
   }
