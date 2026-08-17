@@ -1,0 +1,118 @@
+// Real user request (2026-08-17): the secretary/doctor had no way to know
+// WHY a patient booked an appointment beyond a free-text symptom note --
+// patient.html's own booking flow always sent art:'Ordination' regardless
+// of what the patient actually needed (e.g. "Arbeitsunfähigkeitsmeldung"/
+// Krankmeldung, "Pflegefreistellung", or just a routine "Kontrolle"). A new
+// "Grund des Besuchs" select (#terminArt) lets the patient pick a real
+// reason at booking time -- the same `termine.art` column/free-text value
+// secretary.html's own booking forms already write and display, so no
+// staff-side wiring was needed at all (see secretary.html's Termine list
+// card, which already renders t.art verbatim for any staff-booked Termin).
+const path = require('path');
+const { test, expect } = require('@playwright/test');
+const { installMockSupabase } = require('./helpers/mockSupabase');
+
+async function setupPatient(page, extraRpc) {
+  await installMockSupabase(page, {}, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'maria' }));
+    sessionStorage.setItem('smartordi_patient_token', 'tok-1');
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
+  await page.waitForTimeout(800);
+  await page.evaluate((extra) => {
+    sb.rpc = (name, args) => {
+      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: 'p1', username: 'maria', name: 'Maria', full_name: 'Maria Huber', dob: '1985-01-01', first_login: false }], error: null });
+      if (name === 'patient_get_termine') return Promise.resolve({ data: [], error: null });
+      if (name === 'patient_get_working_hours') return Promise.resolve({ data: null, error: null });
+      if (extra && extra.rpcName && name === extra.rpcName) { window.__rpcArgs = args; return Promise.resolve(extra.result); }
+      return Promise.resolve({ data: [], error: null });
+    };
+  }, extraRpc || null);
+  await page.evaluate(async () => { await initPatientData(); });
+  await page.waitForTimeout(300);
+}
+
+test('patient.html: the booking card has a Grund-des-Besuchs select with Ordination as the default, including both new certificate options', async ({ page }) => {
+  await setupPatient(page);
+  const state = await page.evaluate(() => {
+    const sel = document.getElementById('terminArt');
+    return {
+      defaultValue: sel.value,
+      values: [...sel.options].map(o => o.value),
+    };
+  });
+  expect(state.defaultValue).toBe('Ordination');
+  expect(state.values).toEqual([
+    'Ordination', 'Kontrolle', 'Erstgespräch', 'Impfung', 'Blutabnahme',
+    'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung', 'Sonstige',
+  ]);
+});
+
+test('patient.html: booking with a chosen Grund (Pflegefreistellung) sends that exact value to patient_book_termin, not the old hardcoded Ordination', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't1', patient_name: 'Maria Huber', art: 'Pflegefreistellung', date: '2026-09-01', time: '09:00', end_time: '09:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Pflegefreistellung';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const sentArt = await page.evaluate(() => window.__rpcArgs && window.__rpcArgs.p_art);
+  expect(sentArt).toBe('Pflegefreistellung');
+});
+
+test('patient.html: booking with Arbeitsunfähigkeitsmeldung (Krankmeldung) also sends that value through', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't2', patient_name: 'Maria Huber', art: 'Arbeitsunfähigkeitsmeldung', date: '2026-09-01', time: '10:00', end_time: '10:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Arbeitsunfähigkeitsmeldung';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '10:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const sentArt = await page.evaluate(() => window.__rpcArgs && window.__rpcArgs.p_art);
+  expect(sentArt).toBe('Arbeitsunfähigkeitsmeldung');
+});
+
+test('patient.html: the demo/local booking path (no patient token) also respects the selected Grund', async ({ page }) => {
+  await installMockSupabase(page, {}, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'maria' }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({
+      maria: { fullName: 'Maria Huber', name: 'Maria', role: 'patient', dob: '1985-01-01', messages: [] },
+    }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
+  await page.waitForTimeout(800);
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Kontrolle';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'dr.ahmed'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const created = await page.evaluate(() => loadTermine().find(t => t.date === '2026-09-01' && t.time === '09:00'));
+  expect(created).toBeTruthy();
+  expect(created.art).toBe('Kontrolle');
+});
+
+test('secretary.html: both "Art des Termins" booking dropdowns include the new Arbeitsunfähigkeitsmeldung/Pflegefreistellung options', async ({ page }) => {
+  await installMockSupabase(page, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+    practice_settings: [{ id: true }],
+  }, () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'sekretaerin', name: 'Test Sek', username: 'sek1', isAdmin: false }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+    localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+  });
+  await page.goto('file://' + path.join(__dirname, '..', 'secretary.html'));
+  await page.waitForTimeout(1000);
+  const state = await page.evaluate(() => ({
+    ntArt: [...document.getElementById('ntArt').options].map(o => o.value),
+    pdArt: [...document.getElementById('pd-termin-art').options].map(o => o.value),
+  }));
+  expect(state.ntArt).toContain('Arbeitsunfähigkeitsmeldung');
+  expect(state.ntArt).toContain('Pflegefreistellung');
+  expect(state.pdArt).toContain('Arbeitsunfähigkeitsmeldung');
+  expect(state.pdArt).toContain('Pflegefreistellung');
+});
