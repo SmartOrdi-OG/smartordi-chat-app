@@ -806,6 +806,30 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
           <div style="margin:10px 0;">
             <select id="terminArzt" onchange="onArztChange()" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;"></select>
           </div>
+          <!-- Real user request (2026-08-17): the secretary/doctor used to
+               find out WHY a patient booked (Krankmeldung? Pflegefrei-
+               stellung? just a Kontrolle?) only from the free-text symptom
+               note, if at all -- this is the same "Art des Termins" concept
+               secretary.html's own booking forms (#pd-termin-art/#ntArt)
+               already use, now patient-selectable too, so it shows up for
+               staff exactly the same way a staff-booked Termin's Art
+               already does (plain text, no extra wiring needed on their
+               side -- see e.g. secretary.html's Termine list card). Value
+               stays a fixed German string (what staff actually sees) --
+               only the visible option text is translated, same pattern as
+               #apRelation's father/mother/other options above. -->
+          <div style="margin:0 0 10px;">
+            <select id="terminArt" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;">
+              <option value="Ordination" data-i18n="termine.art.ordination">Ordination</option>
+              <option value="Kontrolle" data-i18n="termine.art.kontrolle">Kontrolle</option>
+              <option value="Erstgespräch" data-i18n="termine.art.erstgespraech">Erstgespräch</option>
+              <option value="Impfung" data-i18n="termine.art.impfung">Impfung</option>
+              <option value="Blutabnahme" data-i18n="termine.art.blutabnahme">Blutabnahme</option>
+              <option value="Arbeitsunfähigkeitsmeldung" data-i18n="termine.art.krankmeldung">Arbeitsunfähigkeitsmeldung (Krankmeldung)</option>
+              <option value="Pflegefreistellung" data-i18n="termine.art.pflegefreistellung">Pflegefreistellung</option>
+              <option value="Sonstige" data-i18n="termine.art.sonstige">Sonstige</option>
+            </select>
+          </div>
           <div class="time-slots" id="timeSlots"></div>
           <button class="btn-book" onclick="bookTermin()" data-i18n="termine.confirmBtn">Termin bestätigen</button>
         </div>
@@ -2534,10 +2558,11 @@ async function bookTermin(){
   const acc=getCurrentAccount();
   if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
+  const selectedArt=document.getElementById('terminArt').value||'Ordination';
 
   if(getPatientToken()){
     try{
-      const termin=await patientBookTermin({date:d,time:selectedSlot,endTime:addMinutesToTime(selectedSlot,20),art:'Ordination',arztUsername:selectedArzt});
+      const termin=await patientBookTermin({date:d,time:selectedSlot,endTime:addMinutesToTime(selectedSlot,20),art:selectedArt,arztUsername:selectedArzt});
       await refreshRemoteTermine();
       showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
       selectedDay=null;selectedSlot=null;
@@ -2577,7 +2602,7 @@ async function bookTermin(){
     return;
   }
   const termin={
-    id:genTerminId(), patient:acc.fullName||acc.name, art:'Ordination', status:'neu',
+    id:genTerminId(), patient:acc.fullName||acc.name, art:selectedArt, status:'neu',
     arztUsername:selectedArzt,
     versicherung:acc.versicherung||'', tel:acc.tel||'', svnr:acc.svnr||'', dob:acc.dob||'',
     date:d, time:selectedSlot, endTime:addMinutesToTime(selectedSlot,20),
