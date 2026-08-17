@@ -96,6 +96,68 @@ test('patient.html: the demo/local booking path (no patient token) also respects
   expect(created.art).toBe('Kontrolle');
 });
 
+// Real user feedback (2026-08-17, after trying it live): the symptom
+// picker ("Grund für den Besuch" body figure) popped up right after every
+// single booking, including a Pflegefreistellung/Krankmeldung -- makes no
+// sense for an administrative certificate request. Now gated by
+// artNeedsSymptomPicker() -- only Ordination/Kontrolle/Erstgespräch/
+// Sonstige still auto-open it.
+test('patient.html: booking a Krankmeldung (Arbeitsunfähigkeitsmeldung) does NOT auto-open the symptom picker', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't3', patient_name: 'Maria Huber', art: 'Arbeitsunfähigkeitsmeldung', date: '2026-09-01', time: '09:00', end_time: '09:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Arbeitsunfähigkeitsmeldung';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const modalShown = await page.evaluate(() => document.getElementById('symptomModal').classList.contains('show'));
+  expect(modalShown).toBe(false);
+});
+
+test('patient.html: booking a Pflegefreistellung does NOT auto-open the symptom picker either', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't4', patient_name: 'Maria Huber', art: 'Pflegefreistellung', date: '2026-09-01', time: '09:00', end_time: '09:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Pflegefreistellung';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const modalShown = await page.evaluate(() => document.getElementById('symptomModal').classList.contains('show'));
+  expect(modalShown).toBe(false);
+});
+
+test('patient.html: booking an Impfung/Blutabnahme also skips the symptom picker', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't5', patient_name: 'Maria Huber', art: 'Impfung', date: '2026-09-01', time: '09:00', end_time: '09:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Impfung';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const modalShown = await page.evaluate(() => document.getElementById('symptomModal').classList.contains('show'));
+  expect(modalShown).toBe(false);
+});
+
+test('patient.html: booking a plain Kontrolle/Ordination visit still auto-opens the symptom picker as before', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: { id: 't6', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '09:00', end_time: '09:20', status: 'neu', arzt_id: 'u1' }, error: null },
+  });
+  await page.evaluate(() => {
+    document.getElementById('terminArt').value = 'Kontrolle';
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const modalShown = await page.evaluate(() => document.getElementById('symptomModal').classList.contains('show'));
+  expect(modalShown).toBe(true);
+});
+
 test('secretary.html: both "Art des Termins" booking dropdowns include the new Arbeitsunfähigkeitsmeldung/Pflegefreistellung options', async ({ page }) => {
   await installMockSupabase(page, {
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],

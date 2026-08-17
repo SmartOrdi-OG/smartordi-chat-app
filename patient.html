@@ -2548,6 +2548,18 @@ function selectSlot(el,time){
   el.classList.add('selected');selectedSlot=time;
 }
 
+// Real user feedback (2026-08-17): the symptom picker ("Grund für den
+// Besuch", body figure -- see #terminArt's own comment above) used to
+// auto-open after EVERY booking regardless of the chosen reason -- made no
+// sense for an Arbeitsunfähigkeitsmeldung/Pflegefreistellung (an
+// administrative certificate request, not a symptom) or a plain Impfung/
+// Blutabnahme (nothing to point at on a body figure for either). Only the
+// genuinely symptom-relevant reasons still auto-open it.
+const SYMPTOM_RELEVANT_ART=['Ordination','Kontrolle','Erstgespräch','Sonstige'];
+function artNeedsSymptomPicker(art){
+  return SYMPTOM_RELEVANT_ART.includes(art);
+}
+
 async function bookTermin(){
   // Defense in depth alongside #bookingControls being hidden by
   // applyBookingGating() when the practice has turned online booking off.
@@ -2568,7 +2580,7 @@ async function bookTermin(){
       selectedDay=null;selectedSlot=null;
       renderCalendar();renderTimeSlots();renderPatientTermine();
       document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
-      openSymptomModal(termin.id);
+      if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);
     }catch(err){
       console.error('patientBookTermin failed',err);
       const isSlotTaken=err&&err.message&&err.message.indexOf('slot_taken')!==-1;
@@ -2613,7 +2625,7 @@ async function bookTermin(){
   selectedDay=null;selectedSlot=null;
   renderCalendar();renderTimeSlots();renderPatientTermine();
   document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
-  openSymptomModal(termin.id);
+  if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);
 }
 
 // Shared by the list cards and the detail modal -- was duplicated inline in
