@@ -86,6 +86,57 @@ test('when signUp already returns an active session (e-mail confirmation disable
   expect(after.successVisible).toBe(true);
 });
 
+// Real bug, confirmed on a live re-test (2026-08-17): even with "Confirm
+// email" disabled (signUp() already returns a session, the case covered by
+// the test just above), the very first authenticated request right after
+// that -- this practices insert -- could still be rejected with the same
+// RLS error, as a short-lived gap rather than a permanent failure. See
+// completePendingPracticeRegistration()'s own comment (vendor/staff-
+// accounts.js) for the retry this test covers.
+test('a transient RLS rejection on the first practices insert is retried once (after re-confirming a real session exists) and recovers', async ({ page }) => {
+  await installMockSupabase(page, {});
+  await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
+  await page.waitForTimeout(1000);
+  await fillRegisterForm(page);
+
+  const after = await page.evaluate(async () => {
+    // getSession() must report a real session for the retry to even
+    // attempt the second insert -- see its own guard in
+    // completePendingPracticeRegistration().
+    window.__mockAuthSession = { user: { id: 'new-user-uuid' } };
+    // mockSupabase's single() reads window.__forceError[table] TWICE per
+    // resolution when it's about to report an error (once for the "is an
+    // error forced?" check, once more inside __forceErrorObj() to build the
+    // actual error payload) but only ONCE when it isn't -- so the first
+    // (should-fail) attempt needs two consistent truthy reads, and the
+    // second (should-succeed) attempt needs its one read to be falsy.
+    let calls = 0;
+    window.__forceError = {};
+    Object.defineProperty(window.__forceError, 'practices', {
+      configurable: true,
+      get() {
+        calls++;
+        return calls <= 2 ? { message: 'new row violates row-level security policy for table "practices"' } : undefined;
+      },
+    });
+    await doRegister();
+    await new Promise(r => setTimeout(r, 1200));
+    delete window.__forceError;
+    return {
+      calls,
+      practices: window.__store.practices,
+      staffProfiles: window.__store.staff_profiles,
+      successVisible: document.getElementById('successOverlay').classList.contains('show'),
+    };
+  });
+
+  expect(after.calls, 'must have actually retried, not just succeeded on the first try').toBeGreaterThanOrEqual(3);
+  expect(after.practices).toHaveLength(1);
+  expect(after.practices[0].name).toBe('Test Ordination');
+  expect(after.staffProfiles).toHaveLength(1);
+  expect(after.successVisible).toBe(true);
+});
+
 test("login.html finishes a deferred registration on first sign-in after confirmation", async ({ page }) => {
   await installMockSupabase(page, {});
   await page.goto('file://' + path.join(__dirname, '..', 'login.html'));
