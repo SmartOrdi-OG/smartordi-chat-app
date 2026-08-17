@@ -260,9 +260,28 @@ async function saveStaffProfileFields(staffId,fields){
 // never written directly, same as saveStaffProfileFields() above.
 async function completePendingPracticeRegistration(user){
   const m=user.user_metadata||{};
-  const {data:practiceRow,error:practiceError}=await sb.from('practices').insert({
+  const practiceFields={
     name:m.ordination, adresse:m.adresse, tel:m.tel, plan:m.plan||'standard', trial_start:new Date().toISOString(),
-  }).select().single();
+  };
+  let {data:practiceRow,error:practiceError}=await sb.from('practices').insert(practiceFields).select().single();
+  // Real bug, confirmed on a live re-test (2026-08-17) even after the fix
+  // above: this call runs right after signUp()/signInWithPassword() first
+  // returns a session (register.html calls this immediately when "Confirm
+  // email" is disabled; login.html calls it on first sign-in otherwise) --
+  // and that very first authenticated request can still be rejected with
+  // "new row violates row-level security policy for table practices",
+  // exactly like the no-session case, even though a session object was
+  // already returned. A one-time, one-time-bounded retry after a brief
+  // pause -- re-confirming a real session is actually active first, not
+  // just blindly resubmitting -- recovers from that short-lived gap
+  // without turning a permanent failure into an infinite retry loop.
+  if(practiceError&&/row-level security/i.test(practiceError.message||'')){
+    await new Promise(resolve=>setTimeout(resolve,600));
+    const {data:{session}}=await sb.auth.getSession();
+    if(session){
+      ({data:practiceRow,error:practiceError}=await sb.from('practices').insert(practiceFields).select().single());
+    }
+  }
   if(practiceError) return {success:false, stage:'practice', error:practiceError};
   const {error:profileError}=await sb.from('staff_profiles').insert({
     id:user.id, vorname:m.vorname, nachname:m.nachname, role:'arzt', fach:m.fach, is_admin:true, email:user.email, practice_id:practiceRow.id,
