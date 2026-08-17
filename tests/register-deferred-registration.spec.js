@@ -86,54 +86,58 @@ test('when signUp already returns an active session (e-mail confirmation disable
   expect(after.successVisible).toBe(true);
 });
 
-// Real bug, confirmed on a live re-test (2026-08-17): even with "Confirm
-// email" disabled (signUp() already returns a session, the case covered by
-// the test just above), the very first authenticated request right after
-// that -- this practices insert -- could still be rejected with the same
-// RLS error, as a short-lived gap rather than a permanent failure. See
-// completePendingPracticeRegistration()'s own comment (vendor/staff-
-// accounts.js) for the retry this test covers.
-test('a transient RLS rejection on the first practices insert is retried once (after re-confirming a real session exists) and recovers', async ({ page }) => {
+// Real bug, confirmed on a live re-test (2026-08-17): the practices insert
+// used to chain .select().single() to read the new row's id back. Postgres
+// RLS filters an INSERT's RETURNING output through the table's SELECT
+// policy too (not just the INSERT policy's WITH CHECK) -- and
+// phase15_staff_practice_rls.sql's "view own practice" SELECT policy
+// (id = current_practice_id()) can never pass at this exact moment, since
+// current_practice_id() reads staff_profiles.practice_id and this brand-new
+// user's staff_profiles row doesn't exist yet (it's the very next insert).
+// So the RETURNING read was rejected 100% of the time, deterministically --
+// not a timing race, which is why an earlier fix that just retried after a
+// pause still failed on live re-test. The real fix generates the row's id
+// client-side and does a plain insert with no .select() at all, sidestepping
+// RETURNING (and therefore the SELECT policy) entirely. This test proves
+// that mechanism directly: .select() on this specific insert is wired to
+// fail exactly like the real RLS gap would, while a plain insert (no
+// .select()) succeeds -- so it only passes if the code never calls .select()
+// on this insert, not because the mock happened to allow it through.
+test('completePendingPracticeRegistration() never requests .select() on the practices insert (RLS would always block reading that row back)', async ({ page }) => {
   await installMockSupabase(page, {});
   await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
   await page.waitForTimeout(1000);
   await fillRegisterForm(page);
 
   const after = await page.evaluate(async () => {
-    // getSession() must report a real session for the retry to even
-    // attempt the second insert -- see its own guard in
-    // completePendingPracticeRegistration().
-    window.__mockAuthSession = { user: { id: 'new-user-uuid' } };
-    // mockSupabase's single() reads window.__forceError[table] TWICE per
-    // resolution when it's about to report an error (once for the "is an
-    // error forced?" check, once more inside __forceErrorObj() to build the
-    // actual error payload) but only ONCE when it isn't -- so the first
-    // (should-fail) attempt needs two consistent truthy reads, and the
-    // second (should-succeed) attempt needs its one read to be falsy.
-    let calls = 0;
-    window.__forceError = {};
-    Object.defineProperty(window.__forceError, 'practices', {
-      configurable: true,
-      get() {
-        calls++;
-        return calls <= 2 ? { message: 'new row violates row-level security policy for table "practices"' } : undefined;
-      },
-    });
+    const origFrom = sb.from.bind(sb);
+    sb.from = (table) => {
+      if (table !== 'practices') return origFrom(table);
+      return {
+        insert: (v) => ({
+          select: () => ({
+            single: () => Promise.resolve({
+              data: null,
+              error: { message: 'new row violates row-level security policy for table "practices"' },
+            }),
+          }),
+          then: (res, rej) => origFrom('practices').insert(v).then(res, rej),
+        }),
+      };
+    };
     await doRegister();
-    await new Promise(r => setTimeout(r, 1200));
-    delete window.__forceError;
+    await new Promise(r => setTimeout(r, 700));
     return {
-      calls,
       practices: window.__store.practices,
       staffProfiles: window.__store.staff_profiles,
       successVisible: document.getElementById('successOverlay').classList.contains('show'),
     };
   });
 
-  expect(after.calls, 'must have actually retried, not just succeeded on the first try').toBeGreaterThanOrEqual(3);
   expect(after.practices).toHaveLength(1);
   expect(after.practices[0].name).toBe('Test Ordination');
   expect(after.staffProfiles).toHaveLength(1);
+  expect(after.staffProfiles[0].practice_id).toBe(after.practices[0].id);
   expect(after.successVisible).toBe(true);
 });
 
@@ -200,7 +204,12 @@ test('login.html shows a real error (not a silent/false success) if completing a
     const origFrom = sb.from.bind(sb);
     sb.from = (table) => {
       if (table === 'practices') {
-        return { insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'simulated insert failure' } }) }) }) };
+        // completePendingPracticeRegistration() does a plain insert() with
+        // no .select() chained (see its own comment in vendor/staff-
+        // accounts.js) -- awaited directly, so the mock only needs to
+        // resolve like a real insert() call would, not the old
+        // .insert().select().single() shape.
+        return { insert: () => Promise.resolve({ data: null, error: { message: 'simulated insert failure' } }) };
       }
       return origFrom(table);
     };
