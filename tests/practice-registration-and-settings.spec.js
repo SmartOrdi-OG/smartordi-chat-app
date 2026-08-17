@@ -45,97 +45,20 @@ test('register.html creates one practice with the real typed name and every fiel
 });
 
 // Real bug found 2026-08-16 during a full walkthrough test: the practices
-// insert right after signUp() intermittently failed with a real "new row
-// violates row-level security policy". Confirmed via Supabase's own request
-// logs (signup 200, then the very next insert 403, shortly after, same
-// browser). A FIRST fix attempt (building a second supabase-js client with
-// the fresh access_token in its own global.headers.Authorization) looked
-// right in code review but was confirmed STILL failing live, unchanged,
-// well after that fix had deployed -- supabase-js's own internal session/
-// header logic could not be trusted a second time. The real fix bypasses
-// the supabase-js client entirely for these two writes: a plain fetch()
-// straight to the REST API, with Authorization set by hand to signUp()'s
-// own just-returned access_token -- the one and only thing Postgrest
-// actually uses to resolve the caller's role for RLS, so this cannot race
-// against anything.
-test('register.html calls the REST API directly with signUp()\'s own access token for the practices/staff_profiles writes, not through the supabase-js client', async ({ page }) => {
-  await installMockSupabase(page, {});
-  await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
-  await page.waitForTimeout(1000);
-
-  const after = await page.evaluate(async () => {
-    document.getElementById('f-vorname').value = 'Sarah';
-    document.getElementById('f-nachname').value = 'Ahmed';
-    document.getElementById('f-fach').value = document.getElementById('f-fach').options[1]?.value || 'Allgemeinmedizin';
-    document.getElementById('f-ordination').value = 'Test Ordination';
-    document.getElementById('f-adresse').value = 'Teststraße 1, Linz';
-    document.getElementById('f-email').value = 'sarah@example.com';
-    document.getElementById('f-tel').value = '+43 660 1234567';
-    document.getElementById('f-password').value = 'sicheres-passwort-123';
-    document.getElementById('f-password-confirm').value = 'sicheres-passwort-123';
-    document.getElementById('cb-dsgvo').checked = true;
-    document.getElementById('cb-agb').checked = true;
-    await doRegister();
-    await new Promise(r => setTimeout(r, 300));
-    return {
-      fetchCalls: window.__fetchCalls,
-      practices: window.__store.practices,
-      staffProfiles: window.__store.staff_profiles,
-    };
-  });
-
-  const practicesCall = after.fetchCalls.find(c => c.method === 'POST' && c.url.includes('/rest/v1/practices'));
-  const staffProfilesCall = after.fetchCalls.find(c => c.method === 'POST' && c.url.includes('/rest/v1/staff_profiles'));
-  expect(practicesCall, 'must go through a real POST fetch(), not sb.from()').toBeTruthy();
-  expect(staffProfilesCall, 'must go through a real POST fetch(), not sb.from()').toBeTruthy();
-  expect(practicesCall.headers.Authorization, 'must carry signUp()\'s own just-returned access token by hand, never depending on any client\'s ambient session state').toBe('Bearer mock-access-token');
-  expect(staffProfilesCall.headers.Authorization).toBe('Bearer mock-access-token');
-  expect(practicesCall.headers.apikey).toBeTruthy();
-
-  // The writes themselves must still have gone through correctly.
-  expect(after.practices).toHaveLength(1);
-  expect(after.practices[0].name).toBe('Test Ordination');
-  expect(after.staffProfiles).toHaveLength(1);
-  expect(after.staffProfiles[0].practice_id).toBe(after.practices[0].id);
-});
-
-// signUp() genuinely returning no session (e.g. email confirmation
-// required) must still fall back to the pre-existing sb.from() path --
-// there is no access_token to send explicitly, and no race either, since
-// no session exists client-side yet at all.
-test('register.html falls back to sb.from() when signUp() returns no session', async ({ page }) => {
-  await installMockSupabase(page, {});
-  await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
-  await page.waitForTimeout(1000);
-
-  const after = await page.evaluate(async () => {
-    // Overridden here (after page load, not via installMockSupabase's
-    // extraInit/addInitScript) since `sb` (vendor/staff-accounts.js) does
-    // not exist yet at addInitScript time.
-    sb.auth.signUp = () => Promise.resolve({ data: { user: { id: 'new-user-uuid' } }, error: null });
-    document.getElementById('f-vorname').value = 'Sarah';
-    document.getElementById('f-nachname').value = 'Ahmed';
-    document.getElementById('f-fach').value = document.getElementById('f-fach').options[1]?.value || 'Allgemeinmedizin';
-    document.getElementById('f-ordination').value = 'Test Ordination';
-    document.getElementById('f-adresse').value = 'Teststraße 1, Linz';
-    document.getElementById('f-email').value = 'sarah@example.com';
-    document.getElementById('f-tel').value = '+43 660 1234567';
-    document.getElementById('f-password').value = 'sicheres-passwort-123';
-    document.getElementById('f-password-confirm').value = 'sicheres-passwort-123';
-    document.getElementById('cb-dsgvo').checked = true;
-    document.getElementById('cb-agb').checked = true;
-    await doRegister();
-    await new Promise(r => setTimeout(r, 300));
-    return {
-      fetchCalls: window.__fetchCalls.filter(c => c.method === 'POST' && c.url.includes('/rest/v1/')),
-      practices: window.__store.practices,
-      staffProfiles: window.__store.staff_profiles,
-    };
-  });
-  expect(after.fetchCalls, 'no session -- must not attempt a direct REST fetch()').toHaveLength(0);
-  expect(after.practices).toHaveLength(1);
-  expect(after.staffProfiles).toHaveLength(1);
-});
+// insert right after signUp() failed with "new row violates row-level
+// security policy for table practices" -- this user's Supabase project has
+// "Confirm email" ON, so signUp() creates the auth user but returns
+// session:null until the link is clicked, and every request made without a
+// session is necessarily unauthenticated. Two earlier fix attempts that
+// assumed a supabase-js client-side timing race instead (a second client
+// with an explicit Authorization header, then a hand-built fetch() straight
+// to the REST API) were both confirmed STILL failing on a real re-test,
+// since neither actually had a valid session/token to send either. The real
+// fix (see register.html's doRegister()) defers creating the practice/
+// profile entirely until a genuine authenticated session exists -- see
+// tests/register-deferred-registration.spec.js for that coverage (this
+// file's own first test above still covers the immediate-session/
+// confirmation-disabled path).
 
 // Regression test for a gap found in the 2026-07-29 pricing restructure:
 // register.html's own "Paket wählen" plan cards were never updated when

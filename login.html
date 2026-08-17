@@ -308,12 +308,35 @@ async function doLogin(){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display='block';
     document.getElementById('spinner').style.display='none';
-    document.getElementById('errorText').textContent='Falsche E-Mail oder Passwort.';
+    // Supabase's own message/code for a not-yet-confirmed account (see
+    // register.html's deferred-registration flow) -- distinct from a plain
+    // wrong password so a just-registered doctor isn't told their real
+    // password is wrong.
+    document.getElementById('errorText').textContent=
+      (signInError&&(signInError.code==='email_not_confirmed'||/email not confirmed/i.test(signInError.message||'')))
+        ? 'Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse über den Link, den wir Ihnen gesendet haben.'
+        : 'Falsche E-Mail oder Passwort.';
     document.getElementById('errorMsg').classList.add('show');
     document.getElementById('password').value='';
     return;
   }
-  const {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',signInData.user.id).single();
+  let {data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',signInData.user.id).single();
+  if((profileError||!profile)&&signInData.user.user_metadata&&signInData.user.user_metadata.pending_practice_registration){
+    // register.html deferred creating the practices/staff_profiles rows
+    // until a real authenticated session exists (see
+    // completePendingPracticeRegistration() in vendor/staff-accounts.js) --
+    // this is that first sign-in, right after e-mail confirmation.
+    const result=await completePendingPracticeRegistration(signInData.user);
+    if(!result.success){
+      btn.classList.remove('loading');
+      document.getElementById('btnText').style.display='block';
+      document.getElementById('spinner').style.display='none';
+      document.getElementById('errorText').textContent='Ihre Ordination konnte nicht eingerichtet werden: '+result.error.message+'. Bitte kontaktieren Sie den Support.';
+      document.getElementById('errorMsg').classList.add('show');
+      return;
+    }
+    ({data:profile,error:profileError}=await sb.from('staff_profiles').select('*').eq('id',signInData.user.id).single());
+  }
   if(profileError||!profile){
     btn.classList.remove('loading');
     document.getElementById('btnText').style.display='block';
