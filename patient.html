@@ -819,7 +819,15 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
                only the visible option text is translated, same pattern as
                #apRelation's father/mother/other options above. -->
           <div style="margin:0 0 10px;">
+            <!-- Real user request (2026-08-17): picking a reason must be a
+                 real, active choice, not silently default to Ordination --
+                 this empty-value placeholder is the only initially-selected
+                 option, and bookTermin() below refuses to book at all until
+                 the patient actively picks a real one (same "chooseDay/
+                 chooseArzt/chooseSlot" validation pattern already used for
+                 the other required booking fields). -->
             <select id="terminArt" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;">
+              <option value="" data-i18n="termine.art.choose">Grund des Besuchs wählen...</option>
               <option value="Ordination" data-i18n="termine.art.ordination">Ordination</option>
               <option value="Kontrolle" data-i18n="termine.art.kontrolle">Kontrolle</option>
               <option value="Erstgespräch" data-i18n="termine.art.erstgespraech">Erstgespräch</option>
@@ -2567,10 +2575,11 @@ async function bookTermin(){
   if(!selectedDay){showToast(tr('termine.toast.chooseDay'));return;}
   if(!selectedArzt){showToast(tr('termine.toast.chooseArzt'));return;}
   if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
+  const selectedArt=document.getElementById('terminArt').value;
+  if(!selectedArt){showToast(tr('termine.toast.chooseArt'));return;}
   const acc=getCurrentAccount();
   if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
-  const selectedArt=document.getElementById('terminArt').value||'Ordination';
 
   if(getPatientToken()){
     try{
@@ -2578,6 +2587,7 @@ async function bookTermin(){
       await refreshRemoteTermine();
       showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
       selectedDay=null;selectedSlot=null;
+      document.getElementById('terminArt').value='';
       renderCalendar();renderTimeSlots();renderPatientTermine();
       document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
       if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);
@@ -2623,6 +2633,7 @@ async function bookTermin(){
   saveTermine(list);
   showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
   selectedDay=null;selectedSlot=null;
+  document.getElementById('terminArt').value='';
   renderCalendar();renderTimeSlots();renderPatientTermine();
   document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
   if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);

@@ -33,7 +33,12 @@ async function setupPatient(page, extraRpc) {
   await page.waitForTimeout(300);
 }
 
-test('patient.html: the booking card has a Grund-des-Besuchs select with Ordination as the default, including both new certificate options', async ({ page }) => {
+// Real user request (2026-08-17): choosing a reason must be a real, active
+// choice, not a silent default -- the select now starts on an empty
+// placeholder, and bookTermin() refuses to book at all until a real value
+// is picked (same "chooseDay/chooseArzt/chooseSlot" validation pattern
+// already used for the other required booking fields).
+test('patient.html: the booking card has a Grund-des-Besuchs select defaulting to an empty placeholder (not silently Ordination), with both new certificate options present', async ({ page }) => {
   await setupPatient(page);
   const state = await page.evaluate(() => {
     const sel = document.getElementById('terminArt');
@@ -42,11 +47,26 @@ test('patient.html: the booking card has a Grund-des-Besuchs select with Ordinat
       values: [...sel.options].map(o => o.value),
     };
   });
-  expect(state.defaultValue).toBe('Ordination');
+  expect(state.defaultValue).toBe('');
   expect(state.values).toEqual([
-    'Ordination', 'Kontrolle', 'Erstgespräch', 'Impfung', 'Blutabnahme',
+    '', 'Ordination', 'Kontrolle', 'Erstgespräch', 'Impfung', 'Blutabnahme',
     'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung', 'Sonstige',
   ]);
+});
+
+test('patient.html: booking is refused (no RPC call, error toast) if no Grund was actively chosen', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: null, error: { message: 'should not be called' } },
+  });
+  await page.evaluate(() => {
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+    // #terminArt deliberately left on its empty placeholder.
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  const rpcCalled = await page.evaluate(() => window.__rpcArgs !== undefined);
+  expect(rpcCalled).toBe(false);
+  await expect(page.locator('#toast')).toHaveText('Bitte einen Grund für den Besuch wählen');
 });
 
 test('patient.html: booking with a chosen Grund (Pflegefreistellung) sends that exact value to patient_book_termin, not the old hardcoded Ordination', async ({ page }) => {
