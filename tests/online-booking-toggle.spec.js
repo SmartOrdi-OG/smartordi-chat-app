@@ -164,6 +164,11 @@ test('patient.html: a server-side booking_disabled rejection shows the right toa
   await page.waitForTimeout(300);
 
   const result = await page.evaluate(async () => {
+    // Real user request (2026-08-17): choosing a Grund des Besuchs is now
+    // mandatory (see tests/termin-visit-reason.spec.js) -- selected here so
+    // this test still reaches the actual scenario it's about (a server-side
+    // race-condition rejection), not the unrelated "no reason chosen" one.
+    document.getElementById('terminArt').value = 'Kontrolle';
     selectedDay = 1; selectedArzt = 'u1'; selectedSlot = '09:00';
     await bookTermin();
     return {
