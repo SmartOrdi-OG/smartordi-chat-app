@@ -69,6 +69,35 @@ test('patient.html: booking is refused (no RPC call, error toast) if no Grund wa
   await expect(page.locator('#toast')).toHaveText('Bitte einen Grund für den Besuch wählen');
 });
 
+// Real user request (2026-08-17, after seeing the plain-colored toast live):
+// the warning must actually look like a warning -- red toast (same 'error'
+// styling already used for bookingDisabled/noAccount/slotTaken elsewhere),
+// plus the #terminArt select itself gets a visible red highlight so it's
+// obvious which field is the problem. The highlight must clear the moment
+// a real value is picked, not linger after the fix.
+test('patient.html: the unchosen-Grund toast is styled as an error (red), and #terminArt gets a red "field-invalid" highlight', async ({ page }) => {
+  await setupPatient(page, {
+    rpcName: 'patient_book_termin',
+    result: { data: null, error: { message: 'should not be called' } },
+  });
+  await page.evaluate(() => {
+    selectedDay = 1; currentDate = new Date('2026-09-01'); selectedArzt = 'u1'; selectedSlot = '09:00';
+  });
+  await page.evaluate(async () => { await bookTermin(); });
+  await expect(page.locator('#toast')).toHaveClass(/\berror\b/);
+  const hasInvalidClass = await page.evaluate(() => document.getElementById('terminArt').classList.contains('field-invalid'));
+  expect(hasInvalidClass).toBe(true);
+
+  // Picking a real reason clears the highlight, even without re-submitting.
+  await page.evaluate(() => {
+    const sel = document.getElementById('terminArt');
+    sel.value = 'Kontrolle';
+    sel.dispatchEvent(new Event('change'));
+  });
+  const stillInvalid = await page.evaluate(() => document.getElementById('terminArt').classList.contains('field-invalid'));
+  expect(stillInvalid).toBe(false);
+});
+
 test('patient.html: booking with a chosen Grund (Pflegefreistellung) sends that exact value to patient_book_termin, not the old hardcoded Ordination', async ({ page }) => {
   await setupPatient(page, {
     rpcName: 'patient_book_termin',
