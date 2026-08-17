@@ -601,11 +601,18 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
 .modal-footer{padding:14px 20px;border-top:1px solid var(--border);}
 .btn-confirm{display:block;width:auto;min-width:200px;margin:0 auto;padding:11px 26px;border:1px solid #bfdbfe;border-radius:12px;background:#EAF4F1;color:#0E5E56;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;}
 
-.body-part{fill:url(#bodyFigGrad);stroke:#a97d4d;stroke-width:1.4;cursor:pointer;transition:fill 0.15s;}
-.body-part:hover{fill:#f0d9b0;}
-.body-part.active{fill:#B23A34;stroke:#9C332E;}
-#bodyBackView .body-part{fill:url(#bodyFigGradBack);}
-#bodyBackView .body-part.active{fill:#B23A34;stroke:#9C332E;}
+/* Real user request (2026-08-16, after comparing 5 mocked-up visual
+   directions side by side): plain clinical line-art instead of a skin-
+   tone-gradient organic silhouette -- no fill/skin color at all, just a
+   thin outline, same look real symptom-checker apps (Ada, Buoy) use. Picked
+   specifically because it carries no skin tone or gender cue of its own at
+   all, appropriate for a patient base spanning every age/skin tone/
+   language this app supports. A region only ever gets color on hover
+   (soft teal wash, matching this page's own accent) or once selected (soft
+   red wash, var(--red) -- same "mark where it hurts" convention as before). */
+.body-part{fill:none;stroke:var(--text);stroke-width:1.5;cursor:pointer;transition:fill 0.15s,stroke 0.15s;}
+.body-part:hover{fill:#EAF4F1;stroke:#0E5E56;}
+.body-part.active{fill:#FAF0EE;stroke:var(--red);}
 .region-chip{padding:8px 14px;border-radius:20px;border:1.5px solid #BFE0D9;background:white;color:#0E5E56;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .region-chip.active{background:#0E5E56;color:white;}
 /* Real user request (2026-08-14): three body figures (adult male, adult
