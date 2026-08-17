@@ -260,43 +260,41 @@ async function saveStaffProfileFields(staffId,fields){
 // never written directly, same as saveStaffProfileFields() above.
 async function completePendingPracticeRegistration(user){
   const m=user.user_metadata||{};
-  const practiceFields={
-    name:m.ordination, adresse:m.adresse, tel:m.tel, plan:m.plan||'standard', trial_start:new Date().toISOString(),
-  };
-  let {data:practiceRow,error:practiceError}=await sb.from('practices').insert(practiceFields).select().single();
-  // Real bug, confirmed on a live re-test (2026-08-17) even after the fix
-  // above: this call runs right after signUp()/signInWithPassword() first
-  // returns a session (register.html calls this immediately when "Confirm
-  // email" is disabled; login.html calls it on first sign-in otherwise) --
-  // and that very first authenticated request can still be rejected with
-  // "new row violates row-level security policy for table practices",
-  // exactly like the no-session case, even though a session object was
-  // already returned. A one-time, one-time-bounded retry after a brief
-  // pause -- re-confirming a real session is actually active first, not
-  // just blindly resubmitting -- recovers from that short-lived gap
-  // without turning a permanent failure into an infinite retry loop.
-  if(practiceError&&/row-level security/i.test(practiceError.message||'')){
-    await new Promise(resolve=>setTimeout(resolve,600));
-    const {data:{session}}=await sb.auth.getSession();
-    if(session){
-      ({data:practiceRow,error:practiceError}=await sb.from('practices').insert(practiceFields).select().single());
-    }
-  }
+  // Real root cause, found 2026-08-17 after an earlier "retry after a
+  // pause" fix (assuming a session-propagation race) still failed 100% of
+  // the time on live re-test: this INSERT used to chain .select().single()
+  // to read the new row's id back. Postgres RLS filters an INSERT's
+  // RETURNING output through the table's SELECT policy too (not just the
+  // INSERT policy's WITH CHECK) -- and phase15_staff_practice_rls.sql's
+  // "view own practice" SELECT policy is `id = current_practice_id()`,
+  // which resolves current_practice_id() from staff_profiles.practice_id.
+  // At this exact moment there IS no staff_profiles row yet for this
+  // brand-new user (that's the very next insert below) -- current_practice_
+  // id() is always null here, so the SELECT policy always rejects the
+  // RETURNING row: "new row violates row-level security policy for table
+  // practices", deterministically, every single time, regardless of
+  // session timing. Generating the id ourselves and doing a plain insert
+  // (no .select()) sidesteps needing RETURNING -- and therefore the SELECT
+  // policy -- at all.
+  const practiceId=crypto.randomUUID();
+  const {error:practiceError}=await sb.from('practices').insert({
+    id:practiceId, name:m.ordination, adresse:m.adresse, tel:m.tel, plan:m.plan||'standard', trial_start:new Date().toISOString(),
+  });
   if(practiceError) return {success:false, stage:'practice', error:practiceError};
   const {error:profileError}=await sb.from('staff_profiles').insert({
-    id:user.id, vorname:m.vorname, nachname:m.nachname, role:'arzt', fach:m.fach, is_admin:true, email:user.email, practice_id:practiceRow.id,
+    id:user.id, vorname:m.vorname, nachname:m.nachname, role:'arzt', fach:m.fach, is_admin:true, email:user.email, practice_id:practiceId,
   });
   if(profileError) return {success:false, stage:'profile', error:profileError};
   const fullName=(m.titel?m.titel+' ':'')+m.vorname+' '+m.nachname;
   // Fire-and-forget, same as register.html's original record_consent call --
   // evidence-of-consent must never block/undo an already-created account.
   sb.rpc('record_consent',{
-    p_practice_id:practiceRow.id, p_consent_type:'doctor_registration',
+    p_practice_id:practiceId, p_consent_type:'doctor_registration',
     p_full_name:fullName, p_email:user.email, p_policy_version:m.policy_version||'2.1',
     p_user_agent:navigator.userAgent,
   }).then(({error})=>{ if(error) console.error('record_consent failed',error); });
   sb.auth.updateUser({data:{pending_practice_registration:false}}).catch(()=>{});
-  return {success:true, practiceId:practiceRow.id, fullName};
+  return {success:true, practiceId, fullName};
 }
 
 // Practice-wide settings (plan, ordination/adresse/tel, trial, payment) --
