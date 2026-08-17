@@ -587,6 +587,11 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
 .toast.success{background:linear-gradient(135deg,#0A4A44,#0E5E56);}
 .toast.error{background:linear-gradient(135deg,#7A2E29,#B23A34);}
 .toast.error::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E");}
+/* Real user request (2026-08-17): flag the "Grund des Besuchs" field itself
+   in red -- not just the toast -- when the patient tries to book without
+   picking a real reason, and keep it flagged until they actively choose
+   one (see bookTermin()'s validation and #terminArt's onchange below). */
+#terminArt.field-invalid{box-shadow:0 0 0 2px var(--red);}
 
 ::-webkit-scrollbar{width:0;}
 
@@ -826,7 +831,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
                  the patient actively picks a real one (same "chooseDay/
                  chooseArzt/chooseSlot" validation pattern already used for
                  the other required booking fields). -->
-            <select id="terminArt" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;">
+            <select id="terminArt" onchange="document.getElementById('terminArt').classList.remove('field-invalid')" style="width:100%;padding:9px 12px;border:none;border-radius:10px;background:rgba(255,255,255,0.15);color:white;font-family:inherit;font-size:13px;font-weight:700;outline:none;">
               <option value="" data-i18n="termine.art.choose">Grund des Besuchs wählen...</option>
               <option value="Ordination" data-i18n="termine.art.ordination">Ordination</option>
               <option value="Kontrolle" data-i18n="termine.art.kontrolle">Kontrolle</option>
@@ -2576,7 +2581,11 @@ async function bookTermin(){
   if(!selectedArzt){showToast(tr('termine.toast.chooseArzt'));return;}
   if(!selectedSlot){showToast(tr('termine.toast.chooseSlot'));return;}
   const selectedArt=document.getElementById('terminArt').value;
-  if(!selectedArt){showToast(tr('termine.toast.chooseArt'));return;}
+  if(!selectedArt){
+    showToast(tr('termine.toast.chooseArt'),'error');
+    document.getElementById('terminArt').classList.add('field-invalid');
+    return;
+  }
   const acc=getCurrentAccount();
   if(!acc){showToast(tr('termine.toast.noAccount'),'error');return;}
   const d=dateStr(currentDate.getFullYear(),currentDate.getMonth(),selectedDay);
@@ -2587,7 +2596,7 @@ async function bookTermin(){
       await refreshRemoteTermine();
       showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
       selectedDay=null;selectedSlot=null;
-      document.getElementById('terminArt').value='';
+      document.getElementById('terminArt').value='';document.getElementById('terminArt').classList.remove('field-invalid');
       renderCalendar();renderTimeSlots();renderPatientTermine();
       document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
       if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);
@@ -2633,7 +2642,7 @@ async function bookTermin(){
   saveTermine(list);
   showToast(`${tr('termine.toast.bookedPrefix')} ${selectedDay}. ${monthsFull()[currentDate.getMonth()]} ${tr('termine.toast.bookedAt')} ${selectedSlot} ${tr('termine.uhr')}`.trim(),'success');
   selectedDay=null;selectedSlot=null;
-  document.getElementById('terminArt').value='';
+  document.getElementById('terminArt').value='';document.getElementById('terminArt').classList.remove('field-invalid');
   renderCalendar();renderTimeSlots();renderPatientTermine();
   document.getElementById('bookingDate').textContent=tr('termine.chooseDay');
   if(artNeedsSymptomPicker(selectedArt)) openSymptomModal(termin.id);
