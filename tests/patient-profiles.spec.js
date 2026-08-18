@@ -66,14 +66,14 @@ test('renderProfilesCard() lists every profile, tags the active one, and only th
 // Real user request (2026-08-18): an adult account is a single person's
 // own account, and a children's account only ever grows by adding MORE
 // children -- there's no scenario where a second adult gets added onto an
-// account, so that button is gone. openAddProfileModal('adult') itself
-// (and the relation picker it drives) is left in place, unreachable from
-// the UI -- still exercised directly by the sibling tests above/below, in
-// case a future flow needs it.
-test('"Meine Profile" only offers "+ Kind hinzufügen" -- the "+ Erwachsene:n hinzufügen" button is gone', async ({ page }) => {
-  await setupRemote(page);
+// account, so that button is gone outright (not just relabelled).
+// openAddProfileModal('adult') itself (and the relation picker it drives)
+// is left in place, unreachable from the UI -- still exercised directly by
+// the sibling tests above/below, in case a future flow needs it.
+test('a children account\'s "Meine Profile" offers "+ Kind hinzufügen"; "+ Erwachsene:n hinzufügen" is gone entirely', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true }));
   const rows = [
-    { patient_id: 'p1', full_name: 'Maria Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Ordination A', is_active: true },
+    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
   ];
   const state = await page.evaluate(async (rows) => {
     sb.rpc = (name) => {
@@ -82,11 +82,36 @@ test('"Meine Profile" only offers "+ Kind hinzufügen" -- the "+ Erwachsene:n hi
     };
     await renderProfilesCard();
     return {
-      addChildVisible: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'child\')"]'),
+      addChildVisible: getComputedStyle(document.getElementById('profilAddChildWrap')).display !== 'none',
       addAdultPresent: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'adult\')"]'),
     };
   }, rows);
   expect(state.addChildVisible).toBe(true);
+  expect(state.addAdultPresent).toBe(false);
+});
+
+// Follow-up request (same day, after seeing an adult account still offer
+// "+ Kind hinzufügen" live): an adult account must stay single-person, full
+// stop -- not just missing the "+ Erwachsene:n hinzufügen" option, but
+// unable to add ANY profile at all, since only a children account can ever
+// hold more than one profile.
+test('an adult account\'s "Meine Profile" offers no way to add a profile at all', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: false }));
+  const rows = [
+    { patient_id: 'p1', full_name: 'Salem Ghanem', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Ordination A', is_active: true },
+  ];
+  const state = await page.evaluate(async (rows) => {
+    sb.rpc = (name) => {
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    await renderProfilesCard();
+    return {
+      addChildVisible: getComputedStyle(document.getElementById('profilAddChildWrap')).display !== 'none',
+      addAdultPresent: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'adult\')"]'),
+    };
+  }, rows);
+  expect(state.addChildVisible, 'an adult account must never offer "+ Kind hinzufügen" either').toBe(false);
   expect(state.addAdultPresent).toBe(false);
 });
 
