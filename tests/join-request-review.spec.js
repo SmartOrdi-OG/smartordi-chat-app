@@ -48,6 +48,13 @@ test('approving a join request creates an approved patient identity with the cop
   expect(result.patientRow.join_status).toBe('approved');
   expect(result.patientRow.pw_hash, 'the request\'s pw_hash must be copied so the patient can actually log in').toBe('hashed-secret');
   expect(result.localAccount.joinStatus).toBe('approved');
+  // Real user request (2026-08-18): a self-registered patient already chose
+  // their own real password on patient-login.html's own form -- forcing
+  // them through "choose a new password" again on first login (patients.
+  // first_login defaults to true for every INSERT) was confusing. That
+  // screen should only ever show for a secretary-created account with a
+  // system-generated temp password.
+  expect(result.patientRow.first_login, 'a self-registered patient must not be forced to change their own already-chosen password on first login').toBe(false);
 });
 
 test('rejecting a join request marks it rejected and never creates a patient identity', async ({ page }) => {
