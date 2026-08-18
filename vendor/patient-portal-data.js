@@ -202,6 +202,24 @@ async function patientRefreshStaffRoster(){
   });
   _staffRoster=next;
 }
+// Same exact gap as patientRefreshStaffRoster() right above, for
+// practices.adresse/tel instead of staff_profiles: getPracticeSettings()
+// (vendor/staff-accounts.js) does a direct sb.from('practices').select(...)
+// gated by phase15_staff_practice_rls.sql's "view own practice" policy
+// (id = current_practice_id()), which resolves via staff_profiles and is
+// therefore always null for a real patient/guardian session -- leaving
+// "Meine Ordination"'s Adresse/Telefon stuck on "—" no matter what the
+// doctor actually filled in (found via a user report). Overwrites the SAME
+// _practiceSettings module variable staff-accounts.js declares via
+// supabase/phase73_patient_get_practice_contact.sql's SECURITY DEFINER RPC
+// instead, so getPracticeSettings() keeps working unchanged for every
+// other (staff-only) caller.
+async function patientRefreshPracticeSettings(){
+  const {data,error}=await sb.rpc('patient_get_practice_contact');
+  if(error){ console.error('patientRefreshPracticeSettings failed',error); return; }
+  const row=(data||[])[0];
+  if(row) _practiceSettings=Object.assign({},_practiceSettings,{adresse:row.adresse,tel:row.tel});
+}
 // Ends the real Supabase Auth session (server-side revocation of the
 // refresh token, not just a local clear) -- supabase-js's own signOut(),
 // replacing the old patient_logout RPC entirely.
@@ -241,9 +259,17 @@ async function patientGetMessages(){
     // createdAt (full ISO timestamp, kept alongside the display-only "time"
     // HH:MM) -- patient.html's unread-badge tracking needs this to compare
     // against a per-device "last viewed" marker (patientUnreadCount()).
-    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16),
+    return {dir:row.dir, type:row.type, text:row.text, time:formatMsgTime(row.created_at),
       createdAt:row.created_at, docId:row.doc_id, filename:row.filename, sub:row.doc_sub};
   });
+}
+// created_at comes back as a UTC timestamptz string -- slicing its "HH:MM"
+// characters directly (the old approach here) displayed raw UTC, off from
+// the reader's actual local time by their UTC offset. Parsing it as a real
+// Date and formatting via toLocaleTimeString converts to the browser's own
+// local time instead.
+function formatMsgTime(createdAt){
+  return createdAt?new Date(createdAt).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):'';
 }
 async function patientSendMessage(text){
   const {data,error}=await sb.rpc('patient_send_message',{p_text:text});

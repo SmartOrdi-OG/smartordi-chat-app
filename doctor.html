@@ -3551,7 +3551,7 @@ async function hydrateRealThreadFromSupabase(name){
   if(!patientId) return false;
   const rows=await getMessagesForPatient(patientId);
   MESSAGES[name]={date:'', items: rows.map(function(r){
-    return {dir:r.dir, type:r.type, text:r.text, time:(r.created_at||'').slice(11,16),
+    return {dir:r.dir, type:r.type, text:r.text, time:formatMsgTime(r.created_at),
       docId:r.doc_id, filename:r.filename, sub:r.doc_sub};
   })};
   return true;
@@ -3981,6 +3981,18 @@ function setVaccinePrice(vaccine,value){
 // sums up whatever's rendered on the rows (updateChatUnreadBadge()).
 // A patient never seen before on THIS device seeds to "now" instead of
 // counting their entire history as unread the moment this ships.
+// Real bug report: a genuinely new message's notification could show once
+// then vanish on its own within seconds, no click and no other message
+// involved -- see secretary.html's SEC_SESSION_START comment (same
+// duplicated pattern here) for the full root cause: patientKey can resolve
+// differently (a.id vs a.fullName) across the several independent renders
+// that follow a real message arriving, so this "never seen before" branch
+// could re-seed the SAME patient's marker to a fresh "now" more than once,
+// silently swallowing the very message that had just made it show as
+// unread. Anchoring to one timestamp captured at page load instead fixes
+// that without changing the original intent (a patient's older history
+// still doesn't flood in as unread the first time this feature sees them).
+const DOC_SESSION_START=new Date().toISOString();
 const CHAT_LAST_VIEWED_KEY='smartordi_doc_chat_last_viewed';
 function loadChatLastViewedMap(){
   try{ return JSON.parse(localStorage.getItem(CHAT_LAST_VIEWED_KEY))||{}; }catch(e){ return {}; }
@@ -3992,7 +4004,12 @@ function markChatViewed(patientKey){
 }
 function unreadCountFor(patientKey,messages){
   const map=loadChatLastViewedMap();
-  if(!map[patientKey]){ markChatViewed(patientKey); return 0; }
+  if(!map[patientKey]){
+    const seedMap=loadChatLastViewedMap();
+    seedMap[patientKey]=DOC_SESSION_START;
+    localStorage.setItem(CHAT_LAST_VIEWED_KEY,JSON.stringify(seedMap));
+    return messages.filter(m=>m.dir==='in'&&m.createdAt&&m.createdAt>DOC_SESSION_START).length;
+  }
   const lastViewed=map[patientKey];
   return messages.filter(m=>m.dir==='in'&&m.createdAt&&m.createdAt>lastViewed).length;
 }
@@ -4303,6 +4320,15 @@ async function handleClinicAttach(e){
 document.addEventListener('DOMContentLoaded', function(){
   var cb = document.getElementById('mobileChatBack');
   if(cb) cb.style.display='none';
+  // A Geburtsdatum can never be in the future -- caps the native date
+  // picker's year range accordingly (also keeps its digit entry sane).
+  (function(){
+    const todayStr=new Date().toISOString().slice(0,10);
+    ['adv-dob','such-dob'].forEach(function(id){
+      const el=document.getElementById(id);
+      if(el){ el.min='1900-01-01'; el.max=todayStr; }
+    });
+  })();
   // Static Überweisungsschein preview in Einstellungen -- was previously a
   // literal "${new Date().toLocaleDateString('de-AT')}" string sitting in
   // plain HTML (not inside a script/template literal), so it was never

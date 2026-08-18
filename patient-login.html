@@ -159,8 +159,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
          alongside Adresse (already present, now enforced too). -->
     <div class="form-group">
       <label class="form-label" data-i18n="request.dob.label">Geburtsdatum *</label>
-      <input type="date" class="form-input" id="reqDob" style="padding-left:14px;">
+      <input type="date" class="form-input" id="reqDob" min="1900-01-01" style="padding-left:14px;">
     </div>
+    <script>document.getElementById('reqDob').max=new Date().toISOString().slice(0,10);</script>
     <!-- Real user request (2026-08-16, supabase/phase72_patient_geschlecht.
          sql): the ONLY place a patient's real gender is ever asked -- staff
          entry (secretary.html "+ Neuer Patient") and imports only ever

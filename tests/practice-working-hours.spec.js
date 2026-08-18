@@ -209,15 +209,43 @@ test('patient.html: a closed calendar day is not clickable, and an open day only
   await page.waitForTimeout(300);
 
   const result = await page.evaluate(() => {
-    currentDate = new Date(2026, 7, 1); // August 2026
+    // Real bug report investigated 2026-08-18, turned out to be a stale
+    // test, not an app bug: renderCalendar() marks a rendered day 'past'
+    // (never even reaching the isWorkDay() check that would mark it
+    // 'closed') the moment it's earlier than today's REAL calendar date --
+    // this test used to hardcode a fixed "2026-08-17 (Monday)"/"2026-08-18
+    // (Tuesday)" pair, which only worked for as long as "today" hadn't
+    // caught up to those dates yet. Once real time passed 2026-08-17, that
+    // Monday correctly started rendering as 'past' instead of 'closed' --
+    // completely correct app behavior for a day that's actually in the
+    // past, just a test that stopped matching reality. Computing a Monday/
+    // Tuesday pair genuinely in the future relative to whenever this test
+    // actually runs keeps it correct indefinitely, instead of silently
+    // breaking again the next time real time catches up to a hardcoded date.
+    const base = new Date();
+    base.setDate(base.getDate() + 14); // comfortably clear of "today"
+    while (base.getDay() !== 1) base.setDate(base.getDate() + 1); // walk to the next Monday
+    let monday = new Date(base);
+    let tuesday = new Date(base);
+    tuesday.setDate(tuesday.getDate() + 1);
+    // currentDate below renders a single month -- if this Monday happens to
+    // be the last day of its month, Tuesday would fall into the next one
+    // and never appear on the same rendered grid. Skip a week ahead instead.
+    if (tuesday.getMonth() !== monday.getMonth()) {
+      monday.setDate(monday.getDate() + 7);
+      tuesday = new Date(monday);
+      tuesday.setDate(tuesday.getDate() + 1);
+    }
+
+    currentDate = new Date(monday.getFullYear(), monday.getMonth(), 1);
     selectedArzt = 'dr.ahmed';
     renderCalendar();
-    selectDay(18); // 2026-08-18 is a Tuesday -- configured open 09:00-10:00
+    selectDay(tuesday.getDate()); // configured open 09:00-10:00
     const tueSlots = [...document.querySelectorAll('#timeSlots .time-slot')].map(el => el.textContent.trim());
-    const mondayCell = [...document.querySelectorAll('#calGrid .cal-day')].find(el => el.textContent.trim() === '17');
+    const mondayCell = [...document.querySelectorAll('#calGrid .cal-day')].find(el => el.textContent.trim() === String(monday.getDate()));
     return { tueSlots, mondayClosed: mondayCell.classList.contains('closed'), mondayHasOnclick: !!mondayCell.onclick };
   });
   expect(result.tueSlots).toEqual(['09:00', '09:15', '09:30', '09:45', '10:00']);
-  expect(result.mondayClosed, '2026-08-17 (Monday) is configured closed').toBe(true);
+  expect(result.mondayClosed, 'a future Monday is configured closed').toBe(true);
   expect(result.mondayHasOnclick, 'a closed day must not be clickable').toBe(false);
 });

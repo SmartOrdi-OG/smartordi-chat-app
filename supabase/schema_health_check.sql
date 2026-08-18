@@ -92,7 +92,9 @@ from unnest(array[
   -- phase65
   'patient_change_username',
   -- phase69
-  'patient_get_mkp_exams'
+  'patient_get_mkp_exams',
+  -- phase73
+  'patient_get_practice_contact'
 ]) as f
 
 union all
