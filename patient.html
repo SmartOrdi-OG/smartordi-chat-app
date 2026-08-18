@@ -2231,6 +2231,11 @@ async function initPatientData(){
     // plain staffRosterReady (from vendor/staff-accounts.js) always
     // resolves to an empty roster for a real patient/guardian session.
     await patientRefreshStaffRoster();
+    // See patientRefreshPracticeSettings()'s own comment (vendor/patient-
+    // portal-data.js) for why the plain practiceSettingsReady (from
+    // vendor/staff-accounts.js) always resolves Adresse/Telefon to nothing
+    // for a real patient/guardian session.
+    await patientRefreshPracticeSettings();
     _patientWorkingHours=await patientGetWorkingHours();
     _patientChatEnabled=await patientGetChatEnabled();
     _patientBookingEnabled=await patientGetBookingEnabled();
