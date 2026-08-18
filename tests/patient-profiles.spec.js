@@ -63,6 +63,33 @@ test('renderProfilesCard() lists every profile, tags the active one, and only th
   expect(state.html).toContain('Tom Huber');
 });
 
+// Real user request (2026-08-18): an adult account is a single person's
+// own account, and a children's account only ever grows by adding MORE
+// children -- there's no scenario where a second adult gets added onto an
+// account, so that button is gone. openAddProfileModal('adult') itself
+// (and the relation picker it drives) is left in place, unreachable from
+// the UI -- still exercised directly by the sibling tests above/below, in
+// case a future flow needs it.
+test('"Meine Profile" only offers "+ Kind hinzufügen" -- the "+ Erwachsene:n hinzufügen" button is gone', async ({ page }) => {
+  await setupRemote(page);
+  const rows = [
+    { patient_id: 'p1', full_name: 'Maria Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Ordination A', is_active: true },
+  ];
+  const state = await page.evaluate(async (rows) => {
+    sb.rpc = (name) => {
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    await renderProfilesCard();
+    return {
+      addChildVisible: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'child\')"]'),
+      addAdultPresent: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'adult\')"]'),
+    };
+  }, rows);
+  expect(state.addChildVisible).toBe(true);
+  expect(state.addAdultPresent).toBe(false);
+});
+
 test('a local/demo (non-token) account never shows the profiles card at all', async ({ page }) => {
   await installMockSupabase(page, {}, () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'demo1' }));
