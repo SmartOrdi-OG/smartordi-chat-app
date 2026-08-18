@@ -184,7 +184,37 @@ test('the Uhrzeit list respects a custom schedule: closed on the configured date
   expect(result.tuesday).not.toEqual(expect.arrayContaining(['08:00', '14:00']));
 });
 
+// Real fix (2026-08-18): this test used to hardcode a fixed calendar date
+// (2026-08-17/18) as "a Monday/Tuesday in the future". Once real wall-clock
+// time actually passed that date, patient.html's renderCalendar() started
+// classing that cell ".past" (a date before today) instead of ".closed" --
+// .past takes priority there (see its own "else if" chain) since a day that
+// has already gone by shouldn't look like it's merely closed today. That's
+// correct app behaviour, not a bug -- the test itself just assumed "today"
+// would always be earlier than a date it wrote once. Computing a Monday/
+// Tuesday pair that's always comfortably in the future (and never spanning
+// a month boundary, since this test renders a single month's grid) keeps
+// this passing indefinitely instead of breaking again once time moves on.
+function nextMondayTuesdayInFuture() {
+  const d = new Date();
+  d.setDate(d.getDate() + 21); // clear margin -- never "today"/"yesterday"
+  while (d.getDay() !== 1) d.setDate(d.getDate() + 1); // 1 = Monday
+  const tue = new Date(d);
+  tue.setDate(tue.getDate() + 1);
+  if (tue.getMonth() !== d.getMonth()) {
+    // Rare edge case: Monday is the last day of its month -- Tuesday would
+    // spill into the next one, which the calendar-grid check below can't
+    // handle (it looks at one rendered month at a time). Just use next
+    // week's Monday/Tuesday instead, which can't have this problem twice.
+    d.setDate(d.getDate() + 7);
+    tue.setTime(d.getTime());
+    tue.setDate(tue.getDate() + 1);
+  }
+  return { year: d.getFullYear(), month: d.getMonth(), mondayDay: d.getDate(), tuesdayDay: tue.getDate() };
+}
+
 test('patient.html: a closed calendar day is not clickable, and an open day only offers its configured slots', async ({ page }) => {
+  const { year, month, mondayDay, tuesdayDay } = nextMondayTuesdayInFuture();
   await installMockSupabase(page, {}, () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'maria' }));
     sessionStorage.setItem('smartordi_patient_token', 'tok-1');
@@ -208,16 +238,16 @@ test('patient.html: a closed calendar day is not clickable, and an open day only
   await page.evaluate(async () => { await initPatientData(); });
   await page.waitForTimeout(300);
 
-  const result = await page.evaluate(() => {
-    currentDate = new Date(2026, 7, 1); // August 2026
+  const result = await page.evaluate(({ year, month, mondayDay, tuesdayDay }) => {
+    currentDate = new Date(year, month, 1);
     selectedArzt = 'dr.ahmed';
     renderCalendar();
-    selectDay(18); // 2026-08-18 is a Tuesday -- configured open 09:00-10:00
+    selectDay(tuesdayDay); // configured open 09:00-10:00
     const tueSlots = [...document.querySelectorAll('#timeSlots .time-slot')].map(el => el.textContent.trim());
-    const mondayCell = [...document.querySelectorAll('#calGrid .cal-day')].find(el => el.textContent.trim() === '17');
+    const mondayCell = [...document.querySelectorAll('#calGrid .cal-day')].find(el => el.textContent.trim() === String(mondayDay));
     return { tueSlots, mondayClosed: mondayCell.classList.contains('closed'), mondayHasOnclick: !!mondayCell.onclick };
-  });
+  }, { year, month, mondayDay, tuesdayDay });
   expect(result.tueSlots).toEqual(['09:00', '09:15', '09:30', '09:45', '10:00']);
-  expect(result.mondayClosed, '2026-08-17 (Monday) is configured closed').toBe(true);
+  expect(result.mondayClosed, 'the Monday is configured closed').toBe(true);
   expect(result.mondayHasOnclick, 'a closed day must not be clickable').toBe(false);
 });

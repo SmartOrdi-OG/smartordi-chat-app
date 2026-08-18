@@ -21,20 +21,32 @@ test('login.html (staff) no longer offers a link to patient-login.html', async (
   expect(hasPatientLink).toBe(false);
 });
 
-test('patient-login.html?patient-register jumps straight to the self-registration screen', async ({ page }) => {
+// Real user request (2026-08-18): registration now opens on an explicit
+// account-type choice (screen-account-type) instead of jumping straight
+// into the personal-data form -- a QR/deep link only ever tells us WHICH
+// practice, never who the account is for.
+test('patient-login.html?patient-register jumps straight to the account-type choice', async ({ page }) => {
   await installMockSupabase(page, { practice_settings: [{ id: true }] }, () => {
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html') + '?patient-register=1');
   await page.waitForTimeout(800);
   const state = await page.evaluate(() => ({
+    accountTypeScreenActive: document.getElementById('screen-account-type').classList.contains('active'),
     requestScreenActive: document.getElementById('screen-request').classList.contains('active'),
     loginScreenActive: document.getElementById('screen-login').classList.contains('active'),
     urlCleaned: !window.location.search.includes('patient-register'),
   }));
-  expect(state.requestScreenActive).toBe(true);
+  expect(state.accountTypeScreenActive).toBe(true);
+  expect(state.requestScreenActive).toBe(false);
   expect(state.loginScreenActive).toBe(false);
   expect(state.urlCleaned, 'the query param is scrubbed from the URL, same as the QR-login param').toBe(true);
+
+  // Picking a type (adult, here) moves on to the same personal-data form as
+  // before -- the deep-link's practice id/notice still carries through.
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
+  const requestScreenActive = await page.evaluate(() => document.getElementById('screen-request').classList.contains('active'));
+  expect(requestScreenActive).toBe(true);
 });
 
 test('patient-login.html without the query param still shows the normal login screen', async ({ page }) => {
@@ -43,8 +55,12 @@ test('patient-login.html without the query param still shows the normal login sc
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html'));
   await page.waitForTimeout(800);
-  const requestScreenActive = await page.evaluate(() => document.getElementById('screen-request').classList.contains('active'));
-  expect(requestScreenActive).toBe(false);
+  const state = await page.evaluate(() => ({
+    requestScreenActive: document.getElementById('screen-request').classList.contains('active'),
+    accountTypeScreenActive: document.getElementById('screen-account-type').classList.contains('active'),
+  }));
+  expect(state.requestScreenActive).toBe(false);
+  expect(state.accountTypeScreenActive).toBe(false);
 });
 
 // Regression test for the practice_id-misrouting bug found in a
@@ -76,6 +92,7 @@ test('?practice=<id> deep link is forwarded as practice_id on the join-request i
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html') + '?patient-register=1&practice=practice-real-uuid-1');
   await page.waitForTimeout(800);
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'maxmustermann1');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(500);
@@ -90,6 +107,7 @@ test('a join request with no practice param in the link still sends practice_id:
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient-login.html') + '?patient-register=1');
   await page.waitForTimeout(800);
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'maxmustermann2');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(500);
