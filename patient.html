@@ -1143,12 +1143,12 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
              more children under it (patient-login.html's screen-account-
              type) -- there's no scenario where adding a SECOND adult onto
              an account makes sense, so that option is removed here. Only
-             "+ Kind hinzufügen" remains. openAddProfileModal('adult')/the
-             relation picker it drives (apRelationWrap) are left in place,
-             unreachable from the UI -- still covered by
-             tests/patient-profiles.spec.js in case a future flow needs it,
-             but nothing links to it anymore. -->
-        <div style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+             "+ Kind hinzufügen" remains -- and even that only shows for a
+             children account itself (renderProfilesCard() below hides
+             #profilAddChildWrap entirely when _remoteProfile.isChild is
+             false, i.e. an adult account): an adult account must stay
+             single-person, full stop, not just "no second adult". -->
+        <div id="profilAddChildWrap" style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="openAddProfileModal('child')" style="background:#EAF4F1;border:none;color:#0E5E56;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="profiles.addChild">+ Kind hinzufügen</button>
         </div>
       </div>
@@ -3123,6 +3123,18 @@ async function renderProfilesCard(){
   // includes it) -- show the card regardless, so "+ Kind/Erwachsene:n
   // hinzufügen" is discoverable even before anyone has ever used it.
   card.style.display='';
+  // Real user request (2026-08-18): an adult account must stay strictly
+  // single-person -- "+ Kind hinzufügen" only makes sense for a children
+  // account to begin with, so it's hidden entirely (not just the removed
+  // "+ Erwachsene:n hinzufügen") when the account's own identity isn't a
+  // child. _remoteProfile.isChild describes THIS login's own direct
+  // patients row (set once, at registration -- patient-login.html's
+  // screen-account-type), not whichever profile happens to be active right
+  // now: every profile inside a real children account is itself a child
+  // (that's the only kind of profile that account can ever hold), so this
+  // stays correct across profile switches without re-deriving anything.
+  const addChildWrap=document.getElementById('profilAddChildWrap');
+  if(addChildWrap) addChildWrap.style.display=(_remoteProfile&&_remoteProfile.isChild)?'':'none';
   root.innerHTML=profiles.map(function(p){
     const activeTag=p.isActive?`<span style="background:#EAF4F1;color:#0E5E56;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;">${escapeHtml(tr('profiles.active'))}</span>`:'';
     const clickable=!p.isActive;
