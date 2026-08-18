@@ -117,8 +117,13 @@ body{
    just truncates with an ellipsis if a long name won't fit, the same way
    .topbar-name already handles the wordmark. */
 .topbar-username{font-size:12px;font-weight:600;color:#5B6B66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
-.topbar-logout{background:#EDE9DE;border:none;color:#5B6B66;padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
-.topbar-logout:hover{background:#E4DFD3;color:#16211F;}
+/* Real user request (2026-08-18): the topbar "Abmelden" button used the
+   same neutral beige as any other secondary action -- switched it to a
+   translucent red, matching the red-tinted convention already used for
+   the profile-page logout/delete-account buttons (see .logout-btn above:
+   a light red wash + var(--red) text, not a solid red fill). */
+.topbar-logout{background:rgba(178,58,52,0.12);border:none;color:var(--red);padding:6px 12px;border-radius:7px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:600;flex-shrink:0;white-space:nowrap;}
+.topbar-logout:hover{background:rgba(178,58,52,0.2);color:var(--red);}
 @media(max-width:400px){
   /* The Arabic "Abmelden" translation ("تسجيل الخروج") is noticeably wider
      than the other languages' -- combined with the wordmark text, avatar
