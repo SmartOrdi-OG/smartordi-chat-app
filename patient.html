@@ -104,7 +104,11 @@ body{
 /* Was 52px in a 56px-tall bar -- 2px of breathing room top and bottom,
    which read as cramped/overflowing rather than a deliberate size (real
    user feedback, 2026-08-12). 36px leaves real padding either side. */
-.topbar-icon{width:36px;height:36px;background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;}
+/* Real user request (2026-08-18): the logo sat inside a solid teal box --
+   doctor.html/secretary.html just show the bare logo image next to the
+   brand name (secretary.html's topbar is white too, same as here, so no
+   contrast box is needed the way doctor.html's colored topbar needs one). */
+.topbar-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 .topbar-name{font-size:15px;font-weight:800;color:#16211F;letter-spacing:-0.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .topbar-name span{color:#0E5E56;}
 .topbar-user{display:flex;align-items:center;gap:10px;min-width:0;flex-shrink:1;}
@@ -657,7 +661,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
 <div class="topbar">
   <div class="topbar-logo">
     <button class="topbar-back-btn" id="topbarBackBtn" onclick="goHome()" data-i18n-aria="nav.back" data-i18n-title="nav.back" aria-label="Zurück" title="Zurück"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-    <div class="topbar-icon"><img src="logo..jpeg" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px;"></div>
+    <div class="topbar-icon"><img src="logo..jpeg" alt="Logo" style="width:100%;height:100%;object-fit:contain;"></div>
     <div class="topbar-name">Smartordi<span>.chat</span></div>
   </div>
   <div class="topbar-user">
