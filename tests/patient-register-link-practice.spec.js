@@ -35,6 +35,7 @@ async function gotoFresh(page) {
 test('the plain "Neu hier?" link (no QR/deep link) does NOT submit immediately -- it hands off to the link-practice screen', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser1');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -70,6 +71,7 @@ test('extractPracticeIdFromScannedText() only accepts the real /patient-register
 test('a real camera frame containing the practice\'s actual QR code is decoded end-to-end and the request is sent with the right practice id', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser2');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -138,6 +140,7 @@ test('a real camera frame containing the practice\'s actual QR code is decoded e
 test('scanning an unrelated QR code shows an error instead of silently linking to the wrong practice', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser3');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -158,6 +161,7 @@ test('scanning an unrelated QR code shows an error instead of silently linking t
 test('camera permission denied shows a clear camera-specific error, not a silent failure', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser4');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -177,6 +181,7 @@ test('camera permission denied shows a clear camera-specific error, not a silent
 test('"← Zurück zu Ihren Daten" preserves the entered form values and releases the camera', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser5');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -208,6 +213,7 @@ test('"← Zurück zu Ihren Daten" preserves the entered form values and release
 test('a stalled scan loop (requestAnimationFrame silently stopped) recovers when the tab becomes visible again', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser6');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);
@@ -249,6 +255,7 @@ test('a stalled scan loop (requestAnimationFrame silently stopped) recovers when
 test('a manual "restart the camera" hint appears after a few seconds of no detection, and cancelling clears it', async ({ page }) => {
   await gotoFresh(page);
   await page.click('text=Neu hier?');
+  await page.click('button[onclick*="chooseAccountType(\'adult\')"]');
   await fillJoinRequestForm(page, 'freshuser7');
   await page.click('#screen-request .btn-main');
   await page.waitForTimeout(300);

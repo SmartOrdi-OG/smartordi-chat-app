@@ -55,9 +55,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
 /* "Für mich / Für mein Kind" self-registration step (item 5b, real user
    feedback 2026-08-11) -- a simple two-way segmented toggle, same visual
    weight as the existing form-group labels above/around it. */
-.forwhom-toggle{display:flex;gap:8px;}
-.forwhom-btn{flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#475569;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.15s;}
-.forwhom-btn.active{border-color:#1e40af;background:#EFF6FF;color:#1e40af;}
+/* screen-account-type: the top-level "adult vs children" choice shown
+   before registration's personal-data form (real user request, 2026-08-18)
+   -- two big tappable cards, not a small segmented toggle, since this is
+   now the FIRST decision a new patient makes, not a minor form option. */
+.acctype-list{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+.acctype-card{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:1.5px solid #cbd5e1;border-radius:14px;background:#fff;text-align:start;cursor:pointer;transition:all 0.15s;font-family:inherit;}
+.acctype-card:hover{border-color:#1e40af;background:#EFF6FF;}
+.acctype-icon{font-size:26px;flex-shrink:0;line-height:1;}
+.acctype-body{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.acctype-title{font-size:14px;font-weight:800;color:var(--slate);}
+.acctype-desc{font-size:12px;color:var(--muted);line-height:1.5;}
 .btn-main{display:block;width:auto;min-width:220px;margin:4px auto 0;padding:13px 28px;border:1px solid #bfdbfe;border-radius:12px;background:#EFF6FF;color:#1e40af;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;}
 .btn-main:hover{background:#dbeafe;}
 .btn-main.loading{opacity:0.7;cursor:not-allowed;}
@@ -124,27 +132,67 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     </div>
   </div>
 
+  <!-- SCREEN 4a: Kontoart wählen -- real user request (2026-08-18): registration
+       now opens with an explicit, top-level choice between an individual adult
+       account and a children's account (one login, multiple child profiles,
+       switchable -- the same "Meine Profile"/patient_account_profiles
+       mechanism patient.html's "+ Kind hinzufügen" already uses for adding
+       MORE children after the first one is approved, see phase64_unified_
+       account_profiles.sql), instead of the old "Für mich/Für mein Kind"
+       toggle buried inside the personal-data form below. chooseAccountType()
+       sets reqIsChild and moves on to the same screen-request form as before
+       -- the form itself only adapts its copy (title/sub/notice), the fields
+       and submit logic are completely unchanged. -->
+  <div class="screen" id="screen-account-type">
+    <div class="change-pw-header">
+      <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></div>
+      <div class="change-pw-title" data-i18n="request.accountType.title">Konto erstellen</div>
+      <div class="change-pw-sub" data-i18n="request.accountType.sub">Für wen ist dieses Konto?</div>
+    </div>
+    <div class="acctype-list">
+      <button type="button" class="acctype-card" onclick="chooseAccountType('adult')">
+        <span class="acctype-icon">🧑</span>
+        <span class="acctype-body">
+          <span class="acctype-title" data-i18n="request.accountType.adult.title">Erwachsenen-Konto</span>
+          <span class="acctype-desc" data-i18n="request.accountType.adult.desc">Für eine Person – eigene Zugangsdaten und eigene medizinische Daten.</span>
+        </span>
+      </button>
+      <button type="button" class="acctype-card" onclick="chooseAccountType('child')">
+        <span class="acctype-icon">👨‍👩‍👧</span>
+        <span class="acctype-body">
+          <span class="acctype-title" data-i18n="request.accountType.child.title">Kinder-Konto</span>
+          <span class="acctype-desc" data-i18n="request.accountType.child.desc">Für Ihr Kind oder mehrere Kinder – ein Login für alle, mit einfachem Wechsel zwischen den Profilen.</span>
+        </span>
+      </button>
+    </div>
+    <div style="text-align:center;margin-top:16px;">
+      <a href="#" onclick="backToLoginFromRequest();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="request.backToLogin">Zurück zur Anmeldung</a>
+    </div>
+  </div>
+
   <!-- SCREEN 4: Anmeldung beantragen (Patient ohne bestehenden Zugang) -->
   <div class="screen" id="screen-request">
     <div class="change-pw-header">
       <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg></div>
-      <div class="change-pw-title" data-i18n="request.title">Anmeldung beantragen</div>
-      <div class="change-pw-sub" data-i18n="request.sub">Füllen Sie Ihre Daten aus. Ihre Anfrage wird von der Ordination geprüft.</div>
+      <div class="change-pw-title" id="reqScreenTitle" data-i18n="request.title">Anmeldung beantragen</div>
+      <div class="change-pw-sub" id="reqScreenSub" data-i18n="request.sub">Füllen Sie Ihre Daten aus. Ihre Anfrage wird von der Ordination geprüft.</div>
     </div>
+    <!-- Shown only for the "child" account type (setReqScreenCopy() toggles
+         its display) -- sets expectations up front that this form is only
+         for the FIRST child; more can be added afterward from "Meine
+         Profile" once the account is approved, not through this form again. -->
+    <div class="notice" id="reqChildNotice" style="display:none;" data-i18n="request.child.notice">Nach der Freischaltung können Sie unter demselben Konto weitere Kinder hinzufügen und jederzeit zwischen ihnen wechseln (siehe „Meine Profile“).</div>
     <div class="error-msg" id="reqErrorMsg"><span>!</span><span id="reqErrorText"></span></div>
     <!-- Real user feedback (2026-08-11): self-registration had no way at all
          to say the account being created is for a child, not the person
          typing -- reqIsChild (default false) is carried into the submitted
          patient_join_requests row (supabase/phase65_patient_username_
          change_and_is_child.sql's is_child column) and copied onto the
-         resulting patients row by secretary.html's approveJoinRequest(). -->
-    <div class="form-group">
-      <label class="form-label" data-i18n="request.forWhom.label">Für wen?</label>
-      <div class="forwhom-toggle">
-        <button type="button" id="reqForSelfBtn" class="forwhom-btn active" onclick="setReqIsChild(false)" data-i18n="request.forWhom.self">Für mich</button>
-        <button type="button" id="reqForChildBtn" class="forwhom-btn" onclick="setReqIsChild(true)" data-i18n="request.forWhom.child">Für mein Kind</button>
-      </div>
-    </div>
+         resulting patients row by secretary.html's approveJoinRequest().
+         The "Für mich/Für mein Kind" toggle that used to live right here
+         was replaced (2026-08-18) by the screen-account-type choice shown
+         BEFORE this form -- reqIsChild is now set by chooseAccountType()
+         there, this form only reflects it (setReqScreenCopy()). -->
     <div class="form-group">
       <label class="form-label" data-i18n="request.vorname.label">Vorname *</label>
       <input type="text" class="form-input" id="reqVorname" style="padding-left:14px;">
@@ -203,7 +251,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <label class="form-label" data-i18n="changepw.confirmPw.label">Passwort bestätigen</label>
       <input type="password" class="form-input" id="reqConfirmPw" autocomplete="new-password" style="padding-left:14px;">
     </div>
-    <div class="notice" style="display:block;">
+    <!-- Explicit id (2026-08-18) so this box stays unambiguous now that
+         #reqChildNotice above is also a ".notice" inside this same screen --
+         tests select this one by id (#reqOrdinationNotice), not the shared
+         class, to avoid picking whichever ".notice" happens to come first
+         in DOM order. -->
+    <div class="notice" id="reqOrdinationNotice" style="display:block;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;" data-i18n="request.clinic.label">Ordination</div>
       <div style="font-size:13px;font-weight:700;color:var(--slate);" id="reqClinicName">—</div>
       <div style="font-size:11px;color:var(--muted);" id="reqClinicSub">—</div>
@@ -215,7 +268,14 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       </label>
     </div>
     <button class="btn-main" onclick="submitJoinRequest()" data-i18n="request.submit">Antrag senden</button>
-    <div style="text-align:center;margin-top:12px;">
+    <div style="text-align:center;margin-top:12px;display:flex;flex-direction:column;gap:6px;">
+      <!-- Real user request (2026-08-18): lets a patient correct a wrong
+           account-type pick without losing the practice already resolved
+           via a QR/deep link -- backToAccountTypeFromRequest() only shows
+           screen-account-type, it never touches joinRequestPracticeId/
+           reqViaDeepLink the way backToLoginFromRequest()/
+           startFreshRegistration() do. -->
+      <a href="#" onclick="backToAccountTypeFromRequest();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="request.backToAccountType">← Andere Kontoart wählen</a>
       <a href="#" onclick="backToLoginFromRequest();return false;" style="font-size:12px;color:var(--muted);font-weight:600;text-decoration:none;" data-i18n="request.backToLogin">Zurück zur Anmeldung</a>
     </div>
   </div>
@@ -464,7 +524,13 @@ function tryPatientRegisterDeepLink(){
   joinRequestPracticeId=params.get('practice')||null;
   reqViaDeepLink=true;
   history.replaceState(null,'',window.location.pathname);
-  showRequestScreen();
+  // Real user request (2026-08-18): a QR/deep link only ever tells us WHICH
+  // practice -- it says nothing about who the account is for, so this still
+  // opens on the account-type choice (screen-account-type) exactly like the
+  // plain "Neu hier?" entry below. joinRequestPracticeId/reqViaDeepLink stay
+  // set either way, so screen-request's own Ordination notice still shows
+  // once chooseAccountType() gets there.
+  showAccountTypeScreen();
 }
 // The plain "Neu hier? Anmeldung beantragen" link on the login screen --
 // resets both flags in case a stale deep-link state was left over from
@@ -473,7 +539,7 @@ function tryPatientRegisterDeepLink(){
 function startFreshRegistration(){
   joinRequestPracticeId=null;
   reqViaDeepLink=false;
-  showRequestScreen();
+  showAccountTypeScreen();
 }
 
 const EYE_OPEN='<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -681,14 +747,48 @@ async function doLogin(){
 
 // ── Self-registration ("Anmeldung beantragen") ──
 let resubmitUsername=null;
-// Item 5b (real user feedback, 2026-08-11): defaults to "für mich" every
-// time this screen is freshly shown (showRequestScreen() below resets it),
-// same as every other field on this form.
+// Item 5b (real user feedback, 2026-08-11), reworked 2026-08-18: which
+// account type this form is for is now decided a screen earlier
+// (screen-account-type's chooseAccountType()), not by a toggle inside this
+// form -- reqIsChild just tracks that choice for submitJoinRequest()/
+// performJoinRequestSubmit() below, unchanged from before.
 let reqIsChild=false;
 function setReqIsChild(isChild){
   reqIsChild=isChild;
-  document.getElementById('reqForSelfBtn').classList.toggle('active',!isChild);
-  document.getElementById('reqForChildBtn').classList.toggle('active',isChild);
+  setReqScreenCopy();
+}
+// Adapts screen-request's own title/subtitle and its "you can add more
+// children later" notice to whichever account type was chosen -- the form's
+// FIELDS and submit logic never change, only this copy. Safe to call before
+// screen-request has ever been shown (chooseAccountType() calls it via
+// setReqIsChild() first) since it only touches elements that exist from
+// page load.
+function setReqScreenCopy(){
+  document.getElementById('reqScreenTitle').textContent=tr(reqIsChild?'request.child.title':'request.title');
+  document.getElementById('reqScreenSub').textContent=tr(reqIsChild?'request.child.sub':'request.sub');
+  document.getElementById('reqChildNotice').style.display=reqIsChild?'block':'none';
+}
+// applyI18n() (triggered by the language switcher) would otherwise overwrite
+// #reqScreenTitle/#reqScreenSub back to their static data-i18n default (the
+// "adult" copy) via their data-i18n attribute, even while reqIsChild is
+// true -- this hook (same mechanism patient.html already uses for its own
+// dynamic, non-data-i18n text) re-syncs them right after every switch.
+function onPatientLanguageChanged(){
+  setReqScreenCopy();
+}
+
+function showAccountTypeScreen(){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-account-type').classList.add('active');
+}
+// The two screen-account-type cards both land here -- the only thing that
+// differs between "adult" and "child" is reqIsChild (and the copy it
+// drives via setReqScreenCopy()); the form itself, its fields, and
+// submitJoinRequest()/performJoinRequestSubmit() below are identical for
+// both, same as the old toggle-inside-the-form behaviour it replaces.
+function chooseAccountType(type){
+  setReqIsChild(type==='child');
+  showRequestScreen();
 }
 
 function showRequestScreen(){
@@ -696,7 +796,7 @@ function showRequestScreen(){
   ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
-  setReqIsChild(false);
+  setReqScreenCopy();
   document.getElementById('reqErrorMsg').classList.remove('show');
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-request').classList.add('active');
@@ -708,13 +808,20 @@ function showRequestScreen(){
   // (even as "—") for any deep-link arrival, matching the existing,
   // documented "old QR with no embedded id" behaviour below -- not a
   // regression for that case.
-  const noticeEl=document.querySelector('#screen-request .notice');
+  const noticeEl=document.getElementById('reqOrdinationNotice');
   if(noticeEl) noticeEl.style.display=(joinRequestPracticeId||reqViaDeepLink)?'block':'none';
 }
 
 function backToLoginFromRequest(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-login').classList.add('active');
+}
+
+// Deliberately does NOT reset joinRequestPracticeId/reqViaDeepLink (unlike
+// startFreshRegistration()) -- a patient correcting their account-type pick
+// must not lose the practice already resolved via a QR/deep link.
+function backToAccountTypeFromRequest(){
+  showAccountTypeScreen();
 }
 
 function showRequestStatusScreen(acc){
