@@ -810,8 +810,17 @@ async function refreshAllMessages(){
 // already use, so callers can treat a cached row exactly like a local one.
 function loadMessagesForPatientCached(patientId){
   return (_allMessagesByPatient[patientId]||[]).map(function(row){
-    return {dir:row.dir, type:row.type, text:row.text, time:(row.created_at||'').slice(11,16), createdAt:row.created_at};
+    return {dir:row.dir, type:row.type, text:row.text, time:formatMsgTime(row.created_at), createdAt:row.created_at};
   });
+}
+// created_at comes back as a UTC timestamptz string -- slicing its "HH:MM"
+// characters directly (the old approach here) displayed raw UTC, off from
+// the reader's actual local time by their UTC offset. Parsing it as a real
+// Date and formatting via toLocaleTimeString converts to the browser's own
+// local time instead, same as the correctly-working timestamps elsewhere
+// in this app (e.g. doctor.html's Dokumente list).
+function formatMsgTime(createdAt){
+  return createdAt?new Date(createdAt).toLocaleTimeString('de-AT',{hour:'2-digit',minute:'2-digit'}):'';
 }
 const allMessagesReady=refreshAllMessages();
 // Coalesces a burst of realtime events into a single call of `fn` -- a busy
