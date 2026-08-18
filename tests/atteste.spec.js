@@ -136,6 +136,68 @@ test('a failed structured-record insert does not block the real print from succe
   expect(result.adresseField, 'the form still clears -- the print itself must not be blocked by the persistence failure').toBe('');
 });
 
+// Real user request (2026-08-18): "Per Chat senden" for both Pflegefreistellung
+// and Arbeitsunfähigkeit, same as Rezept/Überweisung already have -- doctor.html
+// only for now, see sendPflegefreistellungToChat()'s own comment (vendor/
+// kartei-atteste.js) for why. Same pattern as tests/rezept-pdf.spec.js's
+// sendRezeptToChat() coverage.
+test('sendPflegefreistellungToChat() uploads the PDF as a real patient_documents row, persists the structured record with that document_id, and sends a chat message', async ({ page }) => {
+  await setupDoctorPage(page, 'pflegefreistellung');
+  await page.fill('#pf-antragsteller', 'Johann Huber');
+  await page.fill('#pf-verwandtschaft', 'Ehepartner');
+  await page.fill('#pf-von', '2026-08-10');
+  await page.fill('#pf-bis', '2026-08-12');
+  const result = await page.evaluate(async () => {
+    await sendPflegefreistellungToChat();
+    await new Promise(r => setTimeout(r, 100));
+    return {
+      toastText: document.getElementById('toast')?.textContent || '',
+      doc: window.__store.patient_documents[0],
+      row: window.__store.patient_pflegefreistellung[0],
+    };
+  });
+  expect(result.toastText).toContain('Bestätigung per Chat gesendet');
+  expect(result.doc).toBeTruthy();
+  expect(result.doc.category).toBe('sonstiges');
+  expect(result.doc.patient_id).toBe('p1');
+  expect(result.doc.mime_type).toBe('application/pdf');
+  expect(result.doc.uploaded_by).toBe('dr.ahmed');
+  expect(result.row.document_id, 'the structured record must reference the uploaded PDF').toBe(result.doc.id);
+});
+
+test('sendPflegefreistellungToChat() shows a failure toast instead of crashing when the upload fails', async ({ page }) => {
+  await setupDoctorPage(page, 'pflegefreistellung');
+  await page.fill('#pf-von', '2026-08-10');
+  await page.fill('#pf-bis', '2026-08-12');
+  const result = await page.evaluate(async () => {
+    window.__forceError = { patient_documents: 'simulated failure' };
+    await sendPflegefreistellungToChat();
+    return { toastText: document.getElementById('toast')?.textContent || '', rows: window.__store.patient_documents.length };
+  });
+  expect(result.toastText).toContain('fehlgeschlagen');
+  expect(result.rows, 'a failed upload must not leave a document row behind').toBe(0);
+});
+
+test('sendArbeitsunfaehigkeitToChat() uploads the PDF as a real patient_documents row, persists the structured record with that document_id, and sends a chat message', async ({ page }) => {
+  await setupDoctorPage(page, 'arbeitsunfaehigkeit');
+  await page.fill('#au2-von', '2026-08-05');
+  await page.fill('#au2-bis', '2026-08-09');
+  const result = await page.evaluate(async () => {
+    await sendArbeitsunfaehigkeitToChat();
+    await new Promise(r => setTimeout(r, 100));
+    return {
+      toastText: document.getElementById('toast')?.textContent || '',
+      doc: window.__store.patient_documents[0],
+      row: window.__store.patient_arbeitsunfaehigkeit[0],
+    };
+  });
+  expect(result.toastText).toContain('Meldung per Chat gesendet');
+  expect(result.doc).toBeTruthy();
+  expect(result.doc.category).toBe('sonstiges');
+  expect(result.doc.patient_id).toBe('p1');
+  expect(result.row.document_id, 'the structured record must reference the uploaded PDF').toBe(result.doc.id);
+});
+
 // secretary.html has no Kartei-tab system -- Pflegefreistellung/
 // Arbeitsunfähigkeit open as a modal for whichever patient's chat is
 // currently open instead (the "Aktionen" dropdown in the chat pane

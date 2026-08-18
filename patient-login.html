@@ -207,7 +207,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
          alongside Adresse (already present, now enforced too). -->
     <div class="form-group">
       <label class="form-label" data-i18n="request.dob.label">Geburtsdatum *</label>
-      <input type="date" class="form-input" id="reqDob" min="1900-01-01" style="padding-left:14px;">
+      <input type="date" class="form-input" id="reqDob" min="1900-01-01" style="padding-left:14px;" oninput="checkSvnrDobWarning('reqSvnr','reqDob','reqSvnrWarning')">
     </div>
     <script>document.getElementById('reqDob').max=new Date().toISOString().slice(0,10);</script>
     <!-- Real user request (2026-08-16, supabase/phase72_patient_geschlecht.
@@ -237,7 +237,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="request.svnr.label">Versicherungsnummer (SVNr)</label>
-      <input type="text" class="form-input" id="reqSvnr" style="padding-left:14px;">
+      <input type="text" class="form-input" id="reqSvnr" style="padding-left:14px;" oninput="checkSvnrDobWarning('reqSvnr','reqDob','reqSvnrWarning')">
+      <div id="reqSvnrWarning" style="display:none;color:#d97706;font-size:11.5px;margin-top:5px;font-weight:600;" data-i18n="request.svnr.mismatch">⚠ SV-Nummer stimmt nicht mit dem Geburtsdatum überein</div>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="login.username.label">Benutzername</label>
