@@ -148,7 +148,7 @@ select.form-input{cursor:pointer;}
   <div class="plan-section">
     <div class="section-title">Paket wählen <span style="font-size:11px;font-weight:500;color:#64748b;">— 30 Tage kostenlos testen</span></div>
     <div class="plans">
-      <div class="plan popular selected" id="plan-standard" onclick="selectPlan('standard')">
+      <div class="plan" id="plan-standard" onclick="selectPlan('standard')">
         <div class="plan-name">Standard</div>
         <div class="plan-price">€149<span>/Monat</span></div>
         <div class="plan-features">
@@ -158,7 +158,7 @@ select.form-input{cursor:pointer;}
           <div class="plan-feature"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0E5E56" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>Uploads bis 8 MB</div>
         </div>
       </div>
-      <div class="plan" id="plan-enterprise" onclick="selectPlan('enterprise')">
+      <div class="plan popular selected" id="plan-enterprise" onclick="selectPlan('enterprise')">
         <div class="plan-name">Enterprise</div>
         <div class="plan-price">€349<span>/Monat</span></div>
         <div class="plan-features">
@@ -352,7 +352,7 @@ select.form-input{cursor:pointer;}
 </div>
 
 <script>
-let selectedPlan = 'standard';
+let selectedPlan = 'enterprise';
 
 function selectPlan(plan){
   selectedPlan = plan;
