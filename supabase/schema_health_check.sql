@@ -192,7 +192,14 @@ from (values
   ('patient_submit_profile_join_request', 'p_versicherung'),
   -- phase75: catches a deployed version still missing p_geschlecht -- same
   -- gap phase74 fixed for dob/versicherung, this time for gender.
-  ('patient_submit_profile_join_request', 'p_geschlecht')
+  ('patient_submit_profile_join_request', 'p_geschlecht'),
+  -- phase77: catches a deployed version still missing the "picked owner is
+  -- itself a linked (non-root) profile" resolution -- without it, linking a
+  -- new child onto an owner search result that happens to be an already-
+  -- linked sibling (not the account's root/direct profile) silently attaches
+  -- the new child to that sibling's own dormant auth_user_id instead of the
+  -- family's real login, so it never shows up when they actually log in.
+  ('staff_add_linked_child', 'v_root_owner_auth')
 ) as f(name, expect)
 
 union all
