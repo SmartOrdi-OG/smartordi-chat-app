@@ -709,16 +709,21 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     <div class="home-greeting">
       <div class="home-greeting-name" id="homeGreetingName">—</div>
       <div class="home-greeting-sub" data-i18n="home.sub">Wählen Sie einen Bereich</div>
-      <!-- Real user request (2026-08-18): a children account switches which
-           child is active right from Home (renderHomeChildSwitcher() shows
-           this only for a real children account -- _remoteProfile.isChild),
-           instead of having to navigate into Profil > "Meine Profile" first.
-           Reuses the exact same patientGetProfiles()/switchToProfile() the
-           Profil card already uses -- just a second, more discoverable entry
-           point onto the same mechanism, not a separate one. -->
-      <button id="homeSwitchChildBtn" onclick="openHomeChildPicker()" style="display:none;margin-top:10px;background:var(--teal-light);border:none;color:var(--teal);padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;align-items:center;gap:6px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-inline-end:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n="profiles.switchChild">Kind wechseln</span>
-      </button>
+      <!-- Real user request (2026-08-18, moved out of Profil entirely on
+           2026-08-19): a children account manages its profiles right from
+           Home -- switching which child is active, and adding a new one --
+           instead of navigating into a Profil tab. renderHomeChildSwitcher()
+           shows both buttons only for a real children account
+           (_remoteProfile.isChild). Both reuse the exact same
+           patientGetProfiles()/patientSwitchProfile()/openAddProfileModal()
+           mechanism the old "Meine Profile" Profil card used -- just moved
+           to a more discoverable spot, not a separate one. -->
+      <div id="homeChildControls" style="display:none;margin-top:10px;gap:8px;flex-wrap:wrap;">
+        <button id="homeSwitchChildBtn" onclick="openHomeChildPicker()" style="display:none;background:var(--teal-light);border:none;color:var(--teal);padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;align-items:center;gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-inline-end:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n="profiles.switchChild">Kind wechseln</span>
+        </button>
+        <button id="homeAddChildBtn" onclick="openAddProfileModal('child')" style="display:none;background:var(--teal-light);border:none;color:var(--teal);padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;align-items:center;gap:6px;" data-i18n="profiles.addChild">+ Kind hinzufügen</button>
+      </div>
     </div>
     <div class="home-tiles">
       <button class="home-tile" onclick="goToSection('chat')">
@@ -1149,36 +1154,13 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         <div class="info-row"><span class="info-label" data-i18n="profil.language">Sprache</span><span id="langSwitcherWrap"></span></div>
       </div>
 
-      <!-- supabase/phase64_unified_account_profiles.sql -- one login can
-           hold several independent patient profiles (own + any linked
-           child/adult). Hidden until renderProfilesCard() actually resolves
-           at least one profile (a real remote patient only -- the legacy
-           local-only demo account has nothing to switch between). -->
-      <div class="info-card" id="profilProfilesCard" style="display:none;">
-        <div class="info-card-header" style="display:flex;align-items:center;justify-content:space-between;">
-          <span data-i18n="profiles.title">Meine Profile</span>
-          <!-- Real report: a profile linked/approved by staff while this
-               card was already on screen (not just re-opened) had no way to
-               show up short of an app relaunch. switchView('profil') itself
-               now also re-fetches on every tab switch -- this button covers
-               the one remaining case, sitting on the tab the whole time. -->
-          <button onclick="renderProfilesCard()" title="Aktualisieren" style="background:none;border:none;cursor:pointer;color:#0E5E56;padding:2px 4px;line-height:1;display:inline-flex;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
-        </div>
-        <div id="profilProfilesList"></div>
-        <!-- Real user request (2026-08-18): an adult account is a single
-             person's own account, and a children's account only ever holds
-             more children under it (patient-login.html's screen-account-
-             type) -- there's no scenario where adding a SECOND adult onto
-             an account makes sense, so that option is removed here. Only
-             "+ Kind hinzufügen" remains -- and even that only shows for a
-             children account itself (renderProfilesCard() below hides
-             #profilAddChildWrap entirely when _remoteProfile.isChild is
-             false, i.e. an adult account): an adult account must stay
-             single-person, full stop, not just "no second adult". -->
-        <div id="profilAddChildWrap" style="padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;">
-          <button onclick="openAddProfileModal('child')" style="background:#EAF4F1;border:none;color:#0E5E56;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="profiles.addChild">+ Kind hinzufügen</button>
-        </div>
-      </div>
+      <!-- Real user request (2026-08-19): "Meine Profile" (switching
+           between/adding profiles) moved out of Profil entirely, onto Home
+           (#homeSwitchChildBtn/#homeAddChildBtn) -- reachable in one tap
+           from the app's landing screen instead of buried in a tab. See
+           renderHomeChildSwitcher() and openHomeChildPicker() below;
+           openAddProfileModal('child') itself is unchanged, just called
+           from a button on Home now instead of from here. -->
 
       <div class="info-card">
         <div class="info-card-header" style="display:flex;align-items:center;justify-content:space-between;">
@@ -1478,16 +1460,12 @@ function switchView(v){
     markPatientChatViewed();
     updateChatBadge();
   }
-  // Real report (2026-08-11): "Meine Profile" has no realtime push -- a
-  // profile linked/approved by staff while this tab was already open never
-  // showed up until a full app relaunch, which isn't an obvious/discoverable
-  // action on an installed PWA (no pull-to-refresh, no visible reload
-  // button). Re-fetching every time this tab is opened -- even switching
-  // back to it, not just the very first load -- means a plain in-app tab
-  // tap is enough instead.
-  if(v==='profil'&&getPatientToken()){
-    renderProfilesCard();
-  }
+  // Real report (2026-08-11): a profile linked/approved by staff while this
+  // tab was already open never showed up until a full app relaunch. No
+  // longer needs a per-tab-visit re-fetch here (2026-08-19): the "Meine
+  // Profile" card that used to live in Profil is gone -- openHomeChildPicker()
+  // (Home) fetches a fresh list from patientGetProfiles() every time it's
+  // opened, so there's nothing here that can go stale between visits.
   if(isDesktopWidth()){
     ensureWindowChrome();
     const el=document.getElementById('view-'+v);
@@ -2353,7 +2331,6 @@ async function initPatientData(){
   renderProfilImpfungen();
   updateMkpTileVisibility();
   renderMkpView();
-  renderProfilesCard();
   renderHomeChildSwitcher();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
@@ -3130,48 +3107,12 @@ async function saveContactEdit(){
 
 // ══ Meine Profile (supabase/phase64_unified_account_profiles.sql) ══
 // One login can now hold several independent patient profiles (own + any
-// linked child/adult). Only meaningful for a real, Supabase-backed patient
+// linked child). Only meaningful for a real, Supabase-backed patient
 // (getPatientToken()) -- the legacy local-only demo account has no server-
-// side identity for any of this to resolve against.
-function profilesRelationLabel(p){
-  if(p.relation==='self') return tr('profiles.self');
-  if(p.relation==='child') return tr('profiles.child');
-  if(p.relation==='father') return tr('profiles.father');
-  if(p.relation==='mother') return tr('profiles.mother');
-  return p.relationLabel||tr('profiles.otherRelation');
-}
-async function renderProfilesCard(){
-  const card=document.getElementById('profilProfilesCard');
-  const root=document.getElementById('profilProfilesList');
-  if(!card||!root) return;
-  if(!getPatientToken()){ card.style.display='none'; return; }
-  const profiles=await patientGetProfiles();
-  // A brand-new/legacy account with no linked profiles at all still only
-  // ever has its own single row here (patient_get_profiles() always
-  // includes it) -- show the card regardless, so "+ Kind/Erwachsene:n
-  // hinzufügen" is discoverable even before anyone has ever used it.
-  card.style.display='';
-  // Real user request (2026-08-18): an adult account must stay strictly
-  // single-person -- "+ Kind hinzufügen" only makes sense for a children
-  // account to begin with, so it's hidden entirely (not just the removed
-  // "+ Erwachsene:n hinzufügen") when the account's own identity isn't a
-  // child. _remoteProfile.isChild describes THIS login's own direct
-  // patients row (set once, at registration -- patient-login.html's
-  // screen-account-type), not whichever profile happens to be active right
-  // now: every profile inside a real children account is itself a child
-  // (that's the only kind of profile that account can ever hold), so this
-  // stays correct across profile switches without re-deriving anything.
-  const addChildWrap=document.getElementById('profilAddChildWrap');
-  if(addChildWrap) addChildWrap.style.display=(_remoteProfile&&_remoteProfile.isChild)?'':'none';
-  root.innerHTML=profiles.map(function(p){
-    const activeTag=p.isActive?`<span style="background:#EAF4F1;color:#0E5E56;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;">${escapeHtml(tr('profiles.active'))}</span>`:'';
-    const clickable=!p.isActive;
-    return `<div class="info-row" ${clickable?`onclick="switchToProfile('${p.patientId}')" style="cursor:pointer;"`:''}>
-        <span class="info-label">${escapeHtml(p.fullName)} · ${escapeHtml(profilesRelationLabel(p))}</span>
-        <span class="info-value">${activeTag}</span>
-      </div>`;
-  }).join('');
-}
+// side identity for any of this to resolve against. Real user request
+// (2026-08-19): the switch/add UI itself moved out of Profil onto Home
+// (renderHomeChildSwitcher()/openHomeChildPicker() below) -- this section
+// used to also render a "Meine Profile" card here; removed along with it.
 async function switchToProfile(patientId){
   const ok=await patientSwitchProfile(patientId);
   if(!ok){ showToast(tr('profiles.switchFailed'),'error'); return; }
@@ -3190,19 +3131,24 @@ async function switchToProfile(patientId){
   showToast(tr('profiles.switched'));
 }
 
-// ── Home "Kind wechseln" (real user request, 2026-08-18) -- a second,
-// more discoverable entry point onto the exact same patientGetProfiles()/
-// switchToProfile() mechanism Profil's "Meine Profile" card already uses,
-// reachable straight from Home instead of navigating into Profil first. ──
+// ── Home "Kind wechseln"/"+ Kind hinzufügen" (real user request,
+// 2026-08-18, moved out of Profil entirely on 2026-08-19) -- a more
+// discoverable entry point onto the exact same patientGetProfiles()/
+// patientSwitchProfile()/openAddProfileModal() mechanism the old "Meine
+// Profile" Profil card used to expose, reachable straight from Home. ──
 function renderHomeChildSwitcher(){
-  const btn=document.getElementById('homeSwitchChildBtn');
-  if(!btn) return;
+  const wrap=document.getElementById('homeChildControls');
+  const switchBtn=document.getElementById('homeSwitchChildBtn');
+  const addBtn=document.getElementById('homeAddChildBtn');
+  if(!wrap||!switchBtn||!addBtn) return;
   // Only a real children account (this login's own direct patients row is
-  // itself a child, set once at registration -- see renderProfilesCard()'s
-  // own comment) ever has more than one profile to switch between, or a
-  // reason to. An adult account never shows this, same reasoning as
-  // #profilAddChildWrap.
-  btn.style.display=(getPatientToken()&&_remoteProfile&&_remoteProfile.isChild)?'inline-flex':'none';
+  // itself a child, set once at registration -- patient-login.html's
+  // screen-account-type) can switch between or add children. An adult
+  // account never shows either button -- it must stay single-person.
+  const isChildAccount=!!(getPatientToken()&&_remoteProfile&&_remoteProfile.isChild);
+  wrap.style.display=isChildAccount?'flex':'none';
+  switchBtn.style.display=isChildAccount?'inline-flex':'none';
+  addBtn.style.display=isChildAccount?'inline-flex':'none';
 }
 async function openHomeChildPicker(){
   const profiles=await patientGetProfiles();
@@ -3405,14 +3351,6 @@ function onPatientLanguageChanged(){
   renderProfilArztRows();
   renderProfilImpfungen();
   renderMkpView();
-  // "Meine Profile" (renderProfilesCard()) builds its relation label
-  // ("Kind"/"طفل"/...) and "Aktiv"/"نشط" badge via tr() at render time too --
-  // real user feedback (2026-08-13): switching language left this card
-  // showing whatever language was active the last time it happened to
-  // render (page load, or the manual 🔄 refresh), since nothing here ever
-  // re-ran it. It's async but fire-and-forget is fine -- this function's
-  // other calls are all synchronous DOM updates anyway.
-  renderProfilesCard();
   // renderPatientMessages()'s own empty/disabled states were hardcoded
   // German strings until now (chat.empty.*/chat.disabled.*) -- also not
   // caught by applyI18n()'s static [data-i18n] walk since they're built in
