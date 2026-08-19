@@ -13,12 +13,17 @@
 // currentStaffSession() helper. Same jsPDF direct-drawing (T/L/R helper)
 // pattern as buildRezeptPdf() in vendor/kartei-rezept-ueberweisung.js.
 //
-// Print/download only for now -- no "per Chat senden" -- both documents are
-// physically signed/stamped paper forms the patient (or their relative)
-// hands to a third party (employer, Krankenkasse), same real-world usage as
-// a doctor's note has always had, and secretary.html has no doc-message-
-// -to-chat infrastructure of its own to reuse (doctor.html's
-// appendRealMessage()/renderMessages() aren't available there).
+// Print/download, plus "Per Chat senden" on doctor.html only (real user
+// request, 2026-08-18) -- both documents are physically signed/stamped
+// paper forms the patient (or their relative) hands to a third party
+// (employer, Krankenkasse), but the patient often wants/needs a digital
+// copy of their own too, same reasoning that already applies to Rezept/
+// Überweisung. secretary.html still has no doc-message-to-chat
+// infrastructure of its own to reuse (doctor.html's appendRealMessage()/
+// renderMessages() aren't available there), so sendPflegefreistellungToChat()/
+// sendArbeitsunfaehigkeitToChat() below guard for that instead of assuming
+// it -- there is deliberately no "Per Chat senden" button in secretary.html's
+// own modal for these two documents yet.
 
 function _attestSession(){
   try{ return JSON.parse(sessionStorage.getItem('smartordi_user')); }catch(e){ return null; }
@@ -167,12 +172,51 @@ function clearPflegefreistellungForm(){
   document.getElementById('pf-ort').value='';
 }
 
-async function _persistPflegefreistellung(doc){
+async function _persistPflegefreistellung(doc,documentId){
   const patientId=await findPatientIdByFullName(doc._attestPatientName);
   if(!patientId) return;
   const session=_attestSession();
-  try{ await createPatientPflegefreistellung(patientId,doc._attestFields,session?session.username:null,null); }
+  try{ await createPatientPflegefreistellung(patientId,doc._attestFields,session?session.username:null,documentId||null); }
   catch(e){ console.error('Failed to persist structured Pflegefreistellung record',e); }
+}
+// "Per Chat senden" -- same document, delivered to the patient's own chat/
+// account instead of paper (same pattern as sendRezeptToChat() in vendor/
+// kartei-rezept-ueberweisung.js). doctor.html only -- see this file's own
+// header comment for why.
+async function sendPflegefreistellungToChat(patientNameOverride){
+  if(typeof appendRealMessage!=='function'||typeof findPatientIdByFullName!=='function'||typeof uploadPatientDocument!=='function'){
+    showToast('✗ Senden per Chat ist hier nicht verfügbar','error'); return;
+  }
+  const doc=await buildPflegefreistellungPdf(patientNameOverride);
+  if(!doc) return;
+  const name=doc._attestPatientName;
+  try{
+    const base64Data=doc.output('datauristring').split(',')[1];
+    const filename=`Pflegefreistellung_${name.replace(/\s+/g,'_')}_${new Date().toLocaleDateString('de-AT').replace(/\./g,'-')}.pdf`;
+    const patientId=await findPatientIdByFullName(name);
+    let docId=null;
+    if(patientId){
+      const session=_attestSession();
+      const sizeBytes=Math.round(base64Data.length*0.75);
+      const saved=await uploadPatientDocument(patientId,{
+        category:'sonstiges', title:'Bestätigung: Pflegefreistellung', filename, mimeType:'application/pdf', sizeBytes, base64Data,
+      },session?session.username:null);
+      docId=saved.id;
+    }
+    await _persistPflegefreistellung(doc,docId);
+    const msg={dir:'out', type:'uw', text:'Bestätigung: Pflegefreistellung ausgestellt',
+      filename, sub:'Pflegefreistellung', docId, time:getTime()+' ✓'};
+    appendRealMessage(name,msg);
+    const chatNameEl=document.getElementById('chat-name');
+    if(chatNameEl && chatNameEl.textContent===name){
+      renderMessages(name,colorForName(name));
+    }
+    clearPflegefreistellungForm();
+    showToast('✓ Bestätigung per Chat gesendet');
+  }catch(e){
+    console.error('Failed to send Pflegefreistellung via chat',e);
+    showToast('✗ Senden über Chat fehlgeschlagen','error');
+  }
 }
 
 // "Patient ist in der Ordination" -- prints now, on paper, for the
@@ -311,12 +355,49 @@ function clearArbeitsunfaehigkeitForm(){
   document.getElementById('au2-versicherungsnummer').value='';
 }
 
-async function _persistArbeitsunfaehigkeit(doc){
+async function _persistArbeitsunfaehigkeit(doc,documentId){
   const patientId=await findPatientIdByFullName(doc._attestPatientName);
   if(!patientId) return;
   const session=_attestSession();
-  try{ await createPatientArbeitsunfaehigkeit(patientId,doc._attestFields,session?session.username:null,null); }
+  try{ await createPatientArbeitsunfaehigkeit(patientId,doc._attestFields,session?session.username:null,documentId||null); }
   catch(e){ console.error('Failed to persist structured Arbeitsunfähigkeit record',e); }
+}
+// "Per Chat senden" -- see sendPflegefreistellungToChat()'s own comment
+// right above for the full reasoning (doctor.html only).
+async function sendArbeitsunfaehigkeitToChat(patientNameOverride){
+  if(typeof appendRealMessage!=='function'||typeof findPatientIdByFullName!=='function'||typeof uploadPatientDocument!=='function'){
+    showToast('✗ Senden per Chat ist hier nicht verfügbar','error'); return;
+  }
+  const doc=await buildArbeitsunfaehigkeitPdf(patientNameOverride);
+  if(!doc) return;
+  const name=doc._attestPatientName;
+  try{
+    const base64Data=doc.output('datauristring').split(',')[1];
+    const filename=`Arbeitsunfaehigkeit_${name.replace(/\s+/g,'_')}_${new Date().toLocaleDateString('de-AT').replace(/\./g,'-')}.pdf`;
+    const patientId=await findPatientIdByFullName(name);
+    let docId=null;
+    if(patientId){
+      const session=_attestSession();
+      const sizeBytes=Math.round(base64Data.length*0.75);
+      const saved=await uploadPatientDocument(patientId,{
+        category:'sonstiges', title:'Arbeitsunfähigkeitsmeldung', filename, mimeType:'application/pdf', sizeBytes, base64Data,
+      },session?session.username:null);
+      docId=saved.id;
+    }
+    await _persistArbeitsunfaehigkeit(doc,docId);
+    const msg={dir:'out', type:'uw', text:'Arbeitsunfähigkeitsmeldung ausgestellt',
+      filename, sub:'Krankenstandsbestätigung', docId, time:getTime()+' ✓'};
+    appendRealMessage(name,msg);
+    const chatNameEl=document.getElementById('chat-name');
+    if(chatNameEl && chatNameEl.textContent===name){
+      renderMessages(name,colorForName(name));
+    }
+    clearArbeitsunfaehigkeitForm();
+    showToast('✓ Meldung per Chat gesendet');
+  }catch(e){
+    console.error('Failed to send Arbeitsunfähigkeit via chat',e);
+    showToast('✗ Senden über Chat fehlgeschlagen','error');
+  }
 }
 
 async function printArbeitsunfaehigkeit(patientNameOverride){
