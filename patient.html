@@ -1080,7 +1080,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
           <!-- Same ÖGK/BVAEB/SVS/Andere set as patient-login.html's own
                self-registration and secretary.html's "+ Neuer Patient" --
                optional, same treatment as SV-Nummer above. -->
-          <div>
+          <div style="margin-bottom:10px;">
             <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.versicherung">Versicherung</label>
             <select id="apVersicherung" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;background:white;">
               <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
@@ -1088,6 +1088,20 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
               <option value="BVAEB">BVAEB</option>
               <option value="SVS">SVS</option>
               <option value="Andere" data-i18n="request.versicherung.other">Andere</option>
+            </select>
+          </div>
+          <!-- Real user request (2026-08-19, supabase/phase75_add_profile_
+               geschlecht.sql): same optional field as patient-login.html's
+               own self-registration form (request.geschlecht.*) -- drives
+               patient.html's symptom-picker body figure auto-selection
+               (renderBodyFigure()) once this profile is actually used. -->
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="request.geschlecht.label">Geschlecht</label>
+            <select id="apGeschlecht" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;background:white;">
+              <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
+              <option value="m" data-i18n="request.geschlecht.m">Männlich</option>
+              <option value="w" data-i18n="request.geschlecht.w">Weiblich</option>
+              <option value="d" data-i18n="request.geschlecht.d">Divers</option>
             </select>
           </div>
         </div>
@@ -3205,6 +3219,7 @@ function openAddProfileModal(type){
   document.getElementById('apAdresse').value='';
   document.getElementById('apSvnr').value='';
   document.getElementById('apVersicherung').selectedIndex=0;
+  document.getElementById('apGeschlecht').selectedIndex=0;
   document.getElementById('apRelation').selectedIndex=0;
   document.getElementById('apRelationLabel').value='';
   document.getElementById('apRelationLabelWrap').style.display='none';
@@ -3299,11 +3314,12 @@ async function handleApQrDecoded(text){
   const adresse=document.getElementById('apAdresse').value.trim();
   const svnr=document.getElementById('apSvnr').value.trim();
   const versicherung=document.getElementById('apVersicherung').value;
+  const geschlecht=document.getElementById('apGeschlecht').value;
   const relation=_apType==='child'?'child':document.getElementById('apRelation').value;
   const relationLabelInput=document.getElementById('apRelationLabel').value.trim();
   const relationLabel=(relation==='other')?relationLabelInput:null;
   try{
-    await patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel,dob,versicherung);
+    await patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel,dob,versicherung,geschlecht);
   }catch(e){
     console.error('patientSubmitProfileJoinRequest failed',e);
     setApState('form');
