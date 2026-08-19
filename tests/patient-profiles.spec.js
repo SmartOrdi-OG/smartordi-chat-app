@@ -338,6 +338,7 @@ test('a real practice QR code, scanned end-to-end, submits the join request with
     document.getElementById('apAdresse').value = 'Teststr. 1, 1010 Wien';
     document.getElementById('apSvnr').value = '1234010180';
     document.getElementById('apVersicherung').value = 'BVAEB';
+    document.getElementById('apGeschlecht').value = 'm';
     document.getElementById('apRelation').value = 'father';
 
     const qr = qrcode(0, 'M');
@@ -377,6 +378,8 @@ test('a real practice QR code, scanned end-to-end, submits the join request with
   // supabase/phase74_versicherung_and_add_profile_dob.sql
   expect(result.submitArgs.p_dob).toBe('1980-01-01');
   expect(result.submitArgs.p_versicherung).toBe('BVAEB');
+  // supabase/phase75_add_profile_geschlecht.sql
+  expect(result.submitArgs.p_geschlecht).toBe('m');
 });
 
 test('relation "Andere" sends the typed free-text label along with the request', async ({ page }) => {
@@ -460,6 +463,8 @@ test('a request submitted for "Kind hinzufügen" always sends relation="child", 
   // "Keine Angabe" (apVersicherung's default) here.
   expect(result.submitArgs.p_versicherung).toBeNull();
   expect(result.submitArgs.p_dob).toBe('2015-01-01');
+  // Geschlecht stays optional too, same "Keine Angabe" default.
+  expect(result.submitArgs.p_geschlecht).toBeNull();
 });
 
 test('extractApPracticeId() only accepts the real /patient-register/<id> scheme', async ({ page }) => {

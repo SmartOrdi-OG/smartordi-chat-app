@@ -187,7 +187,10 @@ from (values
   -- -- without it, "+ Kind hinzufügen" has nowhere to send the new
   -- profile's Geburtsdatum, and self-registration's Versicherung stays
   -- unreachable for this path.
-  ('patient_submit_profile_join_request', 'p_versicherung')
+  ('patient_submit_profile_join_request', 'p_versicherung'),
+  -- phase75: catches a deployed version still missing p_geschlecht -- same
+  -- gap phase74 fixed for dob/versicherung, this time for gender.
+  ('patient_submit_profile_join_request', 'p_geschlecht')
 ) as f(name, expect)
 
 union all
