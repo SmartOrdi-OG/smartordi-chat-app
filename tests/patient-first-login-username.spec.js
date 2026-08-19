@@ -34,7 +34,7 @@ async function setupFirstLogin(page, patient) {
       const p = window.__store.patients.find(x => x.id === 'p1');
       if (name === 'patient_login_precheck') return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
       if (name === 'patient_get_profile') {
-        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, is_child: p.is_child }], error: null });
       }
       if (name === 'patient_mark_password_changed') { p.first_login = false; return Promise.resolve({ data: true, error: null }); }
       if (name === 'patient_change_username') {
@@ -118,6 +118,76 @@ test('a username already taken by another patient shows an error and does not ch
   expect(result.errorShown).toBe(true);
   expect(result.errorText).toBeTruthy();
   expect(result.changepwStillActive).toBe(true);
+});
+
+// Real user request (2026-08-19): secretary.html's "+ Neuer Patient" ->
+// "Kind" -> "Erstes Kind" issues the exact same QR/first-login flow above,
+// but for a brand-new children's account the whole point is the parent
+// picks BOTH the username and password themselves -- pre-filling the
+// secretary-generated username (the adult behavior every test above
+// exercises) would just invite leaving it untouched, same as most adults
+// already do. See patient-login.html's doLogin()/saveNewPw() own comments.
+// Reuses id:'p1' (not a distinct 'c1') -- setupFirstLogin()'s own mock
+// (patient_login_precheck/patient_get_profile above) is hardcoded to look
+// up 'p1' regardless of which patient is under test, same as every other
+// test in this file relies on.
+const CHILD_PATIENT = Object.assign({}, BASE_PATIENT, {
+  username: 'tom.huber', full_name: 'Tom Huber', name: 'Tom', is_child: true,
+});
+
+test('a child account\'s first login leaves the username field BLANK (not pre-filled) with child-specific title/notice text', async ({ page }) => {
+  await setupFirstLogin(page, CHILD_PATIENT);
+  const state = await page.evaluate(() => ({
+    value: document.getElementById('newUsername').value,
+    title: document.getElementById('changePwTitle').textContent,
+    notice: document.getElementById('newUsernameNotice').textContent,
+  }));
+  expect(state.value).toBe('');
+  expect(state.title).toBe('Konto für Ihr Kind einrichten');
+  expect(state.notice).toBe('Bitte wählen Sie einen Benutzernamen für dieses Konto.');
+});
+
+test('an adult account\'s first login keeps the pre-filled username and the ordinary title (unaffected by the child case above)', async ({ page }) => {
+  await setupFirstLogin(page, BASE_PATIENT);
+  const state = await page.evaluate(() => ({
+    value: document.getElementById('newUsername').value,
+    title: document.getElementById('changePwTitle').textContent,
+  }));
+  expect(state.value).toBe('max.mustermann');
+  expect(state.title).toBe('Neues Passwort wählen');
+});
+
+test('submitting a child account\'s first login with an empty username is rejected -- no RPC call, no password change', async ({ page }) => {
+  await setupFirstLogin(page, CHILD_PATIENT);
+  await page.fill('#newPw', 'neuesPasswort1');
+  await page.fill('#confirmPw', 'neuesPasswort1');
+  await page.evaluate(() => saveNewPw());
+  await page.waitForTimeout(300);
+  const result = await page.evaluate(() => ({
+    calls: window.__rpcCalls.map(c => c.name),
+    errorShown: document.getElementById('errorMsg2').classList.contains('show'),
+    changepwStillActive: document.getElementById('screen-changepw').classList.contains('active'),
+  }));
+  expect(result.calls).not.toContain('patient_change_username');
+  expect(result.calls).not.toContain('patient_mark_password_changed');
+  expect(result.errorShown).toBe(true);
+  expect(result.changepwStillActive).toBe(true);
+});
+
+test('a child account can still complete first login once BOTH a username and password are actually chosen', async ({ page }) => {
+  await setupFirstLogin(page, CHILD_PATIENT);
+  await page.fill('#newUsername', 'tom2026');
+  await page.fill('#newPw', 'neuesPasswort1');
+  await page.fill('#confirmPw', 'neuesPasswort1');
+  await page.evaluate(() => saveNewPw());
+  await page.waitForTimeout(300);
+  const result = await page.evaluate(() => ({
+    calls: window.__rpcCalls.map(c => c.name),
+    serverUsername: window.__store.patients.find(p => p.id === 'p1').username,
+  }));
+  expect(result.calls).toContain('patient_change_username');
+  expect(result.calls).toContain('patient_mark_password_changed');
+  expect(result.serverUsername).toBe('tom2026');
 });
 
 test('a guardian first-login session hides the username field entirely (patient_change_username has no guardian identity to act on)', async ({ page }) => {
