@@ -709,6 +709,16 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
     <div class="home-greeting">
       <div class="home-greeting-name" id="homeGreetingName">—</div>
       <div class="home-greeting-sub" data-i18n="home.sub">Wählen Sie einen Bereich</div>
+      <!-- Real user request (2026-08-18): a children account switches which
+           child is active right from Home (renderHomeChildSwitcher() shows
+           this only for a real children account -- _remoteProfile.isChild),
+           instead of having to navigate into Profil > "Meine Profile" first.
+           Reuses the exact same patientGetProfiles()/switchToProfile() the
+           Profil card already uses -- just a second, more discoverable entry
+           point onto the same mechanism, not a separate one. -->
+      <button id="homeSwitchChildBtn" onclick="openHomeChildPicker()" style="display:none;margin-top:10px;background:var(--teal-light);border:none;color:var(--teal);padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-inline-end:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span data-i18n="profiles.switchChild">Kind wechseln</span>
+      </button>
     </div>
     <div class="home-tiles">
       <button class="home-tile" onclick="goToSection('chat')">
@@ -865,6 +875,23 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
       <div class="section-title" style="margin-top:16px;" data-i18n="termine.past">Vergangene Besuche</div>
       <div id="pastTermineRoot"></div>
 
+    </div>
+  </div>
+
+  <!-- HOME "Kind wechseln" PICKER (supabase/phase64_unified_account_
+       profiles.sql) -- real user request (2026-08-18): reachable straight
+       from Home for a children account, not just from Profil > "Meine
+       Profile". renderHomeChildPicker() below reuses patientGetProfiles()/
+       switchToProfile() (Profil's own "Meine Profile" card), it's just a
+       second, more discoverable entry point onto the exact same list/
+       switch mechanism. -->
+  <div class="modal-overlay" id="homeChildPickerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" data-i18n="profiles.switchChild">Kind wechseln</div>
+        <button class="modal-close" onclick="closeHomeChildPicker()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body" id="homeChildPickerList"></div>
     </div>
   </div>
 
@@ -2327,6 +2354,7 @@ async function initPatientData(){
   updateMkpTileVisibility();
   renderMkpView();
   renderProfilesCard();
+  renderHomeChildSwitcher();
   // Staff roster (doctor names on appointment cards/select) lives in
   // Supabase now -- re-render once ready in case it hadn't resolved yet.
   staffRosterReady.then(renderPatientTermine);
@@ -3160,6 +3188,41 @@ async function switchToProfile(patientId){
   await rehydrateSessionFromRealAuth();
   await initPatientData();
   showToast(tr('profiles.switched'));
+}
+
+// ── Home "Kind wechseln" (real user request, 2026-08-18) -- a second,
+// more discoverable entry point onto the exact same patientGetProfiles()/
+// switchToProfile() mechanism Profil's "Meine Profile" card already uses,
+// reachable straight from Home instead of navigating into Profil first. ──
+function renderHomeChildSwitcher(){
+  const btn=document.getElementById('homeSwitchChildBtn');
+  if(!btn) return;
+  // Only a real children account (this login's own direct patients row is
+  // itself a child, set once at registration -- see renderProfilesCard()'s
+  // own comment) ever has more than one profile to switch between, or a
+  // reason to. An adult account never shows this, same reasoning as
+  // #profilAddChildWrap.
+  btn.style.display=(getPatientToken()&&_remoteProfile&&_remoteProfile.isChild)?'inline-flex':'none';
+}
+async function openHomeChildPicker(){
+  const profiles=await patientGetProfiles();
+  const root=document.getElementById('homeChildPickerList');
+  root.innerHTML=profiles.map(function(p){
+    const activeTag=p.isActive?`<span style="background:#EAF4F1;color:#0E5E56;font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;">${escapeHtml(tr('profiles.active'))}</span>`:'';
+    const clickable=!p.isActive;
+    return `<div class="info-row" ${clickable?`onclick="switchToProfileFromHome('${p.patientId}')" style="cursor:pointer;"`:''}>
+        <span class="info-label">${escapeHtml(p.fullName)}</span>
+        <span class="info-value">${activeTag}</span>
+      </div>`;
+  }).join('');
+  document.getElementById('homeChildPickerModal').classList.add('show');
+}
+function closeHomeChildPicker(){
+  document.getElementById('homeChildPickerModal').classList.remove('show');
+}
+async function switchToProfileFromHome(patientId){
+  closeHomeChildPicker();
+  await switchToProfile(patientId);
 }
 
 let _apType='child';

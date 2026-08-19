@@ -490,3 +490,71 @@ test('closing the modal mid-scan releases the camera', async ({ page }) => {
   expect(result.stopped).toBe(true);
   expect(result.modalOpen).toBe(false);
 });
+
+// ── Home "Kind wechseln" (real user request, 2026-08-18) -- reachable
+// straight from Home instead of navigating into Profil first. Reuses the
+// exact same patientGetProfiles()/switchToProfile() mechanism as "Meine
+// Profile" -- these tests cover the extra entry point, not the switching
+// mechanism itself (already covered by the "Meine Profile" tests above).
+test('an adult account never shows the Home "Kind wechseln" button', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: false }));
+  const visible = await page.evaluate(() =>
+    getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none'
+  );
+  expect(visible).toBe(false);
+});
+
+test('a children account shows the Home "Kind wechseln" button, which opens a picker listing every profile', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
+  const rows = [
+    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
+    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
+  ];
+  const state = await page.evaluate(async (rows) => {
+    sb.rpc = (name) => {
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    const btnVisible = getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none';
+    await openHomeChildPicker();
+    const list = document.getElementById('homeChildPickerList');
+    return {
+      btnVisible,
+      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
+      rowCount: list.querySelectorAll('.info-row').length,
+      clickableCount: list.querySelectorAll('.info-row[onclick]').length,
+      html: list.innerHTML,
+    };
+  }, rows);
+  expect(state.btnVisible).toBe(true);
+  expect(state.modalOpen).toBe(true);
+  expect(state.rowCount).toBe(2);
+  expect(state.clickableCount, 'only the non-active child is clickable to switch to').toBe(1);
+  expect(state.html).toContain('Tom Huber');
+  expect(state.html).toContain('Lena Huber');
+});
+
+test('picking a child from the Home picker switches to it and closes the modal', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
+  const rows = [
+    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
+    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
+  ];
+  const result = await page.evaluate(async (rows) => {
+    let switchedTo = null;
+    sb.rpc = (name, args) => {
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
+      if (name === 'patient_switch_profile') { switchedTo = args.p_patient_id; return Promise.resolve({ data: true, error: null }); }
+      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: 'c2', username: 'lena.huber', name: 'Lena', full_name: 'Lena Huber', dob: '2015-01-01', first_login: false, is_child: true }], error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    await openHomeChildPicker();
+    await switchToProfileFromHome('c2');
+    return {
+      switchedTo,
+      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
+    };
+  }, rows);
+  expect(result.switchedTo).toBe('c2');
+  expect(result.modalOpen).toBe(false);
+});
