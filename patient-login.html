@@ -240,6 +240,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <input type="text" class="form-input" id="reqSvnr" style="padding-left:14px;" oninput="checkSvnrDobWarning('reqSvnr','reqDob','reqSvnrWarning')">
       <div id="reqSvnrWarning" style="display:none;color:#d97706;font-size:11.5px;margin-top:5px;font-weight:600;" data-i18n="request.svnr.mismatch">⚠ SV-Nummer stimmt nicht mit dem Geburtsdatum überein</div>
     </div>
+    <!-- Real user request (2026-08-19): self-registration never asked for a
+         Versicherung at all -- secretary.html's "+ Neuer Patient" already
+         has this as a dropdown (ÖGK/BVAEB/SVS/Andere, Austria's real
+         statutory funds); matched exactly here for consistency. Optional,
+         same treatment as SVNr -- never enforced as required. -->
+    <div class="form-group">
+      <label class="form-label" data-i18n="profil.versicherung">Versicherung</label>
+      <select class="form-input" id="reqVersicherung" style="padding-left:14px;">
+        <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
+        <option value="ÖGK">ÖGK</option>
+        <option value="BVAEB">BVAEB</option>
+        <option value="SVS">SVS</option>
+        <option value="Andere" data-i18n="request.versicherung.other">Andere</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label" data-i18n="login.username.label">Benutzername</label>
       <input type="text" class="form-input" id="reqUsername" autocomplete="username" style="padding-left:14px;">
@@ -378,8 +393,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   <div class="screen" id="screen-changepw">
     <div class="change-pw-header">
       <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-      <div class="change-pw-title" data-i18n="changepw.title">Neues Passwort wählen</div>
-      <div class="change-pw-sub" data-i18n="changepw.sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
+      <div class="change-pw-title" id="changePwTitle" data-i18n="changepw.title">Neues Passwort wählen</div>
+      <div class="change-pw-sub" id="changePwSub" data-i18n="changepw.sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
     </div>
     <div class="notice" data-i18n="changepw.notice">Ihr Passwort ist nur für Sie sichtbar</div>
     <div class="error-msg" id="errorMsg2"><span>!</span><span id="errorText2"></span></div>
@@ -390,14 +405,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
          set a password. Pre-filled with the current username so leaving it
          untouched (the common case) changes nothing; saveNewPw() only calls
          patient_change_username() (supabase/phase65_patient_username_
-         change_and_is_child.sql) when the value actually differs. -->
+         change_and_is_child.sql) when the value actually differs.
+         Real user request (2026-08-19): for a CHILD account's very first
+         login (secretary.html's "+ Neuer Patient" -> "Kind" -> "erstes
+         Kind" -- see that file's own comment), this field is left BLANK
+         instead of pre-filled and made mandatory -- the whole point of this
+         flow is the parent picks the login themselves, not just optionally
+         renames a secretary-generated one. doLogin() below decides which
+         behavior applies; saveNewPw() enforces the "must actually be
+         chosen" half for the child case. -->
     <div class="form-group" id="newUsernameGroup">
       <label class="form-label" data-i18n="changepw.newUsername.label">Benutzername</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
         <input type="text" class="form-input" id="newUsername" autocapitalize="off" autocorrect="off" spellcheck="false">
       </div>
-      <div class="pw-strength-label" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
+      <div class="pw-strength-label" id="newUsernameNotice" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
@@ -479,12 +502,32 @@ let currentUser = null;
 // patient).
 let currentUserIsGuardian=false;
 let currentGuardianChildren=[];
+// Real user request (2026-08-19): true only while screen-changepw is showing
+// for a brand-new account's very first login -- either a CHILD account
+// (secretary.html's "+ Neuer Patient" -> "Kind" -> "erstes Kind", detected
+// server-side via acc.isChild) OR, since a later same-day request, an
+// ordinary ADULT account the secretary just created (detected via the QR
+// URL's own nu=1 param, see tryQrLogin()/_qrNeedsNewUsername below -- there's
+// no server-side flag for "brand new" the way is_child works, since an
+// EXISTING adult's password-reset QR (selectQrPatient()) also lands on this
+// same first-login screen with isChild:false). See doLogin()'s own comment
+// above where this is set, and saveNewPw() below where it's read.
+let _firstLoginNeedsUsername=false;
+// Set from the QR URL's nu=1 param (secretary.html's buildPatientLoginUrl())
+// -- true only for a QR generated by confirmNewPatient()'s brand-new-account
+// path, false/absent for selectQrPatient()'s existing-patient password-reset
+// QR and for a manually-typed-in login (resetPatientPassword() hands the
+// secretary a plain-text password with no QR/URL params at all). Combined
+// with acc.isChild in doLogin() to decide _firstLoginNeedsUsername and which
+// of the three changepw.* text variants to show.
+let _qrNeedsNewUsername=false;
 
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
 function tryQrLogin(){
   const params=new URLSearchParams(window.location.search);
   const u=params.get('u'), t=params.get('t'), n=params.get('n'), f=params.get('f');
   if(!u||!t) return;
+  if(params.get('nu')==='1') _qrNeedsNewUsername=true;
   history.replaceState(null,'',window.location.pathname);
   if(!PATIENTS[u]){
     PATIENTS[u]={ pw:t, name:n||u, fach:f||'Allgemeinmedizin', firstLogin:true };
@@ -729,7 +772,27 @@ async function doLogin(){
       // would only ever fail there -- hide it for that case instead.
       const usernameGroup=document.getElementById('newUsernameGroup');
       usernameGroup.style.display=getPatientToken()?'':'none';
-      document.getElementById('newUsername').value=currentUser.username;
+      // Real user request (2026-08-19): secretary.html's "+ Neuer Patient"
+      // issues this same QR/first-login flow for EVERY brand-new account it
+      // creates now, child or adult -- the whole point is the real user
+      // (parent, or the adult patient themself) picks BOTH the username and
+      // password themselves, never the secretary-generated one. A child
+      // account is always detected via acc.isChild (server-side, reliable
+      // regardless of how the login happened); an adult account has no such
+      // server-side flag to tell "brand new" apart from "existing patient,
+      // password just reset" (selectQrPatient()/resetPatientPassword() also
+      // land here with isChild:false), so that case relies on the QR URL's
+      // own nu=1 param instead (_qrNeedsNewUsername, set in tryQrLogin()).
+      // _firstLoginNeedsUsername is read by saveNewPw() to make the username
+      // field mandatory only in these new-account cases; an existing
+      // account's password reset keeps today's "optional, pre-filled"
+      // behavior completely unchanged.
+      _firstLoginNeedsUsername=!!acc.isChild||_qrNeedsNewUsername;
+      document.getElementById('newUsername').value=_firstLoginNeedsUsername?'':currentUser.username;
+      const changepwTextKey=acc.isChild?'child':(_qrNeedsNewUsername?'newAccount':null);
+      document.getElementById('changePwTitle').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.title':'changepw.title');
+      document.getElementById('changePwSub').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.sub':'changepw.sub');
+      document.getElementById('newUsernameNotice').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.newUsername.notice':'changepw.newUsername.notice');
       document.getElementById('screen-changepw').classList.add('active');
       document.getElementById('newPw').focus();
     } else if(acc.joinStatus==='approved'&&!acc.anamnese){
@@ -794,7 +857,7 @@ function chooseAccountType(type){
 
 function showRequestScreen(){
   resubmitUsername=null;
-  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
+  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqVersicherung','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
   setReqScreenCopy();
@@ -853,6 +916,7 @@ function resubmitJoinRequest(){
   document.getElementById('reqTel').value=acc.tel||'';
   document.getElementById('reqAdresse').value=acc.adresse||'';
   document.getElementById('reqSvnr').value=acc.svnr||'';
+  document.getElementById('reqVersicherung').value=acc.versicherung||'';
   document.getElementById('reqGeschlecht').value=acc.geschlecht||'';
   document.getElementById('reqUsername').value=currentUser.username;
   document.getElementById('reqUsername').setAttribute('readonly','readonly');
@@ -879,6 +943,7 @@ async function submitJoinRequest(){
   const tel=document.getElementById('reqTel').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
   const svnr=document.getElementById('reqSvnr').value.trim();
+  const versicherung=document.getElementById('reqVersicherung').value;
   const geschlecht=document.getElementById('reqGeschlecht').value;
   const username=document.getElementById('reqUsername').value.trim().toLowerCase();
   const pw=document.getElementById('reqPassword').value;
@@ -913,7 +978,7 @@ async function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
-  const fields={vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw};
+  const fields={vorname,nachname,dob,tel,adresse,svnr,versicherung,geschlecht,username,pw};
   if(joinRequestPracticeId||reqViaDeepLink){
     await performJoinRequestSubmit(fields,joinRequestPracticeId);
     return;
@@ -929,7 +994,7 @@ async function submitJoinRequest(){
 // already known" path (submitJoinRequest() above, unchanged from before)
 // and confirmLinkPractice() (the new QR-scan path) below.
 async function performJoinRequestSubmit(fields,practiceId){
-  const {vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw}=fields;
+  const {vorname,nachname,dob,tel,adresse,svnr,versicherung,geschlecht,username,pw}=fields;
   const fullName=vorname+' '+nachname;
   // Whichever screen is currently showing the trigger button -- screen-
   // request's "Antrag senden" for the practice-already-known path, or
@@ -952,6 +1017,8 @@ async function performJoinRequestSubmit(fields,practiceId){
     // null, never an empty string, same as every other optional column
     // here going through this same insert.
     geschlecht:geschlecht||null,
+    // supabase/phase74_versicherung_and_add_profile_dob.sql
+    versicherung:versicherung||null,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){
@@ -1155,6 +1222,17 @@ async function saveNewPw(){
   }
   if(newPw !== confirmPw){
     errorText.textContent=tr('changepw.err.mismatch');
+    errorEl.classList.add('show');return;
+  }
+  // Real user request (2026-08-19): a brand-new account -- child OR adult
+  // (see doLogin()'s own comment on _firstLoginNeedsUsername) -- leaves
+  // #newUsername blank on purpose -- unlike an existing patient's password
+  // reset right below (where an empty field just means "keep the current
+  // username, skip the RPC call"), here an empty field must be rejected
+  // outright, not silently fall through to a username the real user never
+  // actually chose.
+  if(_firstLoginNeedsUsername && !document.getElementById('newUsername').value.trim()){
+    errorText.textContent=tr('changepw.err.usernameRequired');
     errorEl.classList.add('show');return;
   }
 

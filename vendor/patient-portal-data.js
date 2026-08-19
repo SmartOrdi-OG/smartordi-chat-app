@@ -360,10 +360,14 @@ async function ensureActiveProfile(){
 // review as any new patient (patient_join_requests/secretary.html's
 // Beitrittsanfragen), just carrying which existing account it should attach
 // to once approved.
-async function patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel){
+async function patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel,dob,versicherung,geschlecht){
   const {data,error}=await sb.rpc('patient_submit_profile_join_request',{
     p_practice_id:practiceId, p_vorname:vorname, p_nachname:nachname,
     p_adresse:adresse, p_svnr:svnr, p_relation:relation, p_relation_label:relationLabel||null,
+    // supabase/phase74_versicherung_and_add_profile_dob.sql
+    p_dob:dob||null, p_versicherung:versicherung||null,
+    // supabase/phase75_add_profile_geschlecht.sql
+    p_geschlecht:geschlecht||null,
   });
   if(error){ console.error('patientSubmitProfileJoinRequest failed',error); throw error; }
   return data;

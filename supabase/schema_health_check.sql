@@ -94,7 +94,9 @@ from unnest(array[
   -- phase69
   'patient_get_mkp_exams',
   -- phase73
-  'patient_get_practice_contact'
+  'patient_get_practice_contact',
+  -- phase76
+  'staff_add_linked_child'
 ]) as f
 
 union all
@@ -182,7 +184,22 @@ from (values
   -- patient.html's own "+ Kind hinzufügen" ends up with is_child=false
   -- despite relation='child' being recorded correctly, which silently hid
   -- their Impfungen card the same way phase67 hides it for a real adult.
-  ('patient_submit_profile_join_request', 'p_relation = ''child''')
+  ('patient_submit_profile_join_request', 'p_relation = ''child'''),
+  -- phase74: catches a deployed version still missing p_dob/p_versicherung
+  -- -- without it, "+ Kind hinzufügen" has nowhere to send the new
+  -- profile's Geburtsdatum, and self-registration's Versicherung stays
+  -- unreachable for this path.
+  ('patient_submit_profile_join_request', 'p_versicherung'),
+  -- phase75: catches a deployed version still missing p_geschlecht -- same
+  -- gap phase74 fixed for dob/versicherung, this time for gender.
+  ('patient_submit_profile_join_request', 'p_geschlecht'),
+  -- phase77: catches a deployed version still missing the "picked owner is
+  -- itself a linked (non-root) profile" resolution -- without it, linking a
+  -- new child onto an owner search result that happens to be an already-
+  -- linked sibling (not the account's root/direct profile) silently attaches
+  -- the new child to that sibling's own dormant auth_user_id instead of the
+  -- family's real login, so it never shows up when they actually log in.
+  ('staff_add_linked_child', 'v_root_owner_auth')
 ) as f(name, expect)
 
 union all
@@ -264,7 +281,9 @@ from unnest(array[
   -- phase67
   'dob','tel',
   -- phase72
-  'geschlecht'
+  'geschlecht',
+  -- phase74
+  'versicherung'
 ]) as c
 
 union all
