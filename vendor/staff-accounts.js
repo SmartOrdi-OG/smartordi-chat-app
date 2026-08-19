@@ -130,6 +130,40 @@ function workingHoursFor(dateStr,hours){
 function isWorkDay(dateStr,hours){
   return !!workingHoursFor(dateStr,hours).open;
 }
+// Austrian Sozialversicherungsnummer format: 4 digits (Laufnummer +
+// Prüfziffer) followed by 6 digits encoding the birth date as TTMMJJ
+// (DDMMYY), e.g. "1234 010190" -- real user request: a typo in either the
+// SVNr or the Geburtsdatum field commonly produces exactly this mismatch,
+// so flag it instead of silently accepting two contradictory birth dates
+// for the same person. Only checks that the embedded date matches --
+// deliberately does NOT implement the SVNr's own Prüfziffer/checksum
+// algorithm, since getting a country-specific checksum subtly wrong would
+// risk rejecting real, valid numbers, a worse outcome than not checking it
+// at all. Returns null (nothing to check yet) rather than true/false when
+// either field is still incomplete, so callers can tell "not enough info"
+// apart from "checked and it doesn't match".
+function svnrMatchesDob(svnr,dobIso){
+  const digits=String(svnr||'').replace(/\D/g,'');
+  if(digits.length!==10||!dobIso) return null;
+  const d=new Date(dobIso+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const expected=String(d.getDate()).padStart(2,'0')+String(d.getMonth()+1).padStart(2,'0')+String(d.getFullYear()).slice(-2);
+  return digits.slice(4)===expected;
+}
+// Shared oninput handler for every SVNr/Geburtsdatum field pair (secretary.
+// html's "+ Neuer Patient"/"Patient bearbeiten", patient-login.html's self-
+// registration) -- shows/hides the given warning element based on
+// svnrMatchesDob() above. Non-blocking on purpose: a genuine mismatch is
+// worth flagging, but not worth refusing to save over, since the person
+// entering it may have a good reason (unusual real-world data, a foreign
+// insurance number, ...) this simple check can't know about.
+function checkSvnrDobWarning(svnrId,dobId,warningId){
+  const warningEl=document.getElementById(warningId);
+  if(!warningEl) return;
+  const svnrEl=document.getElementById(svnrId), dobEl=document.getElementById(dobId);
+  const result=svnrMatchesDob(svnrEl?svnrEl.value:'',dobEl?dobEl.value:'');
+  warningEl.style.display=(result===false)?'block':'none';
+}
 // Steps every configured [start,end] block by 15 minutes -- one shared
 // generator instead of a separately hand-typed option list per block.
 function buildTimeSlotsFromBlocks(blocks){

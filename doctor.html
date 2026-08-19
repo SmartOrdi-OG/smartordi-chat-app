@@ -2384,6 +2384,9 @@ body.windows-mode #karteiBtn{display:none;}
           <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="printPflegefreistellung()" title="Patient ist in der Ordination">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken
           </button>
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="sendPflegefreistellungToChat()" title="Als PDF an den Chat senden">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Per Chat senden
+          </button>
         </div>
         <div class="k-dsgvo-note">DSGVO-konform · § 16 Urlaubsgesetz</div>
       </div>
@@ -2452,6 +2455,9 @@ body.windows-mode #karteiBtn{display:none;}
           </button>
           <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="printArbeitsunfaehigkeit()" title="Patient ist in der Ordination">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken
+          </button>
+          <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="sendArbeitsunfaehigkeitToChat()" title="Als PDF an den Chat senden">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Per Chat senden
           </button>
         </div>
         <div class="k-dsgvo-note">DSGVO-konform · Krankenstandsbestätigung</div>
