@@ -154,7 +154,7 @@ test('picking an owner and submitting "Weiteres Kind" creates the new child and 
   expect(result.credModalOpen, 'no QR/credentials modal -- this child never gets a standalone login to hand over').toBe(false);
 });
 
-test('"Erstes Kind" (the default) still works exactly as before: a standalone account + QR, with child-specific wording in the credentials modal', async ({ page }) => {
+test('"Erstes Kind" (the default) still works exactly as before: a standalone account + QR, with child-specific wording in the credentials modal, and the username/password boxes hidden from the secretary', async ({ page }) => {
   await setupPage(page);
   await page.evaluate(() => openNewPatientModal());
   await page.check('#npIsChild');
@@ -167,16 +167,25 @@ test('"Erstes Kind" (the default) still works exactly as before: a standalone ac
     credModalOpen: document.getElementById('patientCredentialsModal').classList.contains('show'),
     credDescription: document.getElementById('credDescription').textContent,
     credUsername: document.getElementById('credUsername').textContent,
+    gridVisible: getComputedStyle(document.getElementById('credCredentialsGrid')).display !== 'none',
   }));
   expect(result.newPatient).toBeTruthy();
   expect(result.newPatient.is_child).toBe(true);
   expect(result.credModalOpen).toBe(true);
   expect(result.credDescription).toContain('Kinder-Konto');
   expect(result.credDescription).toContain('eigenen Benutzernamen');
+  // Still populated internally (used elsewhere, e.g. printPatientCredentials()
+  // if it were ever shown) but hidden from the secretary -- real user request
+  // (2026-08-19): she should never see a generated username/password for any
+  // new account she creates.
   expect(result.credUsername).toBeTruthy();
+  expect(result.gridVisible, 'the username/password boxes must be hidden for a brand-new account').toBe(false);
 });
 
-test('an ordinary adult "+ Neuer Patient" (Kind unchecked) is unaffected: normal credentials-modal wording, no child-mode RPC involved', async ({ page }) => {
+// Real user request (2026-08-19): extends the "blank + mandatory username,
+// chosen by the real user, never shown to the secretary" behavior above --
+// previously child-only -- to an ordinary ADULT "+ Neuer Patient" too.
+test('an ordinary adult "+ Neuer Patient" (Kind unchecked) now ALSO gets the "choose your own username" QR flow, with the credentials boxes hidden from the secretary', async ({ page }) => {
   await setupPage(page);
   await page.evaluate(() => openNewPatientModal());
   await page.fill('#npVorname', 'Klaus');
@@ -190,9 +199,31 @@ test('an ordinary adult "+ Neuer Patient" (Kind unchecked) is unaffected: normal
   const result = await page.evaluate(() => ({
     newPatient: window.__store.patients.find(p => p.full_name === 'Klaus Wagner'),
     credDescription: document.getElementById('credDescription').textContent,
+    gridVisible: getComputedStyle(document.getElementById('credCredentialsGrid')).display !== 'none',
+    qrUrl: (() => { const img = document.getElementById('credQrImg'); return img && img.src; })(),
   }));
   expect(result.newPatient).toBeTruthy();
   expect(result.newPatient.is_child).toBe(false);
   expect(result.credDescription).not.toContain('Kinder-Konto');
-  expect(result.credDescription).toContain('wird automatisch angemeldet');
+  expect(result.credDescription).not.toContain('wird automatisch angemeldet');
+  expect(result.credDescription).toContain('eigenen Benutzernamen');
+  expect(result.gridVisible, 'the username/password boxes must be hidden for a brand-new account').toBe(false);
+});
+
+test('an existing patient\'s password-reset QR (selectQrPatient) keeps showing the real credentials to the secretary, unaffected by the new-account hiding above', async ({ page }) => {
+  await setupPage(page, {
+    patients: [{ id: 'p1', username: 'klaus.wagner', full_name: 'Klaus Wagner', name: 'Klaus', is_child: false, join_status: 'approved' }],
+  });
+  await page.evaluate(() => selectQrPatient('Klaus Wagner'));
+  await page.waitForTimeout(300);
+  const result = await page.evaluate(() => ({
+    credModalOpen: document.getElementById('patientCredentialsModal').classList.contains('show'),
+    gridVisible: getComputedStyle(document.getElementById('credCredentialsGrid')).display !== 'none',
+    credUsername: document.getElementById('credUsername').textContent,
+    credPassword: document.getElementById('credPassword').textContent,
+  }));
+  expect(result.credModalOpen).toBe(true);
+  expect(result.gridVisible).toBe(true);
+  expect(result.credUsername).toBe('klaus.wagner');
+  expect(result.credPassword).toBeTruthy();
 });
