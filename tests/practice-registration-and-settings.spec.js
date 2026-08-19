@@ -66,7 +66,7 @@ test('register.html creates one practice with the real typed name and every fiel
 // enterprise/enterprise_annual -- a brand-new practice registering today
 // would have gotten a stale plan:'pro' value written to its row, a key
 // that no longer exists anywhere else in the app.
-test('register.html writes the current plan keys (standard by default, or whichever card was clicked)', async ({ page }) => {
+test('register.html writes the current plan keys (enterprise by default, or whichever card was clicked)', async ({ page }) => {
   await installMockSupabase(page, {});
   await page.goto('file://' + path.join(__dirname, '..', 'register.html'));
   await page.waitForTimeout(1000);
@@ -85,7 +85,7 @@ test('register.html writes the current plan keys (standard by default, or whiche
     document.getElementById('cb-agb').checked = true;
     return selectedPlan;
   });
-  expect(defaultPlan).toBe('standard');
+  expect(defaultPlan).toBe('enterprise');
 
   await page.evaluate(() => { selectPlan('enterprise_annual'); });
   const cardSelected = await page.evaluate(() => document.getElementById('plan-enterprise_annual').classList.contains('selected'));
