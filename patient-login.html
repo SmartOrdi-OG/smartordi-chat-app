@@ -240,6 +240,21 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <input type="text" class="form-input" id="reqSvnr" style="padding-left:14px;" oninput="checkSvnrDobWarning('reqSvnr','reqDob','reqSvnrWarning')">
       <div id="reqSvnrWarning" style="display:none;color:#d97706;font-size:11.5px;margin-top:5px;font-weight:600;" data-i18n="request.svnr.mismatch">⚠ SV-Nummer stimmt nicht mit dem Geburtsdatum überein</div>
     </div>
+    <!-- Real user request (2026-08-19): self-registration never asked for a
+         Versicherung at all -- secretary.html's "+ Neuer Patient" already
+         has this as a dropdown (ÖGK/BVAEB/SVS/Andere, Austria's real
+         statutory funds); matched exactly here for consistency. Optional,
+         same treatment as SVNr -- never enforced as required. -->
+    <div class="form-group">
+      <label class="form-label" data-i18n="profil.versicherung">Versicherung</label>
+      <select class="form-input" id="reqVersicherung" style="padding-left:14px;">
+        <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
+        <option value="ÖGK">ÖGK</option>
+        <option value="BVAEB">BVAEB</option>
+        <option value="SVS">SVS</option>
+        <option value="Andere" data-i18n="request.versicherung.other">Andere</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label" data-i18n="login.username.label">Benutzername</label>
       <input type="text" class="form-input" id="reqUsername" autocomplete="username" style="padding-left:14px;">
@@ -794,7 +809,7 @@ function chooseAccountType(type){
 
 function showRequestScreen(){
   resubmitUsername=null;
-  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
+  ['reqVorname','reqNachname','reqDob','reqTel','reqAdresse','reqSvnr','reqVersicherung','reqGeschlecht','reqUsername','reqPassword','reqConfirmPw'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('reqUsername').removeAttribute('readonly');
   document.getElementById('reqAgb').checked=false;
   setReqScreenCopy();
@@ -853,6 +868,7 @@ function resubmitJoinRequest(){
   document.getElementById('reqTel').value=acc.tel||'';
   document.getElementById('reqAdresse').value=acc.adresse||'';
   document.getElementById('reqSvnr').value=acc.svnr||'';
+  document.getElementById('reqVersicherung').value=acc.versicherung||'';
   document.getElementById('reqGeschlecht').value=acc.geschlecht||'';
   document.getElementById('reqUsername').value=currentUser.username;
   document.getElementById('reqUsername').setAttribute('readonly','readonly');
@@ -879,6 +895,7 @@ async function submitJoinRequest(){
   const tel=document.getElementById('reqTel').value.trim();
   const adresse=document.getElementById('reqAdresse').value.trim();
   const svnr=document.getElementById('reqSvnr').value.trim();
+  const versicherung=document.getElementById('reqVersicherung').value;
   const geschlecht=document.getElementById('reqGeschlecht').value;
   const username=document.getElementById('reqUsername').value.trim().toLowerCase();
   const pw=document.getElementById('reqPassword').value;
@@ -913,7 +930,7 @@ async function submitJoinRequest(){
     errorEl.classList.add('show');return;
   }
 
-  const fields={vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw};
+  const fields={vorname,nachname,dob,tel,adresse,svnr,versicherung,geschlecht,username,pw};
   if(joinRequestPracticeId||reqViaDeepLink){
     await performJoinRequestSubmit(fields,joinRequestPracticeId);
     return;
@@ -929,7 +946,7 @@ async function submitJoinRequest(){
 // already known" path (submitJoinRequest() above, unchanged from before)
 // and confirmLinkPractice() (the new QR-scan path) below.
 async function performJoinRequestSubmit(fields,practiceId){
-  const {vorname,nachname,dob,tel,adresse,svnr,geschlecht,username,pw}=fields;
+  const {vorname,nachname,dob,tel,adresse,svnr,versicherung,geschlecht,username,pw}=fields;
   const fullName=vorname+' '+nachname;
   // Whichever screen is currently showing the trigger button -- screen-
   // request's "Antrag senden" for the practice-already-known path, or
@@ -952,6 +969,8 @@ async function performJoinRequestSubmit(fields,practiceId){
     // null, never an empty string, same as every other optional column
     // here going through this same insert.
     geschlecht:geschlecht||null,
+    // supabase/phase74_versicherung_and_add_profile_dob.sql
+    versicherung:versicherung||null,
   });
   if(submitBtn) submitBtn.disabled=false;
   if(error){

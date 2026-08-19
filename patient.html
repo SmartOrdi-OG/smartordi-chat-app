@@ -1060,13 +1060,35 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
               <input type="text" id="apRelationLabel" data-i18n-placeholder="profiles.otherRelationPlaceholder" placeholder="z. B. Großmutter" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
             </div>
           </div>
+          <!-- Real user request (2026-08-19, with a screenshot of this exact
+               modal): Geburtsdatum was missing entirely -- every OTHER path
+               that creates a patients row (self-registration, secretary.
+               html's "+ Neuer Patient") already requires it. Required here
+               too, same treatment. -->
+          <div style="margin-bottom:10px;">
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="request.dob.label">Geburtsdatum</label>
+            <input type="date" id="apDob" min="1900-01-01" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
           <div style="margin-bottom:10px;">
             <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.adresse">Adresse</label>
             <input type="text" id="apAdresse" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
           </div>
-          <div>
+          <div style="margin-bottom:10px;">
             <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.svnr">SV-Nummer</label>
             <input type="text" id="apSvnr" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
+          <!-- Same ÖGK/BVAEB/SVS/Andere set as patient-login.html's own
+               self-registration and secretary.html's "+ Neuer Patient" --
+               optional, same treatment as SV-Nummer above. -->
+          <div>
+            <label style="display:block;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--text-muted);" data-i18n="profil.versicherung">Versicherung</label>
+            <select id="apVersicherung" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;background:white;">
+              <option value="" data-i18n="request.geschlecht.none">Keine Angabe</option>
+              <option value="ÖGK">ÖGK</option>
+              <option value="BVAEB">BVAEB</option>
+              <option value="SVS">SVS</option>
+              <option value="Andere" data-i18n="request.versicherung.other">Andere</option>
+            </select>
           </div>
         </div>
 
@@ -3179,8 +3201,10 @@ function openAddProfileModal(type){
   document.getElementById('addProfileTitle').textContent=tr(type==='child'?'profiles.addChild':'profiles.addAdult');
   document.getElementById('apVorname').value='';
   document.getElementById('apNachname').value='';
+  document.getElementById('apDob').value='';
   document.getElementById('apAdresse').value='';
   document.getElementById('apSvnr').value='';
+  document.getElementById('apVersicherung').selectedIndex=0;
   document.getElementById('apRelation').selectedIndex=0;
   document.getElementById('apRelationLabel').value='';
   document.getElementById('apRelationLabelWrap').style.display='none';
@@ -3208,8 +3232,11 @@ function showApError(key){
 async function startAddProfileScan(){
   const vorname=document.getElementById('apVorname').value.trim();
   const nachname=document.getElementById('apNachname').value.trim();
+  const dob=document.getElementById('apDob').value;
   document.getElementById('addProfileError').style.display='none';
-  if(!vorname||!nachname){
+  // Real user request (2026-08-19): Geburtsdatum is required here too, same
+  // as every other path that creates a patients row.
+  if(!vorname||!nachname||!dob){
     showApError('request.err.missing');
     return;
   }
@@ -3268,13 +3295,15 @@ async function handleApQrDecoded(text){
   }
   const vorname=document.getElementById('apVorname').value.trim();
   const nachname=document.getElementById('apNachname').value.trim();
+  const dob=document.getElementById('apDob').value;
   const adresse=document.getElementById('apAdresse').value.trim();
   const svnr=document.getElementById('apSvnr').value.trim();
+  const versicherung=document.getElementById('apVersicherung').value;
   const relation=_apType==='child'?'child':document.getElementById('apRelation').value;
   const relationLabelInput=document.getElementById('apRelationLabel').value.trim();
   const relationLabel=(relation==='other')?relationLabelInput:null;
   try{
-    await patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel);
+    await patientSubmitProfileJoinRequest(practiceId,vorname,nachname,adresse,svnr,relation,relationLabel,dob,versicherung);
   }catch(e){
     console.error('patientSubmitProfileJoinRequest failed',e);
     setApState('form');

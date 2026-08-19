@@ -240,6 +240,30 @@ test('starting the scan without a first/last name shows an error and never reque
   expect(result.scanningVisible).toBe(false);
 });
 
+// Real user request (2026-08-19, with a screenshot of this exact modal):
+// Geburtsdatum was missing entirely from this form -- every OTHER path
+// that creates a patients row already requires it.
+test('starting the scan without a Geburtsdatum also shows an error and never requests the camera', async ({ page }) => {
+  await setupRemote(page);
+  const result = await page.evaluate(async () => {
+    let cameraRequested = false;
+    navigator.mediaDevices.getUserMedia = async () => { cameraRequested = true; return null; };
+    openAddProfileModal('child');
+    document.getElementById('apVorname').value = 'Tom';
+    document.getElementById('apNachname').value = 'Huber';
+    // apDob deliberately left empty.
+    await startAddProfileScan();
+    return {
+      cameraRequested,
+      errorVisible: document.getElementById('addProfileError').style.display !== 'none',
+      scanningVisible: getComputedStyle(document.getElementById('apStateScanning')).display !== 'none',
+    };
+  });
+  expect(result.cameraRequested).toBe(false);
+  expect(result.errorVisible).toBe(true);
+  expect(result.scanningVisible).toBe(false);
+});
+
 test('camera permission denied shows a clear camera error and returns to the form', async ({ page }) => {
   await setupRemote(page);
   const result = await page.evaluate(async () => {
@@ -247,6 +271,7 @@ test('camera permission denied shows a clear camera error and returns to the for
     openAddProfileModal('adult');
     document.getElementById('apVorname').value = 'Klaus';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '1980-01-01';
     await startAddProfileScan();
     return {
       errorVisible: document.getElementById('addProfileError').style.display !== 'none',
@@ -266,6 +291,7 @@ test('scanning an unrelated QR code shows an error instead of silently submittin
     openAddProfileModal('child');
     document.getElementById('apVorname').value = 'Tom';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '2015-01-01';
 
     const qr = qrcode(0, 'M');
     qr.addData('https://example.com/totally-unrelated-content');
@@ -308,8 +334,10 @@ test('a real practice QR code, scanned end-to-end, submits the join request with
     openAddProfileModal('adult');
     document.getElementById('apVorname').value = 'Klaus';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '1980-01-01';
     document.getElementById('apAdresse').value = 'Teststr. 1, 1010 Wien';
     document.getElementById('apSvnr').value = '1234010180';
+    document.getElementById('apVersicherung').value = 'BVAEB';
     document.getElementById('apRelation').value = 'father';
 
     const qr = qrcode(0, 'M');
@@ -346,6 +374,9 @@ test('a real practice QR code, scanned end-to-end, submits the join request with
   expect(result.submitArgs.p_nachname).toBe('Huber');
   expect(result.submitArgs.p_relation).toBe('father');
   expect(result.submitArgs.p_relation_label).toBeNull();
+  // supabase/phase74_versicherung_and_add_profile_dob.sql
+  expect(result.submitArgs.p_dob).toBe('1980-01-01');
+  expect(result.submitArgs.p_versicherung).toBe('BVAEB');
 });
 
 test('relation "Andere" sends the typed free-text label along with the request', async ({ page }) => {
@@ -355,6 +386,7 @@ test('relation "Andere" sends the typed free-text label along with the request',
     openAddProfileModal('adult');
     document.getElementById('apVorname').value = 'Erna';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '1950-01-01';
     document.getElementById('apRelation').value = 'other';
     document.getElementById('apRelation').dispatchEvent(new Event('change'));
     document.getElementById('apRelationLabel').value = 'Großmutter';
@@ -395,6 +427,7 @@ test('a request submitted for "Kind hinzufügen" always sends relation="child", 
     openAddProfileModal('child');
     document.getElementById('apVorname').value = 'Tom';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '2015-01-01';
 
     const qr = qrcode(0, 'M');
     qr.addData('https://chat.smartordiog.eu/patient-register/practice-real-uuid-9');
@@ -423,6 +456,10 @@ test('a request submitted for "Kind hinzufügen" always sends relation="child", 
   });
   expect(result.submitArgs.p_relation).toBe('child');
   expect(result.submitArgs.p_relation_label).toBeNull();
+  // Versicherung stays optional, same treatment as SV-Nummer -- left at
+  // "Keine Angabe" (apVersicherung's default) here.
+  expect(result.submitArgs.p_versicherung).toBeNull();
+  expect(result.submitArgs.p_dob).toBe('2015-01-01');
 });
 
 test('extractApPracticeId() only accepts the real /patient-register/<id> scheme', async ({ page }) => {
@@ -457,6 +494,7 @@ test('closing the modal mid-scan releases the camera', async ({ page }) => {
     openAddProfileModal('child');
     document.getElementById('apVorname').value = 'Tom';
     document.getElementById('apNachname').value = 'Huber';
+    document.getElementById('apDob').value = '2015-01-01';
     await startAddProfileScan();
     closeAddProfileModal();
     return { stopped, modalOpen: document.getElementById('addProfileModal').classList.contains('show') };
