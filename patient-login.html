@@ -393,8 +393,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
   <div class="screen" id="screen-changepw">
     <div class="change-pw-header">
       <div class="change-pw-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1e3a5f" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-      <div class="change-pw-title" data-i18n="changepw.title">Neues Passwort wählen</div>
-      <div class="change-pw-sub" data-i18n="changepw.sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
+      <div class="change-pw-title" id="changePwTitle" data-i18n="changepw.title">Neues Passwort wählen</div>
+      <div class="change-pw-sub" id="changePwSub" data-i18n="changepw.sub">Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.</div>
     </div>
     <div class="notice" data-i18n="changepw.notice">Ihr Passwort ist nur für Sie sichtbar</div>
     <div class="error-msg" id="errorMsg2"><span>!</span><span id="errorText2"></span></div>
@@ -405,14 +405,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
          set a password. Pre-filled with the current username so leaving it
          untouched (the common case) changes nothing; saveNewPw() only calls
          patient_change_username() (supabase/phase65_patient_username_
-         change_and_is_child.sql) when the value actually differs. -->
+         change_and_is_child.sql) when the value actually differs.
+         Real user request (2026-08-19): for a CHILD account's very first
+         login (secretary.html's "+ Neuer Patient" -> "Kind" -> "erstes
+         Kind" -- see that file's own comment), this field is left BLANK
+         instead of pre-filled and made mandatory -- the whole point of this
+         flow is the parent picks the login themselves, not just optionally
+         renames a secretary-generated one. doLogin() below decides which
+         behavior applies; saveNewPw() enforces the "must actually be
+         chosen" half for the child case. -->
     <div class="form-group" id="newUsernameGroup">
       <label class="form-label" data-i18n="changepw.newUsername.label">Benutzername</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
         <input type="text" class="form-input" id="newUsername" autocapitalize="off" autocorrect="off" spellcheck="false">
       </div>
-      <div class="pw-strength-label" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
+      <div class="pw-strength-label" id="newUsernameNotice" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
@@ -494,6 +502,11 @@ let currentUser = null;
 // patient).
 let currentUserIsGuardian=false;
 let currentGuardianChildren=[];
+// Real user request (2026-08-19): true only while screen-changepw is showing
+// for a CHILD account's very first login (secretary.html's "+ Neuer
+// Patient" -> "Kind" -> "erstes Kind") -- see doLogin()'s own comment above
+// where this is set, and saveNewPw() below where it's read.
+let _firstLoginIsChild=false;
 
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
 function tryQrLogin(){
@@ -744,7 +757,20 @@ async function doLogin(){
       // would only ever fail there -- hide it for that case instead.
       const usernameGroup=document.getElementById('newUsernameGroup');
       usernameGroup.style.display=getPatientToken()?'':'none';
-      document.getElementById('newUsername').value=currentUser.username;
+      // Real user request (2026-08-19): secretary.html's "+ Neuer Patient"
+      // -> "Kind" -> "erstes Kind" issues this same QR/first-login flow, but
+      // for a brand-new children's account the whole point is the parent
+      // picks BOTH the username and password themselves -- pre-filling the
+      // secretary-generated one (the normal adult behavior right below)
+      // would just invite leaving it untouched, same as most adults already
+      // do today. _firstLoginIsChild is read by saveNewPw() to make the
+      // username field mandatory only in this case; an adult account keeps
+      // today's "optional, pre-filled" behavior completely unchanged.
+      _firstLoginIsChild=!!acc.isChild;
+      document.getElementById('newUsername').value=_firstLoginIsChild?'':currentUser.username;
+      document.getElementById('changePwTitle').textContent=tr(_firstLoginIsChild?'changepw.child.title':'changepw.title');
+      document.getElementById('changePwSub').textContent=tr(_firstLoginIsChild?'changepw.child.sub':'changepw.sub');
+      document.getElementById('newUsernameNotice').textContent=tr(_firstLoginIsChild?'changepw.child.newUsername.notice':'changepw.newUsername.notice');
       document.getElementById('screen-changepw').classList.add('active');
       document.getElementById('newPw').focus();
     } else if(acc.joinStatus==='approved'&&!acc.anamnese){
@@ -1174,6 +1200,16 @@ async function saveNewPw(){
   }
   if(newPw !== confirmPw){
     errorText.textContent=tr('changepw.err.mismatch');
+    errorEl.classList.add('show');return;
+  }
+  // Real user request (2026-08-19): a brand-new children's account (see
+  // doLogin()'s own comment on _firstLoginIsChild) leaves #newUsername
+  // blank on purpose -- unlike the adult case right below (where an empty
+  // field just means "keep the secretary-generated one, skip the RPC
+  // call"), here an empty field must be rejected outright, not silently
+  // fall through to a username the parent never actually chose.
+  if(_firstLoginIsChild && !document.getElementById('newUsername').value.trim()){
+    errorText.textContent=tr('changepw.err.usernameRequired');
     errorEl.classList.add('show');return;
   }
 
