@@ -1,11 +1,17 @@
 // Phase B of the unified-account-profiles feature (supabase/phase64_
 // unified_account_profiles.sql was schema/RPC-only, Phase A -- this covers
 // the actual patient.html UI built on top of it): one login can now hold
-// several independent patient profiles (own + any linked child/adult),
-// switchable from the Profil view's new "Meine Profile" card, with
+// several independent patient profiles (own + any linked child), with
 // "Kind hinzufügen"/"Erwachsene:n hinzufügen" submitting a join request
 // (staff review, same as any new patient) rather than creating a profile
 // outright.
+//
+// Real user request (2026-08-19): switching between/adding profiles moved
+// out of a Profil "Meine Profile" card entirely, onto Home
+// (#homeChildControls: #homeSwitchChildBtn + #homeAddChildBtn) -- one tap
+// from the app's landing screen instead of a tab. The underlying mechanism
+// (patientGetProfiles()/switchToProfile()/openAddProfileModal()) is
+// unchanged, only its UI entry point moved.
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
@@ -36,86 +42,25 @@ async function setupRemote(page, profile) {
   await page.waitForTimeout(300);
 }
 
-test('renderProfilesCard() lists every profile, tags the active one, and only the others are clickable to switch', async ({ page }) => {
-  await setupRemote(page);
-  const rows = [
-    { patient_id: 'p1', full_name: 'Maria Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Ordination A', is_active: true },
-    { patient_id: 'c1', full_name: 'Tom Huber', relation: 'child', relation_label: null, practice_id: 'pr2', practice_name: 'Kinderarzt', is_active: false },
-  ];
-  const state = await page.evaluate(async (rows) => {
-    sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
-      return Promise.resolve({ data: [], error: null });
-    };
-    await renderProfilesCard();
-    const list = document.getElementById('profilProfilesList');
-    return {
-      cardVisible: getComputedStyle(document.getElementById('profilProfilesCard')).display !== 'none',
-      html: list.innerHTML,
-      rowCount: list.querySelectorAll('.info-row').length,
-      clickableCount: list.querySelectorAll('.info-row[onclick]').length,
-    };
-  }, rows);
-  expect(state.cardVisible).toBe(true);
-  expect(state.rowCount).toBe(2);
-  expect(state.clickableCount, 'only the non-active profile should be clickable').toBe(1);
-  expect(state.html).toContain('Maria Huber');
-  expect(state.html).toContain('Tom Huber');
-});
-
-// Real user request (2026-08-18): an adult account is a single person's
-// own account, and a children's account only ever grows by adding MORE
-// children -- there's no scenario where a second adult gets added onto an
-// account, so that button is gone outright (not just relabelled).
-// openAddProfileModal('adult') itself (and the relation picker it drives)
-// is left in place, unreachable from the UI -- still exercised directly by
-// the sibling tests above/below, in case a future flow needs it.
-test('a children account\'s "Meine Profile" offers "+ Kind hinzufügen"; "+ Erwachsene:n hinzufügen" is gone entirely', async ({ page }) => {
-  await setupRemote(page, profileRow({ is_child: true }));
-  const rows = [
-    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
-  ];
-  const state = await page.evaluate(async (rows) => {
-    sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
-      return Promise.resolve({ data: [], error: null });
-    };
-    await renderProfilesCard();
-    return {
-      addChildVisible: getComputedStyle(document.getElementById('profilAddChildWrap')).display !== 'none',
-      addAdultPresent: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'adult\')"]'),
-    };
-  }, rows);
-  expect(state.addChildVisible).toBe(true);
-  expect(state.addAdultPresent).toBe(false);
-});
-
-// Follow-up request (same day, after seeing an adult account still offer
-// "+ Kind hinzufügen" live): an adult account must stay single-person, full
-// stop -- not just missing the "+ Erwachsene:n hinzufügen" option, but
-// unable to add ANY profile at all, since only a children account can ever
-// hold more than one profile.
-test('an adult account\'s "Meine Profile" offers no way to add a profile at all', async ({ page }) => {
+// ── Home child controls (real user request, 2026-08-19) ──
+// _remoteProfile.isChild describes THIS login's own direct patients row
+// (set once at registration -- patient-login.html's screen-account-type),
+// not whichever profile happens to be active right now: every profile a
+// real children account can ever hold is itself a child, so this stays
+// correct across profile switches without re-deriving anything.
+test('an adult account never shows the Home child controls (neither "Kind wechseln" nor "+ Kind hinzufügen")', async ({ page }) => {
   await setupRemote(page, profileRow({ is_child: false }));
-  const rows = [
-    { patient_id: 'p1', full_name: 'Salem Ghanem', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Ordination A', is_active: true },
-  ];
-  const state = await page.evaluate(async (rows) => {
-    sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
-      return Promise.resolve({ data: [], error: null });
-    };
-    await renderProfilesCard();
-    return {
-      addChildVisible: getComputedStyle(document.getElementById('profilAddChildWrap')).display !== 'none',
-      addAdultPresent: !!document.querySelector('#profilProfilesCard button[onclick*="openAddProfileModal(\'adult\')"]'),
-    };
-  }, rows);
-  expect(state.addChildVisible, 'an adult account must never offer "+ Kind hinzufügen" either').toBe(false);
-  expect(state.addAdultPresent).toBe(false);
+  const state = await page.evaluate(() => ({
+    wrapVisible: getComputedStyle(document.getElementById('homeChildControls')).display !== 'none',
+    switchVisible: getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none',
+    addVisible: getComputedStyle(document.getElementById('homeAddChildBtn')).display !== 'none',
+  }));
+  expect(state.wrapVisible, 'an adult account must stay single-person -- no add-profile option at all').toBe(false);
+  expect(state.switchVisible).toBe(false);
+  expect(state.addVisible).toBe(false);
 });
 
-test('a local/demo (non-token) account never shows the profiles card at all', async ({ page }) => {
+test('a local/demo (non-token) account never shows the Home child controls either', async ({ page }) => {
   await installMockSupabase(page, {}, () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'demo1' }));
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({
@@ -124,48 +69,77 @@ test('a local/demo (non-token) account never shows the profiles card at all', as
   });
   await page.goto('file://' + path.join(__dirname, '..', 'patient.html'));
   await page.waitForTimeout(800);
-  const visible = await page.evaluate(() => getComputedStyle(document.getElementById('profilProfilesCard')).display !== 'none');
-  expect(visible).toBe(false);
+  const wrapVisible = await page.evaluate(() => getComputedStyle(document.getElementById('homeChildControls')).display !== 'none');
+  expect(wrapVisible).toBe(false);
 });
 
-// Real report (2026-08-11): a child added and approved while the parent's
-// tab was already open/already logged in never showed up in "Meine
-// Profile" -- there's no realtime push for this, and an installed PWA has
-// no obvious "refresh" gesture (no pull-to-refresh/reload button), so a
-// full app relaunch was the only workaround, which nobody would think to
-// try. Opening/re-opening the Profil tab (even switching back to it, not
-// just the very first load) now always re-fetches.
-test('opening the Profil tab re-fetches the profiles list every time, not just on the very first load', async ({ page }) => {
-  await setupRemote(page);
-  const result = await page.evaluate(async () => {
-    let calls = 0;
-    sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') { calls += 1; return Promise.resolve({ data: [], error: null }); }
-      return Promise.resolve({ data: [], error: null });
+test('a children account shows both Home child controls, and "+ Kind hinzufügen" opens the same add-profile modal as before', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
+  const state = await page.evaluate(() => {
+    document.getElementById('homeAddChildBtn').click();
+    return {
+      switchVisible: getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none',
+      addVisible: getComputedStyle(document.getElementById('homeAddChildBtn')).display !== 'none',
+      addModalOpen: document.getElementById('addProfileModal').classList.contains('show'),
+      addModalTitle: document.getElementById('addProfileTitle').textContent,
     };
-    switchView('chat');
-    switchView('profil');
-    switchView('chat');
-    switchView('profil');
-    return { calls };
   });
-  expect(result.calls, 'switching to the Profil tab must re-fetch every time, not just once').toBeGreaterThanOrEqual(2);
+  expect(state.switchVisible).toBe(true);
+  expect(state.addVisible).toBe(true);
+  expect(state.addModalOpen).toBe(true);
+  expect(state.addModalTitle).toContain('Kind');
 });
 
-test('the 🔄 refresh button on "Meine Profile" re-fetches on demand', async ({ page }) => {
-  await setupRemote(page);
-  const result = await page.evaluate(async () => {
-    let calls = 0;
+test('the Home "Kind wechseln" picker lists every profile, tags the active one, and only the others are clickable to switch', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
+  const rows = [
+    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
+    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
+  ];
+  const state = await page.evaluate(async (rows) => {
     sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') { calls += 1; return Promise.resolve({ data: [], error: null }); }
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
       return Promise.resolve({ data: [], error: null });
     };
-    const before = calls;
-    document.querySelector('#profilProfilesCard button[onclick="renderProfilesCard()"]').click();
-    await new Promise(r => setTimeout(r, 100));
-    return { before, after: calls };
-  });
-  expect(result.after).toBeGreaterThan(result.before);
+    await openHomeChildPicker();
+    const list = document.getElementById('homeChildPickerList');
+    return {
+      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
+      rowCount: list.querySelectorAll('.info-row').length,
+      clickableCount: list.querySelectorAll('.info-row[onclick]').length,
+      html: list.innerHTML,
+    };
+  }, rows);
+  expect(state.modalOpen).toBe(true);
+  expect(state.rowCount).toBe(2);
+  expect(state.clickableCount, 'only the non-active child is clickable to switch to').toBe(1);
+  expect(state.html).toContain('Tom Huber');
+  expect(state.html).toContain('Lena Huber');
+});
+
+test('picking a child from the Home picker switches to it and closes the modal', async ({ page }) => {
+  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
+  const rows = [
+    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
+    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
+  ];
+  const result = await page.evaluate(async (rows) => {
+    let switchedTo = null;
+    sb.rpc = (name, args) => {
+      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
+      if (name === 'patient_switch_profile') { switchedTo = args.p_patient_id; return Promise.resolve({ data: true, error: null }); }
+      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: 'c2', username: 'lena.huber', name: 'Lena', full_name: 'Lena Huber', dob: '2015-01-01', first_login: false, is_child: true }], error: null });
+      return Promise.resolve({ data: [], error: null });
+    };
+    await openHomeChildPicker();
+    await switchToProfileFromHome('c2');
+    return {
+      switchedTo,
+      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
+    };
+  }, rows);
+  expect(result.switchedTo).toBe('c2');
+  expect(result.modalOpen).toBe(false);
 });
 
 test('clicking a non-active profile switches it, without a page reload -- the whole Profil view now reflects the NEW profile', async ({ page }) => {
@@ -488,73 +462,5 @@ test('closing the modal mid-scan releases the camera', async ({ page }) => {
     return { stopped, modalOpen: document.getElementById('addProfileModal').classList.contains('show') };
   });
   expect(result.stopped).toBe(true);
-  expect(result.modalOpen).toBe(false);
-});
-
-// ── Home "Kind wechseln" (real user request, 2026-08-18) -- reachable
-// straight from Home instead of navigating into Profil first. Reuses the
-// exact same patientGetProfiles()/switchToProfile() mechanism as "Meine
-// Profile" -- these tests cover the extra entry point, not the switching
-// mechanism itself (already covered by the "Meine Profile" tests above).
-test('an adult account never shows the Home "Kind wechseln" button', async ({ page }) => {
-  await setupRemote(page, profileRow({ is_child: false }));
-  const visible = await page.evaluate(() =>
-    getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none'
-  );
-  expect(visible).toBe(false);
-});
-
-test('a children account shows the Home "Kind wechseln" button, which opens a picker listing every profile', async ({ page }) => {
-  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
-  const rows = [
-    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
-    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
-  ];
-  const state = await page.evaluate(async (rows) => {
-    sb.rpc = (name) => {
-      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
-      return Promise.resolve({ data: [], error: null });
-    };
-    const btnVisible = getComputedStyle(document.getElementById('homeSwitchChildBtn')).display !== 'none';
-    await openHomeChildPicker();
-    const list = document.getElementById('homeChildPickerList');
-    return {
-      btnVisible,
-      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
-      rowCount: list.querySelectorAll('.info-row').length,
-      clickableCount: list.querySelectorAll('.info-row[onclick]').length,
-      html: list.innerHTML,
-    };
-  }, rows);
-  expect(state.btnVisible).toBe(true);
-  expect(state.modalOpen).toBe(true);
-  expect(state.rowCount).toBe(2);
-  expect(state.clickableCount, 'only the non-active child is clickable to switch to').toBe(1);
-  expect(state.html).toContain('Tom Huber');
-  expect(state.html).toContain('Lena Huber');
-});
-
-test('picking a child from the Home picker switches to it and closes the modal', async ({ page }) => {
-  await setupRemote(page, profileRow({ is_child: true, full_name: 'Tom Huber' }));
-  const rows = [
-    { patient_id: 'p1', full_name: 'Tom Huber', relation: 'self', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: true },
-    { patient_id: 'c2', full_name: 'Lena Huber', relation: 'child', relation_label: null, practice_id: 'pr1', practice_name: 'Kinderarzt', is_active: false },
-  ];
-  const result = await page.evaluate(async (rows) => {
-    let switchedTo = null;
-    sb.rpc = (name, args) => {
-      if (name === 'patient_get_profiles') return Promise.resolve({ data: rows, error: null });
-      if (name === 'patient_switch_profile') { switchedTo = args.p_patient_id; return Promise.resolve({ data: true, error: null }); }
-      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: 'c2', username: 'lena.huber', name: 'Lena', full_name: 'Lena Huber', dob: '2015-01-01', first_login: false, is_child: true }], error: null });
-      return Promise.resolve({ data: [], error: null });
-    };
-    await openHomeChildPicker();
-    await switchToProfileFromHome('c2');
-    return {
-      switchedTo,
-      modalOpen: document.getElementById('homeChildPickerModal').classList.contains('show'),
-    };
-  }, rows);
-  expect(result.switchedTo).toBe('c2');
   expect(result.modalOpen).toBe(false);
 });
