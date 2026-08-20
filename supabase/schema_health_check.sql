@@ -96,7 +96,9 @@ from unnest(array[
   -- phase73
   'patient_get_practice_contact',
   -- phase76
-  'staff_add_linked_child'
+  'staff_add_linked_child',
+  -- phase79
+  'patient_record_login_consent'
 ]) as f
 
 union all
@@ -127,7 +129,13 @@ from (values
   -- registered gender, silently falling back to the manual toggle forever
   -- even for patients who DID specify one.
   ('patient_get_profile', 'geschlecht text'),
-  ('patient_get_documents', 'body_text text')
+  ('patient_get_documents', 'body_text text'),
+  -- phase79: catches a deployed version still missing consent_given_at --
+  -- without it, doLogin() can never tell an already-consented patient from
+  -- one who still needs the new login-time consent screen, so nobody would
+  -- ever pass the gate (or everybody would be asked forever, depending on
+  -- how the client-side code happens to read an absent field).
+  ('patient_get_profile', 'consent_given_at timestamptz')
 ) as f(name, expect)
 
 union all
@@ -217,7 +225,9 @@ from unnest(array[
   -- phase65
   'is_child',
   -- phase72
-  'geschlecht'
+  'geschlecht',
+  -- phase79
+  'consent_given_at'
 ]) as c
 
 union all
@@ -356,6 +366,19 @@ select 'patient_vaccine_dismissals column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'id','patient_id','vaccine_label','dismissed_by','dismissed_at'
+]) as c
+
+union all
+
+-- phase79_patient_login_consent.sql -- patient_id is what lets a real
+-- per-patient consent event (the two new consent_type rows) be traced back
+-- to an exact patients row, unlike the older doctor_registration/
+-- patient_join_request rows which only ever had a free-text name.
+select 'consent_records column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='consent_records' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'id','practice_id','consent_type','full_name','email','policy_version','user_agent','created_at','patient_id'
 ]) as c
 
 union all

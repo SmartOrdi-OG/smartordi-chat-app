@@ -13,6 +13,12 @@ test('a first-time real patient sees the Anamnese screen and submitting it saves
       id: 'p1', username: 'fatima', full_name: 'Fatima Mohammed', name: 'Fatima',
       fach: 'Allgemeinmedizin', join_status: 'approved', first_login: false, anamnese: null,
       versicherung: 'ÖGK', svnr: '1234567890', dob: '1990-05-12',
+      // supabase/phase79_patient_login_consent.sql -- already consented
+      // (unrelated to what this test actually covers, the mandatory
+      // Anamnese screen) so doLogin() routes straight there, not into the
+      // new login-time consent screen first -- that screen has its own
+      // dedicated coverage in tests/patient-login-consent.spec.js.
+      consent_given_at: '2026-01-01T00:00:00Z',
     }],
   }, () => {
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
@@ -31,7 +37,7 @@ test('a first-time real patient sees the Anamnese screen and submitting it saves
         return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
       }
       if (name === 'patient_get_profile') {
-        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, consent_given_at: p.consent_given_at }], error: null });
       }
       if (name === 'patient_set_anamnese') {
         p.anamnese = args.p_data;

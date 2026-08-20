@@ -17,6 +17,13 @@ const BASE_PATIENT = {
   id: 'p1', username: 'max.mustermann', full_name: 'Max Mustermann', name: 'Max',
   fach: 'Allgemeinmedizin', join_status: 'approved', first_login: true, anamnese: { done: true },
   versicherung: 'ÖGK', svnr: '1234567890', dob: '1990-05-12',
+  // supabase/phase79_patient_login_consent.sql -- already consented (this
+  // file is only about the username/password mechanics of the first-login
+  // screen, unrelated to whether consent is also required there -- that
+  // has its own dedicated coverage in tests/patient-login-consent.spec.js).
+  // Realistic even with first_login:true -- see that file's own "password
+  // just reset" test for why the two aren't mutually exclusive.
+  consent_given_at: '2026-01-01T00:00:00Z',
 };
 
 // simulateQrNewAccount (real user request, 2026-08-19): mirrors what
@@ -41,7 +48,7 @@ async function setupFirstLogin(page, patient, simulateQrNewAccount) {
       const p = window.__store.patients.find(x => x.id === 'p1');
       if (name === 'patient_login_precheck') return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
       if (name === 'patient_get_profile') {
-        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, is_child: p.is_child }], error: null });
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, is_child: p.is_child, consent_given_at: p.consent_given_at }], error: null });
       }
       if (name === 'patient_mark_password_changed') { p.first_login = false; return Promise.resolve({ data: true, error: null }); }
       if (name === 'patient_change_username') {
