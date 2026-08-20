@@ -65,8 +65,19 @@ async function patientLogin(username,password){
   return {
     fullName: profile.fullName, name: profile.name, firstLogin: profile.firstLogin,
     joinStatus: profile.joinStatus, joinNote: profile.joinNote, anamnese: profile.anamnese,
-    isChild: profile.isChild,
+    isChild: profile.isChild, consentGiven: profile.consentGiven,
   };
+}
+// supabase/phase79_patient_login_consent.sql -- called once the real
+// (already-signed-in) patient has ticked both consent checkboxes on
+// patient-login.html's own screen. Identity is derived server-side from
+// current_patient_id() -- never trusts a client-supplied id -- so this can
+// only ever record consent for whichever patient this browser is actually
+// signed in as right now.
+async function patientRecordLoginConsent(policyVersion){
+  const {data,error}=await sb.rpc('patient_record_login_consent',{p_policy_version:policyVersion});
+  if(error){ console.error('patientRecordLoginConsent failed',error); return false; }
+  return !!data;
 }
 // ── GUARDIAN LOGIN (supabase/phase28_guardian_child_accounts.sql) -- a
 // parent logging in on behalf of a child patient too young for their own
@@ -250,6 +261,13 @@ async function patientGetProfile(){
     // selection (patient.html's renderBodyFigure()) -- the manual Mann/
     // Frau toggle there stays as the fallback/override for a null value.
     geschlecht: row.geschlecht||null,
+    // supabase/phase79_patient_login_consent.sql -- the real, per-patient
+    // consent gate (patient-login.html's doLogin() reads consentGiven to
+    // decide whether to show the new login-time consent screen at all;
+    // patient.html's own Profil screen reads it to show a real "Erteilt"/
+    // "Nicht erteilt" instead of the old hardcoded label).
+    consentGiven: !!row.consent_given_at,
+    consentGivenAt: row.consent_given_at||null,
   };
 }
 async function patientGetMessages(){

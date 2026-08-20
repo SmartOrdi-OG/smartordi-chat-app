@@ -422,7 +422,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       </div>
       <div class="pw-strength-label" id="newUsernameNotice" data-i18n="changepw.newUsername.notice">Sie können hier einen eigenen, leichter zu merkenden Benutzernamen wählen.</div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="newPwGroup">
       <label class="form-label" data-i18n="changepw.newPw.label">Neues Passwort</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
@@ -432,13 +432,33 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135d
       <div class="pw-strength"><div class="pw-strength-fill" id="strengthFill"></div></div>
       <div class="pw-strength-label" id="strengthLabel"></div>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="confirmPwGroup">
       <label class="form-label" data-i18n="changepw.confirmPw.label">Passwort bestätigen</label>
       <div class="input-wrap">
         <span class="input-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
         <input type="password" class="form-input has-toggle" id="confirmPw" placeholder="Passwort wiederholen" data-i18n-ph="changepw.confirmPw.placeholder" onkeydown="if(event.key==='Enter')saveNewPw()">
         <button class="toggle-pw" onclick="togglePw('confirmPw','togglePw3')" id="togglePw3" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
+    </div>
+    <!-- supabase/phase79_patient_login_consent.sql -- real user request
+         (2026-08-20): the ONE unified consent moment for every patient
+         (self-registered or secretary-created alike) is their first real
+         login with an actual username+password, not account-creation time
+         -- see doLogin()'s own comment on _needsConsent for the full
+         reasoning. Two SEPARATE, individually mandatory checkboxes (not one
+         bundled "I agree to everything") so the evidence trail (consent_
+         records) shows exactly which statement was agreed to. Text swapped
+         to a guardian-worded variant for a child account via
+         setConsentCopyForChild() below, called from doLogin(). -->
+    <div class="form-group" id="consentGroup">
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;line-height:1.5;margin-bottom:10px;">
+        <input type="checkbox" id="consentProcessing" style="margin-top:2px;flex-shrink:0;">
+        <span id="consentProcessingLabel"></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#374151;cursor:pointer;line-height:1.5;">
+        <input type="checkbox" id="consentAccuracy" style="margin-top:2px;flex-shrink:0;">
+        <span id="consentAccuracyLabel"></span>
+      </label>
     </div>
     <button class="btn-main" onclick="saveNewPw()" data-i18n="changepw.save">✓ Passwort speichern & einloggen</button>
   </div>
@@ -521,6 +541,29 @@ let _firstLoginNeedsUsername=false;
 // with acc.isChild in doLogin() to decide _firstLoginNeedsUsername and which
 // of the three changepw.* text variants to show.
 let _qrNeedsNewUsername=false;
+
+// supabase/phase79_patient_login_consent.sql -- real user request
+// (2026-08-20): keep in sync with datenschutz.html's own "Version" string
+// whenever that page is revised. Hoisted to module scope so both this
+// screen's new consent RPC call AND submitJoinRequest()'s existing
+// record_consent() call (self-registration) reference the exact same value
+// -- previously only declared locally inside that one function.
+const POLICY_VERSION='2.1';
+// screen-changepw (real user request, 2026-08-20) now gates on TWO
+// independent things, either or both of which can apply on a given login:
+// _needsPasswordSetup (unchanged meaning -- acc.firstLogin, a brand-new or
+// just-reset account that still needs its real password/username chosen)
+// and _needsConsent (new -- true whenever patients.consent_given_at is
+// still null, regardless of firstLogin: covers a brand-new account AND any
+// already-existing one that predates this feature and simply never went
+// through it). doLogin() sets both; saveNewPw() reads both to know which
+// fields to validate/save and _consentNextStep to know where to go
+// afterward when this was a consent-only screen (no password fields shown
+// at all -- see doLogin()'s own comment on the `else if(!acc.consentGiven)`
+// branch).
+let _needsPasswordSetup=false;
+let _needsConsent=false;
+let _consentNextStep=null; // 'anamnese' | 'direct' -- only consulted when _needsPasswordSetup is false (a firstLogin screen always continues to Anamnese regardless, unchanged from before this feature)
 
 // QR-Anmeldung: Sekretariat-QR-Code führt hierher mit ?u=Benutzername&t=Temp-Passwort&n=Vorname
 function tryQrLogin(){
@@ -628,6 +671,23 @@ function showLoginError(){
   document.getElementById('errorMsg').classList.add('show');
   document.getElementById('password').value='';
 }
+// A normal, already-consented patient's login -- factored out of doLogin()
+// (real user request, 2026-08-20) so saveNewPw() can reach the exact same
+// destination once a consent-only screen (see doLogin()'s own
+// `else if(!acc.consentGiven)` branch) finishes, without duplicating it.
+// currentUser is already === acc by the time either caller runs this.
+function completeDirectPatientLogin(){
+  sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
+  window.location.href='patient.html';
+}
+// supabase/phase79_patient_login_consent.sql -- swaps the two consent
+// checkboxes' text to a guardian-worded variant for a child account (the
+// parent is the one actually at the keyboard for a child's account, same
+// reasoning as every other is_child-branched copy in this file).
+function applyConsentCopy(isChild){
+  document.getElementById('consentProcessingLabel').textContent=tr(isChild?'changepw.consent.processing.child':'changepw.consent.processing');
+  document.getElementById('consentAccuracyLabel').textContent=tr(isChild?'changepw.consent.accuracy.child':'changepw.consent.accuracy');
+}
 async function doLogin(){
   const u=document.getElementById('username').value.trim().toLowerCase();
   const p=document.getElementById('password').value;
@@ -686,7 +746,7 @@ async function doLogin(){
       // other device (or after clearing this one's storage).
       acc={username:u, name:result.name, fullName:result.fullName, firstLogin:result.firstLogin,
            joinStatus:result.joinStatus, joinNote:result.joinNote, anamnese:result.anamnese,
-           isChild:result.isChild};
+           isChild:result.isChild, consentGiven:result.consentGiven};
     }
     if(!acc){
       // supabase/phase28_guardian_child_accounts.sql -- a real guardian is
@@ -707,6 +767,19 @@ async function doLogin(){
           // wouldn't work for them; hide it rather than offer something
           // that would fail.
           document.getElementById('newUsernameGroup').style.display='none';
+          // supabase/phase79_patient_login_consent.sql -- a real guardian
+          // identity is explicitly out of scope for the new consent
+          // checkboxes (a completely separate table/RPC surface from
+          // patients -- patient_record_login_consent() targets
+          // current_patient_id(), same as patient_change_username() above,
+          // so it would fail here too). _needsPasswordSetup must still be
+          // true -- saveNewPw() below only even reaches the guardian branch
+          // when it is.
+          _needsPasswordSetup=true;
+          _needsConsent=false;
+          document.getElementById('newPwGroup').style.display='';
+          document.getElementById('confirmPwGroup').style.display='';
+          document.getElementById('consentGroup').style.display='none';
           document.getElementById('screen-changepw').classList.add('active');
           document.getElementById('newPw').focus();
         }else{
@@ -793,8 +866,56 @@ async function doLogin(){
       document.getElementById('changePwTitle').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.title':'changepw.title');
       document.getElementById('changePwSub').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.sub':'changepw.sub');
       document.getElementById('newUsernameNotice').textContent=tr(changepwTextKey?'changepw.'+changepwTextKey+'.newUsername.notice':'changepw.newUsername.notice');
+      // supabase/phase79_patient_login_consent.sql -- a brand-new account
+      // always needs this (consentGiven is only ever true here for an
+      // EXISTING patient whose password just got reset -- resetPatientPassword()/
+      // selectQrPatient() set firstLogin back to true without touching
+      // consent_given_at, so someone who already consented before isn't
+      // asked again just because their password was reset). Gated on
+      // getPatientToken() same as the username field just above -- a
+      // local-only/demo account has no real Supabase Auth session for
+      // patient_record_login_consent() to act on (current_patient_id()
+      // would return null), so it must never be asked for one.
+      _needsPasswordSetup=true;
+      _needsConsent=!!getPatientToken()&&!acc.consentGiven;
+      document.getElementById('newPwGroup').style.display='';
+      document.getElementById('confirmPwGroup').style.display='';
+      document.getElementById('consentGroup').style.display=_needsConsent?'':'none';
+      document.getElementById('consentProcessing').checked=false;
+      document.getElementById('consentAccuracy').checked=false;
+      if(_needsConsent) applyConsentCopy(!!acc.isChild);
       document.getElementById('screen-changepw').classList.add('active');
       document.getElementById('newPw').focus();
+    } else if(getPatientToken()&&!acc.consentGiven){
+      // supabase/phase79_patient_login_consent.sql -- real user request
+      // (2026-08-20): the ONE unified consent moment is every patient's
+      // first REAL login, not account-creation time. This branch is what
+      // actually closes the gap for every account that predates this
+      // feature (firstLogin is already false, password already set --
+      // nothing else about their login needs to change) AND for a self-
+      // registered patient (their own reqAgb/record_consent() checkbox at
+      // request time only ever recorded a DIFFERENT consent_type --
+      // 'patient_join_request' -- never these two). Reuses screen-changepw's
+      // shell with the password/username fields hidden entirely -- only the
+      // two consent checkboxes show. _consentNextStep remembers whether to
+      // continue into the mandatory Anamnese or straight into patient.html
+      // once saveNewPw() records this. Gated on getPatientToken() same as
+      // the firstLogin branch above -- a local-only/demo account has no
+      // real session for patient_record_login_consent() to act on.
+      document.getElementById('screen-login').classList.remove('active');
+      _needsPasswordSetup=false;
+      _needsConsent=true;
+      document.getElementById('newPwGroup').style.display='none';
+      document.getElementById('confirmPwGroup').style.display='none';
+      document.getElementById('newUsernameGroup').style.display='none';
+      document.getElementById('consentGroup').style.display='';
+      document.getElementById('consentProcessing').checked=false;
+      document.getElementById('consentAccuracy').checked=false;
+      applyConsentCopy(!!acc.isChild);
+      document.getElementById('changePwTitle').textContent=tr('changepw.consent.title');
+      document.getElementById('changePwSub').textContent=tr('changepw.consent.sub');
+      _consentNextStep=(acc.joinStatus==='approved'&&!acc.anamnese)?'anamnese':'direct';
+      document.getElementById('screen-changepw').classList.add('active');
     } else if(acc.joinStatus==='approved'&&!acc.anamnese){
       // Self-registered patient's first login after approval: they already
       // chose their own real password at request time, so skip straight to
@@ -803,8 +924,7 @@ async function doLogin(){
       showAnamneseScreen();
     } else {
       // Direct login
-      sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:acc.name,username:u}));
-      window.location.href='patient.html';
+      completeDirectPatientLogin();
     }
   },900);
 }
@@ -1040,10 +1160,9 @@ async function performJoinRequestSubmit(fields,practiceId){
   // platform owner a copy -- see phase59's own header comment). Callable as
   // the anon role, same as the patient_join_requests insert right above.
   // Fire-and-forget: never blocks the "request sent" screen, and a failure
-  // here must not undo an already-submitted join request.
-  // POLICY_VERSION: keep in sync with datenschutz.html's own "Version"
-  // string whenever that page is revised.
-  const POLICY_VERSION='2.1';
+  // here must not undo an already-submitted join request. POLICY_VERSION is
+  // module-level now (phase79_patient_login_consent.sql's own consent
+  // screen reads the exact same constant) -- see its own declaration.
   sb.rpc('record_consent',{
     p_practice_id:practiceId, p_consent_type:'patient_join_request',
     p_full_name:fullName, p_email:null, p_policy_version:POLICY_VERSION,
@@ -1209,125 +1328,168 @@ async function confirmLinkPractice(){
 window.addEventListener('pagehide',stopQrScan);
 
 async function saveNewPw(){
-  const newPw=document.getElementById('newPw').value;
-  const confirmPw=document.getElementById('confirmPw').value;
   const errorEl=document.getElementById('errorMsg2');
   const errorText=document.getElementById('errorText2');
-
   errorEl.classList.remove('show');
 
-  if(newPw.length < 6){
-    errorText.textContent=tr('changepw.err.tooShort');
-    errorEl.classList.add('show');return;
-  }
-  if(newPw !== confirmPw){
-    errorText.textContent=tr('changepw.err.mismatch');
-    errorEl.classList.add('show');return;
-  }
-  // Real user request (2026-08-19): a brand-new account -- child OR adult
-  // (see doLogin()'s own comment on _firstLoginNeedsUsername) -- leaves
-  // #newUsername blank on purpose -- unlike an existing patient's password
-  // reset right below (where an empty field just means "keep the current
-  // username, skip the RPC call"), here an empty field must be rejected
-  // outright, not silently fall through to a username the real user never
-  // actually chose.
-  if(_firstLoginNeedsUsername && !document.getElementById('newUsername').value.trim()){
-    errorText.textContent=tr('changepw.err.usernameRequired');
+  // supabase/phase79_patient_login_consent.sql -- checked first, regardless
+  // of whether this screen ALSO needs a password (a brand-new account) or
+  // shows consent alone (an existing/self-registered account's first login
+  // after this feature shipped -- see doLogin()'s own
+  // `else if(!acc.consentGiven)` branch): an unchecked box must never
+  // silently fall through to a password change that DOES go through.
+  if(_needsConsent && (!document.getElementById('consentProcessing').checked || !document.getElementById('consentAccuracy').checked)){
+    errorText.textContent=tr('changepw.err.consentRequired');
     errorEl.classList.add('show');return;
   }
 
-  // A real (Supabase-backed) guardian's first-login password change is a
-  // completely separate identity from a patient's (see guardianLogin() in
-  // doLogin()) -- handled first and returns early. A guardian isn't itself
-  // a patient (no Anamnese, no direct patient.html session of their own),
-  // so it always continues into the child picker instead.
-  if(currentUserIsGuardian){
-    const ok=await guardianChangePassword(newPw);
-    if(!ok){
-      errorText.textContent=tr('changepw.err.saveFailed');
+  if(_needsPasswordSetup){
+    const newPw=document.getElementById('newPw').value;
+    const confirmPw=document.getElementById('confirmPw').value;
+
+    if(newPw.length < 6){
+      errorText.textContent=tr('changepw.err.tooShort');
       errorEl.classList.add('show');return;
     }
-    document.getElementById('screen-changepw').classList.remove('active');
-    await routeGuardianAfterLogin();
-    return;
-  }
-
-  const local=PATIENTS[currentUser.username];
-  // Only not-yet-migrated guardian accounts (and any session with no
-  // Supabase token at all) still have a real local password to compare
-  // against/overwrite -- everything else changes its password server-side.
-  const isLocalOnly = (local&&local.role==='guardian') || !getPatientToken();
-
-  if(isLocalOnly){
-    if(local&&newPw===local.pw){
-      errorText.textContent=tr('changepw.err.sameAsOld');
+    if(newPw !== confirmPw){
+      errorText.textContent=tr('changepw.err.mismatch');
       errorEl.classList.add('show');return;
     }
-    if(!PATIENTS[currentUser.username]) PATIENTS[currentUser.username]={name:currentUser.name,fullName:currentUser.fullName||currentUser.name};
-    PATIENTS[currentUser.username].pw = newPw;
-    PATIENTS[currentUser.username].firstLogin = false;
-    savePatients();
-  } else {
-    // supabase/phase65_patient_username_change_and_is_child.sql -- the
-    // field is hidden for a guardian/local-only session (see where
-    // #newUsernameGroup's display is set in doLogin() above), so this only
-    // ever runs for a real patient session; skipped entirely when left
-    // untouched (still equal to the QR-provisioned username), the common
-    // case. Checked BEFORE the password change below so a rejected
-    // username (too short/already taken) never leaves the patient with a
-    // changed password but no clear indication the username half failed.
-    const newUsernameRaw=document.getElementById('newUsername').value.trim().toLowerCase();
-    if(newUsernameRaw && newUsernameRaw!==currentUser.username){
-      const unameRes=await patientChangeUsername(newUsernameRaw);
-      if(!unameRes.ok){
-        errorText.textContent = unameRes.code==='too_short' ? tr('changepw.err.usernameTooShort')
-          : unameRes.code==='taken' ? tr('changepw.err.usernameTaken')
-          : tr('changepw.err.saveFailed');
+    // Real user request (2026-08-19): a brand-new account -- child OR adult
+    // (see doLogin()'s own comment on _firstLoginNeedsUsername) -- leaves
+    // #newUsername blank on purpose -- unlike an existing patient's password
+    // reset right below (where an empty field just means "keep the current
+    // username, skip the RPC call"), here an empty field must be rejected
+    // outright, not silently fall through to a username the real user never
+    // actually chose.
+    if(_firstLoginNeedsUsername && !document.getElementById('newUsername').value.trim()){
+      errorText.textContent=tr('changepw.err.usernameRequired');
+      errorEl.classList.add('show');return;
+    }
+
+    // A real (Supabase-backed) guardian's first-login password change is a
+    // completely separate identity from a patient's (see guardianLogin() in
+    // doLogin()) -- handled first and returns early. A guardian isn't itself
+    // a patient (no Anamnese, no direct patient.html session of their own,
+    // and no consent flow of its own -- see doLogin()'s own comment on
+    // _needsConsent staying false there), so it always continues into the
+    // child picker instead.
+    if(currentUserIsGuardian){
+      const ok=await guardianChangePassword(newPw);
+      if(!ok){
+        errorText.textContent=tr('changepw.err.saveFailed');
         errorEl.classList.add('show');return;
       }
-      // Every later reference in this tab keys off currentUser.username
-      // (the local PATIENTS shadow, the smartordi_user sessionStorage
-      // entry written below) -- update it here so nothing downstream still
-      // points at the now-renamed old username.
-      if(local){
-        PATIENTS[newUsernameRaw]=local;
-        delete PATIENTS[currentUser.username];
+      document.getElementById('screen-changepw').classList.remove('active');
+      await routeGuardianAfterLogin();
+      return;
+    }
+
+    const local=PATIENTS[currentUser.username];
+    // Only not-yet-migrated guardian accounts (and any session with no
+    // Supabase token at all) still have a real local password to compare
+    // against/overwrite -- everything else changes its password server-side.
+    const isLocalOnly = (local&&local.role==='guardian') || !getPatientToken();
+
+    if(isLocalOnly){
+      if(local&&newPw===local.pw){
+        errorText.textContent=tr('changepw.err.sameAsOld');
+        errorEl.classList.add('show');return;
+      }
+      if(!PATIENTS[currentUser.username]) PATIENTS[currentUser.username]={name:currentUser.name,fullName:currentUser.fullName||currentUser.name};
+      PATIENTS[currentUser.username].pw = newPw;
+      PATIENTS[currentUser.username].firstLogin = false;
+      savePatients();
+    } else {
+      // supabase/phase65_patient_username_change_and_is_child.sql -- the
+      // field is hidden for a guardian/local-only session (see where
+      // #newUsernameGroup's display is set in doLogin() above), so this only
+      // ever runs for a real patient session; skipped entirely when left
+      // untouched (still equal to the QR-provisioned username), the common
+      // case. Checked BEFORE the password change below so a rejected
+      // username (too short/already taken) never leaves the patient with a
+      // changed password but no clear indication the username half failed.
+      const newUsernameRaw=document.getElementById('newUsername').value.trim().toLowerCase();
+      if(newUsernameRaw && newUsernameRaw!==currentUser.username){
+        const unameRes=await patientChangeUsername(newUsernameRaw);
+        if(!unameRes.ok){
+          errorText.textContent = unameRes.code==='too_short' ? tr('changepw.err.usernameTooShort')
+            : unameRes.code==='taken' ? tr('changepw.err.usernameTaken')
+            : tr('changepw.err.saveFailed');
+          errorEl.classList.add('show');return;
+        }
+        // Every later reference in this tab keys off currentUser.username
+        // (the local PATIENTS shadow, the smartordi_user sessionStorage
+        // entry written below) -- update it here so nothing downstream still
+        // points at the now-renamed old username.
+        if(local){
+          PATIENTS[newUsernameRaw]=local;
+          delete PATIENTS[currentUser.username];
+          savePatients();
+        }
+        currentUser.username=newUsernameRaw;
+      }
+      const ok=await patientChangePassword(newPw);
+      if(!ok){
+        errorText.textContent=tr('changepw.err.saveFailed');
+        errorEl.classList.add('show');return;
+      }
+      currentUser.firstLogin=false;
+      // Clear any stale local shadow password left over from the QR
+      // auto-provision step, so a future login can never fall back to an
+      // already-rotated-away local credential -- the real password only
+      // lives in Supabase from here on.
+      if(PATIENTS[currentUser.username]){
+        delete PATIENTS[currentUser.username].pw;
+        PATIENTS[currentUser.username].firstLogin=false;
         savePatients();
       }
-      currentUser.username=newUsernameRaw;
     }
-    const ok=await patientChangePassword(newPw);
-    if(!ok){
-      errorText.textContent=tr('changepw.err.saveFailed');
-      errorEl.classList.add('show');return;
-    }
-    currentUser.firstLogin=false;
-    // Clear any stale local shadow password left over from the QR
-    // auto-provision step, so a future login can never fall back to an
-    // already-rotated-away local credential -- the real password only
-    // lives in Supabase from here on.
-    if(PATIENTS[currentUser.username]){
-      delete PATIENTS[currentUser.username].pw;
-      PATIENTS[currentUser.username].firstLogin=false;
-      savePatients();
-    }
-  }
 
-  document.getElementById('screen-changepw').classList.remove('active');
-  // A guardian account isn't itself a patient -- the mandatory Anamnese is
-  // medical history for a specific patient, so it doesn't apply to them;
-  // go straight in and let them pick which child to view.
-  if(local&&local.role==='guardian'){
-    // This is the LEGACY local-only guardian shadow account, not a real
-    // multi-child Supabase guardian session -- must not carry over a stale
-    // smartordi_guardian_session flag from an earlier real-guardian login
-    // in this same browser tab.
-    sessionStorage.removeItem('smartordi_guardian_session');
-    sessionStorage.setItem('smartordi_user',JSON.stringify({role:'patient',name:currentUser.name,username:currentUser.username}));
-    window.location.href='patient.html';
+    // supabase/phase79_patient_login_consent.sql -- recorded AFTER the
+    // password/username half actually succeeds (never before -- a legal
+    // consent event must never get written for a submission that didn't
+    // really go through).
+    if(_needsConsent){
+      const consentOk=await patientRecordLoginConsent(POLICY_VERSION);
+      if(!consentOk){
+        errorText.textContent=tr('changepw.err.saveFailed');
+        errorEl.classList.add('show');return;
+      }
+    }
+
+    document.getElementById('screen-changepw').classList.remove('active');
+    // A guardian account isn't itself a patient -- the mandatory Anamnese is
+    // medical history for a specific patient, so it doesn't apply to them;
+    // go straight in and let them pick which child to view.
+    if(local&&local.role==='guardian'){
+      // This is the LEGACY local-only guardian shadow account, not a real
+      // multi-child Supabase guardian session -- must not carry over a stale
+      // smartordi_guardian_session flag from an earlier real-guardian login
+      // in this same browser tab.
+      sessionStorage.removeItem('smartordi_guardian_session');
+      completeDirectPatientLogin();
+      return;
+    }
+    showAnamneseScreen();
     return;
   }
-  showAnamneseScreen();
+
+  // _needsPasswordSetup is false here -- this was a consent-only screen
+  // (doLogin()'s `else if(!acc.consentGiven)` branch): the password/
+  // username are untouched, just record consent and continue to wherever
+  // _consentNextStep says.
+  const consentOk=await patientRecordLoginConsent(POLICY_VERSION);
+  if(!consentOk){
+    errorText.textContent=tr('changepw.err.saveFailed');
+    errorEl.classList.add('show');return;
+  }
+  document.getElementById('screen-changepw').classList.remove('active');
+  if(_consentNextStep==='anamnese'){
+    showAnamneseScreen();
+  } else {
+    completeDirectPatientLogin();
+  }
 }
 
 function showAnamneseScreen(){

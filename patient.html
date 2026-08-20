@@ -1218,7 +1218,7 @@ html[dir="rtl"] .topbar-back-btn svg{transform:scaleX(-1);}
         <div class="info-card-header" data-i18n="profil.versicherung">Versicherung</div>
         <div class="info-row"><span class="info-label" data-i18n="profil.traeger">Träger</span><span class="info-value" id="profilVersicherung">—</span></div>
         <div class="info-row"><span class="info-label" data-i18n="profil.svnr">SV-Nummer</span><span class="info-value" id="profilSvnr" style="font-family:'IBM Plex Mono',monospace;">—</span></div>
-        <div class="info-row"><span class="info-label" data-i18n="profil.dsgvo">DSGVO-Einwilligung</span><span class="info-value" style="color:#16a34a;" data-i18n="profil.dsgvoGranted">Erteilt</span></div>
+        <div class="info-row"><span class="info-label" data-i18n="profil.dsgvo">DSGVO-Einwilligung</span><span class="info-value" id="profilDsgvo">—</span></div>
       </div>
 
       <div class="info-card">
@@ -2027,6 +2027,8 @@ function getCurrentAccount(){
       dob:_remoteProfile.dob, adresse:_remoteProfile.adresse, tel:_remoteProfile.tel,
       email:_remoteProfile.email, versicherung:_remoteProfile.versicherung, svnr:_remoteProfile.svnr,
       isChild:_remoteProfile.isChild, geschlecht:_remoteProfile.geschlecht,
+      // supabase/phase79_patient_login_consent.sql
+      consentGiven:_remoteProfile.consentGiven,
       messages:_remoteMessages||[],
     });
   }
@@ -2316,6 +2318,16 @@ async function initPatientData(){
   document.getElementById('profilEmail').textContent=account.email||'—';
   document.getElementById('profilVersicherung').textContent=account.versicherung||'—';
   document.getElementById('profilSvnr').textContent=account.svnr||'—';
+  // supabase/phase79_patient_login_consent.sql -- real user request
+  // (2026-08-20): this used to be a hardcoded "Erteilt" regardless of
+  // whether the patient had actually consented to anything -- now reflects
+  // the real, per-patient gate (patients.consent_given_at via
+  // patient_get_profile()). Should never actually show "Nicht erteilt" in
+  // practice once past this feature's own login gate, but rendered
+  // honestly either way rather than assumed.
+  const dsgvoEl=document.getElementById('profilDsgvo');
+  dsgvoEl.textContent=tr(account.consentGiven?'profil.dsgvoGranted':'profil.dsgvoNotGranted');
+  dsgvoEl.style.color=account.consentGiven?'#16a34a':'#dc2626';
   // Only a real Supabase-backed account (has a session token) has a
   // patients row to actually request erasure of -- a local-only/guardian/
   // demo account has nothing server-side for patient_request_deletion()
