@@ -1,0 +1,23 @@
+-- Phase 78: security hardening cleanup, part of the "أمان البيانات الطبية"
+-- review requested 2026-08-20. See TODO.md's matching entry for the full
+-- writeup (advisors findings + what got fixed where).
+--
+-- Drops `public.practice_settings_backup` -- a leftover manual snapshot
+-- table (ordination name/address/phone/plan/trial_start/payment_method)
+-- found during this review. It is NOT referenced anywhere in this repo's SQL
+-- files (no phaseNN_*.sql ever created it) or application code -- it was
+-- almost certainly created ad-hoc, directly in the Supabase SQL editor,
+-- before some past risky change, and then forgotten. It currently poses no
+-- real read risk on its own (RLS is enabled on it with zero policies, so
+-- nobody can read it through the API regardless of table-level grants), but
+-- keeping unreferenced, undocumented tables with sensitive columns
+-- (payment_method) around for no reason only adds surface area for a future
+-- misconfiguration to expose. Safe to drop: it holds a single old snapshot
+-- row, not live data anything in the app reads from or writes to.
+--
+-- Run this in the Supabase SQL editor for this project
+-- (https://ewilgwndhpxibkogxqbk.supabase.co). Then run
+-- supabase/schema_health_check.sql to confirm it applied cleanly.
+-- ══════════════════════════════════════════════════════════════
+
+drop table if exists public.practice_settings_backup;

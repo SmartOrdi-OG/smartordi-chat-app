@@ -29,13 +29,26 @@
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Smartordi <onboarding@resend.dev>";
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+// Real security hardening (2026-08-20) -- see create-patient-auth-user's own
+// comment on this same change for the full reasoning: was a flat "*",
+// scoped down to this app's real origins (defense-in-depth only, since these
+// calls are Bearer-token authenticated, never cookie-based).
+const PRODUCTION_ORIGIN = "https://chat.smartordiog.eu";
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allow = origin === PRODUCTION_ORIGIN || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)
+    ? origin
+    : PRODUCTION_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 Deno.serve(async (req: Request) => {
+  const CORS_HEADERS = corsHeadersFor(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
