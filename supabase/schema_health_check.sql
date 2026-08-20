@@ -134,8 +134,13 @@ from (values
   -- without it, doLogin() can never tell an already-consented patient from
   -- one who still needs the new login-time consent screen, so nobody would
   -- ever pass the gate (or everybody would be asked forever, depending on
-  -- how the client-side code happens to read an absent field).
-  ('patient_get_profile', 'consent_given_at timestamptz')
+  -- how the client-side code happens to read an absent field). Postgres
+  -- normalizes "timestamptz" to its canonical "timestamp with time zone" in
+  -- pg_get_function_result()'s own output -- matched against that spelling,
+  -- not the one phase79's own CREATE FUNCTION source uses, or this row
+  -- would falsely say STALE forever even on a correctly-applied migration
+  -- (caught live the same day this shipped, running this exact check).
+  ('patient_get_profile', 'consent_given_at timestamp with time zone')
 ) as f(name, expect)
 
 union all
