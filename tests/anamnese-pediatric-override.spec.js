@@ -25,7 +25,7 @@ async function loginAndReachAnamnese(page, patient) {
       const p = window.__store.patients.find(x => x.id === 'p1');
       if (name === 'patient_login_precheck') return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
       if (name === 'patient_get_profile') {
-        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, fach: p.fach, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, is_child: p.is_child }], error: null });
+        return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, fach: p.fach, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, is_child: p.is_child, consent_given_at: p.consent_given_at }], error: null });
       }
       if (name === 'check_join_request_status') return Promise.resolve({ data: [], error: null });
       return Promise.resolve({ data: null, error: null });
@@ -41,6 +41,10 @@ test('a child\'s account gets the pediatric Anamnese even though the practice is
   await loginAndReachAnamnese(page, {
     id: 'p1', username: 'lena.kind', full_name: 'Lena Kind', name: 'Lena',
     fach: 'Allgemeinmedizin', join_status: 'approved', first_login: false, anamnese: null,
+    // supabase/phase79_patient_login_consent.sql -- already consented
+    // (unrelated to what this test covers) so doLogin() routes straight to
+    // Anamnese, not the new login-time consent screen first.
+    consent_given_at: '2026-01-01T00:00:00Z',
     versicherung: 'ÖGK', svnr: '1234567890', dob: '2018-05-12', is_child: true,
   });
   const state = await page.evaluate(() => ({
@@ -57,6 +61,10 @@ test('an adult in the same Allgemeinmedizin practice still gets the plain Allgem
   await loginAndReachAnamnese(page, {
     id: 'p1', username: 'max.erwachsen', full_name: 'Max Erwachsen', name: 'Max',
     fach: 'Allgemeinmedizin', join_status: 'approved', first_login: false, anamnese: null,
+    // supabase/phase79_patient_login_consent.sql -- already consented
+    // (unrelated to what this test covers) so doLogin() routes straight to
+    // Anamnese, not the new login-time consent screen first.
+    consent_given_at: '2026-01-01T00:00:00Z',
     versicherung: 'ÖGK', svnr: '1234567890', dob: '1990-05-12', is_child: false,
   });
   const state = await page.evaluate(() => ({

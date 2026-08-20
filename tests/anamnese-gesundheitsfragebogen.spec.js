@@ -128,6 +128,10 @@ test('patient-facing first-login Anamnese screen (Allgemeinmedizin) also renders
       id: 'p1', username: 'fatima', full_name: 'Fatima Mohammed', name: 'Fatima',
       fach: 'Allgemeinmedizin', join_status: 'approved', first_login: false, anamnese: null,
       versicherung: 'ÖGK', svnr: '1234567890', dob: '1990-05-12',
+      // supabase/phase79_patient_login_consent.sql -- already consented
+      // (unrelated to what this test covers) so doLogin() routes straight
+      // to Anamnese, not the new login-time consent screen first.
+      consent_given_at: '2026-01-01T00:00:00Z',
     }],
   }, () => {
     localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
@@ -141,7 +145,7 @@ test('patient-facing first-login Anamnese screen (Allgemeinmedizin) also renders
     sb.rpc = (name, args) => {
       const p = window.__store.patients.find(x => x.id === 'p1');
       if (name === 'patient_login_precheck') return Promise.resolve({ data: 'p_p1@patients.smartordi.internal', error: null });
-      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese }], error: null });
+      if (name === 'patient_get_profile') return Promise.resolve({ data: [{ id: p.id, username: p.username, full_name: p.full_name, name: p.name, first_login: p.first_login, join_status: p.join_status, join_note: null, anamnese: p.anamnese, consent_given_at: p.consent_given_at }], error: null });
       if (name === 'patient_set_anamnese') { p.anamnese = args.p_data; return Promise.resolve({ data: true, error: null }); }
       if (name === 'check_join_request_status') return Promise.resolve({ data: [], error: null });
       return Promise.resolve({ data: null, error: null });
