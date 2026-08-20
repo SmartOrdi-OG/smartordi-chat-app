@@ -346,7 +346,13 @@ async function doLogin(){
     return;
   }
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:signInData.user.id,isAdmin:!!profile.is_admin}));
-  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
+  // Real user request (2026-08-20): the clean /doctor and /secretary paths
+  // already existed in vercel.json (for sharing a memorable link), but
+  // nothing in the app's own navigation ever actually used them -- every
+  // post-login redirect pointed straight at the real filename instead, so
+  // the address bar always showed "...html" right after logging in even
+  // though a clean alias was one line away.
+  window.location.href=profile.role==='arzt'?'/doctor':'/secretary';
 }
 function resetLoginUI(){
   const btn=document.getElementById('loginBtn');
@@ -424,7 +430,13 @@ async function handlePilotMagicLinkSignIn(session){
     return;
   }
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:session.user.id,isAdmin:!!profile.is_admin}));
-  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
+  // Real user request (2026-08-20): the clean /doctor and /secretary paths
+  // already existed in vercel.json (for sharing a memorable link), but
+  // nothing in the app's own navigation ever actually used them -- every
+  // post-login redirect pointed straight at the real filename instead, so
+  // the address bar always showed "...html" right after logging in even
+  // though a clean alias was one line away.
+  window.location.href=profile.role==='arzt'?'/doctor':'/secretary';
 }
 async function submitRecoveryPassword(){
   const pw=document.getElementById('recoveryPw').value;
@@ -462,7 +474,13 @@ async function submitRecoveryPassword(){
     return;
   }
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:profile.role,name:profile.full_name,username:updateData.user.id,isAdmin:!!profile.is_admin}));
-  window.location.href=profile.role==='arzt'?'doctor.html':'secretary.html';
+  // Real user request (2026-08-20): the clean /doctor and /secretary paths
+  // already existed in vercel.json (for sharing a memorable link), but
+  // nothing in the app's own navigation ever actually used them -- every
+  // post-login redirect pointed straight at the real filename instead, so
+  // the address bar always showed "...html" right after logging in even
+  // though a clean alias was one line away.
+  window.location.href=profile.role==='arzt'?'/doctor':'/secretary';
 }
 
 // ── Team-Einladung: ?invite=<token> in der URL statt normalem Login ──
@@ -541,7 +559,9 @@ async function acceptStaffInvite(){
   }
   const fullName=vorname+' '+nachname;
   sessionStorage.setItem('smartordi_user',JSON.stringify({role:staffInviteInfo.role,name:fullName,username:userId,isAdmin:false}));
-  window.location.href=staffInviteInfo.role==='arzt'?'doctor.html':'secretary.html';
+  // Same clean-path fix as the other post-login redirects above -- see
+  // their own comment.
+  window.location.href=staffInviteInfo.role==='arzt'?'/doctor':'/secretary';
 }
 
 // ?expired=1 -- doctor.html/secretary.html redirect here when they detect
