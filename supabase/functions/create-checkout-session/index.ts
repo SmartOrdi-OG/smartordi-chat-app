@@ -38,15 +38,28 @@ const PRICE_IDS: Record<string, string | undefined> = {
   enterprise_annual: Deno.env.get("STRIPE_PRICE_ENTERPRISE_ANNUAL"),
 };
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+// Real security hardening (2026-08-20) -- see create-patient-auth-user's own
+// comment on this same change for the full reasoning: was a flat "*",
+// scoped down to this app's real origins (defense-in-depth only, since these
+// calls are Bearer-token authenticated, never cookie-based).
+const PRODUCTION_ORIGIN = "https://chat.smartordiog.eu";
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allow = origin === PRODUCTION_ORIGIN || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)
+    ? origin
+    : PRODUCTION_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 Deno.serve(async (req: Request) => {
+  const CORS_HEADERS = corsHeadersFor(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!STRIPE_SECRET_KEY) return json({ error: "STRIPE_SECRET_KEY not configured" }, 500);

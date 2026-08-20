@@ -38,19 +38,40 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
+// Real security hardening (2026-08-20): this used to be a flat
+// Access-Control-Allow-Origin: "*", accepting a browser CORS request from
+// ANY website. Every function in this file is Bearer-token authenticated
+// (never cookie-based), so a third-party site could never actually forge an
+// authorized call this way without first stealing the caller's own token --
+// wildcard CORS alone was never itself a way to reach patient data. Still,
+// scoping it down to origins this app is actually served from is a
+// zero-cost defense-in-depth improvement that costs nothing functionally, as
+// long as it doesn't also break Vercel's own preview deployments (every PR
+// branch gets its own throwaway *.vercel.app URL) -- so this allow-lists the
+// real production domain plus any *.vercel.app origin, and otherwise falls
+// back to the production domain rather than reflecting an arbitrary Origin.
+const PRODUCTION_ORIGIN = "https://chat.smartordiog.eu";
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") || "";
+  const allow = origin === PRODUCTION_ORIGIN || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)
+    ? origin
+    : PRODUCTION_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 function syntheticEmail(kind: "patient" | "guardian", id: string): string {
   return kind === "guardian" ? `g_${id}@guardians.smartordi.internal` : `p_${id}@patients.smartordi.internal`;
 }
 
 Deno.serve(async (req: Request) => {
+  const CORS_HEADERS = corsHeadersFor(req);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } });
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
