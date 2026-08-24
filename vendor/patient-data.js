@@ -1000,6 +1000,20 @@ async function getVisitsForPatient(patientId){
   if(error){ console.error('getVisitsForPatient failed',error); return []; }
   return data||[];
 }
+// secretary.html's Übersicht "Kontrollpatienten fällig" recall list --
+// detectFollowupReminder() (vendor/cdss-followup-reminders.js) already
+// existed but only ever ran on ONE patient's visits at a time, whichever
+// Kartei a doctor happened to have open -- a chronic patient who simply
+// never got rebooked stayed invisible until, by chance, someone opened
+// their chart. Only patient_id/visit_date/diagnose are needed for that
+// (not the full column list getVisitsForPatient() above selects), one
+// query for the whole practice (RLS already scopes it) instead of one
+// per patient.
+async function getAllVisitsForRecall(){
+  const {data,error}=await sb.from('patient_visits').select('patient_id,visit_date,diagnose');
+  if(error){ console.error('getAllVisitsForRecall failed',error); return []; }
+  return data||[];
+}
 
 // ── REZEPTE / ÜBERWEISUNGEN (structured storage), supabase/
 // phase38_rezepte_ueberweisungen.sql -- until this, Rezept/Überweisung
