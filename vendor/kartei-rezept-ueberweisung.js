@@ -519,6 +519,16 @@ async function openRezeptTabForCurrentPatient(){
   const rec = name && name!=='Kein Patient ausgewählt' ? await findPatientRecordAsync(name) : null;
   _rzCurrentAllergie = deriveAllergyText(rec);
   checkMedicationAlerts();
+  renderCaveAlert(rec);
+}
+
+// Unconditional -- shows whenever the patient has a Cave note, regardless
+// of which Medikament is (or isn't yet) typed above, unlike rzMedAlerts.
+function renderCaveAlert(rec){
+  const box=document.getElementById('rzCaveAlert');
+  if(!box) return;
+  if(rec&&rec.cave){ box.style.display='block'; box.textContent='⚠ CAVE: '+rec.cave; }
+  else { box.style.display='none'; box.textContent=''; }
 }
 function checkMedicationAlerts(){
   const box=document.getElementById('rzMedAlerts');

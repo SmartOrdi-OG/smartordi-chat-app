@@ -1687,6 +1687,23 @@ body.windows-mode #karteiBtn{display:none;}
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg><span class="k-label">Blutgruppe</span></span><span class="k-value" id="k-stamm-blutgruppe">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="k-label">Diagnosen</span></span><span class="k-value" id="k-stamm-diagnosen">—</span></div>
             <div class="k-alert" id="k-stamm-allergie" style="display:none;">Penicillin-Allergie beachten!</div>
+            <!-- Cave: always-shown, patient-specific warning note -- separate
+                 from allergie (substance-specific, CSV/ENDS1-import-only) and
+                 from the drug-keyword CDSS alerts (vendor/cdss-medication-
+                 alerts.js). Only free-text field in this section that's
+                 actually editable by the doctor themselves, not just import-
+                 populated -- see openCaveEditor()/saveCaveNote() below. -->
+            <div class="k-alert" id="k-stamm-cave" style="display:none;background:#fef2f2;border-color:#fca5a5;color:#7f1d1d;"></div>
+            <div style="margin-top:6px;">
+              <button type="button" onclick="openCaveEditor()" id="k-cave-edit-btn" style="background:none;border:none;color:#0891b2;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;">✎ Cave-Hinweis bearbeiten</button>
+              <div id="k-cave-editor" style="display:none;margin-top:8px;">
+                <textarea id="k-cave-input" rows="2" placeholder="z.B. Patient reagiert aggressiv, Hörgerät - laut ansprechen ..." style="width:100%;box-sizing:border-box;font-size:12.5px;font-family:inherit;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;"></textarea>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                  <button type="button" class="btn-primary" style="padding:6px 16px;font-size:12.5px;" onclick="saveCaveNote()">Speichern</button>
+                  <button type="button" class="btn-secondary" style="padding:6px 16px;font-size:12.5px;" onclick="closeCaveEditor()">Abbrechen</button>
+                </div>
+              </div>
+            </div>
           </div>
           <!-- Nicht-blockierende "Kontroll-Erinnerung" (CDSS zweiter Teil,
                vendor/cdss-followup-reminders.js) -- gefüllt von
@@ -2133,6 +2150,14 @@ body.windows-mode #karteiBtn{display:none;}
              -- rein informativ, der Arzt kann jederzeit trotzdem speichern/
              drucken/senden. Begrenzte, nicht vollständige Liste. -->
         <div id="rzMedAlerts" style="display:none;"></div>
+
+        <!-- Cave: always-shown patient-specific warning (supabase/
+             phase80_patient_cave.sql), independent of which Medikament is
+             typed above -- distinct from rzMedAlerts, which only fires on
+             a drug-name/allergy-keyword match. Filled in
+             openRezeptTabForCurrentPatient() (vendor/kartei-rezept-
+             ueberweisung.js). -->
+        <div id="rzCaveAlert" style="display:none;background:#fef2f2;border-left:4px solid #991b1b;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;font-weight:700;color:#7f1d1d;"></div>
 
         <!-- Anmerkungen -->
         <div class="k-form-section">
@@ -4933,7 +4958,7 @@ function accountToPatientRecord(a){
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null,geschlecht:a.geschlecht||null};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,cave:a.cave||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null,geschlecht:a.geschlecht||null};
 }
 function findPatientRecord(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
@@ -5503,6 +5528,11 @@ async function confirmMigrationImport(){
       versicherung:(s.KCD||'').trim()||undefined,
       svnr:(s.VNR||'').trim()||undefined,
       allergie:(s.ALL||'').trim()||undefined,
+      // supabase/phase80_patient_cave.sql -- CAV ("Cave") was already a
+      // recognized field in ENDS1_P_FIELDS (vendor/migration-normdatensatz.js)
+      // but was never actually read here, so it silently never reached any
+      // patient record on import. Same class of bug as phase72's GES fix.
+      cave:(s.CAV||'').trim()||undefined,
       diagnosen:(s.DDG||'').trim()||undefined,
       geschlecht:geschlecht,
       // Fields the current #P dictionary doesn't map, plus (ENDS1 only) the
@@ -5525,6 +5555,7 @@ async function confirmMigrationImport(){
         dob:extra.dob||existing.record.dob||null,
         diagnosen:extra.diagnosen||existing.record.diagnosen||null,
         allergie:extra.allergie||existing.record.allergie||null,
+        cave:extra.cave||existing.record.cave||null,
         legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
         geschlecht:extra.geschlecht||existing.record.geschlecht||null,
       }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
@@ -6055,6 +6086,47 @@ function populateKarteiStamm(name){
     allergieEl.style.display=p.allergie?'block':'none';
     allergieEl.textContent=p.allergie||'';
   }
+  const caveEl=document.getElementById('k-stamm-cave');
+  if(caveEl){
+    caveEl.style.display=p.cave?'flex':'none';
+    caveEl.textContent=p.cave?'⚠ CAVE: '+p.cave:'';
+  }
+  closeCaveEditor();
+}
+
+// supabase/phase80_patient_cave.sql -- editable, always-shown clinical
+// warning note (see the HTML comment above #k-stamm-cave). Distinct from
+// every other field in this section: those are all import/CSV-populated
+// only, this is the one the doctor types themselves, right here.
+function openCaveEditor(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.','error'); return; }
+  const p=findPatientRecord(name);
+  document.getElementById('k-cave-input').value=(p&&p.cave)||'';
+  document.getElementById('k-cave-editor').style.display='block';
+  document.getElementById('k-cave-edit-btn').style.display='none';
+}
+function closeCaveEditor(){
+  const editor=document.getElementById('k-cave-editor');
+  if(editor) editor.style.display='none';
+  const btn=document.getElementById('k-cave-edit-btn');
+  if(btn) btn.style.display='';
+}
+async function saveCaveNote(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.','error'); return; }
+  const found=findPatientAccountByFullName(name);
+  if(!found){ showToast('Dieser Patient hat noch kein Cloud-Konto — der Cave-Hinweis kann erst gespeichert werden, sobald ein echtes Patientenkonto besteht.','error'); return; }
+  const text=document.getElementById('k-cave-input').value.trim();
+  try{
+    await upsertPatientIdentity(found.username,{cave:text||null});
+  }catch(e){
+    showToast('Speichern fehlgeschlagen: '+saveErrorMessage(e),'error');
+    return;
+  }
+  populateKarteiStamm(name);
+  if(typeof openRezeptTabForCurrentPatient==='function') openRezeptTabForCurrentPatient();
+  showToast('Cave-Hinweis gespeichert!');
 }
 
 // Groups the old 11 tabs down to 5 visible slots: Verlauf now carries the
