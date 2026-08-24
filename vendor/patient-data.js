@@ -258,7 +258,7 @@ function localPatientAccountsRaw(){
 // server-side value. Not something this task was asked to fix, but a
 // one-line, obviously-correct addition while already touching this exact
 // line for a new column.
-const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note,is_child,geschlecht';
+const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note,is_child,geschlecht,cave';
 // Factored out of refreshPatients() so searchPatientsServer()/
 // findPatientByFullNameServer() below (and refreshPatients() itself) share
 // exactly one row->JS mapping instead of drifting out of sync with each other.
@@ -283,6 +283,13 @@ function patientRowToJs(row,localAccounts){
     // staff device viewing the same patient's Kartei.
     diagnosen: row.diagnosen||local.diagnosen,
     allergie: row.allergie||local.allergie,
+    // supabase/phase80_patient_cave.sql -- always-shown clinical warning
+    // note, independent of the drug-keyword-matched CDSS alerts (vendor/
+    // cdss-medication-alerts.js) and distinct from `allergie` (which is
+    // specifically substances, CSV/ENDS1-import-populated) -- e.g. "Patient
+    // reagiert aggressiv", "Hörgerät, laut ansprechen", anything a doctor
+    // wants flagged on every visit regardless of what's being prescribed.
+    cave: row.cave||local.cave||null,
     blutgruppe: row.blutgruppe||local.blutgruppe,
     legacyHistory: row.legacy_history||local.legacyHistory,
     joinStatus: row.join_status,

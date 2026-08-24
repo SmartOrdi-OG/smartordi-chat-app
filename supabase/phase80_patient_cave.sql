@@ -1,0 +1,26 @@
+-- ══════════════════════════════════════════════════════════════
+-- Phase 80: Cave -- always-shown patient-specific clinical warning
+--
+-- Real gap found via competitor-forum research (tomedo forum.tomedo.de,
+-- see TODO.md): the existing CDSS (vendor/cdss-medication-alerts.js) is
+-- entirely drug-name-keyword matching (~22 whitelisted medications, fixed
+-- drug-drug pairs, 5 allergy-class mappings) -- there was no general-
+-- purpose "always flag this patient, regardless of what's being
+-- prescribed" mechanism at all. `allergie` doesn't cover this either: it's
+-- specifically substances, only ever populated via CSV/ENDS1 bulk import,
+-- and is what the CDSS keyword-matches against -- a "Cave" note is meant
+-- to be broader (e.g. "reagiert aggressiv", "Hörgerät, laut ansprechen")
+-- and always shown, not conditioned on any drug text.
+--
+-- Same investigation also turned up a genuine, pre-existing data-loss bug:
+-- vendor/migration-normdatensatz.js's ENDS1_P_FIELDS dictionary has always
+-- recognized the CAV ("Cave") field from an Altsystem export, but
+-- doctor.html's import-write path (confirmMigrationImport()) never read
+-- it back out of `stammdaten` into anything -- silently discarded on
+-- every ENDS1 import until this migration + the matching code fix.
+--
+-- Run this in the Supabase SQL editor. Then run schema_health_check.sql to
+-- confirm it applied cleanly.
+-- ══════════════════════════════════════════════════════════════
+
+alter table public.patients add column if not exists cave text;

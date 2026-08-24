@@ -97,6 +97,44 @@ test('a patient already matched by SVNr is updated, not duplicated', async ({ pa
   expect(result.matches[0].tel).toBe('+43 664 9998877');
 });
 
+// supabase/phase80_patient_cave.sql -- CAV ("Cave") was always a recognized
+// field in ENDS1_P_FIELDS (vendor/migration-normdatensatz.js) but confirmMigrationImport()
+// never actually read it, so it silently never reached any patient record. Same
+// class of bug as the GES fix in phase72_patient_geschlecht.sql.
+test('a CAV (Cave) field from the legacy export is written to the new patient\'s cave column, not silently dropped', async ({ page }) => {
+  const sampleText =
+    ends1Line(1, 'FNM', 'Mustermann') +
+    ends1Line(1, 'VNM', 'Max') +
+    ends1Line(1, 'GBD', '15031980') +
+    ends1Line(1, 'CAV', 'Patient reagiert aggressiv');
+  await setupAdmin(page, sampleText, []);
+
+  await page.evaluate(() => confirmMigrationImport());
+  await page.waitForFunction(() => document.getElementById('migrationResultsArea').style.display === 'block');
+
+  const patient = await page.evaluate(() => window.__store.patients.find(p => p.full_name === 'Max Mustermann'));
+  expect(patient, 'the patient must have been created').toBeTruthy();
+  expect(patient.cave).toBe('Patient reagiert aggressiv');
+});
+
+test('a CAV field on a re-imported (already-matched) patient updates their existing cave note', async ({ page }) => {
+  const sampleText =
+    ends1Line(1, 'FNM', 'Musterfrau') +
+    ends1Line(1, 'VNM', 'Erika') +
+    ends1Line(1, 'GBD', '15031980') +
+    ends1Line(1, 'VNR', '1234150380') +
+    ends1Line(1, 'CAV', 'Hoergeraet, laut ansprechen');
+  await setupAdmin(page, sampleText, [
+    { id: 'existing-p1', username: 'erika.musterfrau', full_name: 'Erika Musterfrau', name: 'Erika', svnr: '1234150380', dob: '1980-03-15', join_status: 'approved', cave: null },
+  ]);
+
+  await page.evaluate(() => confirmMigrationImport());
+  await page.waitForFunction(() => document.getElementById('migrationResultsArea').style.display === 'block');
+
+  const patient = await page.evaluate(() => window.__store.patients.find(p => p.id === 'existing-p1'));
+  expect(patient.cave).toBe('Hoergeraet, laut ansprechen');
+});
+
 test('a row missing Vor-/Nachname is skipped, not imported as a broken patient', async ({ page }) => {
   const sampleText =
     ends1Line(1, 'GBD', '15031980') +

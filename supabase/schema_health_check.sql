@@ -232,7 +232,9 @@ from unnest(array[
   -- phase72
   'geschlecht',
   -- phase79
-  'consent_given_at'
+  'consent_given_at',
+  -- phase80
+  'cave'
 ]) as c
 
 union all
