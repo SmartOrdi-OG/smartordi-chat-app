@@ -83,6 +83,45 @@ function loadAnamneseForPatient(name){
   // Kinderheilkunde) -- it never touches the sibling "Wenn ja, ..." field's display:none, so a
   // returning patient's saved "Ja" answer would otherwise load with its detail text hidden.
   anGfbSyncAll(root);
+  updateAnamneseHighlightsLine(root,!!(account&&account.anamnese));
+}
+
+// Shows a one-line "⚠ N Auffälligkeiten: ..." summary on the collapsed
+// Anamnese bar itself, built from collectGfbAuffaelligkeiten() (vendor/
+// anamnese-shared.js) -- so a doctor sees what's actually flagged in the
+// Gesundheitsfragebogen without even opening the tab. Real complaint this
+// addresses: tomedo's own patient-questionnaire users report exactly this
+// difficulty (can't easily see just the "yes" answers) on their user forum
+// -- see TODO.md. Says nothing (not "keine Auffälligkeiten") when the
+// patient never actually submitted an Anamnese, or when this specialty
+// doesn't include the Gesundheitsfragebogen at all (see SPECIALTY_ANAMNESE)
+// -- a blank/no-data patient must never be silently read as "clean".
+function updateAnamneseHighlightsLine(root,hasSubmittedAnamnese){
+  const el=document.getElementById('anamnese-highlights-line');
+  if(!el) return;
+  const hasGfb=!!root.querySelector('.gfb-q');
+  if(!hasSubmittedAnamnese||!hasGfb){ el.style.display='none'; el.textContent=''; el.title=''; return; }
+  const flags=collectGfbAuffaelligkeiten(root);
+  el.textContent=flags.length
+    ? '⚠ '+flags.length+' Auffällig'+(flags.length===1?'keit':'keiten')+': '+flags.join(', ')
+    : 'Keine Auffälligkeiten im Gesundheitsfragebogen';
+  el.title=el.textContent;
+  el.style.display='';
+}
+
+// Doctor-only "Nur Ja-Antworten anzeigen" filter (checkbox inserted by
+// updateAnamneseByFach() below, not part of the shared patient-facing
+// template): hides every Gesundheitsfragebogen row currently answered
+// "Nein" so a fully-filled-out questionnaire can be scanned for just what
+// needs attention, instead of reading past 20+ "Nein" rows every time.
+function applyGfbOnlyJaFilter(container){
+  const toggle=container.querySelector('#gfbOnlyJaToggle');
+  const onlyJa=!!(toggle&&toggle.checked);
+  container.querySelectorAll('.gfb-q').forEach(q=>{
+    if(!onlyJa){ q.style.display=''; return; }
+    const select=q.querySelector('select');
+    q.style.display=(select&&select.value==='Ja')?'':'none';
+  });
 }
 
 function updateAnamneseByFach(fach){
@@ -96,6 +135,21 @@ function updateAnamneseByFach(fach){
   } else {
     if(label)label.textContent='Allgemeinanamnese';
     section.innerHTML='';
+  }
+  // "Nur Ja-Antworten anzeigen" filter toggle -- inserted here (doctor-side
+  // glue), not baked into ANAMNESE_GESUNDHEITSFRAGEBOGEN_HTML itself, since
+  // that template is shared verbatim with patient.html's own fill-in form,
+  // where a "show only Ja" filter makes no sense.
+  const gfbTitleEl=section.querySelector('[data-i18n="an.gfb.section.title"]');
+  if(gfbTitleEl){
+    const container=gfbTitleEl.parentElement;
+    const toggleRow=document.createElement('label');
+    toggleRow.style.cssText='display:flex;align-items:center;gap:6px;font-size:11.5px;color:#64748b;cursor:pointer;margin:8px 0;';
+    toggleRow.innerHTML='<input type="checkbox" id="gfbOnlyJaToggle"> Nur Ja-Antworten anzeigen';
+    gfbTitleEl.insertAdjacentElement('afterend',toggleRow);
+    const refilter=()=>applyGfbOnlyJaFilter(container);
+    toggleRow.querySelector('input').addEventListener('change',refilter);
+    container.addEventListener('change',(e)=>{ if(e.target.matches('.gfb-q select')) refilter(); });
   }
 }
 

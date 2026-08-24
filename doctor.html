@@ -1724,10 +1724,11 @@ body.windows-mode #karteiBtn{display:none;}
       <div id="ktab-anamnese" style="display:none;padding:16px;">
 
         <div id="anamnese-collapse-wrap" style="margin-bottom:16px;">
-          <div id="anamneseToggleBar" onclick="toggleAnamneseSection()" style="cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;">
-            <div>
+          <div id="anamneseToggleBar" onclick="toggleAnamneseSection()" style="cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div style="flex:1;min-width:0;">
               <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg> Anamnese</div>
               <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;" id="anamnese-fach-label">Medizinische Vorgeschichte</div>
+              <div id="anamnese-highlights-line" style="display:none;font-size:11px;color:#fef9c3;margin-top:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
             </div>
             <span id="anamnese-toggle-arrow" style="color:white;font-size:14px;transition:transform 0.15s;">▾</span>
           </div>
