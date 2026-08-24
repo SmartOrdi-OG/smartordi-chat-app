@@ -96,3 +96,22 @@ test('clicking a recall row opens that patient\'s chat', async ({ page }) => {
   expect(result.view).toBe(true);
   expect(result.chatName).toContain('Maria Huber');
 });
+
+test('the "🔔 Erinnern" button sends a real reminder chat message without navigating away from Übersicht', async ({ page }) => {
+  await setupPage(page, {
+    patient_visits: [{ id: 'v1', patient_id: 'p1', visit_date: monthsAgoISO(8), visit_type: 'Kontrolle', diagnose: 'Diabetes mellitus Typ 2', created_at: new Date().toISOString() }],
+  });
+  await page.click('#uebersichtRecallRoot button');
+  const result = await page.evaluate(() => ({
+    toastText: document.getElementById('toast').textContent,
+    view: document.getElementById('view-uebersicht').classList.contains('active'),
+    messages: (findPatientAccountByFullName('Maria Huber').accounts['maria.huber'].messages || []),
+  }));
+  expect(result.toastText).toContain('gesendet');
+  expect(result.view, 'the button click must not also trigger the row\'s own navigate-to-chat handler').toBe(true);
+  expect(result.messages.length).toBe(1);
+  expect(result.messages[0].dir).toBe('out');
+  expect(result.messages[0].text).toContain('Kontrolluntersuchung');
+  expect(result.messages[0].text).toContain('Diabetes');
+  expect(result.messages[0].text).toContain('8 Monate');
+});
