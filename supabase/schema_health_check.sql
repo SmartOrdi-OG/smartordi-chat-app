@@ -245,7 +245,9 @@ select 'termine column', c,
 from unnest(array[
   'id','legacy_id','patient_id','patient_name','art','date','time','end_time','status','arzt_id',
   'versicherung','tel','svnr','dob','reason','reason_note','started_at','completed_at','created_at','practice_id',
-  'reminder_sent_at'
+  'reminder_sent_at',
+  -- phase81
+  'next_notified_at'
 ]) as c
 
 union all

@@ -67,6 +67,10 @@ function terminRowToJs(row){
     reasonNote: row.reason_note,
     startedAt: row.started_at,
     completedAt: row.completed_at,
+    // supabase/phase81_termin_next_notified.sql -- guards notifyNextWaitingPatient()
+    // below against sending the "you're up next" chat message more than once
+    // for the same appointment.
+    nextNotifiedAt: row.next_notified_at,
     createdAt: row.created_at,
   };
 }
@@ -78,7 +82,7 @@ function terminRowToJs(row){
 // still needs every past+future termine in memory to browse back to any
 // month. See the row-count warning below for when that itself needs
 // revisiting (real windowing/on-demand loading, not implemented yet).
-const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,created_at';
+const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,next_notified_at,created_at';
 // Rolling window on the past only, same reasoning as
 // ALL_MESSAGES_WINDOW_DAYS above -- termine grows without bound over a
 // practice's multi-year lifetime, but the actual daily workflow (today's
@@ -117,7 +121,47 @@ async function startTerminVisit(id){
   if(error){ console.error('startTerminVisit failed',error); return false; }
   const t=_termine.find(x=>x.id===id);
   if(t) t.startedAt=now;
+  await notifyNextWaitingPatient(t);
   return true;
+}
+// Real gap found via competitor research (see TODO.md): several standalone
+// "digital waiting room" apps (Dr.wait, Quickticket) exist specifically to
+// let a patient wait away from the practice instead of in the physical
+// Wartezimmer -- Quickticket's own published case studies show real,
+// measured demand for exactly this (37% of patients choosing to wait from
+// home in one practice, an 80% drop in how crowded the waiting room gets).
+// None of the big all-in-one Ordinationssoftware bundle it in for free --
+// SmartOrdi already has a patient chat channel, so it can.
+//
+// Fires the moment a visit STARTS (not when it finishes) -- that's the
+// earliest moment "the appointment right before yours is now underway" is
+// true, giving the next patient actual travel time instead of pinging them
+// only once the room is already free. "Next" is whichever of this doctor's
+// own appointments today is still fully untouched (not started, not
+// completed, not cancelled), earliest by scheduled time -- doctor-driven
+// order (see startTerminVisit/completeTerminVisit's own comment) means this
+// is a best-effort estimate, not a guaranteed-correct queue position.
+// Guarded by next_notified_at so re-opening/re-rendering a visit, or a
+// doctor clicking Start again, never sends the same patient two pings.
+async function notifyNextWaitingPatient(startedTermin){
+  if(!startedTermin||!isChatEnabled()) return;
+  const next=_termine
+    .filter(x=>x.date===startedTermin.date && x.arztUsername===startedTermin.arztUsername
+      && x.id!==startedTermin.id && x.status!=='abgesagt' && !x.startedAt && !x.completedAt && !x.nextNotifiedAt)
+    .sort((a,b)=>(a.time||'').localeCompare(b.time||''))[0];
+  // No cloud account yet (legacy/local-only patient) -- nothing to send to,
+  // same defensive skip as saveAnamnese()/saveCaveNote() above.
+  if(!next||!next.patientId) return;
+  try{
+    await sendMessageToPatient(next.patientId,{dir:'out',type:'text',
+      text:'🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.'});
+    const now=new Date().toISOString();
+    const {error}=await sb.from('termine').update({next_notified_at:now}).eq('id',next.id);
+    if(error){ console.error('notifyNextWaitingPatient: marking next_notified_at failed',error); return; }
+    next.nextNotifiedAt=now;
+  }catch(e){
+    console.error('notifyNextWaitingPatient failed',e);
+  }
 }
 async function completeTerminVisit(id){
   const now=new Date().toISOString();
