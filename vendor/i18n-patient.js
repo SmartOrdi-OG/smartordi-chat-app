@@ -41,6 +41,14 @@ const I18N={
     'chat.system.terminReminder':'Erinnerung: Sie haben morgen um {time} Uhr einen Termin ({art}) bei uns. Bei Verhinderung bitte rechtzeitig absagen.',
     'chat.system.turnApproaching':'🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.',
     'chat.system.recallReminder':'Guten Tag {name}! Laut unseren Unterlagen wäre bei Ihnen eine Kontrolluntersuchung ({label}) fällig — Ihr letzter Eintrag liegt {monthsSince} Monate zurück. Bitte vereinbaren Sie bei Gelegenheit einen Termin.',
+    'chat.uw.pflegefreistellung':'Bestätigung: Pflegefreistellung ausgestellt',
+    'chat.uw.pflegefreistellung.sub':'Pflegefreistellung',
+    'chat.uw.attest':'Arbeitsunfähigkeitsmeldung ausgestellt',
+    'chat.uw.attest.sub':'Krankenstandsbestätigung',
+    'chat.uw.ueberweisung':'Überweisung → {an} ({fach}) · {dring}',
+    'chat.uw.ueberweisung.sub':'{fach} · {dring}',
+    'chat.uw.rezept':'Rezept ausgestellt · {summary}',
+    'chat.uw.rezept.sub':'Kassenrezept',
     'termine.title':'Meine Termine',
     'termine.bookTitle':'Termin buchen','termine.chooseDay':'Wählen Sie einen Tag im Kalender',
     'termine.art.choose':'Grund des Besuchs wählen...',
@@ -393,6 +401,14 @@ const I18N={
     'chat.system.terminReminder':'Reminder: you have an appointment tomorrow at {time} ({art}) with us. Please cancel in good time if you can\'t make it.',
     'chat.system.turnApproaching':'🕒 The appointment before yours has just begun — you can start heading to the practice now.',
     'chat.system.recallReminder':'Hello {name}! According to our records, a check-up ({label}) is due for you — your last entry was {monthsSince} months ago. Please schedule an appointment when convenient.',
+    'chat.uw.pflegefreistellung':'Confirmation: care leave certificate issued',
+    'chat.uw.pflegefreistellung.sub':'Care leave certificate',
+    'chat.uw.attest':'Sick note issued',
+    'chat.uw.attest.sub':'Sick note confirmation',
+    'chat.uw.ueberweisung':'Referral → {an} ({fach}) · {dring}',
+    'chat.uw.ueberweisung.sub':'{fach} · {dring}',
+    'chat.uw.rezept':'Prescription issued · {summary}',
+    'chat.uw.rezept.sub':'Prescription',
     'termine.title':'My Appointments',
     'termine.bookTitle':'Book an appointment','termine.chooseDay':'Choose a day in the calendar',
     'termine.art.choose':'Choose a reason for your visit...',
@@ -741,6 +757,14 @@ const I18N={
     'chat.system.terminReminder':'تذكير: لديك موعد غدًا الساعة {time} ({art}) عندنا. يرجى الإلغاء في الوقت المناسب في حال تعذر الحضور.',
     'chat.system.turnApproaching':'🕒 بدأ للتو الموعد الذي قبلك — يمكنك التوجه تدريجيًا إلى العيادة الآن.',
     'chat.system.recallReminder':'مرحبًا {name}! وفقًا لسجلاتنا، حان موعد فحص متابعة ({label}) لديك — آخر تسجيل كان قبل {monthsSince} أشهر. يرجى تحديد موعد عند التوفر.',
+    'chat.uw.pflegefreistellung':'تأكيد: تم إصدار شهادة إجازة رعاية',
+    'chat.uw.pflegefreistellung.sub':'إجازة رعاية',
+    'chat.uw.attest':'تم إصدار شهادة عدم القدرة على العمل',
+    'chat.uw.attest.sub':'تأكيد الإجازة المرضية',
+    'chat.uw.ueberweisung':'تحويلة ← {an} ({fach}) · {dring}',
+    'chat.uw.ueberweisung.sub':'{fach} · {dring}',
+    'chat.uw.rezept':'تم إصدار الوصفة الطبية · {summary}',
+    'chat.uw.rezept.sub':'وصفة طبية (تأمين صحي)',
     'termine.title':'مواعيدي',
     'termine.bookTitle':'حجز موعد','termine.chooseDay':'اختر يوماً من التقويم',
     'termine.art.choose':'اختر سبب الزيارة...',
@@ -1089,6 +1113,14 @@ const I18N={
     'chat.system.terminReminder':'Hatırlatma: yarın saat {time} de bizde bir randevunuz var ({art}). Gelemeyecekseniz lütfen zamanında iptal edin.',
     'chat.system.turnApproaching':'🕒 Sizden önceki randevu az önce başladı — yavaşça muayenehaneye doğru gelebilirsiniz.',
     'chat.system.recallReminder':'Merhaba {name}! Kayıtlarımıza göre bir kontrol muayenesi ({label}) zamanı geldi — son kaydınız {monthsSince} ay önceydi. Uygun olduğunuzda lütfen bir randevu ayarlayın.',
+    'chat.uw.pflegefreistellung':'Onay: Bakım izni belgesi düzenlendi',
+    'chat.uw.pflegefreistellung.sub':'Bakım izni',
+    'chat.uw.attest':'İş göremezlik bildirimi düzenlendi',
+    'chat.uw.attest.sub':'Rapor onayı',
+    'chat.uw.ueberweisung':'Sevk → {an} ({fach}) · {dring}',
+    'chat.uw.ueberweisung.sub':'{fach} · {dring}',
+    'chat.uw.rezept':'Reçete düzenlendi · {summary}',
+    'chat.uw.rezept.sub':'Reçete',
     'termine.title':'Randevularım',
     'termine.bookTitle':'Randevu al','termine.chooseDay':'Takvimden bir gün seçin',
     'termine.art.choose':'Ziyaret nedeninizi seçin...',
@@ -1437,6 +1469,14 @@ const I18N={
     'chat.system.terminReminder':'Podsjetnik: sutra u {time} imate termin ({art}) kod nas. Ako ne možete doći, molimo otkažite na vrijeme.',
     'chat.system.turnApproaching':'🕒 Termin prije vas je upravo počeo — možete polako krenuti prema ordinaciji.',
     'chat.system.recallReminder':'Dobar dan {name}! Prema našim podacima, dospio je kontrolni pregled ({label}) za vas — vaš posljednji unos je bio prije {monthsSince} mjeseci. Molimo zakažite termin kada vam odgovara.',
+    'chat.uw.pflegefreistellung':'Potvrda: izdato uvjerenje o njezi člana porodice',
+    'chat.uw.pflegefreistellung.sub':'Njega člana porodice',
+    'chat.uw.attest':'Izdata potvrda o nesposobnosti za rad',
+    'chat.uw.attest.sub':'Potvrda o bolovanju',
+    'chat.uw.ueberweisung':'Uputnica → {an} ({fach}) · {dring}',
+    'chat.uw.ueberweisung.sub':'{fach} · {dring}',
+    'chat.uw.rezept':'Izdat recept · {summary}',
+    'chat.uw.rezept.sub':'Recept',
     'termine.title':'Moji termini',
     'termine.bookTitle':'Zakaži termin','termine.chooseDay':'Odaberite dan u kalendaru',
     'termine.art.choose':'Odaberite razlog posjete...',
@@ -1902,6 +1942,24 @@ function renderSystemMessage(key,params){
   if('note' in p) p.notePart=p.note?trParams('chat.system.noteLabel',{note:p.note}):'';
   if('contact' in p) p.contactPart=p.contact?' ('+p.contact+')':'';
   return trParams(key,p);
+}
+// The small grey sub-line under a "uw" (document) chat bubble's header --
+// e.g. "Krankenstandsbestätigung" under "Arbeitsunfähigkeitsmeldung
+// ausgestellt", or "{fach} · {dring}" under an Überweisung header. Reuses
+// the SAME msgKey/msgParams a "uw" message's header already carries (no
+// second key/column needed) -- each header msgKey maps to exactly one
+// fixed sub-line template. Returns null for anything that isn't a known
+// "uw" msgKey, so msgRowHtml() can fall back to the raw `sub` column
+// unchanged (a message sent before this translation existed).
+function renderUwSub(msgKey,params){
+  const subKeys={
+    'chat.uw.pflegefreistellung':'chat.uw.pflegefreistellung.sub',
+    'chat.uw.attest':'chat.uw.attest.sub',
+    'chat.uw.ueberweisung':'chat.uw.ueberweisung.sub',
+    'chat.uw.rezept':'chat.uw.rezept.sub',
+  };
+  const subKey=subKeys[msgKey];
+  return subKey?trParams(subKey,params||{}):null;
 }
 function trSymptom(deText){
   const lang=getPatientLang();

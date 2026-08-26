@@ -204,8 +204,17 @@ async function sendPflegefreistellungToChat(patientNameOverride){
       docId=saved.id;
     }
     await _persistPflegefreistellung(doc,docId);
+    // supabase/phase83_patient_message_translations.sql -- real user report
+    // (2026-08-26): this "uw" (document) message header/sub were missed by
+    // the original translation sweep entirely (it only ever looked at
+    // plain 'text' messages) and kept arriving in German regardless of the
+    // patient's language. msgKey/msgParams reuse the same 2 columns that
+    // already exist -- patient.html's msgRowHtml() derives BOTH the header
+    // and the sub-line from them via renderSystemMessage()/renderUwSub()
+    // (vendor/i18n-patient.js), no new column needed.
     const msg={dir:'out', type:'uw', text:'Bestätigung: Pflegefreistellung ausgestellt',
-      filename, sub:'Pflegefreistellung', docId, time:getTime()+' ✓'};
+      filename, sub:'Pflegefreistellung', docId, time:getTime()+' ✓',
+      msgKey:'chat.uw.pflegefreistellung', msgParams:{}};
     appendRealMessage(name,msg);
     const chatNameEl=document.getElementById('chat-name');
     if(chatNameEl && chatNameEl.textContent===name){
@@ -385,8 +394,11 @@ async function sendArbeitsunfaehigkeitToChat(patientNameOverride){
       docId=saved.id;
     }
     await _persistArbeitsunfaehigkeit(doc,docId);
+    // supabase/phase83_patient_message_translations.sql -- see the same
+    // note on the Pflegefreistellung sender above.
     const msg={dir:'out', type:'uw', text:'Arbeitsunfähigkeitsmeldung ausgestellt',
-      filename, sub:'Krankenstandsbestätigung', docId, time:getTime()+' ✓'};
+      filename, sub:'Krankenstandsbestätigung', docId, time:getTime()+' ✓',
+      msgKey:'chat.uw.attest', msgParams:{}};
     appendRealMessage(name,msg);
     const chatNameEl=document.getElementById('chat-name');
     if(chatNameEl && chatNameEl.textContent===name){

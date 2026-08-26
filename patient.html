@@ -1634,10 +1634,26 @@ function msgRowHtml(m){
     // separate per-type button. event.stopPropagation() keeps the tap from
     // also triggering the bubble's own downloadAttr click-to-open-PDF
     // handler.
+    // supabase/phase83_patient_message_translations.sql -- real user report
+    // (2026-08-26): this "uw" (document) header/sub were missed by the
+    // original translation sweep entirely (it only ever looked at plain
+    // 'text' messages) and kept arriving in German regardless of the
+    // patient's language. renderSystemMessage()/renderUwSub() (vendor/
+    // i18n-patient.js) derive the DISPLAYED header/sub from msgKey/
+    // msgParams when present, falling back to the raw text/sub columns
+    // otherwise (a message sent before this shipped). isRenewableDocument()/
+    // requestDocumentRenewal() below deliberately keep matching/reusing the
+    // RAW m.text (always German) unchanged -- that's the outgoing renewal
+    // REQUEST the patient sends TO staff, who always see German regardless
+    // of the patient's own language (same "staff-side text fallback"
+    // decision documented elsewhere in this feature), not something shown
+    // to the patient themselves.
+    const headerText = m.msgKey ? renderSystemMessage(m.msgKey,m.msgParams||{}) : m.text;
+    const subText = m.msgKey ? (renderUwSub(m.msgKey,m.msgParams||{}) ?? (m.sub||'')) : (m.sub||'');
     const renewBtn = (m.dir==='out' && isRenewableDocument(m.text))
       ? `<button type="button" class="uw-renew-btn" onclick="event.stopPropagation();requestDocumentRenewal('${escapeHtml(String(m.text||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}')">🔁 Erneut anfordern</button>`
       : '';
-    bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub||'')}</div></div></div>${renewBtn}</div>`;
+    bubble=`<div class="msg-bubble">${escapeHtml(headerText)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(subText)}</div></div></div>${renewBtn}</div>`;
   }else{
     // supabase/phase83_patient_message_translations.sql -- real user
     // request (2026-08-20): the handful of FIXED/system messages staff
