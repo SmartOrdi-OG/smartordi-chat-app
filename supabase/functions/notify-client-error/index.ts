@@ -21,10 +21,21 @@
 //   RESEND_API_KEY / RESEND_FROM_EMAIL -- same values already used by
 //     send-report-email (same Resend account, same verified sender).
 //   OWNER_ALERT_EMAIL -- where these alerts should land.
+//   SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY -- auto-injected by Supabase
+//     into every Edge Function; used here (service-role, bypasses RLS on
+//     purpose -- same trust boundary as this function already has by being
+//     the one thing allowed to read client_error_log at all) to resolve the
+//     bare practice_id/staff_id UUIDs the webhook payload carries into an
+//     actual practice name and staff member, so the owner doesn't have to
+//     go look either up by hand to know whose report this is.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Smartordi <onboarding@resend.dev>";
 const OWNER_ALERT_EMAIL = Deno.env.get("OWNER_ALERT_EMAIL");
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
@@ -44,11 +55,32 @@ Deno.serve(async (req: Request) => {
   // Supabase's own Database Webhook payload shape: {type, table, schema,
   // record, old_record}. `record` is the just-inserted client_error_log row.
   const record = payload?.record || {};
+
+  // Best-effort only -- a lookup failure here (e.g. the practice/staff row
+  // was since deleted) must never block the alert email itself from going
+  // out; falls back to the raw UUID, same as before this existed.
+  let practiceName: string | null = null;
+  let staffName: string | null = null;
+  try {
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    if (record.practice_id) {
+      const { data } = await admin.from("practices").select("name").eq("id", record.practice_id).maybeSingle();
+      practiceName = data?.name || null;
+    }
+    if (record.staff_id) {
+      const { data } = await admin.from("staff_profiles").select("full_name,username").eq("id", record.staff_id).maybeSingle();
+      staffName = data ? `${data.full_name || record.staff_id} (${data.username || "-"})` : null;
+    }
+  } catch (e) {
+    console.error("notify-client-error: practice/staff lookup failed", e);
+  }
+
   const subject = `Smartordi: Datenfehler gemeldet (${record.context || "unbekannt"})`;
   const text = [
     `Kontext: ${record.context || "-"}`,
     `Seite: ${record.page || "-"}`,
-    `Praxis-ID: ${record.practice_id || "-"}`,
+    `Praxis: ${practiceName || "-"} (${record.practice_id || "-"})`,
+    `Konto: ${staffName || "-"} (${record.staff_id || "-"})`,
     `Fehler: ${record.error_message || "-"}`,
     `Zeit: ${record.created_at || "-"}`,
   ].join("\n");
