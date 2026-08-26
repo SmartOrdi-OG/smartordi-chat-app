@@ -58,21 +58,31 @@ Deno.serve(async (req: Request) => {
 
   // Best-effort only -- a lookup failure here (e.g. the practice/staff row
   // was since deleted) must never block the alert email itself from going
-  // out; falls back to the raw UUID, same as before this existed.
+  // out; falls back to the raw UUID, same as before this existed. Each
+  // lookup gets its own try/catch (a real bug the first version of this
+  // shipped with: staff_profiles has no `username` column at all -- staff
+  // log in with their real email via Supabase Auth, unlike patients, which
+  // do have one -- so that query threw, and because both lookups shared one
+  // try block, the exception skipped the rest of it silently; practiceName
+  // only survived because it happened to run first).
   let practiceName: string | null = null;
   let staffName: string | null = null;
+  const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
   try {
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
     if (record.practice_id) {
       const { data } = await admin.from("practices").select("name").eq("id", record.practice_id).maybeSingle();
       practiceName = data?.name || null;
     }
+  } catch (e) {
+    console.error("notify-client-error: practice lookup failed", e);
+  }
+  try {
     if (record.staff_id) {
-      const { data } = await admin.from("staff_profiles").select("full_name,username").eq("id", record.staff_id).maybeSingle();
-      staffName = data ? `${data.full_name || record.staff_id} (${data.username || "-"})` : null;
+      const { data } = await admin.from("staff_profiles").select("full_name,email").eq("id", record.staff_id).maybeSingle();
+      staffName = data ? `${data.full_name || record.staff_id} (${data.email || "-"})` : null;
     }
   } catch (e) {
-    console.error("notify-client-error: practice/staff lookup failed", e);
+    console.error("notify-client-error: staff lookup failed", e);
   }
 
   const subject = `Smartordi: Datenfehler gemeldet (${record.context || "unbekannt"})`;
