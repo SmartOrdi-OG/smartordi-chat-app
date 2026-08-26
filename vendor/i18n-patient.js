@@ -29,6 +29,14 @@ const I18N={
     'chat.placeholder':'Nachricht schreiben...','chat.toast.sendFailed':'Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
     'chat.empty.title':'Noch keine Nachrichten','chat.empty.sub':'Schreiben Sie Ihrer Ordination eine Nachricht',
     'chat.disabled.title':'Chat derzeit nicht verfügbar','chat.disabled.sub':'Bitte kontaktieren Sie Ihre Ordination auf anderem Weg.',
+    'chat.system.terminConfirmed':'✓ Ihr Termin{doctorPart} wurde bestätigt: {date}, {time} Uhr{artPart}.',
+    'chat.system.terminMoved':'↕ Ihr Termin{doctorPart} wurde verschoben: neu am {date}, {time} Uhr{artPart}.',
+    'chat.system.terminCancelled':'✗ Ihr Termin am {date}, {time} Uhr wurde abgesagt. Bitte vereinbaren Sie bei Bedarf einen neuen Termin.',
+    'chat.system.withDoctor':' bei {doctor}',
+    'chat.system.vertretung':'ℹ Wichtiger Hinweis: {myName} ist von {von} bis {bis} abwesend. In dieser Zeit vertritt Sie: {substituteName}{contactPart}.',
+    'chat.system.addressChange':'📍 Wichtiger Hinweis: Unsere Ordination ist umgezogen. Die neue Adresse lautet: {address}.',
+    'chat.system.transferred':'↪ Sie wurden an {doctorName} weitergeleitet.{notePart}',
+    'chat.system.noteLabel':' Notiz: {note}',
     'termine.title':'Meine Termine',
     'termine.bookTitle':'Termin buchen','termine.chooseDay':'Wählen Sie einen Tag im Kalender',
     'termine.art.choose':'Grund des Besuchs wählen...',
@@ -369,6 +377,14 @@ const I18N={
     'chat.placeholder':'Write a message...','chat.toast.sendFailed':'Could not send your message. Please try again.',
     'chat.empty.title':'No messages yet','chat.empty.sub':'Write a message to your practice',
     'chat.disabled.title':'Chat currently unavailable','chat.disabled.sub':'Please contact your practice another way.',
+    'chat.system.terminConfirmed':'✓ Your appointment{doctorPart} has been confirmed: {date}, {time}{artPart}.',
+    'chat.system.terminMoved':'↕ Your appointment{doctorPart} has been rescheduled: new date {date}, {time}{artPart}.',
+    'chat.system.terminCancelled':'✗ Your appointment on {date} at {time} has been cancelled. Please book a new appointment if needed.',
+    'chat.system.withDoctor':' with {doctor}',
+    'chat.system.vertretung':'ℹ Important notice: {myName} will be unavailable from {von} to {bis}. During this time you will be represented by: {substituteName}{contactPart}.',
+    'chat.system.addressChange':'📍 Important notice: Our practice has moved. The new address is: {address}.',
+    'chat.system.transferred':'↪ You have been transferred to {doctorName}.{notePart}',
+    'chat.system.noteLabel':' Note: {note}',
     'termine.title':'My Appointments',
     'termine.bookTitle':'Book an appointment','termine.chooseDay':'Choose a day in the calendar',
     'termine.art.choose':'Choose a reason for your visit...',
@@ -705,6 +721,14 @@ const I18N={
     'chat.placeholder':'اكتب رسالة...','chat.toast.sendFailed':'تعذر إرسال الرسالة. يرجى المحاولة مرة أخرى.',
     'chat.empty.title':'لا توجد رسائل بعد','chat.empty.sub':'اكتب رسالة لعيادتك',
     'chat.disabled.title':'المحادثة غير متاحة حاليًا','chat.disabled.sub':'يرجى التواصل مع عيادتك بطريقة أخرى.',
+    'chat.system.terminConfirmed':'✓ تم تأكيد موعدك{doctorPart}: {date}، الساعة {time}{artPart}.',
+    'chat.system.terminMoved':'↕ تم تغيير موعدك{doctorPart}: الموعد الجديد {date}، الساعة {time}{artPart}.',
+    'chat.system.terminCancelled':'✗ تم إلغاء موعدك بتاريخ {date} الساعة {time}. يرجى حجز موعد جديد عند الحاجة.',
+    'chat.system.withDoctor':' لدى {doctor}',
+    'chat.system.vertretung':'ℹ تنبيه مهم: {myName} غير متاح من {von} إلى {bis}. خلال هذه الفترة سيقوم بالنيابة عنه: {substituteName}{contactPart}.',
+    'chat.system.addressChange':'📍 تنبيه مهم: انتقلت عيادتنا إلى مكان جديد. العنوان الجديد هو: {address}.',
+    'chat.system.transferred':'↪ تم تحويلك إلى {doctorName}.{notePart}',
+    'chat.system.noteLabel':' ملاحظة: {note}',
     'termine.title':'مواعيدي',
     'termine.bookTitle':'حجز موعد','termine.chooseDay':'اختر يوماً من التقويم',
     'termine.art.choose':'اختر سبب الزيارة...',
@@ -1041,6 +1065,14 @@ const I18N={
     'chat.placeholder':'Mesaj yazın...','chat.toast.sendFailed':'Mesaj gönderilemedi. Lütfen tekrar deneyin.',
     'chat.empty.title':'Henüz mesaj yok','chat.empty.sub':'Muayenehanenize bir mesaj yazın',
     'chat.disabled.title':'Sohbet şu anda kullanılamıyor','chat.disabled.sub':'Lütfen muayenehanenizle başka bir şekilde iletişime geçin.',
+    'chat.system.terminConfirmed':'✓ Randevunuz{doctorPart} onaylandı: {date}, {time}{artPart}.',
+    'chat.system.terminMoved':'↕ Randevunuz{doctorPart} ertelendi: yeni tarih {date}, {time}{artPart}.',
+    'chat.system.terminCancelled':'✗ {date} tarihindeki, saat {time} randevunuz iptal edildi. Gerekirse lütfen yeni bir randevu alın.',
+    'chat.system.withDoctor':' {doctor} ile',
+    'chat.system.vertretung':'ℹ Önemli bilgi: {myName} {von} - {bis} tarihleri arasında müsait değil. Bu süre zarfında sizi temsil edecek kişi: {substituteName}{contactPart}.',
+    'chat.system.addressChange':'📍 Önemli bilgi: Muayenehanemiz taşındı. Yeni adresimiz: {address}.',
+    'chat.system.transferred':'↪ {doctorName} adlı doktora yönlendirildiniz.{notePart}',
+    'chat.system.noteLabel':' Not: {note}',
     'termine.title':'Randevularım',
     'termine.bookTitle':'Randevu al','termine.chooseDay':'Takvimden bir gün seçin',
     'termine.art.choose':'Ziyaret nedeninizi seçin...',
@@ -1377,6 +1409,14 @@ const I18N={
     'chat.placeholder':'Napišite poruku...','chat.toast.sendFailed':'Poruka nije mogla biti poslata. Pokušajte ponovo.',
     'chat.empty.title':'Još nema poruka','chat.empty.sub':'Napišite poruku svojoj ordinaciji',
     'chat.disabled.title':'Chat trenutno nije dostupan','chat.disabled.sub':'Molimo kontaktirajte svoju ordinaciju na drugi način.',
+    'chat.system.terminConfirmed':'✓ Vaš termin{doctorPart} je potvrđen: {date}, {time}{artPart}.',
+    'chat.system.terminMoved':'↕ Vaš termin{doctorPart} je pomjeren: novi datum {date}, {time}{artPart}.',
+    'chat.system.terminCancelled':'✗ Vaš termin dana {date} u {time} je otkazan. Molimo zakažite novi termin po potrebi.',
+    'chat.system.withDoctor':' kod {doctor}',
+    'chat.system.vertretung':'ℹ Važna napomena: {myName} nije dostupan/na od {von} do {bis}. U ovom periodu vas zastupa: {substituteName}{contactPart}.',
+    'chat.system.addressChange':'📍 Važna napomena: Naša ordinacija se preselila. Nova adresa je: {address}.',
+    'chat.system.transferred':'↪ Prebačeni ste kod {doctorName}.{notePart}',
+    'chat.system.noteLabel':' Napomena: {note}',
     'termine.title':'Moji termini',
     'termine.bookTitle':'Zakaži termin','termine.chooseDay':'Odaberite dan u kalendaru',
     'termine.art.choose':'Odaberite razlog posjete...',
@@ -1788,6 +1828,60 @@ function tr(key){
   const lang=getPatientLang();
   if(I18N[lang]&&I18N[lang][key]!==undefined&&I18N[lang][key]!=='') return I18N[lang][key];
   return I18N.de[key]!==undefined?I18N.de[key]:key;
+}
+// supabase/phase80_patient_message_translations.sql -- real user request
+// (2026-08-20): the handful of FIXED/system chat messages staff sends
+// (Termin confirmed/moved/cancelled, Vertretung/address-change broadcasts,
+// doctor transfer) are template strings with {placeholder} tokens (e.g.
+// 'chat.system.terminConfirmed') instead of plain lookups -- this fills
+// them in with the real, already-formatted values (dates/names/etc, never
+// translated further themselves) the original sender computed. split/join
+// instead of a regex -- a param VALUE containing regex-special characters
+// (e.g. a doctor's name with a '.') must never be misinterpreted as pattern
+// syntax the way String.replace(regex,...) would risk.
+function trParams(key,params){
+  let s=tr(key);
+  Object.keys(params||{}).forEach(function(k){
+    s=s.split('{'+k+'}').join(params[k]==null?'':String(params[k]));
+  });
+  return s;
+}
+// supabase/phase80_patient_message_translations.sql -- a raw ISO date
+// (YYYY-MM-DD, e.g. a Termin's own `date` column) formatted in the
+// patient's own CURRENTLY selected language -- same "day. Month year"
+// shape patient.html's own booking flow already uses elsewhere
+// (renderCalendar()'s toast: `${selectedDay}. ${monthsFull()[...]}`), so a
+// system chat message reads consistently with the rest of the app instead
+// of inventing a different date format just for these. Deliberately NOT
+// done at send time (a staff device has no idea which language the patient
+// will eventually have selected, and could change it later anyway) --
+// always computed here, at render time, on the patient's own device.
+function localizedDate(isoDate){
+  if(!isoDate) return '';
+  const d=new Date(isoDate+'T00:00:00');
+  if(isNaN(d.getTime())) return isoDate;
+  return d.getDate()+'. '+monthsFull()[d.getMonth()]+' '+d.getFullYear();
+}
+// The real per-message-type assembly step for the 6 FIXED/system chat
+// messages (Termin confirmed/moved/cancelled, Vertretung/address-change
+// broadcasts, doctor transfer) -- each sender (secretary.html/doctor.html)
+// only ever writes the raw, language-neutral FACTS into msg_params (a
+// doctor's display name, a raw ISO date, a free-text note/Fach/Adresse
+// blob) -- never a pre-built sentence fragment, since only the DEVICE
+// actually rendering the message (here) knows which language to build
+// "bei Dr. X" / "with Dr. X" / etc in. Builds the derived {doctorPart}/
+// {artPart}/{notePart}/{contactPart} connector placeholders each template
+// (vendor/i18n-patient.js's own 'chat.system.*' keys) expects, localizes
+// any raw ISO date fields, then hands off to trParams() for the actual
+// substitution. Called from patient.html's msgRowHtml().
+function renderSystemMessage(key,params){
+  const p=Object.assign({},params||{});
+  ['date','von','bis'].forEach(function(k){ if(p[k]) p[k]=localizedDate(p[k]); });
+  if('doctor' in p) p.doctorPart=p.doctor?trParams('chat.system.withDoctor',{doctor:p.doctor}):'';
+  if('art' in p) p.artPart=p.art?' · '+p.art:'';
+  if('note' in p) p.notePart=p.note?trParams('chat.system.noteLabel',{note:p.note}):'';
+  if('contact' in p) p.contactPart=p.contact?' ('+p.contact+')':'';
+  return trParams(key,p);
 }
 function trSymptom(deText){
   const lang=getPatientLang();

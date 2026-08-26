@@ -1,0 +1,31 @@
+-- Phase 80: real user request (2026-08-20) -- the FIXED/system messages
+-- staff sends to a patient's chat (Termin confirmed/moved/cancelled,
+-- Vertretung broadcast, address-change broadcast, doctor-transfer notice)
+-- were always stored as one already-rendered German string, so a patient
+-- who picked a different app language (patient-login.html's language
+-- switcher, already supported everywhere else in the app) still saw these
+-- exact 6 messages in German regardless.
+--
+-- Fix, entirely client-side from here: `text` stays exactly as before (the
+-- German-rendered fallback -- what staff themselves see, and what an
+-- OLDER message sent before this feature still has), but each of those 6
+-- senders now ALSO writes a language-neutral msg_key (an i18n key in
+-- vendor/i18n-patient.js, e.g. 'chat.system.terminConfirmed') and
+-- msg_params (the raw interpolation values, e.g. {date, time, artPart}).
+-- patient.html's own msgRowHtml() renders msg_key+msg_params through
+-- trParams() in the patient's own currently-selected language when
+-- present, falling back to the plain `text` column exactly as before for
+-- any message that has none (a patient's own free-typed replies, staff's
+-- own free-typed chat messages, and every message sent before this
+-- migration) -- see that file's own comment for the full rendering logic.
+--
+-- No function changes needed: patient_get_messages() (supabase/phase33_
+-- patient_login_cutover.sql) already does `select * from patient_messages`
+-- / `returns setof patient_messages` -- these two new columns flow through
+-- to the patient automatically once they exist.
+alter table public.patient_messages add column if not exists msg_key text;
+alter table public.patient_messages add column if not exists msg_params jsonb;
+
+-- Run this in the Supabase SQL editor for this project
+-- (https://ewilgwndhpxibkogxqbk.supabase.co). Then run
+-- supabase/schema_health_check.sql to confirm it applied cleanly.
