@@ -113,6 +113,8 @@ function createPatientAccount(vorname,nachname,extra){
     // vendor/patient-data.js), so a diagnosis/allergy set here (or via CSV
     // import) never reached any other staff device.
     diagnosen:(extra&&extra.diagnosen)||null, allergie:(extra&&extra.allergie)||null,
+    // supabase/phase80_patient_cave.sql
+    cave:(extra&&extra.cave)||null,
     blutgruppe:(extra&&extra.blutgruppe)||null, legacy_history:(extra&&extra.legacyHistory)||null,
     // supabase/phase65_patient_username_change_and_is_child.sql -- a plain
     // classification flag only (shown in Stammdaten), NOT tied to any

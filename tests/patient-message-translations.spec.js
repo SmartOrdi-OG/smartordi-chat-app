@@ -1,5 +1,5 @@
 // Regression test for the render-time translation of FIXED/system chat
-// messages (supabase/phase80_patient_message_translations.sql) -- real user
+// messages (supabase/phase83_patient_message_translations.sql) -- real user
 // request (2026-08-20): "the fixed messages that arrive in the patient's
 // chat should arrive translated according to the language the patient
 // selects". Before this, every one of the 6 message senders below baked an

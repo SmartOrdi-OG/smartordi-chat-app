@@ -1829,7 +1829,7 @@ function tr(key){
   if(I18N[lang]&&I18N[lang][key]!==undefined&&I18N[lang][key]!=='') return I18N[lang][key];
   return I18N.de[key]!==undefined?I18N.de[key]:key;
 }
-// supabase/phase80_patient_message_translations.sql -- real user request
+// supabase/phase83_patient_message_translations.sql -- real user request
 // (2026-08-20): the handful of FIXED/system chat messages staff sends
 // (Termin confirmed/moved/cancelled, Vertretung/address-change broadcasts,
 // doctor transfer) are template strings with {placeholder} tokens (e.g.
@@ -1846,7 +1846,7 @@ function trParams(key,params){
   });
   return s;
 }
-// supabase/phase80_patient_message_translations.sql -- a raw ISO date
+// supabase/phase83_patient_message_translations.sql -- a raw ISO date
 // (YYYY-MM-DD, e.g. a Termin's own `date` column) formatted in the
 // patient's own CURRENTLY selected language -- same "day. Month year"
 // shape patient.html's own booking flow already uses elsewhere

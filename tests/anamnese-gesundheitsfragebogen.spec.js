@@ -171,3 +171,135 @@ test('patient-facing first-login Anamnese screen (Allgemeinmedizin) also renders
   expect(result['an.gfb.rauchen']).toBe('Ja');
   expect(result['an.gfb.rauchen.detail']).toBe('10 Zigaretten');
 });
+
+// Regression tests for the "highlights" collapsed-bar line and the "Nur
+// Ja-Antworten anzeigen" filter toggle (vendor/kartei-anamnese.js's
+// updateAnamneseHighlightsLine()/applyGfbOnlyJaFilter(), vendor/anamnese-
+// shared.js's collectGfbAuffaelligkeiten()) -- added so a doctor can spot
+// what's actually flagged in a 24-question form without reading every row,
+// the same difficulty real tomedo users report about their own version of
+// this feature (see TODO.md). setupDoctorPage() above only switches to the
+// tab; these tests need loadAnamneseForPatient() itself (the real path that
+// populates saved answers and refreshes the highlights line).
+function seedWithAnamnese(fach, anamnese) {
+  const base = seed(fach);
+  base.patients[0].anamnese = anamnese;
+  return base;
+}
+
+test('the collapsed Anamnese bar shows a highlights line naming only the "Ja" answers, with their detail text', async ({ page }) => {
+  const extraInit = () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  };
+  await installMockSupabase(page, seedWithAnamnese('Allgemeinmedizin', {
+    'an.gfb.diabetes': 'Ja',
+    'an.gfb.allergie': 'Ja', 'an.gfb.allergie.detail': 'Penicillin',
+    'an.gfb.epilepsie': 'Nein',
+  }), extraInit);
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(async () => { await patientsReady; });
+
+  const text = await page.evaluate(() => {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-clinic').classList.add('active');
+    document.getElementById('kartei-name').textContent = 'Maria Huber';
+    switchKarteiTab('anamnese', document.querySelector('.kartei-tab[onclick*="anamnese"]'));
+    loadAnamneseForPatient('Maria Huber');
+    return document.getElementById('anamnese-highlights-line').textContent;
+  });
+  expect(text).toContain('2 Auffälligkeiten');
+  expect(text).toContain('Diabetes mellitus');
+  expect(text).toContain('Allergie');
+  expect(text).toContain('Penicillin');
+  expect(text).not.toContain('Epilepsie');
+});
+
+test('a submitted Anamnese with zero "Ja" answers shows a reassuring "keine Auffälligkeiten" line, not nothing', async ({ page }) => {
+  const extraInit = () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  };
+  await installMockSupabase(page, seedWithAnamnese('Allgemeinmedizin', { 'an.gfb.diabetes': 'Nein' }), extraInit);
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(async () => { await patientsReady; });
+
+  const result = await page.evaluate(() => {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-clinic').classList.add('active');
+    document.getElementById('kartei-name').textContent = 'Maria Huber';
+    switchKarteiTab('anamnese', document.querySelector('.kartei-tab[onclick*="anamnese"]'));
+    loadAnamneseForPatient('Maria Huber');
+    const el = document.getElementById('anamnese-highlights-line');
+    return { text: el.textContent, visible: el.style.display !== 'none' };
+  });
+  expect(result.visible).toBe(true);
+  expect(result.text).toContain('Keine Auffälligkeiten');
+});
+
+test('a patient who never submitted an Anamnese, or a specialty without the Gesundheitsfragebogen, shows no highlights line at all', async ({ page }) => {
+  await setupDoctorPage(page, 'Allgemeinmedizin');
+  const noSubmission = await page.evaluate(() => {
+    loadAnamneseForPatient('Maria Huber'); // seed() never sets .anamnese
+    const el = document.getElementById('anamnese-highlights-line');
+    return { text: el.textContent, visible: el.style.display !== 'none' };
+  });
+  expect(noSubmission.visible).toBe(false);
+  expect(noSubmission.text).toBe('');
+
+  const extraInit = () => {
+    sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+  };
+  // A specialty without the Gesundheitsfragebogen, but WITH a real submitted
+  // Anamnese -- isolates the "no .gfb-q rows exist" guard from the "never
+  // submitted" one above (both must independently suppress the line).
+  await installMockSupabase(page, seedWithAnamnese('Kardiologie', { 'an.common.medikamente': 'Aspirin' }), extraInit);
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  await page.evaluate(async () => { await patientsReady; });
+  const noGfb = await page.evaluate(() => {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-clinic').classList.add('active');
+    document.getElementById('kartei-name').textContent = 'Maria Huber';
+    switchKarteiTab('anamnese', document.querySelector('.kartei-tab[onclick*="anamnese"]'));
+    loadAnamneseForPatient('Maria Huber');
+    const el = document.getElementById('anamnese-highlights-line');
+    return { visible: el.style.display !== 'none' };
+  });
+  expect(noGfb.visible).toBe(false);
+});
+
+test('"Nur Ja-Antworten anzeigen" hides every "Nein" row and stays live if an answer changes while it\'s on', async ({ page }) => {
+  await setupDoctorPage(page, 'Allgemeinmedizin');
+  const result = await page.evaluate(() => {
+    loadAnamneseForPatient('Maria Huber');
+    const root = document.getElementById('anamnese-collapse-body');
+    root.querySelector('select[data-key="an.gfb.diabetes"]').value = 'Ja';
+
+    const toggle = document.getElementById('gfbOnlyJaToggle');
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change', { bubbles: true }));
+    const visibleAfterFilter = [...root.querySelectorAll('.gfb-q')].filter(q => q.style.display !== 'none').length;
+    const hiddenAfterFilter = [...root.querySelectorAll('.gfb-q')].filter(q => q.style.display === 'none').length;
+
+    // Flip a second question to "Ja" live while the filter is still on --
+    // it must appear immediately, not just after re-toggling the filter.
+    const epilepsy = root.querySelector('select[data-key="an.gfb.epilepsie"]');
+    epilepsy.value = 'Ja';
+    epilepsy.dispatchEvent(new Event('change', { bubbles: true }));
+    const epilepsyRowVisible = epilepsy.closest('.gfb-q').style.display !== 'none';
+
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change', { bubbles: true }));
+    const allVisibleAfterTurningOff = [...root.querySelectorAll('.gfb-q')].every(q => q.style.display !== 'none');
+
+    return { visibleAfterFilter, hiddenAfterFilter, epilepsyRowVisible, allVisibleAfterTurningOff };
+  });
+  expect(result.visibleAfterFilter).toBe(1);
+  expect(result.hiddenAfterFilter).toBe(23);
+  expect(result.epilepsyRowVisible).toBe(true);
+  expect(result.allVisibleAfterTurningOff).toBe(true);
+});

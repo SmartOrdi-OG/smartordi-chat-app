@@ -67,6 +67,10 @@ function terminRowToJs(row){
     reasonNote: row.reason_note,
     startedAt: row.started_at,
     completedAt: row.completed_at,
+    // supabase/phase81_termin_next_notified.sql -- guards notifyNextWaitingPatient()
+    // below against sending the "you're up next" chat message more than once
+    // for the same appointment.
+    nextNotifiedAt: row.next_notified_at,
     createdAt: row.created_at,
   };
 }
@@ -78,7 +82,7 @@ function terminRowToJs(row){
 // still needs every past+future termine in memory to browse back to any
 // month. See the row-count warning below for when that itself needs
 // revisiting (real windowing/on-demand loading, not implemented yet).
-const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,created_at';
+const TERMINE_COLUMNS='id,legacy_id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,svnr,dob,reason,reason_note,started_at,completed_at,next_notified_at,created_at';
 // Rolling window on the past only, same reasoning as
 // ALL_MESSAGES_WINDOW_DAYS above -- termine grows without bound over a
 // practice's multi-year lifetime, but the actual daily workflow (today's
@@ -117,7 +121,47 @@ async function startTerminVisit(id){
   if(error){ console.error('startTerminVisit failed',error); return false; }
   const t=_termine.find(x=>x.id===id);
   if(t) t.startedAt=now;
+  await notifyNextWaitingPatient(t);
   return true;
+}
+// Real gap found via competitor research (see TODO.md): several standalone
+// "digital waiting room" apps (Dr.wait, Quickticket) exist specifically to
+// let a patient wait away from the practice instead of in the physical
+// Wartezimmer -- Quickticket's own published case studies show real,
+// measured demand for exactly this (37% of patients choosing to wait from
+// home in one practice, an 80% drop in how crowded the waiting room gets).
+// None of the big all-in-one Ordinationssoftware bundle it in for free --
+// SmartOrdi already has a patient chat channel, so it can.
+//
+// Fires the moment a visit STARTS (not when it finishes) -- that's the
+// earliest moment "the appointment right before yours is now underway" is
+// true, giving the next patient actual travel time instead of pinging them
+// only once the room is already free. "Next" is whichever of this doctor's
+// own appointments today is still fully untouched (not started, not
+// completed, not cancelled), earliest by scheduled time -- doctor-driven
+// order (see startTerminVisit/completeTerminVisit's own comment) means this
+// is a best-effort estimate, not a guaranteed-correct queue position.
+// Guarded by next_notified_at so re-opening/re-rendering a visit, or a
+// doctor clicking Start again, never sends the same patient two pings.
+async function notifyNextWaitingPatient(startedTermin){
+  if(!startedTermin||!isChatEnabled()) return;
+  const next=_termine
+    .filter(x=>x.date===startedTermin.date && x.arztUsername===startedTermin.arztUsername
+      && x.id!==startedTermin.id && x.status!=='abgesagt' && !x.startedAt && !x.completedAt && !x.nextNotifiedAt)
+    .sort((a,b)=>(a.time||'').localeCompare(b.time||''))[0];
+  // No cloud account yet (legacy/local-only patient) -- nothing to send to,
+  // same defensive skip as saveAnamnese()/saveCaveNote() above.
+  if(!next||!next.patientId) return;
+  try{
+    await sendMessageToPatient(next.patientId,{dir:'out',type:'text',
+      text:'🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.'});
+    const now=new Date().toISOString();
+    const {error}=await sb.from('termine').update({next_notified_at:now}).eq('id',next.id);
+    if(error){ console.error('notifyNextWaitingPatient: marking next_notified_at failed',error); return; }
+    next.nextNotifiedAt=now;
+  }catch(e){
+    console.error('notifyNextWaitingPatient failed',e);
+  }
 }
 async function completeTerminVisit(id){
   const now=new Date().toISOString();
@@ -258,7 +302,7 @@ function localPatientAccountsRaw(){
 // server-side value. Not something this task was asked to fix, but a
 // one-line, obviously-correct addition while already touching this exact
 // line for a new column.
-const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note,is_child,geschlecht';
+const PATIENTS_COLUMNS='id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,anamnese,diagnosen,allergie,blutgruppe,legacy_history,join_status,join_note,is_child,geschlecht,cave';
 // Factored out of refreshPatients() so searchPatientsServer()/
 // findPatientByFullNameServer() below (and refreshPatients() itself) share
 // exactly one row->JS mapping instead of drifting out of sync with each other.
@@ -283,6 +327,13 @@ function patientRowToJs(row,localAccounts){
     // staff device viewing the same patient's Kartei.
     diagnosen: row.diagnosen||local.diagnosen,
     allergie: row.allergie||local.allergie,
+    // supabase/phase80_patient_cave.sql -- always-shown clinical warning
+    // note, independent of the drug-keyword-matched CDSS alerts (vendor/
+    // cdss-medication-alerts.js) and distinct from `allergie` (which is
+    // specifically substances, CSV/ENDS1-import-populated) -- e.g. "Patient
+    // reagiert aggressiv", "Hörgerät, laut ansprechen", anything a doctor
+    // wants flagged on every visit regardless of what's being prescribed.
+    cave: row.cave||local.cave||null,
     blutgruppe: row.blutgruppe||local.blutgruppe,
     legacyHistory: row.legacy_history||local.legacyHistory,
     joinStatus: row.join_status,
@@ -755,7 +806,7 @@ async function upsertGuardianIdentity(username,fields){
 async function sendMessageToPatient(patientId,msg){
   const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null,
     doc_id:msg.docId||null, filename:msg.filename||null, doc_sub:msg.sub||null,
-    // supabase/phase80_patient_message_translations.sql -- present only for
+    // supabase/phase83_patient_message_translations.sql -- present only for
     // the handful of FIXED/system messages (Termin confirmed/moved/
     // cancelled, Vertretung/address-change broadcasts, doctor transfer)
     // that a sender built via an i18n template instead of typing free text
@@ -955,6 +1006,20 @@ async function createPatientVisit(patientId,visit,createdBy){
 async function getVisitsForPatient(patientId){
   const {data,error}=await sb.from('patient_visits').select('id,visit_date,visit_type,beschwerde,temperature,blutdruck,schmerz,diagnose,notes,therapy,created_at').eq('patient_id',patientId).order('visit_date',{ascending:false});
   if(error){ console.error('getVisitsForPatient failed',error); return []; }
+  return data||[];
+}
+// secretary.html's Übersicht "Kontrollpatienten fällig" recall list --
+// detectFollowupReminder() (vendor/cdss-followup-reminders.js) already
+// existed but only ever ran on ONE patient's visits at a time, whichever
+// Kartei a doctor happened to have open -- a chronic patient who simply
+// never got rebooked stayed invisible until, by chance, someone opened
+// their chart. Only patient_id/visit_date/diagnose are needed for that
+// (not the full column list getVisitsForPatient() above selects), one
+// query for the whole practice (RLS already scopes it) instead of one
+// per patient.
+async function getAllVisitsForRecall(){
+  const {data,error}=await sb.from('patient_visits').select('patient_id,visit_date,diagnose');
+  if(error){ console.error('getAllVisitsForRecall failed',error); return []; }
   return data||[];
 }
 

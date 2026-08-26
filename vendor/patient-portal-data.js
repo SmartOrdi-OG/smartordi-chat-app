@@ -279,7 +279,7 @@ async function patientGetMessages(){
     // against a per-device "last viewed" marker (patientUnreadCount()).
     return {dir:row.dir, type:row.type, text:row.text, time:formatMsgTime(row.created_at),
       createdAt:row.created_at, docId:row.doc_id, filename:row.filename, sub:row.doc_sub,
-      // supabase/phase80_patient_message_translations.sql -- msgRowHtml()
+      // supabase/phase83_patient_message_translations.sql -- msgRowHtml()
       // (patient.html) re-renders these two (when present) via trParams()
       // in the patient's own currently-selected language instead of the
       // German `text` above.

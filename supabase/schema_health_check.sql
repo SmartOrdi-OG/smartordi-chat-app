@@ -232,7 +232,9 @@ from unnest(array[
   -- phase72
   'geschlecht',
   -- phase79
-  'consent_given_at'
+  'consent_given_at',
+  -- phase80
+  'cave'
 ]) as c
 
 union all
@@ -243,7 +245,9 @@ select 'termine column', c,
 from unnest(array[
   'id','legacy_id','patient_id','patient_name','art','date','time','end_time','status','arzt_id',
   'versicherung','tel','svnr','dob','reason','reason_note','started_at','completed_at','created_at','practice_id',
-  'reminder_sent_at'
+  'reminder_sent_at',
+  -- phase81
+  'next_notified_at'
 ]) as c
 
 union all
@@ -253,7 +257,7 @@ select 'patient_messages column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'id','patient_id','dir','type','text','sent_by','created_at','doc_id','filename','doc_sub','practice_id',
-  -- phase80
+  -- phase83
   'msg_key','msg_params'
 ]) as c
 

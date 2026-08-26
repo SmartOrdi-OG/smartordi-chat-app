@@ -1388,6 +1388,16 @@ body.windows-mode #karteiBtn{display:none;}
 .dash-card{background:white;border-radius:18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);overflow:hidden;border:1px solid rgba(0,0,0,0.04);}
 .dash-card-header{padding:16px 20px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:800;color:var(--text-1);display:flex;justify-content:space-between;align-items:center;letter-spacing:-0.2px;}
 .dash-card-body{padding:16px 20px;}
+/* Progressive disclosure (settings info toggles): a small circular "i"
+   button next to a card header/label that expands a .settings-detail-panel
+   below it -- so a card's fuller explanation only takes space once someone
+   actually wants it, instead of always-visible paragraph text. See
+   toggleSettingsInfo(). */
+.settings-info-toggle{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;border:none;background:transparent;color:#94a3b8;cursor:pointer;flex-shrink:0;transition:background .15s,color .15s;padding:0;}
+.settings-info-toggle:hover{background:#EAF4F1;color:#0E5E56;}
+.settings-info-toggle.is-open{background:#EAF4F1;color:#0E5E56;}
+.settings-detail-panel{display:none;margin-top:12px;padding-top:12px;border-top:1px dashed #e2e8f0;font-size:14px;color:#475569;line-height:1.6;}
+.settings-detail-panel.is-open{display:block;}
 .activity-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f8fafc;}
 .activity-item:last-child{border-bottom:none;}
 .activity-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
@@ -1671,12 +1681,35 @@ body.windows-mode #karteiBtn{display:none;}
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span class="k-label">Träger</span></span><span class="k-value" id="k-stamm-versicherung">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg><span class="k-label">SV-Nummer</span></span><span class="k-value" id="k-stamm-svnr" style="font-family:monospace;">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M21 12c0 1-1.5 2.5-9 5-7.5-2.5-9-4-9-5V5l9-3 9 3v7z"/></svg><span class="k-label">DSGVO</span></span><span class="k-value" id="k-stamm-dsgvo">—</span></div>
+            <!-- supabase/phase82_termin_no_show.sql -- only shown when >0,
+                 same "no noise for the common case" pattern as k-stamm-allergie/
+                 k-stamm-cave. Real gap found via competitor research (see
+                 TODO.md): no existing signal anywhere distinguished a patient
+                 who simply never showed up from one who cancelled properly. -->
+            <div class="k-row" id="k-stamm-noshow-row" style="display:none;"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="k-label">Versäumte Termine</span></span><span class="k-value" id="k-stamm-noshow" style="color:#c2410c;font-weight:700;">—</span></div>
           </div>
           <div class="k-section">
             <div class="k-section-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Medizinische Hinweise</div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg><span class="k-label">Blutgruppe</span></span><span class="k-value" id="k-stamm-blutgruppe">—</span></div>
             <div class="k-row"><span class="k-label-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="k-label">Diagnosen</span></span><span class="k-value" id="k-stamm-diagnosen">—</span></div>
             <div class="k-alert" id="k-stamm-allergie" style="display:none;">Penicillin-Allergie beachten!</div>
+            <!-- Cave: always-shown, patient-specific warning note -- separate
+                 from allergie (substance-specific, CSV/ENDS1-import-only) and
+                 from the drug-keyword CDSS alerts (vendor/cdss-medication-
+                 alerts.js). Only free-text field in this section that's
+                 actually editable by the doctor themselves, not just import-
+                 populated -- see openCaveEditor()/saveCaveNote() below. -->
+            <div class="k-alert" id="k-stamm-cave" style="display:none;background:#fef2f2;border-color:#fca5a5;color:#7f1d1d;"></div>
+            <div style="margin-top:6px;">
+              <button type="button" onclick="openCaveEditor()" id="k-cave-edit-btn" style="background:none;border:none;color:#0891b2;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;">✎ Cave-Hinweis bearbeiten</button>
+              <div id="k-cave-editor" style="display:none;margin-top:8px;">
+                <textarea id="k-cave-input" rows="2" placeholder="z.B. Patient reagiert aggressiv, Hörgerät - laut ansprechen ..." style="width:100%;box-sizing:border-box;font-size:12.5px;font-family:inherit;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;"></textarea>
+                <div style="display:flex;gap:8px;margin-top:6px;">
+                  <button type="button" class="btn-primary" style="padding:6px 16px;font-size:12.5px;" onclick="saveCaveNote()">Speichern</button>
+                  <button type="button" class="btn-secondary" style="padding:6px 16px;font-size:12.5px;" onclick="closeCaveEditor()">Abbrechen</button>
+                </div>
+              </div>
+            </div>
           </div>
           <!-- Nicht-blockierende "Kontroll-Erinnerung" (CDSS zweiter Teil,
                vendor/cdss-followup-reminders.js) -- gefüllt von
@@ -1714,10 +1747,11 @@ body.windows-mode #karteiBtn{display:none;}
       <div id="ktab-anamnese" style="display:none;padding:16px;">
 
         <div id="anamnese-collapse-wrap" style="margin-bottom:16px;">
-          <div id="anamneseToggleBar" onclick="toggleAnamneseSection()" style="cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;">
-            <div>
+          <div id="anamneseToggleBar" onclick="toggleAnamneseSection()" style="cursor:pointer;background:linear-gradient(135deg,#0891b2,#0e7490);border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div style="flex:1;min-width:0;">
               <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg> Anamnese</div>
               <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;" id="anamnese-fach-label">Medizinische Vorgeschichte</div>
+              <div id="anamnese-highlights-line" style="display:none;font-size:11px;color:#fef9c3;margin-top:4px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
             </div>
             <span id="anamnese-toggle-arrow" style="color:white;font-size:14px;transition:transform 0.15s;">▾</span>
           </div>
@@ -2122,6 +2156,14 @@ body.windows-mode #karteiBtn{display:none;}
              -- rein informativ, der Arzt kann jederzeit trotzdem speichern/
              drucken/senden. Begrenzte, nicht vollständige Liste. -->
         <div id="rzMedAlerts" style="display:none;"></div>
+
+        <!-- Cave: always-shown patient-specific warning (supabase/
+             phase80_patient_cave.sql), independent of which Medikament is
+             typed above -- distinct from rzMedAlerts, which only fires on
+             a drug-name/allergy-keyword match. Filled in
+             openRezeptTabForCurrentPatient() (vendor/kartei-rezept-
+             ueberweisung.js). -->
+        <div id="rzCaveAlert" style="display:none;background:#fef2f2;border-left:4px solid #991b1b;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;font-weight:700;color:#7f1d1d;"></div>
 
         <!-- Anmerkungen -->
         <div class="k-form-section">
@@ -2913,25 +2955,31 @@ body.windows-mode #karteiBtn{display:none;}
          separate one per doctor -- see the migration file's own header
          comment for why a per-doctor switch wouldn't make sense here). -->
     <div class="dash-card" style="margin-bottom:20px;">
-      <div class="dash-card-header"><span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Praxis-Chat</span></div>
+      <div class="dash-card-header">
+        <span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Praxis-Chat</span>
+        <button type="button" class="settings-info-toggle" onclick="toggleSettingsInfo(this,'chatInfoPanel')" aria-label="Mehr erfahren"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      </div>
       <div class="dash-card-body">
         <label style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600;color:#0f172a;cursor:pointer;">
           <input type="checkbox" id="setChatEnabled" checked onchange="toggleChatEnabledSetting(this)">
           Chat aktivieren
         </label>
-        <div style="font-size:13.5px;color:#64748b;margin-top:6px;line-height:1.5;">Wenn deaktiviert, sehen Patient:innen "Chat derzeit nicht verfügbar" und niemand in der Praxis (auch Sekretär:innen) kann darüber Nachrichten senden.</div>
+        <div id="chatInfoPanel" class="settings-detail-panel">Wenn deaktiviert, sehen Patient:innen "Chat derzeit nicht verfügbar" und niemand in der Praxis (auch Sekretär:innen) kann darüber Nachrichten senden.</div>
       </div>
     </div>
 
     <!-- Labor-E-Mail -->
     <div class="dash-card" style="margin-bottom:20px;">
-      <div class="dash-card-header"><span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>Labor-E-Mail</span> <span style="font-size:13px;color:#64748b;font-weight:400;">— eine feste Adresse für Ihre Praxis, die Labore statt einer persönlichen E-Mail verwenden können</span></div>
+      <div class="dash-card-header">
+        <span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg>Labor-E-Mail</span>
+        <button type="button" class="settings-info-toggle" onclick="toggleSettingsInfo(this,'laborInfoPanel')" aria-label="Mehr erfahren"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      </div>
       <div class="dash-card-body">
-        <div style="font-size:14.5px;color:#475569;margin-bottom:10px;line-height:1.5;">Geben Sie diese Adresse Ihrem Labor (oder richten Sie eine Weiterleitung darauf ein) — Ergebnisse, die dort ankommen, erscheinen automatisch im Dashboard unter „Eingehende Laborergebnisse" zur Zuordnung.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <input type="text" id="labEmailAddress" readonly value="Wird erstellt…" style="flex:1;min-width:220px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-family:inherit;font-size:15px;background:#f8fafc;color:#0f172a;">
           <button type="button" onclick="copyLabEmailAddress()" style="background:#EAF4F1;border:1px solid #bfdbfe;color:#0E5E56;padding:9px 14px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;">Kopieren</button>
         </div>
+        <div id="laborInfoPanel" class="settings-detail-panel">Eine feste Adresse für Ihre Praxis, die Labore statt einer persönlichen E-Mail verwenden können. Geben Sie diese Adresse Ihrem Labor (oder richten Sie eine Weiterleitung darauf ein) — Ergebnisse, die dort ankommen, erscheinen automatisch im Dashboard unter „Eingehende Laborergebnisse" zur Zuordnung.</div>
       </div>
     </div>
 
@@ -2942,17 +2990,19 @@ body.windows-mode #karteiBtn{display:none;}
          nicht übersieht, plus ein Anhaltspunkt für die eigene Prüfung der
          ~300-Patient/innen-Verhältnismäßigkeits-Ausnahme. -->
     <div class="dash-card" style="margin-bottom:20px;">
-      <div class="dash-card-header"><span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>e-card/ELGA-Pflicht für Wahlärzt/innen</span> <span style="font-size:13px;color:#64748b;font-weight:400;">— gesetzliche Information, kein Smartordi-Feature</span></div>
+      <div class="dash-card-header">
+        <span style="display:flex;align-items:center;gap:6px;font-size:inherit !important;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>e-card/ELGA-Pflicht für Wahlärzt/innen</span>
+        <button type="button" class="settings-info-toggle" onclick="toggleSettingsInfo(this,'elgaInfoPanel')" aria-label="Mehr erfahren"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      </div>
       <div class="dash-card-body">
-        <div style="font-size:14.5px;color:#475569;margin-bottom:12px;line-height:1.6;">
-          Seit 1.7.2026 sind Wahlärzt/innen gesetzlich verpflichtet, Diagnose-/Leistungsdaten über das e-Wahlpartner-Webportal zu übermitteln — unabhängig von der genutzten Praxissoftware. Smartordi selbst hat (und braucht) keine ELGA-Anbindung; nutzen Sie einfach das offizielle Portal parallel zu Smartordi.
-        </div>
+        <div style="font-size:13.5px;color:#64748b;margin-bottom:12px;line-height:1.5;">Gesetzliche Information, kein Smartordi-Feature — Wahlärzt/innen sind seit 1.7.2026 zur Datenübermittlung ans e-Wahlpartner-Portal verpflichtet.</div>
         <a href="https://www.gesundheit.gv.at/e-card" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-bottom:14px;color:#0E5E56;font-weight:700;font-size:14.5px;">→ Zum e-card-Portal (gesundheit.gv.at)</a>
         <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
           <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px;">Behandelte Patient/innen (letzte 12 Monate)</div>
           <div id="elgaPatientCount" style="font-size:24px;font-weight:800;color:#0f172a;">–</div>
           <div style="font-size:13px;color:#94a3b8;margin-top:2px;">Nur ein grober Anhaltspunkt für die ~300/Jahr-Verhältnismäßigkeits-Ausnahme — bitte im Zweifel rechtlich prüfen lassen, kein rechtsverbindlicher Nachweis.</div>
         </div>
+        <div id="elgaInfoPanel" class="settings-detail-panel">Seit 1.7.2026 sind Wahlärzt/innen gesetzlich verpflichtet, Diagnose-/Leistungsdaten über das e-Wahlpartner-Webportal zu übermitteln — unabhängig von der genutzten Praxissoftware. Smartordi selbst hat (und braucht) keine ELGA-Anbindung; nutzen Sie einfach das offizielle Portal parallel zu Smartordi.</div>
       </div>
     </div>
 
@@ -4914,7 +4964,7 @@ function accountToPatientRecord(a){
   // actually stored on this account, instead of hardcoded placeholders --
   // otherwise imported diagnoses/allergies/vaccinations would be saved but
   // silently never shown anywhere in Kartei.
-  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null,geschlecht:a.geschlecht||null};
+  return {id:a.id,name:a.fullName,svnr:a.svnr||'—',dob:a.dob||'',versicherung:a.versicherung||'—',tel:a.tel||'—',adresse:a.adresse||'—',email:a.email||'',sprache:'Deutsch',blutgruppe:a.blutgruppe||'—',diagnosen:a.diagnosen||'—',allergie:a.allergie||null,cave:a.cave||null,dsgvoDatum:'—',impfungen:a.impfungen||[],legacyHistory:a.legacyHistory||'',anamnese:a.anamnese||null,geschlecht:a.geschlecht||null};
 }
 function findPatientRecord(name){
   const demo=DEMO_PATIENTS.find(p=>p.name===name);
@@ -5484,6 +5534,11 @@ async function confirmMigrationImport(){
       versicherung:(s.KCD||'').trim()||undefined,
       svnr:(s.VNR||'').trim()||undefined,
       allergie:(s.ALL||'').trim()||undefined,
+      // supabase/phase80_patient_cave.sql -- CAV ("Cave") was already a
+      // recognized field in ENDS1_P_FIELDS (vendor/migration-normdatensatz.js)
+      // but was never actually read here, so it silently never reached any
+      // patient record on import. Same class of bug as phase72's GES fix.
+      cave:(s.CAV||'').trim()||undefined,
       diagnosen:(s.DDG||'').trim()||undefined,
       geschlecht:geschlecht,
       // Fields the current #P dictionary doesn't map, plus (ENDS1 only) the
@@ -5506,6 +5561,7 @@ async function confirmMigrationImport(){
         dob:extra.dob||existing.record.dob||null,
         diagnosen:extra.diagnosen||existing.record.diagnosen||null,
         allergie:extra.allergie||existing.record.allergie||null,
+        cave:extra.cave||existing.record.cave||null,
         legacy_history:extra.legacyHistory||existing.record.legacyHistory||null,
         geschlecht:extra.geschlecht||existing.record.geschlecht||null,
       }).catch(err=>{ console.error('Normdatensatz-Import: update fehlgeschlagen für',existing.username,err); return null; });
@@ -6036,6 +6092,53 @@ function populateKarteiStamm(name){
     allergieEl.style.display=p.allergie?'block':'none';
     allergieEl.textContent=p.allergie||'';
   }
+  const caveEl=document.getElementById('k-stamm-cave');
+  if(caveEl){
+    caveEl.style.display=p.cave?'flex':'none';
+    caveEl.textContent=p.cave?'⚠ CAVE: '+p.cave:'';
+  }
+  closeCaveEditor();
+  const noShowRow=document.getElementById('k-stamm-noshow-row');
+  if(noShowRow){
+    const noShowCount=loadTermine().filter(t=>t.patient===name&&t.status==='nicht_erschienen').length;
+    noShowRow.style.display=noShowCount>0?'flex':'none';
+    document.getElementById('k-stamm-noshow').textContent=noShowCount;
+  }
+}
+
+// supabase/phase80_patient_cave.sql -- editable, always-shown clinical
+// warning note (see the HTML comment above #k-stamm-cave). Distinct from
+// every other field in this section: those are all import/CSV-populated
+// only, this is the one the doctor types themselves, right here.
+function openCaveEditor(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.','error'); return; }
+  const p=findPatientRecord(name);
+  document.getElementById('k-cave-input').value=(p&&p.cave)||'';
+  document.getElementById('k-cave-editor').style.display='block';
+  document.getElementById('k-cave-edit-btn').style.display='none';
+}
+function closeCaveEditor(){
+  const editor=document.getElementById('k-cave-editor');
+  if(editor) editor.style.display='none';
+  const btn=document.getElementById('k-cave-edit-btn');
+  if(btn) btn.style.display='';
+}
+async function saveCaveNote(){
+  const name=document.getElementById('kartei-name')?.textContent;
+  if(!name||name==='Kein Patient ausgewählt'){ showToast('Bitte zuerst einen Patienten auswählen.','error'); return; }
+  const found=findPatientAccountByFullName(name);
+  if(!found){ showToast('Dieser Patient hat noch kein Cloud-Konto — der Cave-Hinweis kann erst gespeichert werden, sobald ein echtes Patientenkonto besteht.','error'); return; }
+  const text=document.getElementById('k-cave-input').value.trim();
+  try{
+    await upsertPatientIdentity(found.username,{cave:text||null});
+  }catch(e){
+    showToast('Speichern fehlgeschlagen: '+saveErrorMessage(e),'error');
+    return;
+  }
+  populateKarteiStamm(name);
+  if(typeof openRezeptTabForCurrentPatient==='function') openRezeptTabForCurrentPatient();
+  showToast('Cave-Hinweis gespeichert!');
 }
 
 // Groups the old 11 tabs down to 5 visible slots: Verlauf now carries the
@@ -6776,7 +6879,7 @@ async function sendVertretungBroadcast(){
     ? [form.fach,'in dieser Ordination'].filter(Boolean).join(' · ')
     : [form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
   const text=`ℹ Wichtiger Hinweis: ${myName} ist von ${vonFmt} bis ${bisFmt} abwesend. In dieser Zeit vertritt Sie: ${form.name}${contactParts?' ('+contactParts+')':''}.`;
-  // supabase/phase80_patient_message_translations.sql -- msgKey/msgParams
+  // supabase/phase83_patient_message_translations.sql -- msgKey/msgParams
   // carry the RAW von/bis ISO dates (not vonFmt/bisFmt above, which are
   // German-only) so patient.html's renderSystemMessage() can format them
   // in whatever language the patient's own device is set to.
@@ -6827,7 +6930,7 @@ async function sendAddressChangeBroadcast(){
   const adresse=(document.getElementById('setAdresse')?.value||'').trim();
   if(!adresse){ showToast('Bitte zuerst eine Adresse eingeben','error'); return; }
   const text='📍 Wichtiger Hinweis: Unsere Ordination ist umgezogen. Die neue Adresse lautet: '+adresse+'.';
-  // supabase/phase80_patient_message_translations.sql
+  // supabase/phase83_patient_message_translations.sql
   const msgKey='chat.system.addressChange';
   const msgParams={address:adresse};
   const now=new Date();
@@ -6929,7 +7032,7 @@ async function confirmTransfer(){
   }
 
   const text='↪ Sie wurden an '+toDoctorName+' weitergeleitet.'+(note?' Notiz: '+note:'');
-  // supabase/phase80_patient_message_translations.sql
+  // supabase/phase83_patient_message_translations.sql
   const msgKey='chat.system.transferred';
   const msgParams={doctorName:toDoctorName,note:note||null};
   const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime(),msgKey,msgParams});
@@ -7156,6 +7259,16 @@ window.addEventListener('load', async function() {
   renderLabResultInbox();
   subscribeLabResultsRealtime(renderLabResultInbox);
 });
+
+// Progressive-disclosure info toggle used by the Praxis-Chat/Labor-E-Mail/
+// e-card-ELGA settings cards: expands/collapses the card's fuller
+// explanation, kept out of the way until someone actually wants it.
+function toggleSettingsInfo(btn,panelId){
+  const panel=document.getElementById(panelId);
+  if(!panel) return;
+  const open=panel.classList.toggle('is-open');
+  btn.classList.toggle('is-open',open);
+}
 
 function copyLabEmailAddress(){
   const text=document.getElementById('labEmailAddress').value;

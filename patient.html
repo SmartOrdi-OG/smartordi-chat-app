@@ -311,6 +311,8 @@ body.windows-mode .view .app-window-titlebar{display:flex;}
 .uw-bubble>div{flex:1;min-width:0;}
 .uw-info-name{font-size:12px;font-weight:700;overflow-wrap:break-word;word-break:break-word;}
 .uw-info-sub{font-size:10px;opacity:0.8;}
+.uw-renew-btn{display:block;margin-top:6px;background:none;border:none;padding:0;font-family:inherit;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;}
+.uw-renew-btn:hover{text-decoration:underline;}
 
 .system-msg{
   align-self:center;background:white;border:1px solid var(--border);
@@ -1620,9 +1622,24 @@ function msgRowHtml(m){
   if(m.type==='doc'){
     bubble=`<div class="msg-bubble"><div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px;cursor:pointer;max-width:240px;"${downloadAttr}><span style="flex-shrink:0;display:inline-flex;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;overflow-wrap:break-word;word-break:break-word;">${escapeHtml(m.filename)}</div><div style="font-size:11px;opacity:0.8;">${escapeHtml(m.size||'')}</div></div></div></div>`;
   }else if(m.type==='uw'){
-    bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub||'')}</div></div></div></div>`;
+    // Real gap found via competitor research (see TODO.md): a big share of
+    // a typical Hausarzt practice's phone calls are requests to re-issue
+    // something the patient already got before -- a prescription refill,
+    // but just as often a new Krankenstandsbestätigung/Pflegefreistellung/
+    // Überweisung identical to a previous one. Any of these four document
+    // types the doctor sent (dir:'out' -- FROM the practice, never one the
+    // patient somehow sent themselves) gets the same one-tap "renew"
+    // shortcut -- isRenewableDocument()/requestDocumentRenewal() below
+    // recognize which of the four this bubble's own text actually is, no
+    // separate per-type button. event.stopPropagation() keeps the tap from
+    // also triggering the bubble's own downloadAttr click-to-open-PDF
+    // handler.
+    const renewBtn = (m.dir==='out' && isRenewableDocument(m.text))
+      ? `<button type="button" class="uw-renew-btn" onclick="event.stopPropagation();requestDocumentRenewal('${escapeHtml(String(m.text||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}')">🔁 Erneut anfordern</button>`
+      : '';
+    bubble=`<div class="msg-bubble">${escapeHtml(m.text)} <div class="uw-bubble"${downloadAttr}><span class="uw-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span><div><div class="uw-info-name">${escapeHtml(m.filename)}</div><div class="uw-info-sub">${escapeHtml(m.sub||'')}</div></div></div>${renewBtn}</div>`;
   }else{
-    // supabase/phase80_patient_message_translations.sql -- real user
+    // supabase/phase83_patient_message_translations.sql -- real user
     // request (2026-08-20): the handful of FIXED/system messages staff
     // sends (Termin confirmed/moved/cancelled, Vertretung/address-change
     // broadcasts, doctor transfer) now carry a language-neutral msgKey +
@@ -2456,6 +2473,49 @@ async function renderProfilArztRows(){
 // ── Chat ──
 function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,80)+'px';}
 
+// Real gap found via competitor research (see TODO.md): a big share of a
+// typical Hausarzt practice's phone calls are requests to re-issue
+// something the patient already got before -- not just prescriptions
+// (20-35% of calls per that same research), just as often a repeat
+// Krankenstandsbestätigung/Pflegefreistellung/Überweisung. All four
+// document types share the exact same "dir:'out', type:'uw'" chat-message
+// shape (vendor/kartei-rezept-ueberweisung.js's sendRezeptToChat()/
+// handleUwSend(), vendor/kartei-atteste.js's Pflegefreistellung/
+// Arbeitsunfähigkeit send paths) -- recognized here purely from each one's
+// own fixed text pattern, not from `sub` (Überweisung's own sub is
+// dynamic per-referral Fachrichtung/Dringlichkeit, not a stable label like
+// the other three).
+function isRenewableDocument(text){
+  return /^Rezept ausgestellt/.test(text)
+    || /^Überweisung →/.test(text)
+    || text==='Bestätigung: Pflegefreistellung ausgestellt'
+    || text==='Arbeitsunfähigkeitsmeldung ausgestellt';
+}
+// originalText is the exact text already shown on the original bubble --
+// reusing it (for Rezept/Überweisung, which carry real per-instance detail)
+// means the request is precise without the patient needing to retype or
+// remember anything. Deliberately reuses sendMsg()'s own real send path
+// (prefill the input, call it) rather than duplicating that logic -- this
+// is a real message like any other, always reviewed by staff before
+// anything new is actually issued, never auto-issued.
+function requestDocumentRenewal(originalText){
+  const inp=document.getElementById('chatInput');
+  if(!inp) return;
+  let ask;
+  if(/^Rezept ausgestellt/.test(originalText)){
+    ask='🔁 Bitte dieses Rezept erneut ausstellen: '+originalText.replace(/^Rezept ausgestellt\s*·\s*/,'');
+  }else if(/^Überweisung →/.test(originalText)){
+    ask='🔁 Bitte diese Überweisung erneut ausstellen: '+originalText.replace(/^Überweisung\s*→\s*/,'');
+  }else if(originalText==='Bestätigung: Pflegefreistellung ausgestellt'){
+    ask='🔁 Bitte erneut eine Pflegefreistellung-Bestätigung ausstellen.';
+  }else if(originalText==='Arbeitsunfähigkeitsmeldung ausgestellt'){
+    ask='🔁 Bitte erneut eine Arbeitsunfähigkeitsmeldung (Krankenstandsbestätigung) ausstellen.';
+  }else{
+    return; // Not one of the four recognized types -- the button shouldn't have shown at all.
+  }
+  inp.value=ask;
+  sendMsg();
+}
 async function sendMsg(){
   // Defense in depth alongside #chatInputArea being hidden by
   // renderPatientMessages() when the practice has turned chat off.

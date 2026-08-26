@@ -131,6 +131,32 @@ function anGfbSyncAll(root){
   root.querySelectorAll('.gfb-q select').forEach(anGfbSync);
 }
 
+// Doctor-side "highlights" helper: returns only the Gesundheitsfragebogen
+// rows currently answered "Ja" (with their "Wenn ja, ..." detail text, if
+// filled in) -- used by kartei-anamnese.js for the Kartei's collapsed-bar
+// highlights line and its "Nur Ja-Antworten anzeigen" filter, so a doctor
+// can see what actually needs attention without reading all 24 rows every
+// time. Kept here (not kartei-anamnese.js) since it's pure data extraction
+// over this same shared markup, same role as collectAnamneseSummaryLines()
+// plays for the PDF report -- but that one includes every non-empty field
+// (every Gesundheitsfragebogen select always has a value, "Nein" included),
+// so it can't answer "which ones are actually flagged" the way this does.
+function collectGfbAuffaelligkeiten(root){
+  if(!root) return [];
+  const out=[];
+  root.querySelectorAll('.gfb-q').forEach(q=>{
+    const select=q.querySelector('select');
+    if(!select||select.value!=='Ja') return;
+    const label=q.querySelector('span[data-i18n]');
+    const question=(label?label.textContent:'').trim();
+    if(!question) return;
+    const detailField=q.querySelector('.gfb-wennja');
+    const detail=(detailField?detailField.value:'').trim();
+    out.push(detail?question+' — '+detail:question);
+  });
+  return out;
+}
+
 const SPECIALTY_ANAMNESE = {
   'Kinderheilkunde': {
     label: 'Pädiatrie — Kinderheilkunde',

@@ -1,0 +1,22 @@
+-- ══════════════════════════════════════════════════════════════
+-- Phase 81: "you're up next" waiting-room chat notification
+--
+-- Real gap found via competitor research (see TODO.md): standalone
+-- "digital waiting room" apps (Dr.wait, Quickticket) exist specifically so
+-- a patient can wait away from the practice instead of physically in the
+-- Wartezimmer -- Quickticket's own published case studies show real,
+-- measured demand for this (37% of patients choosing to wait from home in
+-- one practice, an 80% drop in waiting-room crowding). None of the big
+-- all-in-one Ordinationssoftware bundle it in for free -- SmartOrdi
+-- already has a patient chat channel, so it can.
+--
+-- next_notified_at guards vendor/patient-data.js's notifyNextWaitingPatient()
+-- against sending the same patient this "you're up next" chat message twice
+-- for the same appointment (re-opened visit, doctor re-clicking Start, a
+-- re-render, ...).
+--
+-- Run this in the Supabase SQL editor. Then run schema_health_check.sql to
+-- confirm it applied cleanly.
+-- ══════════════════════════════════════════════════════════════
+
+alter table public.termine add column if not exists next_notified_at timestamptz;
