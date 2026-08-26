@@ -311,8 +311,17 @@ async function handleUwSend(){
         },session?session.username:null,docId);
       }catch(e){ console.error('Failed to persist structured Überweisung record',e); }
     }
+    // supabase/phase83_patient_message_translations.sql -- real user report
+    // (2026-08-26): this "uw" (document) message header/sub were missed by
+    // the original translation sweep entirely (it only ever looked at
+    // plain 'text' messages) and kept arriving in German regardless of the
+    // patient's language. an/fach/dring are raw values (recipient name,
+    // specialty, urgency) -- same "pass through untranslated" treatment as
+    // `art`/doctor names elsewhere in this feature, never translated
+    // further themselves.
     const msg={dir:'out', type:'uw', text:`Überweisung → ${d.an} (${d.fach}) · ${d.dring}`,
-      filename, sub:`${d.fach} · ${d.dring}`, docId, time:getTime()+' ✓'};
+      filename, sub:`${d.fach} · ${d.dring}`, docId, time:getTime()+' ✓',
+      msgKey:'chat.uw.ueberweisung', msgParams:{an:d.an, fach:d.fach, dring:d.dring}};
     appendRealMessage(d.pName,msg);
     // If this patient's chat happens to be the one currently open, redraw it
     // so the real persisted message replaces whatever's on screen right now.
@@ -587,8 +596,12 @@ async function sendRezeptToChat(){
       try{ await createPatientRezept(patientId,doc._rezeptFields,session?session.username:null,docId); }
       catch(e){ console.error('Failed to persist structured Rezept record',e); }
     }
+    // supabase/phase83_patient_message_translations.sql -- see the same
+    // note on the Überweisung sender above. summary (the medication list)
+    // is a raw value, same treatment as art/fach/dring elsewhere.
     const msg={dir:'out', type:'uw', text:`Rezept ausgestellt · ${doc._rezeptMedSummary}`,
-      filename, sub:'Kassenrezept', docId, time:getTime()+' ✓'};
+      filename, sub:'Kassenrezept', docId, time:getTime()+' ✓',
+      msgKey:'chat.uw.rezept', msgParams:{summary:doc._rezeptMedSummary}};
     appendRealMessage(name,msg);
     const chatNameEl=document.getElementById('chat-name');
     if(chatNameEl && chatNameEl.textContent===name){

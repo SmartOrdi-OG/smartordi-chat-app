@@ -15,6 +15,21 @@
 // it was invisible to a grep of *.html/vendor/*.js), notifyNextWaitingPatient()
 // (vendor/patient-data.js), and sendRecallReminder() (secretary.html).
 //
+// A second follow-up report the same day ("الرسايل لسة الماني ... بعتت رسالة
+// اوبرفايزونج و لسة عنوانها بالالماني") found a whole separate CATEGORY that
+// was missed: "uw" (document) chat messages -- the header/sub shown above a
+// Rezept/Überweisung/Pflegefreistellung/Arbeitsunfähigkeit PDF bubble
+// (vendor/kartei-rezept-ueberweisung.js, vendor/kartei-atteste.js). The
+// original sweep only ever looked at type:'text' messages; msgRowHtml()'s
+// 'uw' branch never checked msgKey at all. Reuses the SAME msg_key/
+// msg_params columns (no new migration needed) -- patient.html's
+// renderUwSub() (vendor/i18n-patient.js) derives the translated sub-line
+// from the same msgKey/msgParams the header uses. isRenewableDocument()/
+// requestDocumentRenewal() deliberately keep matching/reusing the RAW
+// (always-German) m.text unchanged -- that's the outgoing renewal request
+// text the PATIENT sends TO staff, who always see German regardless of the
+// patient's own language, same as every other staff-facing text in this app.
+//
 // Design (see vendor/i18n-patient.js's own comments for the full reasoning):
 // each sender now ALSO writes a language-neutral `msg_key` + `msg_params`
 // (raw ISO dates, plain display-name strings, raw categorical values --
@@ -37,6 +52,7 @@
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
+const { installJsPdfMock } = require('./helpers/jspdfStub');
 
 // ---------------------------------------------------------------------
 // Part 1: doctor.html senders persist the right msg_key/msg_params
@@ -273,6 +289,102 @@ test.describe('secretary.html Termin senders write msg_key/msg_params', () => {
 });
 
 // ---------------------------------------------------------------------
+// Part 2c: the 4 "uw" (document) senders write msg_key/msg_params -- the
+// second category phase83 missed entirely (see the file header).
+// ---------------------------------------------------------------------
+test.describe('doctor.html "uw" document senders write msg_key/msg_params', () => {
+  function seed() {
+    return {
+      staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+      practices: [{ id: 'prac1', name: 'Musterordination', plan: 'pro', adresse: 'Hauptstraße 1, 4020 Linz' }],
+      patients: [{ id: 'p1', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'ÖGK', svnr: '123', dob: '1985-01-01', adresse: 'Bahnhofstraße 5, 4020 Linz', join_status: 'approved' }],
+    };
+  }
+
+  async function setupPage(page, tab) {
+    await installJsPdfMock(page);
+    await installMockSupabase(page, seed(), () => {
+      sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+      localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+      localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+    });
+    await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+    await page.waitForTimeout(1200);
+    await page.evaluate(async (t) => {
+      await Promise.all([patientsReady, practiceSettingsReady, staffRosterReady]);
+      switchView('clinic');
+      toggleKartei();
+      document.getElementById('kartei-name').textContent = 'Maria Huber';
+      document.getElementById('kartei-meta').textContent = 'ÖGK · SV 123';
+      switchKarteiTab(t, document.querySelector(`.kartei-tab[onclick*="${t}"]`));
+    }, tab);
+  }
+
+  test('sendPflegefreistellungToChat() writes chat.uw.pflegefreistellung with no dynamic params', async ({ page }) => {
+    await setupPage(page, 'pflegefreistellung');
+    await page.fill('#pf-antragsteller', 'Johann Huber');
+    await page.fill('#pf-verwandtschaft', 'Ehepartner');
+    await page.fill('#pf-von', '2026-08-10');
+    await page.fill('#pf-bis', '2026-08-12');
+    const result = await page.evaluate(async () => {
+      await sendPflegefreistellungToChat();
+      await new Promise(r => setTimeout(r, 100));
+      const row = window.__store.patient_messages.find(m => m.msg_key === 'chat.uw.pflegefreistellung');
+      return row ? { text: row.text, doc_sub: row.doc_sub } : null;
+    });
+    expect(result).not.toBeNull();
+    expect(result.text).toBe('Bestätigung: Pflegefreistellung ausgestellt'); // German fallback unchanged
+  });
+
+  test('sendArbeitsunfaehigkeitToChat() writes chat.uw.attest with no dynamic params', async ({ page }) => {
+    await setupPage(page, 'arbeitsunfaehigkeit');
+    await page.fill('#au2-von', '2026-08-05');
+    await page.fill('#au2-bis', '2026-08-09');
+    const result = await page.evaluate(async () => {
+      await sendArbeitsunfaehigkeitToChat();
+      await new Promise(r => setTimeout(r, 100));
+      const row = window.__store.patient_messages.find(m => m.msg_key === 'chat.uw.attest');
+      return row ? { text: row.text } : null;
+    });
+    expect(result).not.toBeNull();
+    expect(result.text).toBe('Arbeitsunfähigkeitsmeldung ausgestellt');
+  });
+
+  test('handleUwSend() (Überweisung) writes chat.uw.ueberweisung with the raw an/fach/dring', async ({ page }) => {
+    await setupPage(page, 'ueberweisung');
+    await page.fill('#uwAn', 'Dr. Klaus Weber');
+    await page.selectOption('#uwFach', 'Kardiologie');
+    await page.selectOption('#uwDring', 'Dringend');
+    const result = await page.evaluate(async () => {
+      await handleUwSend();
+      await new Promise(r => setTimeout(r, 100));
+      const row = window.__store.patient_messages.find(m => m.msg_key === 'chat.uw.ueberweisung');
+      return row ? { msgParams: row.msg_params, text: row.text } : null;
+    });
+    expect(result).not.toBeNull();
+    expect(result.msgParams.an).toBe('Dr. Klaus Weber');
+    expect(result.msgParams.fach).toBe('Kardiologie'); // raw categorical value, not translated further
+    expect(result.msgParams.dring).toBe('Dringend');
+    expect(result.text).toContain('Dr. Klaus Weber');
+  });
+
+  test('sendRezeptToChat() writes chat.uw.rezept with the raw medication summary', async ({ page }) => {
+    await setupPage(page, 'rezept');
+    await page.fill('#rz-med1', 'Amoxicillin 500mg');
+    await page.fill('#rz-dose1', '3x täglich');
+    const result = await page.evaluate(async () => {
+      await sendRezeptToChat();
+      await new Promise(r => setTimeout(r, 100));
+      const row = window.__store.patient_messages.find(m => m.msg_key === 'chat.uw.rezept');
+      return row ? { msgParams: row.msg_params, text: row.text } : null;
+    });
+    expect(result).not.toBeNull();
+    expect(result.msgParams.summary).toContain('Amoxicillin 500mg');
+    expect(result.text).toContain('Amoxicillin 500mg');
+  });
+});
+
+// ---------------------------------------------------------------------
 // Part 3: patient.html renders msgRowHtml()/renderSystemMessage() correctly
 // ---------------------------------------------------------------------
 test.describe('patient.html renders system chat messages in the patient\'s selected language', () => {
@@ -393,6 +505,49 @@ test.describe('patient.html renders system chat messages in the patient\'s selec
     expect(reminderHtml).not.toContain('Erinnerung');
     expect(turnHtml).toContain('The appointment before yours has just begun');
     expect(turnHtml).not.toContain('Der Termin vor dir');
+  });
+
+  // Part 2c's "uw" (document) header/sub -- the second category phase83
+  // missed entirely (see the file header).
+  test('German rendering of a "uw" bubble (chat.uw.ueberweisung) is byte-identical to the old hardcoded header/sub', async ({ page }) => {
+    await setupPage(page);
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'out', type: 'uw', time: '10:00', filename: 'Ueberweisung.pdf',
+      text: 'Überweisung → Dr. Klaus Weber (Kardiologie) · Dringend', // raw fallback, unchanged
+      sub: 'Kardiologie · Dringend',
+      msgKey: 'chat.uw.ueberweisung',
+      msgParams: { an: 'Dr. Klaus Weber', fach: 'Kardiologie', dring: 'Dringend' },
+    }));
+    expect(html).toContain('Überweisung → Dr. Klaus Weber (Kardiologie) · Dringend');
+    expect(html).toContain('Kardiologie · Dringend');
+  });
+
+  test('English rendering of a "uw" bubble translates chat.uw.attest header and sub', async ({ page }) => {
+    await setupPage(page, 'en');
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'out', type: 'uw', time: '10:00', filename: 'Attest.pdf',
+      text: 'Arbeitsunfähigkeitsmeldung ausgestellt', sub: 'Krankenstandsbestätigung',
+      msgKey: 'chat.uw.attest', msgParams: {},
+    }));
+    expect(html).toContain('Sick note issued');
+    expect(html).toContain('Sick note confirmation');
+    // The raw German m.text DOES still appear once, inside the renewal
+    // button's onclick -- by design (see the file header): that's the
+    // outgoing request text sent TO staff, always German regardless of the
+    // patient's own language, not something the patient reads. Only the
+    // VISIBLE bubble content (before the button) must not show it.
+    const bubbleOnly = html.slice(0, html.indexOf('uw-renew-btn'));
+    expect(bubbleOnly).not.toContain('Arbeitsunfähigkeitsmeldung');
+  });
+
+  test('a "uw" message with no msgKey still falls back to the raw text/sub columns unchanged', async ({ page }) => {
+    await setupPage(page, 'en'); // even in a non-German language
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'out', type: 'uw', time: '10:00', filename: 'Rezept.pdf',
+      text: 'Rezept ausgestellt · Ibuprofen 400mg', sub: 'Kassenrezept',
+    }));
+    expect(html).toContain('Rezept ausgestellt · Ibuprofen 400mg');
+    expect(html).toContain('Kassenrezept');
   });
 
   test('a message with no msgKey still falls back to the plain text column unchanged (free-typed / pre-feature messages)', async ({ page }) => {
