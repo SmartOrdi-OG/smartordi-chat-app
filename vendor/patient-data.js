@@ -153,8 +153,16 @@ async function notifyNextWaitingPatient(startedTermin){
   // same defensive skip as saveAnamnese()/saveCaveNote() above.
   if(!next||!next.patientId) return;
   try{
+    // supabase/phase84_more_message_translations.sql -- real user report
+    // (2026-08-26): this message was missed by phase83's original sweep
+    // (it's a plain client-side sendMessageToPatient() call like the other
+    // 6, just triggered by starting a visit instead of a dedicated button)
+    // and kept arriving in German regardless of the patient's language.
+    // No dynamic content, so msgParams is just {} -- trParams() handles an
+    // empty/absent params object fine.
     await sendMessageToPatient(next.patientId,{dir:'out',type:'text',
-      text:'🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.'});
+      text:'🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.',
+      msgKey:'chat.system.turnApproaching', msgParams:{}});
     const now=new Date().toISOString();
     const {error}=await sb.from('termine').update({next_notified_at:now}).eq('id',next.id);
     if(error){ console.error('notifyNextWaitingPatient: marking next_notified_at failed',error); return; }

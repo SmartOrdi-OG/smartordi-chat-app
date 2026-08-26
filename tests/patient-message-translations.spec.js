@@ -7,6 +7,14 @@
 // so a patient using the app in English/Arabic/Turkish/Bosnian still saw
 // German system messages forever, regardless of their own language choice.
 //
+// phase84_more_message_translations.sql (2026-08-26, real user report:
+// "الرسايل لسة بتوصل الماني حتى لما بغير اللغة" -- still arriving in German
+// even after changing the language) added 3 more fixed/system messages that
+// phase83's original sweep missed entirely: send_termine_reminders() (a
+// pg_cron job, server-side only -- see that migration's own header for why
+// it was invisible to a grep of *.html/vendor/*.js), notifyNextWaitingPatient()
+// (vendor/patient-data.js), and sendRecallReminder() (secretary.html).
+//
 // Design (see vendor/i18n-patient.js's own comments for the full reasoning):
 // each sender now ALSO writes a language-neutral `msg_key` + `msg_params`
 // (raw ISO dates, plain display-name strings, raw categorical values --
@@ -128,6 +136,46 @@ test.describe('doctor.html system-message senders write msg_key/msg_params', () 
 });
 
 // ---------------------------------------------------------------------
+// Part 1b: notifyNextWaitingPatient() (vendor/patient-data.js) -- one of the
+// 3 messages missed by phase83's original sweep, closed by phase84.
+// ---------------------------------------------------------------------
+test.describe('notifyNextWaitingPatient() writes msg_key/msg_params', () => {
+  async function setupPage(page) {
+    await installMockSupabase(page, {
+      staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+      practices: [{ id: 'prac1' }],
+      patients: [
+        { id: 'p1', username: 'karl.gruber', full_name: 'Karl Gruber', name: 'Karl', versicherung: 'ÖGK', svnr: '456', dob: '1970-02-02', join_status: 'approved' },
+        { id: 'p2', username: 'maria.huber', full_name: 'Maria Huber', name: 'Maria', versicherung: 'BVAEB', svnr: '789', dob: '1985-05-05', join_status: 'approved' },
+      ],
+      termine: [
+        { id: 't1', patient_id: 'p1', patient_name: 'Karl Gruber', art: 'Kontrolle', date: '2026-08-05', time: '13:00', end_time: '13:20', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
+        { id: 't2', patient_id: 'p2', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-08-05', time: '13:20', end_time: '13:40', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() },
+      ],
+    }, () => {
+      sessionStorage.setItem('smartordi_user', JSON.stringify({ role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true }));
+      localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));
+      localStorage.setItem('smartordi_staff_accounts', JSON.stringify({ 'dr.ahmed': { username: 'dr.ahmed', fullName: 'Dr. Sarah Ahmed', role: 'arzt', isAdmin: true, fach: 'Allgemeinmedizin' } }));
+    });
+    await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+    await page.waitForTimeout(1200);
+    await page.evaluate(async () => { await Promise.all([patientsReady, termineReady]); });
+  }
+
+  test('starting a visit writes chat.system.turnApproaching with no dynamic params', async ({ page }) => {
+    await setupPage(page);
+    const result = await page.evaluate(async () => {
+      await startTerminVisit('t1');
+      await new Promise(r => setTimeout(r, 100));
+      const row = window.__store.patient_messages.find(m => m.msg_key === 'chat.system.turnApproaching');
+      return row ? { msgParams: row.msg_params, text: row.text } : null;
+    });
+    expect(result).not.toBeNull();
+    expect(result.text).toContain('Praxis kommen'); // German fallback unchanged
+  });
+});
+
+// ---------------------------------------------------------------------
 // Part 2: secretary.html Termin senders persist the right msg_key/msg_params
 // ---------------------------------------------------------------------
 test.describe('secretary.html Termin senders write msg_key/msg_params', () => {
@@ -205,6 +253,23 @@ test.describe('secretary.html Termin senders write msg_key/msg_params', () => {
     expect(result.msgParams.time).toBe('14:00–14:30');
     expect(result.text).toContain('verschoben');
   });
+
+  // Part 2b: sendRecallReminder() -- the other message missed by phase83's
+  // original sweep, closed by phase84.
+  test('sendRecallReminder() writes chat.system.recallReminder with the raw name/label/monthsSince', async ({ page }) => {
+    await setupPage(page);
+    const result = await page.evaluate(async () => {
+      sendRecallReminder('Maria Huber', 'Diabetes', 8);
+      await new Promise(r => setTimeout(r, 100));
+      const msgs = findPatientByFullName('Maria Huber').accounts['maria.huber'].messages;
+      return msgs[0];
+    });
+    expect(result.msgKey).toBe('chat.system.recallReminder');
+    expect(result.msgParams.name).toBe('Maria Huber');
+    expect(result.msgParams.label).toBe('Diabetes'); // raw categorical value, same as `art`/doctor names elsewhere
+    expect(result.msgParams.monthsSince).toBe(8);
+    expect(result.text).toContain('Kontrolluntersuchung');
+  });
 });
 
 // ---------------------------------------------------------------------
@@ -279,6 +344,55 @@ test.describe('patient.html renders system chat messages in the patient\'s selec
     }));
     expect(html).toContain('انتقلت عيادتنا إلى مكان جديد');
     expect(html).toContain('Neue Str 5, Wien');
+  });
+
+  // phase84 -- the 3 messages missed by phase83's original sweep.
+  test('German rendering of chat.system.terminReminder (send_termine_reminders() cron job) is byte-identical to the old hardcoded sentence', async ({ page }) => {
+    await setupPage(page);
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'in', type: 'text', time: '10:00',
+      msgKey: 'chat.system.terminReminder',
+      msgParams: { time: '09:30', art: 'Kontrolle' },
+    }));
+    expect(html).toContain('Erinnerung: Sie haben morgen um 09:30 Uhr einen Termin (Kontrolle) bei uns. Bei Verhinderung bitte rechtzeitig absagen.');
+  });
+
+  test('German rendering of chat.system.turnApproaching (notifyNextWaitingPatient()) is byte-identical to the old hardcoded sentence', async ({ page }) => {
+    await setupPage(page);
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'in', type: 'text', time: '10:00',
+      msgKey: 'chat.system.turnApproaching',
+      msgParams: {},
+    }));
+    expect(html).toContain('🕒 Der Termin vor dir hat gerade begonnen — du kannst jetzt langsam in die Praxis kommen.');
+  });
+
+  test('German rendering of chat.system.recallReminder (sendRecallReminder()) is byte-identical to the old hardcoded sentence', async ({ page }) => {
+    await setupPage(page);
+    const html = await page.evaluate(() => msgRowHtml({
+      dir: 'in', type: 'text', time: '10:00',
+      msgKey: 'chat.system.recallReminder',
+      msgParams: { name: 'Maria Huber', label: 'Diabetes', monthsSince: 8 },
+    }));
+    expect(html).toContain('Guten Tag Maria Huber! Laut unseren Unterlagen wäre bei Ihnen eine Kontrolluntersuchung (Diabetes) fällig — Ihr letzter Eintrag liegt 8 Monate zurück. Bitte vereinbaren Sie bei Gelegenheit einen Termin.');
+  });
+
+  test('English rendering translates chat.system.terminReminder and chat.system.turnApproaching', async ({ page }) => {
+    await setupPage(page, 'en');
+    const reminderHtml = await page.evaluate(() => msgRowHtml({
+      dir: 'in', type: 'text', time: '10:00',
+      msgKey: 'chat.system.terminReminder',
+      msgParams: { time: '09:30', art: 'Kontrolle' },
+    }));
+    const turnHtml = await page.evaluate(() => msgRowHtml({
+      dir: 'in', type: 'text', time: '10:00',
+      msgKey: 'chat.system.turnApproaching',
+      msgParams: {},
+    }));
+    expect(reminderHtml).toContain('Reminder: you have an appointment tomorrow at 09:30 (Kontrolle)');
+    expect(reminderHtml).not.toContain('Erinnerung');
+    expect(turnHtml).toContain('The appointment before yours has just begun');
+    expect(turnHtml).not.toContain('Der Termin vor dir');
   });
 
   test('a message with no msgKey still falls back to the plain text column unchanged (free-typed / pre-feature messages)', async ({ page }) => {

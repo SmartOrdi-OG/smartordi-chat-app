@@ -212,7 +212,14 @@ from (values
   -- linked sibling (not the account's root/direct profile) silently attaches
   -- the new child to that sibling's own dormant auth_user_id instead of the
   -- family's real login, so it never shows up when they actually log in.
-  ('staff_add_linked_child', 'v_root_owner_auth')
+  ('staff_add_linked_child', 'v_root_owner_auth'),
+  -- phase84: catches a deployed send_termine_reminders() still missing
+  -- msg_key/msg_params -- without it, the cron-driven 24h appointment
+  -- reminder (the only one of the 7 fixed/system chat messages generated
+  -- entirely server-side, with no JS sender at all) keeps arriving in
+  -- German forever regardless of the patient's selected language, same gap
+  -- phase83 closed for the other 6 button-triggered messages.
+  ('send_termine_reminders', 'chat.system.terminReminder')
 ) as f(name, expect)
 
 union all
