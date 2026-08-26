@@ -256,7 +256,9 @@ select 'patient_messages column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_messages' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'id','patient_id','dir','type','text','sent_by','created_at','doc_id','filename','doc_sub','practice_id'
+  'id','patient_id','dir','type','text','sent_by','created_at','doc_id','filename','doc_sub','practice_id',
+  -- phase83
+  'msg_key','msg_params'
 ]) as c
 
 union all

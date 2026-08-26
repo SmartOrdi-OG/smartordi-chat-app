@@ -805,7 +805,15 @@ async function upsertGuardianIdentity(username,fields){
 // hydrateRealThreadFromSupabase() in doctor.html/secretary.html.
 async function sendMessageToPatient(patientId,msg){
   const row={patient_id:patientId, dir:msg.dir, type:msg.type||'text', text:msg.text||null,
-    doc_id:msg.docId||null, filename:msg.filename||null, doc_sub:msg.sub||null};
+    doc_id:msg.docId||null, filename:msg.filename||null, doc_sub:msg.sub||null,
+    // supabase/phase83_patient_message_translations.sql -- present only for
+    // the handful of FIXED/system messages (Termin confirmed/moved/
+    // cancelled, Vertretung/address-change broadcasts, doctor transfer)
+    // that a sender built via an i18n template instead of typing free text
+    // -- see patient.html's msgRowHtml() for how these get rendered back in
+    // the patient's own chosen language. null for everything else (a
+    // patient's own reply, staff's own free-typed chat message).
+    msg_key:msg.msgKey||null, msg_params:msg.msgParams||null};
   const {data,error}=await sb.from('patient_messages').insert(row).select().single();
   if(error){ console.error('sendMessageToPatient failed',error); throw error; }
   return data;

@@ -6879,6 +6879,12 @@ async function sendVertretungBroadcast(){
     ? [form.fach,'in dieser Ordination'].filter(Boolean).join(' · ')
     : [form.fach,form.adresse,form.tel?'Tel: '+form.tel:'',form.email?'E-Mail: '+form.email:''].filter(Boolean).join(' · ');
   const text=`ℹ Wichtiger Hinweis: ${myName} ist von ${vonFmt} bis ${bisFmt} abwesend. In dieser Zeit vertritt Sie: ${form.name}${contactParts?' ('+contactParts+')':''}.`;
+  // supabase/phase83_patient_message_translations.sql -- msgKey/msgParams
+  // carry the RAW von/bis ISO dates (not vonFmt/bisFmt above, which are
+  // German-only) so patient.html's renderSystemMessage() can format them
+  // in whatever language the patient's own device is set to.
+  const msgKey='chat.system.vertretung';
+  const msgParams={myName,von:form.von,bis:form.bis,substituteName:form.name,contact:contactParts||null};
   // Every patient with a Termin under this doctor -- Termine themselves are
   // never bounded, but patientsForCurrentDoctor()'s "does this patient
   // still have a real account" check used to go through loadPatients()'s
@@ -6900,7 +6906,7 @@ async function sendVertretungBroadcast(){
   const sentTo=[];
   names.forEach(function(name){
     const account=byFullName[name];
-    if(account&&appendRealMessageForAccount(name,{dir:'out',type:'text',text,time},account)) sentTo.push(name);
+    if(account&&appendRealMessageForAccount(name,{dir:'out',type:'text',text,time,msgKey,msgParams},account)) sentTo.push(name);
   });
   const {data,error}=await sb.from('practice_vertretung').upsert({
     arzt_id:me, von:form.von, bis:form.bis, mode:form.mode,
@@ -6924,6 +6930,9 @@ async function sendAddressChangeBroadcast(){
   const adresse=(document.getElementById('setAdresse')?.value||'').trim();
   if(!adresse){ showToast('Bitte zuerst eine Adresse eingeben','error'); return; }
   const text='📍 Wichtiger Hinweis: Unsere Ordination ist umgezogen. Die neue Adresse lautet: '+adresse+'.';
+  // supabase/phase83_patient_message_translations.sql
+  const msgKey='chat.system.addressChange';
+  const msgParams={address:adresse};
   const now=new Date();
   const time=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'); // sent-tick is derived from m.dir at render time, not baked into the string
   const sentTo=[];
@@ -6934,7 +6943,7 @@ async function sendAddressChangeBroadcast(){
   Object.keys(accounts).forEach(function(u){
     const a=accounts[u];
     if(!a||!a.fullName||a.role==='guardian'||a.joinStatus==='pending'||a.joinStatus==='rejected') return;
-    if(appendRealMessageForAccount(a.fullName,{dir:'out',type:'text',text,time},a)) sentTo.push(a.fullName);
+    if(appendRealMessageForAccount(a.fullName,{dir:'out',type:'text',text,time,msgKey,msgParams},a)) sentTo.push(a.fullName);
   });
   renderPatientList();
   const noteEl=document.getElementById('addressBroadcastNote');
@@ -7023,7 +7032,10 @@ async function confirmTransfer(){
   }
 
   const text='↪ Sie wurden an '+toDoctorName+' weitergeleitet.'+(note?' Notiz: '+note:'');
-  const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime()});
+  // supabase/phase83_patient_message_translations.sql
+  const msgKey='chat.system.transferred';
+  const msgParams={doctorName:toDoctorName,note:note||null};
+  const messaged=appendRealMessage(patientName,{dir:'out',type:'text',text,time:getTime(),msgKey,msgParams});
 
   // No modal to close anymore -- just clear the note so the panel reads as
   // "done" (a DB error above returns before this point, leaving whatever
