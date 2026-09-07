@@ -10,6 +10,18 @@ const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { installMockSupabase } = require('./helpers/mockSupabase');
 
+// Computed relative to whenever the suite actually runs, not a literal
+// future-looking string frozen at authoring time -- a hardcoded date (e.g.
+// '2026-09-01') silently turns into a past date once real time catches up
+// to it, and these tests all depend on the fixture Termin being treated as
+// "upcoming" (real incident: all 4 tests below started failing once today's
+// date passed 2026-09-01, even though nothing in the app had regressed).
+function futureDateStr(daysFromNow){
+  const d=new Date();
+  d.setDate(d.getDate()+daysFromNow);
+  return d.toISOString().slice(0,10);
+}
+
 function seed(extra) {
   return Object.assign({
     staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
@@ -33,7 +45,7 @@ async function setupPage(page, extra) {
 
 test('selecting a patient shows the overview pane (Nächste Termine) with the popup closed, not the conversation directly', async ({ page }) => {
   await setupPage(page, {
-    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() }],
+    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: futureDateStr(14), time: '10:00', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() }],
   });
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(300);
@@ -276,7 +288,7 @@ test('the floating chat popup width grows and shrinks with the viewport ("تكب
 // actionable cards (terminRowHtml()) Termine's own day-detail panel uses.
 test('the overview pane\'s "Nächste Termine" cards are actionable (Bestätigen/Verschieben/Absagen), not just a read-only summary', async ({ page }) => {
   await setupPage(page, {
-    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
+    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: futureDateStr(14), time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
   });
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(300);
@@ -301,7 +313,7 @@ test('the overview pane\'s "Nächste Termine" cards are actionable (Bestätigen/
 
 test('the overview pane\'s Termine cards don\'t repeat the patient\'s own name (redundant -- every card there already belongs to them)', async ({ page }) => {
   await setupPage(page, {
-    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
+    termine: [{ id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: futureDateStr(14), time: '10:00', status: 'neu', arzt_id: 'u1', created_at: new Date().toISOString() }],
   });
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(300);
@@ -323,7 +335,7 @@ test('the "Chat öffnen" button stays reachable (via internal scroll) even when 
   await page.setViewportSize({ width: 1920, height: 750 });
   await setupPage(page, {
     termine: [
-      { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: '2026-09-01', time: '10:30', end_time: '10:45', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
+      { id: 't1', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Kontrolle', date: futureDateStr(14), time: '10:30', end_time: '10:45', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
       { id: 't2', patient_id: 'p1', patient_name: 'Maria Huber', art: 'Ordination', date: '2026-10-10', time: '15:00', end_time: '15:20', status: 'bestaetigt', arzt_id: 'u1', created_at: new Date().toISOString() },
     ],
   });
