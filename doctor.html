@@ -401,8 +401,8 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
   #karteiPanel .k-form-input{font-size:14px !important;padding:11px 14px !important;}
   #karteiPanel .k-form-save{font-size:14.5px;padding:12px 28px;}
   #karteiPanel .k-dsgvo-note{font-size:11.5px;}
-  #karteiPanel .k-section-title{font-size:12.5px;}
-  #karteiPanel .k-row{font-size:13.5px;}
+  #karteiPanel .k-section-title{font-size:13.5px;}
+  #karteiPanel .k-row{font-size:14.5px;}
   #karteiPanel .k-visit-diag{font-size:13.5px;}
   #karteiPanel .k-visit-notes{font-size:12.5px;}
   #karteiPanel .k-visit-therapy{font-size:12.5px;}
@@ -999,8 +999,8 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
      column, so its mobile-era sizes read as too small for the space. */
   body.windows-mode .kartei-patient-name{font-size:15px;}
   body.windows-mode .kartei-patient-meta{font-size:13px;}
-  body.windows-mode .k-section-title{font-size:12px;}
-  body.windows-mode .k-row{font-size:14px;}
+  body.windows-mode .k-section-title{font-size:13px;}
+  body.windows-mode .k-row{font-size:15px;}
   /* Verlauf (visit history) entries -- same gap as the rest of Kartei
      above, just missed the first pass since they're rendered by a
      different function (filterVisits(), not populateKarteiStamm()). */
@@ -1298,20 +1298,21 @@ body.windows-mode #karteiBtn{display:none;}
    label and its value across the entire window on a large monitor. */
 /* "Klinisches Register" treatment (2026-09-08, agreed direction for dense
    clinical panels): same brand teal (var(--primary)) and same markup/ids as
-   before -- CSS-only, so every k-stamm-*/k-section test that checks
-   id/textContent/inline style.display keeps passing unchanged. Swaps the
-   soft rounded-card look for a bordered, tabular one: a teal rule under
-   each section title instead of a colored left bar, tighter rows, and
-   IBM Plex Mono (already loaded above) for labels/values so numbers and
-   dates line up the way they do on a real lab printout. */
+   before -- CSS-only, so every kartei-cave/kartei-stamm-default-empty/
+   termin-no-show test that checks id/textContent/inline style.display
+   keeps passing unchanged. Swaps the soft rounded-card look for a
+   bordered, tabular one: a teal rule under each section title instead of
+   a colored left bar, tighter rows, and IBM Plex Mono (already loaded
+   above) for labels/values so numbers and dates line up the way they do
+   on a real lab printout. */
 .k-section{background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:none;margin:0 auto 10px;max-width:640px;padding:14px 16px;}
-.k-section-title{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--primary);display:flex;align-items:center;gap:7px;}
+.k-section-title{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--primary);display:flex;align-items:center;gap:7px;}
 .k-section-title svg{color:var(--primary);flex-shrink:0;}
-.k-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
+.k-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
 .k-row:last-child{border-bottom:none;}
 .k-label-wrap{display:flex;align-items:center;gap:6px;}
 .k-label-wrap svg{color:var(--text-3);flex-shrink:0;}
-.k-label{color:var(--text-3);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.02em;}
+.k-label{color:var(--text-3);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;}
 .k-value{font-weight:600;color:var(--text-1);text-align:right;max-width:60%;font-variant-numeric:tabular-nums;}
 .k-alert{background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:8px 12px;font-size:11px;font-weight:600;color:#92400e;display:flex;align-items:center;gap:6px;margin-top:8px;}
 
