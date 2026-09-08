@@ -3704,11 +3704,24 @@ function terminStatusBadge(status){
   if(status==='abgesagt') return '<span style="display:inline-flex;align-items:center;background:#f1f5f9;color:#94a3b8;padding:2px 7px;border-radius:10px;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>';
   return '<span style="font-size:10px;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:10px;font-weight:700;flex-shrink:0;">Neu</span>';
 }
+// "Klinisches Register" treatment (2026-09-08, second step after the Kartei
+// header -- agreed to start with this exact list). A dedicated status label
+// (dashTerminStatusLabel) instead of reusing the shared terminStatusBadge()
+// -- that function also renders the "Alle Termine" modal, which is a
+// separate, not-yet-touched step, so changing it here would have silently
+// restyled that list too. Layout: leading monospace time (was a trailing
+// column after an avatar circle) reads like a schedule/manifest, tightest
+// row spacing yet since this list only ever shows a handful of rows.
+function dashTerminStatusLabel(status){
+  if(status==='bestaetigt') return '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.03em;color:#0E5E56;border:1px solid #0E5E56;background:#EAF4F1;padding:2px 6px;border-radius:3px;flex-shrink:0;">BESTÄTIGT</span>';
+  if(status==='abgesagt') return '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.03em;color:#7c8a92;border:1px solid #d7dee2;background:#f5f7f8;padding:2px 6px;border-radius:3px;flex-shrink:0;">ABGESAGT</span>';
+  return '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:9.5px;font-weight:600;letter-spacing:0.03em;color:#9a6a00;border:1px solid #c99a2e;background:#fbf3e1;padding:2px 6px;border-radius:3px;flex-shrink:0;">NEU</span>';
+}
 function dashTerminRowHtml(t,dueSet){
-  return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f8fafc;">
-    <div style="width:36px;height:36px;border-radius:50%;background:#EAF4F1;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:${colorForName(t.patient)};flex-shrink:0;">${escapeHtml(t.patient[0])}</div>
-    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(t.patient)}${dueSet.has(t.patient)?' <span title="Impfung fällig"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>':''}${(t.reason&&t.reason.length)||t.reasonNote?' <span title="Besuchsgrund vorhanden"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg></span>':''}</div><div style="font-size:11px;color:#64748b;">${escapeHtml(t.art)}${t.versicherung?' · '+escapeHtml(t.versicherung):''}</div></div>
-    <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#0f172a;">${t.time}${t.endTime?'–'+t.endTime:''}</div>${terminStatusBadge(t.status)}</div>
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #eef1f2;">
+    <div style="width:42px;flex-shrink:0;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#0f172a;font-variant-numeric:tabular-nums;">${t.time}${t.endTime?'<br><span style="font-size:9.5px;color:#7c8a92;">–'+t.endTime+'</span>':''}</div>
+    <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;color:#0f172a;">${escapeHtml(t.patient)}${dueSet.has(t.patient)?' <span title="Impfung fällig"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>':''}${(t.reason&&t.reason.length)||t.reasonNote?' <span title="Besuchsgrund vorhanden"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1" ry="1"/></svg></span>':''}</div><div style="font-size:11px;color:#7c8a92;font-family:'IBM Plex Mono',monospace;">${escapeHtml(t.art)}${t.versicherung?' · '+escapeHtml(t.versicherung):''}</div></div>
+    ${dashTerminStatusLabel(t.status)}
   </div>`;
 }
 function renderDashTermine(){
