@@ -1028,9 +1028,9 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .search-box input:focus{border-color:#0E5E56;background:white;box-shadow:0 0 0 3px rgba(14,94,86,0.1);}
 .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:14px;}
 .patient-list{flex:1;overflow-y:auto;}
-.patient-item{padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background 0.15s;border-bottom:1px solid #f1f5f9;position:relative;}
-.patient-item:hover{background:#EAF4F1;}
-.patient-item.active{background:#EAF4F1;border-left:3px solid #0E5E56;}
+.patient-item{margin:6px 10px;padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s;border:1px solid var(--border);border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(16,24,29,0.05);position:relative;}
+.patient-item:hover{background:#EAF4F1;border-color:#0E5E56;}
+.patient-item.active{background:#EAF4F1;border-color:#0E5E56;box-shadow:0 3px 10px rgba(14,94,86,0.15);}
 .patient-item.transferred{border-left:3px solid #f59e0b;}
 .avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:white;flex-shrink:0;position:relative;}
 .patient-list-section-title{padding:10px 16px 6px;font-size:10.5px;font-weight:800;color:var(--text-1);text-transform:uppercase;letter-spacing:0.6px;background:#fafbfc;}
@@ -1249,14 +1249,15 @@ body.windows-mode #karteiBtn{display:none;}
 .kartei-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:white;flex-shrink:0;}
 .kartei-patient-name{font-size:13px;font-weight:800;color:var(--text-1);}
 .kartei-patient-meta{font-size:11px;color:var(--text-2);margin-top:1px;}
-.kartei-tabs{display:flex;background:white;flex-shrink:0;overflow-x:auto;overflow-y:hidden;border-bottom:1px solid var(--border);padding:8px;gap:4px;scrollbar-width:none;-ms-overflow-style:none;}
+.kartei-tabs{display:flex;background:#f1f5f4;flex-shrink:0;overflow-x:auto;overflow-y:hidden;margin:8px;border-radius:10px;padding:5px;gap:4px;scrollbar-width:none;-ms-overflow-style:none;}
 .kartei-tabs::-webkit-scrollbar{display:none;}
-.kartei-tab{flex-shrink:0;padding:7px 14px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-2);border-radius:8px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:4px;}
-.kartei-tab.active{color:white!important;background:linear-gradient(135deg,#0891b2,#0e7490);font-weight:700;box-shadow:0 2px 6px rgba(8,145,178,0.3);}
+.kartei-tab{flex-shrink:0;padding:7px 14px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-2);border-radius:7px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:4px;}
+.kartei-tab.active{color:#0E5E56!important;background:#fff;font-weight:700;box-shadow:0 1px 3px rgba(16,24,29,0.12);}
 .kartei-tab.kartei-tab-locked{opacity:0.55;}
-.kartei-tab:hover:not(.active){color:#0891b2!important;background:#ecfeff;}
+.kartei-tab:hover:not(.active){color:#0E5E56!important;background:#EAF4F1;}
 .kartei-mehr-menu{position:fixed;background:white;border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;display:flex;flex-direction:column;gap:2px;z-index:200;min-width:150px;}
 .kartei-mehr-menu .kartei-tab{width:100%;justify-content:flex-start;}
+.kartei-mehr-menu .kartei-tab.active{background:#EAF4F1;box-shadow:none;}
 /* #tuRowMenu ("⋮" -> "Kartei öffnen") opens from a card's own row inside
    tuCalWindow (Monat mode's floating day-appointments window) as well as
    from Tag/mobile's plain lists. .kartei-mehr-menu's shared z-index:200 sits
@@ -1305,7 +1306,8 @@ body.windows-mode #karteiBtn{display:none;}
    a colored left bar, tighter rows, and IBM Plex Mono (already loaded
    above) for labels/values so numbers and dates line up the way they do
    on a real lab printout. */
-.k-section{background:var(--surface);border:1px solid var(--border);border-radius:6px;box-shadow:none;margin:0 auto 10px;max-width:640px;padding:14px 16px;}
+#ktab-stamm{background:#f2f4f5;padding:14px 16px;}
+.k-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);margin:0 auto 14px;max-width:640px;padding:16px 18px;}
 .k-section-title{font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--primary);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--primary);display:flex;align-items:center;gap:7px;}
 .k-section-title svg{color:var(--primary);flex-shrink:0;}
 .k-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13.5px;}
@@ -1315,6 +1317,10 @@ body.windows-mode #karteiBtn{display:none;}
 .k-label{color:var(--text-3);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.02em;}
 .k-value{font-weight:600;color:var(--text-1);text-align:right;max-width:60%;font-variant-numeric:tabular-nums;}
 .k-alert{background:#fff7ed;border:1px solid #fed7aa;border-radius:4px;padding:8px 12px;font-size:11px;font-weight:600;color:#92400e;display:flex;align-items:center;gap:6px;margin-top:8px;}
+/* "Patient weiterleiten"/"Patient überweisen" in the chat overview pane,
+   each its own card -- same visual language as .k-section above. */
+.ov-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:15px 16px;margin-bottom:14px;}
+.ov-card:last-child{margin-bottom:0;}
 
 /* Kartei Visits */
 .k-visit{background:white;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);margin:10px;padding:14px;cursor:pointer;transition:all 0.15s;}
@@ -1636,9 +1642,6 @@ body.windows-mode #karteiBtn{display:none;}
         <div class="kartei-patient-name" id="kartei-name">Kein Patient ausgewählt</div>
         <div class="kartei-patient-meta" id="kartei-meta">—</div>
       </div>
-      <div style="flex:1;"></div>
-      <button onclick="openKarteiReportModal()" title="Bericht zusammenstellen — Inhalte auswählen und per Chat senden oder herunterladen" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;margin-right:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> PDF</button>
-      <button onclick="exportPatientCsv()" title="Patientendaten als CSV — für den Import in ein anderes (Smartordi-)System" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:700;color:#475569;cursor:pointer;font-family:inherit;white-space:nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> CSV</button>
     </div>
 
     <div class="kartei-tabs">
@@ -1666,6 +1669,9 @@ body.windows-mode #karteiBtn{display:none;}
       <button class="kartei-tab" onclick="switchKarteiTab('pflegefreistellung',this)">Pflegefreistellung</button>
       <button class="kartei-tab" onclick="switchKarteiTab('arbeitsunfaehigkeit',this)">Arbeitsunfähigkeit</button>
       <button class="kartei-tab" onclick="switchKarteiTab('suche',this)">Suche</button>
+      <div style="height:1px;background:var(--border);margin:4px 2px;"></div>
+      <button class="kartei-tab" onclick="openKarteiReportModal()" title="Bericht zusammenstellen — Inhalte auswählen und per Chat senden oder herunterladen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Als PDF</button>
+      <button class="kartei-tab" onclick="exportPatientCsv()" title="Patientendaten als CSV — für den Import in ein anderes (Smartordi-)System"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Als CSV</button>
     </div>
 
     <div class="kartei-body" id="karteiBody">
@@ -2592,12 +2598,14 @@ body.windows-mode #karteiBtn{display:none;}
         <div id="ovTermineList"></div>
       </div>
       <div style="margin-top:auto;padding-top:20px;">
-        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Patient weiterleiten</div>
-        <div id="transferDoctorList"></div>
-        <textarea class="form-input" id="transferNote" rows="2" placeholder="Notiz für den Kollegen/die Kollegin (optional)..." style="width:100%;box-sizing:border-box;margin-top:4px;"></textarea>
-        <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
-        <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
-          <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+        <div class="ov-card">
+          <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Patient weiterleiten</div>
+          <div id="transferDoctorList"></div>
+          <textarea class="form-input" id="transferNote" rows="2" placeholder="Notiz für den Kollegen/die Kollegin (optional)..." style="width:100%;box-sizing:border-box;margin-top:4px;"></textarea>
+          <button class="btn-primary" id="transferSubmitBtn" onclick="confirmTransfer()" style="margin-top:10px;">Weiterleiten</button>
+          <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:10px 12px;font-size:11.5px;color:#12746A;margin-top:10px;">
+            <strong>DSGVO:</strong> Der Patient wird automatisch über die Weiterleitung informiert.
+          </div>
         </div>
         <!-- Referral to a doctor OUTSIDE this practice (any specialty) --
              distinct from "Weiterleiten" above, which only reassigns
@@ -2609,7 +2617,7 @@ body.windows-mode #karteiBtn{display:none;}
              Fachrichtung/name, instead of a doctor having to dig for that
              tab under "Mehr" first (that button was removed from
              #karteiMehrMenu when this shipped). -->
-        <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+        <div class="ov-card">
           <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Patient überweisen</div>
           <select class="form-input" id="uwQuickFach" style="width:100%;box-sizing:border-box;margin-bottom:8px;">
             <option value="">Fachrichtung wählen…</option>
