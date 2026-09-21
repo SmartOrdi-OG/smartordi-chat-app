@@ -1274,7 +1274,7 @@ body.windows-mode #karteiBtn{display:none;}
    Kartei for a patient from outside it. Reusing .kartei-tab here made it get
    swept up and disabled by that unrelated logic. */
 .tu-row-menu-item{flex-shrink:0;width:100%;padding:7px 14px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--text-2);border-radius:8px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:4px;justify-content:flex-start;}
-.tu-row-menu-item:hover{color:#0891b2;background:#ecfeff;}
+.tu-row-menu-item:hover{color:#0E5E56;background:#EAF4F1;}
 .kartei-body{flex:1;overflow-y:auto;padding:0;}
 
 /* Filter Bar */
@@ -1717,7 +1717,7 @@ body.windows-mode #karteiBtn{display:none;}
                  populated -- see openCaveEditor()/saveCaveNote() below. -->
             <div class="k-alert" id="k-stamm-cave" style="display:none;background:#fef2f2;border-color:#fca5a5;color:#7f1d1d;"></div>
             <div style="margin-top:6px;">
-              <button type="button" onclick="openCaveEditor()" id="k-cave-edit-btn" style="background:none;border:none;color:#0891b2;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;">✎ Cave-Hinweis bearbeiten</button>
+              <button type="button" onclick="openCaveEditor()" id="k-cave-edit-btn" style="background:none;border:none;color:#0E5E56;font-size:11.5px;font-weight:600;cursor:pointer;padding:0;">✎ Cave-Hinweis bearbeiten</button>
               <div id="k-cave-editor" style="display:none;margin-top:8px;">
                 <textarea id="k-cave-input" rows="2" placeholder="z.B. Patient reagiert aggressiv, Hörgerät - laut ansprechen ..." style="width:100%;box-sizing:border-box;font-size:12.5px;font-family:inherit;padding:8px;border:1px solid var(--border);border-radius:8px;resize:vertical;"></textarea>
                 <div style="display:flex;gap:8px;margin-top:6px;">
@@ -1780,7 +1780,7 @@ body.windows-mode #karteiBtn{display:none;}
             <!-- Specialty-specific section -->
             <div id="anamnese-specialty-section"></div>
 
-            <button class="k-form-save" style="background:#ecfeff;border-color:#a5f3fc;color:#0891b2;" onclick="saveAnamnese()">
+            <button class="k-form-save" onclick="saveAnamnese()">
               Anamnese speichern
             </button>
             <div class="k-dsgvo-note">DSGVO-konform · Nur für behandelnden Arzt sichtbar</div>
@@ -1809,7 +1809,7 @@ body.windows-mode #karteiBtn{display:none;}
 
           <!-- Aktuelle Beschwerden (per Besuch) -->
           <div style="background:#f0f9ff;border-left:4px solid #16a34a;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:12px;margin-bottom:12px;">
-            <div style="font-size:12px;font-weight:700;color:#0891b2;margin-bottom:8px;">Aktuelle Beschwerden (heute)</div>
+            <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:8px;">Aktuelle Beschwerden (heute)</div>
             <div class="k-form-group">
               <label class="k-form-label">Hauptbeschwerde</label>
               <textarea class="k-form-input" id="kBeschwerde" rows="2" placeholder="z.B. Husten seit 3 Tagen, Fieber 38.5°C..." style="resize:none;"></textarea>
