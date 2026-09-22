@@ -96,7 +96,7 @@ function karteiLaborRowHtml(d){
       <div style="font-size:13px;font-weight:700;color:#0f172a;">${escapeHtml(d.title)}</div>
       <div style="font-size:11px;color:#94a3b8;">${df} · ${formatFileSize(d.size_bytes)}</div>
     </div>
-    <button onclick="downloadKarteiDocument('${d.id}')" style="background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
+    <button onclick="downloadKarteiDocument('${d.id}')" style="background:#EAF4F1;border:1px solid #bfdbfe;border-radius:7px;padding:6px 10px;font-size:11px;font-weight:700;color:#0E5E56;cursor:pointer;font-family:inherit;white-space:nowrap;">⬇ PDF</button>
     <button onclick="deleteKarteiDocument('${d.id}')" title="Löschen" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:4px;">🗑</button>
   </div>`;
 }
