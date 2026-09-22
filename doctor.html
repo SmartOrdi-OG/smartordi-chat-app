@@ -1808,7 +1808,7 @@ body.windows-mode #karteiBtn{display:none;}
           </div>
 
           <!-- Aktuelle Beschwerden (per Besuch) -->
-          <div style="background:#f0f9ff;border-left:4px solid #16a34a;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:12px;margin-bottom:12px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:14px 16px;margin-bottom:12px;">
             <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:8px;">Aktuelle Beschwerden (heute)</div>
             <div class="k-form-group">
               <label class="k-form-label">Hauptbeschwerde</label>
@@ -1873,8 +1873,8 @@ body.windows-mode #karteiBtn{display:none;}
         <div class="k-form">
 
           <!-- Header -->
-          <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
-            
+          <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+
             <div>
               <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;">Überweisungsschein</div>
               <div class="ktab-hero-sub" style="font-size:10px;color:rgba(255,255,255,0.7);">PDF · Chat · E-Mail · Österreich</div>
@@ -1882,8 +1882,8 @@ body.windows-mode #karteiBtn{display:none;}
           </div>
 
           <!-- Patient auto-filled -->
-          <div style="background:#faf5ff;border-left:4px solid #7c3aed;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:10px 12px;margin-bottom:12px;">
-            <div style="font-size:9px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Patient — automatisch ausgefüllt</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:12px 14px;margin-bottom:12px;">
+            <div style="font-size:9px;font-weight:700;color:#0E5E56;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Patient — automatisch ausgefüllt</div>
             <div style="font-weight:700;color:#0f172a;font-size:13px;" id="uw-patient-name">—</div>
             <div style="color:#64748b;font-size:11px;margin-top:1px;" id="uw-patient-meta">—</div>
             <div style="color:#64748b;font-size:11px;" id="uw-patient-adresse">—</div>
@@ -1976,10 +1976,10 @@ body.windows-mode #karteiBtn{display:none;}
               <label class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>Arbeitsunfähig</label>
               <div style="display:flex;gap:8px;">
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:7px;flex:1;justify-content:center;">
-                  <input type="radio" name="uwAU" value="Nein" checked style="accent-color:#7c3aed;">Nein
+                  <input type="radio" name="uwAU" value="Nein" checked style="accent-color:#0E5E56;">Nein
                 </label>
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:7px;flex:1;justify-content:center;">
-                  <input type="radio" name="uwAU" value="Ja" style="accent-color:#7c3aed;">Ja
+                  <input type="radio" name="uwAU" value="Ja" style="accent-color:#0E5E56;">Ja
                 </label>
               </div>
             </div>
@@ -1987,10 +1987,10 @@ body.windows-mode #karteiBtn{display:none;}
               <label class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Rezeptgebührenbefreit</label>
               <div style="display:flex;gap:8px;">
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:7px;flex:1;justify-content:center;">
-                  <input type="radio" name="uwRez" value="Nein" checked style="accent-color:#7c3aed;">Nein
+                  <input type="radio" name="uwRez" value="Nein" checked style="accent-color:#0E5E56;">Nein
                 </label>
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:7px;flex:1;justify-content:center;">
-                  <input type="radio" name="uwRez" value="Ja" style="accent-color:#7c3aed;">Ja
+                  <input type="radio" name="uwRez" value="Ja" style="accent-color:#0E5E56;">Ja
                 </label>
               </div>
             </div>
@@ -2009,14 +2009,14 @@ body.windows-mode #karteiBtn{display:none;}
           </div>
 
           <!-- Send options -->
-          <div style="background:#faf5ff;border-left:4px solid #7c3aed;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:10px 12px;margin-bottom:12px;">
-            <div style="font-size:10px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Versandoptionen</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:12px 14px;margin-bottom:12px;">
+            <div style="font-size:10px;font-weight:700;color:#0E5E56;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px;">Versandoptionen</div>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;margin-bottom:6px;">
-              <input type="checkbox" id="uwSendChat" checked style="accent-color:#7c3aed;width:14px;height:14px;">
+              <input type="checkbox" id="uwSendChat" checked style="accent-color:#0E5E56;width:14px;height:14px;">
                Per Chat an Patient senden
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
-              <input type="checkbox" id="uwSendEmail" style="accent-color:#7c3aed;width:14px;height:14px;">
+              <input type="checkbox" id="uwSendEmail" style="accent-color:#0E5E56;width:14px;height:14px;">
                Per E-Mail an Patient senden
             </label>
           </div>
@@ -2026,7 +2026,7 @@ body.windows-mode #karteiBtn{display:none;}
             <button style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="downloadUwPDF()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF
             </button>
-            <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(124,58,237,0.3);" onclick="openUwPreview()">
+            <button style="height:36px;padding:0 16px;border-radius:9px;border:none;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(14,94,86,0.3);" onclick="openUwPreview()">
               Vorschau & Senden
             </button>
           </div>
@@ -2060,7 +2060,7 @@ body.windows-mode #karteiBtn{display:none;}
         <datalist id="commonMedikamente3"></datalist>
         <datalist id="commonMedikamente4"></datalist>
         <!-- Medikament 1 -->
-        <div style="background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">Medikament 1</div>
           <div class="k-form-section">
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5L3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>Medikament / Wirkstoff</div>
@@ -2086,7 +2086,7 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <!-- Medikament 2 (optional) -->
-        <div style="background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 2 (optional)</div>
           <div class="k-form-section">
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5L3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>Medikament / Wirkstoff</div>
@@ -2112,7 +2112,7 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <!-- Medikament 3 (optional, hidden until "+ Medikament hinzufügen") -->
-        <div id="rz-med3-block" style="display:none;background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+        <div id="rz-med3-block" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 3 (optional)</div>
           <div class="k-form-section">
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5L3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>Medikament / Wirkstoff</div>
@@ -2138,7 +2138,7 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <!-- Medikament 4 (optional, hidden until "+ Medikament hinzufügen") -->
-        <div id="rz-med4-block" style="display:none;background:#f8fafc;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:12px;">
+        <div id="rz-med4-block" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:10px;">Medikament 4 (optional)</div>
           <div class="k-form-section">
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5L3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>Medikament / Wirkstoff</div>
@@ -2206,7 +2206,7 @@ body.windows-mode #karteiBtn{display:none;}
 
       <!-- ══ IMPFUNG TAB ══ -->
       <div id="ktab-impfung" style="display:none;padding:16px;">
-        <div style="background:linear-gradient(135deg,#16a34a,#15803d);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:14px;padding:16px;margin-bottom:16px;">
           <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;">Impfpass / Vaccination</div>
           <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">Österreichischer Impfkalender</div>
         </div>
@@ -2214,8 +2214,8 @@ body.windows-mode #karteiBtn{display:none;}
         <div id="impfpass-warnung" style="display:none;"></div>
 
         <!-- Impfung hinzufügen -->
-        <div style="background:#f0fdf4;border-left:4px solid #16a34a;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
-          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:10px;">＋ Neue Impfung eintragen</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Neue Impfung eintragen</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
             <div>
               <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5L3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"/><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"/></svg>Impfstoff</div>
@@ -2258,7 +2258,7 @@ body.windows-mode #karteiBtn{display:none;}
           </div>
           <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Chargennummer (optional)</div>
           <input class="k-form-input" id="impf-charge" placeholder="z.B. A12345B" style="margin-bottom:10px;">
-          <button class="k-form-save" style="background:#dcfce7;border-color:#bbf7d0;color:#16a34a;" onclick="addImpfung()">
+          <button class="k-form-save" onclick="addImpfung()">
             Impfung speichern & in Impfpass eintragen
           </button>
         </div>
@@ -2286,7 +2286,7 @@ body.windows-mode #karteiBtn{display:none;}
         </div>
 
         <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-          <button onclick="printImpfpass()" style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #16a34a;background:white;color:#16a34a;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+          <button onclick="printImpfpass()" style="height:36px;padding:0 16px;border-radius:9px;border:1.5px solid #0E5E56;background:white;color:#0E5E56;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Impfpass drucken
           </button>
         </div>
@@ -2315,7 +2315,7 @@ body.windows-mode #karteiBtn{display:none;}
 
       <!-- ══ LABOR TAB ══ -->
       <div id="ktab-labor" style="display:none;padding:16px;">
-        <div style="background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="background:linear-gradient(135deg,#0E5E56,#12746A);border-radius:14px;padding:16px;margin-bottom:16px;">
           <div class="ktab-hero-title" style="font-size:13px;font-weight:800;color:white;">Laborbefunde / Testergebnisse</div>
           <div class="ktab-hero-sub" style="font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;">PDF vom Labor hochladen — der Patient sieht es sofort</div>
         </div>
@@ -2324,26 +2324,26 @@ body.windows-mode #karteiBtn{display:none;}
 
         <div id="kLaborContent" style="display:none;">
           <!-- Neuer Befund: PDF-Upload, keine manuelle Eingabe -->
-          <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
-            <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Neuer Befund</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Neuer Befund</div>
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Titel</div>
             <input class="k-form-input" id="kLaborTitel" placeholder="z.B. Blutbild Juni 2026" style="margin-bottom:10px;">
             <div class="k-form-label k-form-label-icon" id="kLaborMaxLabel"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span id="kLaborMaxLabelText">PDF-Datei vom Labor (max. 8 MB)</span></div>
             <input type="file" id="kLaborFile" accept="application/pdf" style="margin-bottom:10px;">
-            <button class="k-form-save" id="kLaborUploadBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="uploadKarteiLaborDoc()">
+            <button class="k-form-save" id="kLaborUploadBtn" onclick="uploadKarteiLaborDoc()">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Hochladen
             </button>
           </div>
 
           <!-- Schnellnotiz: für Tests direkt in der Ordination (z.B. Urin-Streifentest),
                wo es keinen Laborbericht zum Hochladen gibt -->
-          <div style="background:#fff5f5;border-left:4px solid #dc2626;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
-            <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:10px;">＋ Schnellnotiz (Test vor Ort, z.B. Urin-Streifentest)</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Schnellnotiz (Test vor Ort, z.B. Urin-Streifentest)</div>
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>Titel</div>
             <input class="k-form-input" id="kLaborNoteTitel" placeholder="z.B. Urin-Streifentest" style="margin-bottom:10px;">
             <div class="k-form-label k-form-label-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 17.01"/></svg>Ergebnis</div>
             <textarea class="k-form-input" id="kLaborNoteText" rows="2" placeholder="z.B. Protein: negativ, Glukose: negativ, pH: 6.0" style="resize:none;margin-bottom:10px;"></textarea>
-            <button class="k-form-save" id="kLaborNoteBtn" style="background:#fef2f2;border-color:#fecaca;color:#dc2626;" onclick="saveKarteiLaborNote()">
+            <button class="k-form-save" id="kLaborNoteBtn" onclick="saveKarteiLaborNote()">
               Notiz speichern
             </button>
           </div>
@@ -2365,7 +2365,7 @@ body.windows-mode #karteiBtn{display:none;}
 
         <div id="kDokContent" style="display:none;">
           <!-- Upload Form -->
-          <div style="background:white;border-left:4px solid #0E5E56;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,0.06);padding:14px;margin-bottom:14px;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 12px rgba(16,24,29,0.06);padding:16px 18px;margin-bottom:14px;">
             <div style="font-size:12px;font-weight:700;color:#0E5E56;margin-bottom:10px;">＋ Neues Dokument</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
               <div>
@@ -2695,7 +2695,7 @@ body.windows-mode #karteiBtn{display:none;}
   <div style="background:white;border-radius:20px;width:100%;max-width:640px;box-shadow:0 24px 80px rgba(0,0,0,0.3);overflow:hidden;margin:auto;">
 
     <!-- Modal Header -->
-    <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);padding:18px 22px;display:flex;align-items:center;gap:12px;">
+    <div style="background:linear-gradient(135deg,#0E5E56,#12746A);padding:18px 22px;display:flex;align-items:center;gap:12px;">
       <div style="width:40px;height:40px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;"></div>
       <div style="flex:1;">
         <div style="font-size:15px;font-weight:800;color:white;">Überweisungsschein – Vorschau</div>
@@ -2717,8 +2717,8 @@ body.windows-mode #karteiBtn{display:none;}
     <!-- Actions -->
     <div style="padding:16px 20px 20px;display:flex;gap:10px;flex-wrap:wrap;">
       <button onclick="closeUwModal()" style="flex:1;min-width:100px;padding:11px;border:1.5px solid #e2e8f0;border-radius:10px;background:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;">Schließen</button>
-      <button onclick="printUwPDF()" title="Patient ist in der Ordination" style="flex:1;min-width:120px;padding:11px;border:1.5px solid #7c3aed;border-radius:10px;background:white;color:#7c3aed;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken</button>
-      <button onclick="downloadUwPDF()" style="flex:1;min-width:120px;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF</button>
+      <button onclick="printUwPDF()" title="Patient ist in der Ordination" style="flex:1;min-width:120px;padding:11px;border:1.5px solid #0E5E56;border-radius:10px;background:white;color:#0E5E56;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drucken</button>
+      <button onclick="downloadUwPDF()" style="flex:1;min-width:120px;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#0E5E56,#12746A);color:white;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF</button>
     </div>
   </div>
 </div>
