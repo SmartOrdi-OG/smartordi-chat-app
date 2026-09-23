@@ -202,3 +202,24 @@ test('partial success (chat sent, e-mail failed) is reported as partial and leav
   // The chat send must have gone through independently of the e-mail failure.
   expect(result.docsCount).toBe(1);
 });
+
+// Real production report (2026-09-23, screenshot): sending to an external
+// doctor's real e-mail address failed with the generic supabase-js wrapper
+// message "Edge Function returned a non-2xx status code" and nothing else --
+// send-report-email's own real reason (e.g. Resend rejecting the sandbox
+// sender for a non-verified recipient) lives in the response body, reachable
+// only via error.context (see extractFunctionErrorDetail()). Same class of
+// bug/fix as confirmPlanChange()'s Stripe error handling.
+test('a non-2xx response from send-report-email surfaces the real reason from the response body, not the generic wrapper message', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.getElementById('rptSendChat').checked = false;
+    document.getElementById('rptSendEmail').checked = true;
+    const fakeResponse = { clone(){ return this; }, json: async () => ({ error: 'resend_failed', detail: { message: 'You can only send testing emails to your own email address' } }) };
+    sb.functions.invoke = async () => ({ data: null, error: { message: 'Edge Function returned a non-2xx status code', context: fakeResponse } });
+    await sendKarteiReport();
+    return { status: document.getElementById('rptStatus').innerHTML };
+  });
+  expect(result.status).toContain('You can only send testing emails to your own email address');
+  expect(result.status).not.toContain('non-2xx');
+});
