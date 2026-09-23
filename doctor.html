@@ -6044,7 +6044,9 @@ async function sendKarteiReport(){
 
   const btn=document.getElementById('rptSendBtn');
   const statusEl=document.getElementById('rptStatus');
+  const btnOriginalHtml=btn.innerHTML;
   btn.disabled=true;
+  btn.textContent='Wird gesendet...';
   statusEl.innerHTML='';
   try{
     const doc=await buildPatientReportPdf(sections);
@@ -6114,6 +6116,7 @@ async function sendKarteiReport(){
     showToast('Senden fehlgeschlagen','error');
   }finally{
     btn.disabled=false;
+    btn.innerHTML=btnOriginalHtml;
   }
 }
 
