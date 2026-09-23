@@ -5746,20 +5746,29 @@ async function buildPatientReportPdf(sections){
   if(!rec){ showToast('Patientendaten nicht gefunden.'); return null; }
 
   let impfungenList=[], laborDocs=[], allDocs=[], anamneseLines=[], mkpRecords=[];
-  if(sections.impfung){
-    await impfungenReady;
-    impfungenList=rec.id ? loadImpfungenFor(rec.id).map(impfRowToJs) : (rec.impfungen||[]);
-  }
-  if(sections.labor||sections.dokumente||sections.mkp){
-    const patientId=await findPatientIdByFullName(name);
-    if(patientId){
-      if(sections.labor||sections.dokumente){
-        allDocs=await getDocumentsForPatient(patientId);
-        laborDocs=allDocs.filter(d=>d.category==='befund');
-      }
-      if(sections.mkp) mkpRecords=await getMkpExamsForPatient(patientId);
-    }
-  }
+  // The Impfung fetch and the Labor/Dokumente/MKP fetch are independent of
+  // each other (neither's result feeds the other) but used to run one after
+  // another -- each one a real Supabase round trip -- adding their full
+  // latencies together for no reason. Real user report: the whole "Bericht
+  // senden" flow felt unresponsive because of exactly this kind of stacked,
+  // avoidable network time (see also the Labor/Dokumente pair below).
+  const [impfungenResult,docsResult]=await Promise.all([
+    sections.impfung
+      ? impfungenReady.then(()=>rec.id?loadImpfungenFor(rec.id).map(impfRowToJs):(rec.impfungen||[]))
+      : Promise.resolve([]),
+    (sections.labor||sections.dokumente||sections.mkp)
+      ? findPatientIdByFullName(name).then(async patientId=>{
+          if(!patientId) return {laborDocs:[],allDocs:[],mkpRecords:[]};
+          const [docs,mkp]=await Promise.all([
+            (sections.labor||sections.dokumente)?getDocumentsForPatient(patientId):Promise.resolve([]),
+            sections.mkp?getMkpExamsForPatient(patientId):Promise.resolve([]),
+          ]);
+          return {allDocs:docs,laborDocs:docs.filter(d=>d.category==='befund'),mkpRecords:mkp};
+        })
+      : Promise.resolve({laborDocs:[],allDocs:[],mkpRecords:[]}),
+  ]);
+  impfungenList=impfungenResult;
+  ({laborDocs,allDocs,mkpRecords}=docsResult);
   if(sections.anamnese){
     // loadAnamneseForPatient() otherwise only ever runs lazily when the
     // doctor actually clicks into the Anamnese tab -- forcing it here
