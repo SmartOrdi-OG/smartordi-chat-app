@@ -4562,7 +4562,8 @@ async function extractFunctionErrorDetail(error){
   try{
     if(error.context && typeof error.context.clone==='function'){
       const body=await error.context.clone().json();
-      if(body?.detail) return body.detail;
+      if(typeof body?.detail==='string') return body.detail;
+      if(body?.detail?.message) return body.detail.message;
       if(body?.error) return body.error;
     }
   }catch(e){ /* body wasn't JSON, or already consumed -- fall through */ }
@@ -6093,7 +6094,8 @@ async function sendKarteiReport(){
           results.push({ok:true,text:'Per E-Mail gesendet an '+targetEmail});
         }catch(e){
           console.error('send-report-email failed',e);
-          results.push({ok:false,text:'E-Mail-Versand fehlgeschlagen'+(e?.message?' ('+e.message+')':'')});
+          const detail=await extractFunctionErrorDetail(e);
+          results.push({ok:false,text:'E-Mail-Versand fehlgeschlagen'+(detail?' ('+detail+')':'')});
         }
       }
     }
