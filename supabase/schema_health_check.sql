@@ -525,4 +525,46 @@ from unnest(array[
   'patient_account_profiles','patient_active_profile','patient_report_sends'
 ]) as t
 
+union all
+
+-- ══════════════════════════════════════════════════════════════
+-- 7) Data API grants -- added 2026-09-25, after Supabase announced that
+-- starting 2026-10-30, newly-created tables in the public schema no longer
+-- get Data API privileges bootstrapped automatically (see
+-- phase86_data_api_grants_catchup.sql's own header for the full story).
+-- RLS (sections 4/5/6 above) decides which ROWS a role can touch; this is
+-- the separate, more basic layer underneath it -- without a table-level
+-- GRANT, PostgREST refuses the table outright ("permission denied") before
+-- RLS is ever evaluated. A table can have perfect RLS and still be
+-- completely unreachable if this is missing.
+-- ══════════════════════════════════════════════════════════════
+select 'authenticated has SELECT grant' as check_type, t as name,
+  case when exists (
+    select 1 from information_schema.role_table_grants
+    where table_schema='public' and table_name=t and grantee='authenticated' and privilege_type='SELECT'
+  ) then 'OK' else 'MISSING -- authenticated cannot even be granted access to this table via the Data API -- find + rerun the phaseNN_*.sql (or phase86_data_api_grants_catchup.sql) that grants it' end as status
+from unnest(array[
+  'patients','termine','patient_messages','patient_documents','mkp_untersuchungen',
+  'patient_impfungen','staff_profiles','staff_invites','practices','patient_join_requests',
+  'patient_guardians','practice_vertretung','patient_visits','lab_result_uploads','patient_lab_results',
+  'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
+  'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
+  'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
+  'patient_account_profiles','patient_active_profile','patient_report_sends'
+]) as t
+
+union all
+
+-- patient_report_sends is the one deliberate exception to the project's
+-- usual "grant everything, let RLS gate it" pattern (see phase85's own
+-- grants section) -- anon should have NOTHING here, not even SELECT, since
+-- this is an immutable staff audit log and this project has zero RLS
+-- policies for anon anywhere. If this ever flips to OK, something
+-- re-granted anon access to this table.
+select 'anon has NO grant (deliberate)', 'patient_report_sends',
+  case when not exists (
+    select 1 from information_schema.role_table_grants
+    where table_schema='public' and table_name='patient_report_sends' and grantee='anon'
+  ) then 'OK' else 'WARNING -- anon has been granted some privilege on patient_report_sends -- this was deliberately revoked in phase85, verify this was intentional' end
+
 order by check_type, name;
