@@ -60,3 +60,22 @@ create policy "staff read own practice report-send log" on public.patient_report
 create policy "staff insert own practice report-send log" on public.patient_report_sends
   for insert to authenticated with check (practice_id = public.current_practice_id());
 -- Deliberately no update/delete policy -- see header comment above.
+
+-- Explicit Data API grants (Supabase is retiring the automatic default-
+-- privilege bootstrap for new tables, effective 2026-10-30 -- without this,
+-- a future migration replay from scratch, e.g. a db reset, would leave
+-- PostgREST unable to touch this table at all: "permission denied").
+--
+-- Deliberately narrower than every other table in this project (which all
+-- still grant full CRUD to anon/authenticated/service_role alike, relying
+-- purely on RLS as the real gate -- see phase86's catch-up grants for that
+-- established pattern, kept as-is for consistency with the live app).
+-- This table is new, so it starts clean instead of inheriting that old
+-- default: no grant to anon at all (this project has zero RLS policies for
+-- anon anywhere, so an anon grant here would only ever be dead access, not
+-- a real capability), and only select+insert to authenticated (matching
+-- the RLS policies actually defined above -- no update/delete policy
+-- exists, so no update/delete grant either).
+revoke all on public.patient_report_sends from anon, authenticated, service_role;
+grant select, insert on public.patient_report_sends to authenticated;
+grant select, insert, update, delete on public.patient_report_sends to service_role;
