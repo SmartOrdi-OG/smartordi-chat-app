@@ -6219,12 +6219,24 @@ async function sendKarteiReport(){
           results.push({ok:false,text:'Versand abgebrochen'});
         }else{
           try{
+            // Real request (2026-09-25): the recipient (patient or external
+            // doctor) had no way to tell which practice/doctor actually sent
+            // this -- every "Bericht senden" e-mail showed the same generic
+            // "Smartordi" sender. Built from the logged-in staff member's own
+            // name + their practice's name, both already loaded for this
+            // session (currentStaffSession()/getPracticeSettings()) -- never
+            // free-typed, so this can't be used to impersonate anyone else.
+            const senderSession=currentStaffSession();
+            const senderPractice=getPracticeSettings();
+            const fromName=[senderSession?.name,senderPractice?.name].filter(Boolean).join(' – ');
+            const signatureLine=fromName?('\n\nMit freundlichen Grüßen\n'+fromName):'';
             const {error}=await sb.functions.invoke('send-report-email',{body:{
               toEmail:targetEmail,
               subject:'Ihr Patientenbericht — Smartordi',
-              bodyText:'Im Anhang finden Sie den angeforderten Patientenbericht.',
+              bodyText:'Im Anhang finden Sie den angeforderten Patientenbericht.'+signatureLine,
               filename,
               pdfBase64:base64Data,
+              fromName,
             }});
             if(error) throw error;
             results.push({ok:true,text:'Per E-Mail gesendet an '+targetEmail});
