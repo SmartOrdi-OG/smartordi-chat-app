@@ -59,7 +59,9 @@ from unnest(array[
   -- phase64: schema-only so far -- no app code reads/writes these yet (see
   -- that file's own header), but they still need to actually exist for the
   -- migration to have applied at all, so they're checked here too.
-  'patient_account_profiles','patient_active_profile'
+  'patient_account_profiles','patient_active_profile',
+  -- phase85
+  'patient_report_sends'
 ]) as t
 
 union all
@@ -401,6 +403,19 @@ from unnest(array[
 
 union all
 
+-- phase85_patient_report_send_log.sql -- doctor.html's sendKarteiReport()
+-- inserts one of these right after a successful e-mail send (patient or
+-- external doctor), so a later "who did we send this patient's data to"
+-- inquiry has a real answer.
+select 'patient_report_sends column', c,
+  case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_report_sends' and column_name=c)
+       then 'OK' else 'MISSING' end
+from unnest(array[
+  'id','practice_id','patient_id','sent_by','sent_to_email','destination_type','sections','created_at'
+]) as c
+
+union all
+
 -- ══════════════════════════════════════════════════════════════
 -- 4/5/6) RLS (row-level security) health -- added 2026-07-30, after the
 -- user asked whether this whole script already covers everything before
@@ -436,7 +451,7 @@ from unnest(array[
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
-  'patient_account_profiles','patient_active_profile'
+  'patient_account_profiles','patient_active_profile','patient_report_sends'
 ]) as t
 
 union all
@@ -466,7 +481,7 @@ from unnest(array[
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
-  'patient_account_profiles','patient_active_profile'
+  'patient_account_profiles','patient_active_profile','patient_report_sends'
 ]) as t
 
 union all
@@ -507,7 +522,7 @@ from unnest(array[
   'guardian_active_child','doctor_hidden_chats','patient_rezepte','patient_ueberweisungen',
   'client_error_log','patient_pflegefreistellung','patient_arbeitsunfaehigkeit',
   'patient_vaccine_dismissals','consent_records','staff_pilot_login_links',
-  'patient_account_profiles','patient_active_profile'
+  'patient_account_profiles','patient_active_profile','patient_report_sends'
 ]) as t
 
 order by check_type, name;
