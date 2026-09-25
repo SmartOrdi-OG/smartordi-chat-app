@@ -3252,6 +3252,23 @@ body.windows-mode #karteiBtn{display:none;}
             <div class="form-group" style="flex:1;"><label class="form-label">Telefon</label><input class="form-input" id="rptDoctorTel" placeholder="+43 ..."></div>
             <div class="form-group" style="flex:1;"><label class="form-label">E-Mail</label><input class="form-input" type="email" id="rptDoctorEmail" placeholder="..." oninput="updateRptDestUI()"></div>
           </div>
+          <!-- Real security gap closed (2026-09-25): a typo in this
+               free-typed external address used to silently send sensitive
+               health data (SVNR, Diagnosen, Anamnese...) to whoever
+               actually owns the mistyped address, with no way to catch it
+               before sending. Double-entry (this field) plus the
+               confirmation dialog shown right before the actual send
+               (see sendKarteiReport()) close that gap -- only for THIS
+               destination, since the patient's own address (the other
+               radio option above) comes from their trusted account
+               record, never free-typed here. -->
+          <div class="form-group">
+            <label class="form-label">E-Mail-Adresse bestätigen</label>
+            <input class="form-input" type="email" id="rptDoctorEmailConfirm" placeholder="..."
+              oninput="updateRptSendBtnState()"
+              onpaste="event.preventDefault()">
+            <div id="rptEmailMismatch" style="display:none;color:#dc2626;font-size:12px;margin-top:4px;">Die E-Mail-Adressen stimmen nicht überein.</div>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -3267,6 +3284,35 @@ body.windows-mode #karteiBtn{display:none;}
     <div class="modal-footer">
       <button class="btn-secondary" onclick="closeKarteiReportModal()">Abbrechen</button>
       <button class="btn-primary" id="rptSendBtn" onclick="sendKarteiReport()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Senden</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REPORT-SEND CONFIRMATION: one last, explicit "are you sure" before
+     sendKarteiReport() actually calls send-report-email -- only shown for
+     the external-doctor destination (see that field's own comment), never
+     for the patient's own on-file address. A dedicated modal rather than
+     reusing genericConfirmModal (showConfirmDialog()/resolveGenericConfirm())
+     on purpose -- that one is hardcoded for destructive delete actions
+     (red "Löschen" button, textContent-only message), and repurposing it
+     here would mean either changing its wording (risking every existing
+     delete-confirmation flow that already uses it) or hacking around its
+     fixed shape. This is a completely different kind of confirmation (not
+     destructive, needs the address shown prominently), so it gets its own
+     small modal instead. ══ -->
+<div class="modal-overlay" id="reportConfirmModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Bericht wird gesendet</div>
+    </div>
+    <div class="modal-body" style="padding:24px 22px 8px;">
+      <div style="font-size:13px;color:#334155;">Sie senden medizinische Daten (inkl. sensibler Gesundheitsdaten) an:</div>
+      <div id="reportConfirmEmail" style="font-size:18px;font-weight:700;color:#0f172a;text-align:center;padding:12px;margin-top:12px;background:#f1f5f9;border-radius:10px;word-break:break-all;"></div>
+      <div style="font-size:12.5px;color:#dc2626;margin-top:14px;">Bitte überprüfen Sie die Adresse sorgfältig.</div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;padding:18px 22px 22px;">
+      <button class="btn-secondary" style="flex:1;" onclick="resolveReportConfirm(false)">Abbrechen</button>
+      <button style="flex:1;padding:10px 24px;background:#0E5E56;color:white;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;" onclick="resolveReportConfirm(true)">Bestätigen und senden</button>
     </div>
   </div>
 </div>
@@ -6000,6 +6046,8 @@ function openKarteiReportModal(){
   document.getElementById('rptDoctorAdresse').value='';
   document.getElementById('rptDoctorTel').value='';
   document.getElementById('rptDoctorEmail').value='';
+  document.getElementById('rptDoctorEmailConfirm').value='';
+  document.getElementById('rptEmailMismatch').style.display='none';
   document.getElementById('rptSendChat').checked=true;
   document.getElementById('rptSendEmail').checked=false;
   document.getElementById('rptSendDownload').checked=false;
@@ -6032,6 +6080,69 @@ function updateRptDestUI(){
     const rec=(name&&name!=='Kein Patient ausgewählt')?findPatientRecord(name):null;
     hint.textContent=(rec&&rec.email)?('(an '+rec.email+')'):'(keine E-Mail-Adresse für diesen Patienten hinterlegt)';
   }
+  updateRptSendBtnState();
+}
+// Real security gap closed (2026-09-25): only relevant for the external-
+// doctor destination -- the patient's own address is never free-typed
+// here at all, so there's nothing to mistype/mismatch.
+function rptExternalEmailMismatch(){
+  const email=(document.getElementById('rptDoctorEmail').value||'').trim();
+  const confirmEmail=(document.getElementById('rptDoctorEmailConfirm').value||'').trim();
+  return !email||email!==confirmEmail;
+}
+// Keeps the Senden button usable for everything ELSE (Chat/Download, or
+// e-mailing the patient's own trusted address) -- only disables it for the
+// specific combination this gap actually applies to: external-doctor
+// destination AND the e-mail checkbox actually ticked. Called on every
+// input that could change that combination (destination radio, e-mail
+// checkbox, both address fields).
+function updateRptSendBtnState(){
+  const dest=document.querySelector('input[name="rptDest"]:checked')?.value||'patient';
+  const doEmail=document.getElementById('rptSendEmail')?.checked;
+  const mismatchEl=document.getElementById('rptEmailMismatch');
+  const needsMatch=dest==='doctor'&&doEmail;
+  const mismatch=needsMatch&&rptExternalEmailMismatch();
+  if(mismatchEl){
+    const confirmTyped=(document.getElementById('rptDoctorEmailConfirm').value||'').trim();
+    // Only show the mismatch warning once the doctor has actually started
+    // typing a confirmation -- an empty confirm field is just "not filled
+    // in yet", not yet a real mismatch worth flagging.
+    mismatchEl.style.display=(needsMatch&&confirmTyped&&mismatch)?'block':'none';
+  }
+  const btn=document.getElementById('rptSendBtn');
+  if(btn) btn.disabled=mismatch;
+}
+// Dedicated Promise-based confirm dialog for the report-send warning (see
+// reportConfirmModal's own HTML comment for why this doesn't reuse
+// showConfirmDialog()/genericConfirmModal).
+let _reportConfirmResolve=null;
+function showReportConfirmDialog(email){
+  document.getElementById('reportConfirmEmail').textContent=email;
+  document.getElementById('reportConfirmModal').classList.add('show');
+  return new Promise(resolve=>{ _reportConfirmResolve=resolve; });
+}
+function resolveReportConfirm(result){
+  document.getElementById('reportConfirmModal').classList.remove('show');
+  if(_reportConfirmResolve) _reportConfirmResolve(result);
+  _reportConfirmResolve=null;
+}
+// supabase/phase85_patient_report_send_log.sql -- durable record of every
+// actual e-mail send (never chat/download, which never leave this app's
+// own accounts), so a later "who did we send this patient's data to, and
+// when" inquiry has a real answer. Best-effort: a logging failure must
+// never be reported back as if the actual e-mail send itself had failed,
+// since by this point send-report-email has already genuinely succeeded.
+async function logReportSend(patientId,destType,toEmail,sections){
+  try{
+    const session=currentStaffSession();
+    const {error}=await sb.from('patient_report_sends').insert({
+      patient_id:patientId, sent_by:session?session.username:null,
+      sent_to_email:toEmail, destination_type:destType, sections,
+    });
+    if(error) console.error('logReportSend failed',error);
+  }catch(e){
+    console.error('logReportSend failed',e);
+  }
 }
 async function sendKarteiReport(){
   const sections={
@@ -6062,6 +6173,7 @@ async function sendKarteiReport(){
     if(!doc) return;
     const name=doc._reportPatientName;
     const rec=await findPatientRecordAsync(name);
+    const patientId=await findPatientIdByFullName(name);
     const today=new Date().toLocaleDateString('de-AT').replace(/\./g,'-');
     const recipientLabel=dest==='doctor'?(document.getElementById('rptDoctorName').value||'Arzt').trim():name;
     const filename=('Patientenbericht_'+recipientLabel+'_'+today).replace(/\s+/g,'_')+'.pdf';
@@ -6069,7 +6181,6 @@ async function sendKarteiReport(){
     const results=[];
 
     if(doChat){
-      const patientId=await findPatientIdByFullName(name);
       let docId=null;
       if(patientId){
         const session=currentStaffSession();
@@ -6092,21 +6203,37 @@ async function sendKarteiReport(){
       const targetEmail=dest==='doctor'?(document.getElementById('rptDoctorEmail').value||'').trim():(rec?.email||'');
       if(!targetEmail){
         results.push({ok:false,text:'Keine E-Mail-Adresse angegeben'});
+      }else if(dest==='doctor'&&rptExternalEmailMismatch()){
+        // Safety net -- the Send button should already be disabled in
+        // this state (updateRptSendBtnState()), but a security check this
+        // sensitive must never rely on client-side UI state alone.
+        results.push({ok:false,text:'E-Mail-Adressen stimmen nicht überein'});
       }else{
-        try{
-          const {error}=await sb.functions.invoke('send-report-email',{body:{
-            toEmail:targetEmail,
-            subject:'Ihr Patientenbericht — Smartordi',
-            bodyText:'Im Anhang finden Sie den angeforderten Patientenbericht.',
-            filename,
-            pdfBase64:base64Data,
-          }});
-          if(error) throw error;
-          results.push({ok:true,text:'Per E-Mail gesendet an '+targetEmail});
-        }catch(e){
-          console.error('send-report-email failed',e);
-          const detail=await extractFunctionErrorDetail(e);
-          results.push({ok:false,text:'E-Mail-Versand fehlgeschlagen'+(detail?' ('+detail+')':'')});
+        // One last explicit confirmation, showing the exact address, right
+        // before actually sending sensitive health data anywhere outside
+        // this app -- only for the external-doctor destination (the
+        // patient's own on-file address needs no extra "are you sure",
+        // same reasoning as skipping double-entry for it above).
+        const proceed=dest==='doctor'?await showReportConfirmDialog(targetEmail):true;
+        if(!proceed){
+          results.push({ok:false,text:'Versand abgebrochen'});
+        }else{
+          try{
+            const {error}=await sb.functions.invoke('send-report-email',{body:{
+              toEmail:targetEmail,
+              subject:'Ihr Patientenbericht — Smartordi',
+              bodyText:'Im Anhang finden Sie den angeforderten Patientenbericht.',
+              filename,
+              pdfBase64:base64Data,
+            }});
+            if(error) throw error;
+            results.push({ok:true,text:'Per E-Mail gesendet an '+targetEmail});
+            await logReportSend(patientId,dest,targetEmail,sections);
+          }catch(e){
+            console.error('send-report-email failed',e);
+            const detail=await extractFunctionErrorDetail(e);
+            results.push({ok:false,text:'E-Mail-Versand fehlgeschlagen'+(detail?' ('+detail+')':'')});
+          }
         }
       }
     }

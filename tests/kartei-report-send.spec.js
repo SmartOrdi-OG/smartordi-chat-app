@@ -126,12 +126,16 @@ test('sends to an external doctor\'s typed e-mail address instead of the patient
     document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
     document.getElementById('rptDoctorName').value = 'Dr. Extern';
     document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klinik.at';
     updateRptDestUI();
     document.getElementById('rptSendEmail').checked = true;
     let captured = null;
     sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: { ok: true }, error: null }; };
     const messagesBefore = window.__store.patient_messages.length;
-    await sendKarteiReport();
+    const sendPromise = sendKarteiReport();
+    await new Promise(r => setTimeout(r, 50)); // let it reach the confirmation dialog
+    resolveReportConfirm(true);
+    await sendPromise;
     return { captured, messagesAfter: window.__store.patient_messages.length, messagesBefore };
   });
   expect(result.captured.opts.body.toEmail).toBe('extern@klinik.at');
@@ -222,4 +226,174 @@ test('a non-2xx response from send-report-email surfaces the real reason from th
   });
   expect(result.status).toContain('You can only send testing emails to your own email address');
   expect(result.status).not.toContain('non-2xx');
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Real security gap closed (2026-09-25): a typo in the free-typed external
+// doctor's e-mail address used to silently send sensitive health data
+// (SVNR, Diagnosen, Anamnese...) to whoever actually owns the mistyped
+// address, with no way to catch it before sending. Three mitigations,
+// all scoped to the external-doctor destination only -- the patient's own
+// on-file address is already trusted, never free-typed here, so none of
+// this applies to that path (see the last test below).
+// ═══════════════════════════════════════════════════════════════════════
+
+test('Senden is disabled once a mismatched confirmation is typed for the external-doctor e-mail, and re-enabled once it matches', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    updateRptDestUI();
+    document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptSendEmail').checked = true;
+    updateRptDestUI();
+    const beforeTyping = document.getElementById('rptSendBtn').disabled;
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klink.at'; // typo
+    updateRptSendBtnState();
+    const mismatchDisabled = document.getElementById('rptSendBtn').disabled;
+    const mismatchMsgShown = document.getElementById('rptEmailMismatch').style.display !== 'none';
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klinik.at'; // corrected
+    updateRptSendBtnState();
+    const matchedDisabled = document.getElementById('rptSendBtn').disabled;
+    const matchedMsgShown = document.getElementById('rptEmailMismatch').style.display !== 'none';
+    return { beforeTyping, mismatchDisabled, mismatchMsgShown, matchedDisabled, matchedMsgShown };
+  });
+  expect(result.beforeTyping, 'the button stays disabled until both fields genuinely match -- an empty confirm field does not match a filled one').toBe(true);
+  expect(result.mismatchDisabled).toBe(true);
+  expect(result.mismatchMsgShown).toBe(true);
+  expect(result.matchedDisabled).toBe(false);
+  expect(result.matchedMsgShown).toBe(false);
+});
+
+test('Senden stays enabled for the external-doctor destination when the e-mail checkbox itself is unchecked (e.g. download-only)', async ({ page }) => {
+  await setupPage(page);
+  const disabled = await page.evaluate(async () => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptDoctorEmailConfirm').value = 'anders@klinik.at'; // mismatched, but irrelevant here
+    document.getElementById('rptSendEmail').checked = false;
+    document.getElementById('rptSendDownload').checked = true;
+    updateRptDestUI();
+    return document.getElementById('rptSendBtn').disabled;
+  });
+  expect(disabled, 'the mismatch only matters when an e-mail is actually about to be sent').toBe(false);
+});
+
+test('pasting into the confirmation field is blocked', async ({ page }) => {
+  await setupPage(page);
+  await page.evaluate(() => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    updateRptDestUI();
+  });
+  // A synthetic (non-trusted) paste event never actually inserts text via
+  // the browser's own default action regardless of preventDefault(), so
+  // asserting on the field's VALUE here would pass vacuously either way.
+  // What the onpaste handler actually needs to do -- and what this
+  // verifies directly -- is call preventDefault() on the event itself;
+  // dispatchEvent()'s own return value (false once preventDefault() ran)
+  // and the event's defaultPrevented flag are set by that call regardless
+  // of whether the browser considers the event trusted.
+  const result = await page.evaluate(() => {
+    const el = document.getElementById('rptDoctorEmailConfirm');
+    const event = new ClipboardEvent('paste', { bubbles: true, cancelable: true });
+    const notCancelled = el.dispatchEvent(event);
+    return { notCancelled, defaultPrevented: event.defaultPrevented };
+  });
+  expect(result.notCancelled, 'dispatchEvent() returns false once preventDefault() has been called').toBe(false);
+  expect(result.defaultPrevented).toBe(true);
+});
+
+test('the confirmation dialog shows the exact address, and the actual send only happens after "Bestätigen und senden"', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klinik.at';
+    updateRptDestUI();
+    document.getElementById('rptSendEmail').checked = true;
+    let invokeCalled = false;
+    sb.functions.invoke = async (name, opts) => { invokeCalled = true; return { data: { ok: true }, error: null }; };
+    const sendPromise = sendKarteiReport();
+    await new Promise(r => setTimeout(r, 50));
+    const dialogShown = document.getElementById('reportConfirmModal').classList.contains('show');
+    const dialogEmail = document.getElementById('reportConfirmEmail').textContent;
+    const invokeCalledBeforeConfirm = invokeCalled;
+    resolveReportConfirm(true);
+    await sendPromise;
+    return { dialogShown, dialogEmail, invokeCalledBeforeConfirm, invokeCalledAfterConfirm: invokeCalled };
+  });
+  expect(result.dialogShown).toBe(true);
+  expect(result.dialogEmail).toBe('extern@klinik.at');
+  expect(result.invokeCalledBeforeConfirm, 'send-report-email must not be called before the doctor confirms').toBe(false);
+  expect(result.invokeCalledAfterConfirm).toBe(true);
+});
+
+test('clicking "Abbrechen" on the confirmation dialog cancels the send -- send-report-email is never called', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klinik.at';
+    updateRptDestUI();
+    document.getElementById('rptSendEmail').checked = true;
+    let invokeCalled = false;
+    sb.functions.invoke = async () => { invokeCalled = true; return { data: { ok: true }, error: null }; };
+    const sendPromise = sendKarteiReport();
+    await new Promise(r => setTimeout(r, 50));
+    resolveReportConfirm(false);
+    await sendPromise;
+    return { invokeCalled, status: document.getElementById('rptStatus').textContent };
+  });
+  expect(result.invokeCalled).toBe(false);
+  expect(result.status).toContain('abgebrochen');
+});
+
+test('a successful external-doctor e-mail send is logged with the right patient/recipient/sections', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.querySelector('input[name="rptDest"][value="doctor"]').checked = true;
+    document.getElementById('rptDoctorEmail').value = 'extern@klinik.at';
+    document.getElementById('rptDoctorEmailConfirm').value = 'extern@klinik.at';
+    updateRptDestUI();
+    document.getElementById('rptSendEmail').checked = true;
+    document.getElementById('rptSecLabor').checked = true;
+    sb.functions.invoke = async () => ({ data: { ok: true }, error: null });
+    const sendPromise = sendKarteiReport();
+    await new Promise(r => setTimeout(r, 50));
+    resolveReportConfirm(true);
+    await sendPromise;
+    return window.__store.patient_report_sends[0];
+  });
+  expect(result).toBeTruthy();
+  expect(result.patient_id).toBe('p1');
+  expect(result.sent_to_email).toBe('extern@klinik.at');
+  expect(result.destination_type).toBe('doctor');
+  expect(result.sections.labor).toBe(true);
+  expect(result.sections.stamm).toBe(true);
+});
+
+test('a successful patient-e-mail send is logged too, with no confirmation dialog needed', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.getElementById('rptSendChat').checked = false;
+    document.getElementById('rptSendEmail').checked = true;
+    sb.functions.invoke = async () => ({ data: { ok: true }, error: null });
+    await sendKarteiReport(); // dest stays 'patient' (default) -- no confirm dialog to await
+    return window.__store.patient_report_sends[0];
+  });
+  expect(result).toBeTruthy();
+  expect(result.patient_id).toBe('p1');
+  expect(result.sent_to_email).toBe('maria@example.at');
+  expect(result.destination_type).toBe('patient');
+});
+
+test('a failed e-mail send is never logged', async ({ page }) => {
+  await setupPage(page);
+  const result = await page.evaluate(async () => {
+    document.getElementById('rptSendChat').checked = false;
+    document.getElementById('rptSendEmail').checked = true;
+    sb.functions.invoke = async () => ({ data: null, error: { message: 'Resend API down' } });
+    await sendKarteiReport();
+    return window.__store.patient_report_sends.length;
+  });
+  expect(result).toBe(0);
 });
