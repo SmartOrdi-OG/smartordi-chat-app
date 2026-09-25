@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  let body: { toEmail?: string; subject?: string; bodyText?: string; filename?: string; pdfBase64?: string };
+  let body: { toEmail?: string; subject?: string; bodyText?: string; filename?: string; pdfBase64?: string; fromName?: string };
   try {
     body = await req.json();
   } catch {
@@ -75,13 +75,30 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { toEmail, subject, bodyText, filename, pdfBase64 } = body;
+  const { toEmail, subject, bodyText, filename, pdfBase64, fromName } = body;
   if (!toEmail || !subject || !filename || !pdfBase64) {
     return new Response(JSON.stringify({ error: "missing_fields" }), {
       status: 400,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
+
+  // Real request (2026-09-25): the recipient of a "Bericht senden" e-mail
+  // (patient or external doctor) had no way to tell WHICH practice/doctor
+  // actually sent it -- every send showed the same generic "Smartordi"
+  // sender name. fromName (built client-side from the logged-in staff
+  // member's name + their practice's name, see doctor.html's
+  // sendKarteiReport()) becomes the display name half of the From header;
+  // the e-mail ADDRESS half always stays RESEND_FROM_EMAIL's own verified
+  // address -- Resend only accepts sending from a domain verified on the
+  // account, so a caller-supplied address here would just be rejected, and
+  // this never lets the client pick the address anyway. Stripped of
+  // <, >, and line breaks so a crafted fromName can't break out of the
+  // display-name position and inject extra header content.
+  const configuredAddressMatch = RESEND_FROM_EMAIL.match(/<([^>]+)>/);
+  const configuredAddress = configuredAddressMatch ? configuredAddressMatch[1] : RESEND_FROM_EMAIL;
+  const sanitizedFromName = (fromName || "").replace(/[\r\n<>"]/g, "").trim().slice(0, 120);
+  const fromHeader = sanitizedFromName ? `${sanitizedFromName} <${configuredAddress}>` : RESEND_FROM_EMAIL;
 
   const resendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -90,7 +107,7 @@ Deno.serve(async (req: Request) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: RESEND_FROM_EMAIL,
+      from: fromHeader,
       to: [toEmail],
       subject,
       text: bodyText || "Im Anhang finden Sie den angeforderten Bericht.",

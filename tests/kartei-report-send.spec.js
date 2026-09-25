@@ -104,6 +104,27 @@ test('sends the report to the patient via e-mail, using the patient\'s own on-fi
   expect(invokeArgs.toast).toContain('Bericht gesendet');
 });
 
+// Real request (2026-09-25): the recipient (patient or external doctor)
+// had no way to tell which practice/doctor actually sent the e-mail --
+// every send showed the same generic "Smartordi" sender. fromName (built
+// from the logged-in staff session's name + the practice's own name) is
+// now sent to send-report-email so it becomes the From header's display
+// name, and the same info is echoed as a signature line in the body text.
+test('the e-mail sender identifies the actual sending doctor and practice, both in the invoke payload and as a body signature', async ({ page }) => {
+  await setupPage(page);
+  const invokeArgs = await page.evaluate(async () => {
+    document.getElementById('rptSendChat').checked = false;
+    document.getElementById('rptSendEmail').checked = true;
+    let captured = null;
+    sb.functions.invoke = async (name, opts) => { captured = { name, opts }; return { data: { ok: true }, error: null }; };
+    await sendKarteiReport();
+    return captured;
+  });
+  expect(invokeArgs.opts.body.fromName).toBe('Dr. Sarah Ahmed – Musterordination');
+  expect(invokeArgs.opts.body.bodyText).toContain('Mit freundlichen Grüßen');
+  expect(invokeArgs.opts.body.bodyText).toContain('Dr. Sarah Ahmed – Musterordination');
+});
+
 test('reports a clean failure instead of crashing when the patient has no e-mail on file', async ({ page }) => {
   await setupPage(page, { email: '' });
   const result = await page.evaluate(async () => {
