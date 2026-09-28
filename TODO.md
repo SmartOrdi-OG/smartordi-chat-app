@@ -1,5 +1,14 @@
 # Smartordi – قائمة المهام
 
+## ✅ تثبيت تنفيذ الـ Edge Functions اللي بتلمس بيانات صحية على eu-central-1 (فرانكفورت)
+
+بعد ما دقّقت إن قاعدة البيانات مثبتة على `eu-central-1` لكن **تنفيذ الـEdge Functions نفسه حاجة منفصلة** (بيتنفذ افتراضيًا على أقرب "edge node" للمتصل، مش بالضرورة نفس منطقة المشروع — حسب توثيق GDPR الرسمي بتاع Supabase)، ثبّت الاتنين اللي بيلمسوا بيانات صحية فعليًا:
+
+- **`send-report-email`** (بتتنادى من `doctor.html` عبر `sb.functions.invoke`): ضفت `region:'eu-central-1'` لنداء الـinvoke. مفيش داعي لإعادة نشر الفنكشن نفسها — تحديد المنطقة قرار بتاخده جهة الاستدعاء وقت النداء، مش حاجة متخزنة في كود الفنكشن.
+- **`receive-lab-email`** (بتتنادى من Cloudflare Worker خارجي، مش عبر supabase-js): ضفت هيدر `x-region: eu-central-1` لنداء الـ`fetch()` في `cloudflare/email-worker/src/index.ts`.
+- **محتاج منك خطوة**: التعديل ده في الـCloudflare Worker محتاج `wrangler deploy` من مجلد `cloudflare/email-worker` عشان يسري فعليًا — معنديش وصول لـCloudflare عشان أعمله بنفسي زي ما بعمل مع Supabase.
+- جربتها بمتصفح آلي: أضفت assertion جديدة في اختبار موجود بـ`tests/kartei-report-send.spec.js` بيتأكد إن `region:'eu-central-1'` بيوصل صح مع نداء `send-report-email`. شغّلت الملف كامل (١٩/١٩ نجحوا).
+
 ## ✅ إيميلات "Bericht senden" بقت بتوضح مين الدكتور/الأوردينيشن اللي بعتها
 
 طلبت إن إيميل التقرير الطبي (المرسَل للمريض أو لطبيب خارجي عبر `sendKarteiReport`) يوضّح اسم الدكتور والأوردينيشن اللي بعتوه، عشان المُرسَل إليه يعرف مصدره — كان قبل كده كل إرسال بيظهر بنفس اسم مرسل عام "Smartordi" بغض النظر مين فعليًا بعت.
