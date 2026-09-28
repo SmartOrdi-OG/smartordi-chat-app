@@ -59,11 +59,17 @@ export default {
 
     if (attachments.length === 0) return;
 
+    // Pinned to eu-central-1 (2026-09-28, real data-residency request): see
+    // doctor.html's own comment on send-report-email's identical `region`
+    // option for the full reasoning -- Edge Function execution defaults to
+    // whichever node is closest to the CALLER, not the project's own region,
+    // and this forwards real patient lab-result attachments.
     await fetch(env.RECEIVE_LAB_EMAIL_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-webhook-secret": env.LAB_EMAIL_WEBHOOK_SECRET,
+        "x-region": "eu-central-1",
       },
       body: JSON.stringify({
         to: message.to,

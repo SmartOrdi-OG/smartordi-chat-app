@@ -102,6 +102,10 @@ test('sends the report to the patient via e-mail, using the patient\'s own on-fi
   expect(invokeArgs.captured.name).toBe('send-report-email');
   expect(invokeArgs.captured.opts.body.toEmail).toBe('maria@example.at');
   expect(invokeArgs.toast).toContain('Bericht gesendet');
+  // Real data-residency request (2026-09-28): this sends real patient health
+  // data by e-mail, so its execution is pinned to eu-central-1 rather than
+  // left to Supabase's default nearest-edge-to-caller routing.
+  expect(invokeArgs.captured.opts.region).toBe('eu-central-1');
 });
 
 // Real request (2026-09-25): the recipient (patient or external doctor)
