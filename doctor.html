@@ -1387,14 +1387,14 @@ body.windows-mode #karteiBtn{display:none;}
 .stat-change{font-size:11px;font-weight:700;margin-top:8px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;}
 .stat-change.up{color:#16a34a;background:#f0fdf4;}
 .stat-change.down{color:#dc2626;background:#fef2f2;}
-.dash-vertretung-card{display:flex;align-items:center;gap:10px;width:calc(50% - 20px);box-sizing:border-box;margin:0 20px 12px;background:white;border:1px solid var(--border);border-radius:12px;padding:7px 14px;box-shadow:0 2px 16px rgba(0,0,0,0.07);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
+.dash-vertretung-card{display:flex;align-items:center;gap:14px;width:calc(50% - 20px);box-sizing:border-box;margin:0 20px 20px;background:white;border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
 .dash-vertretung-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1);}
-.dash-vertretung-icon{width:30px;height:30px;border-radius:9px;background:#EAF4F1;color:#0E5E56;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dash-vertretung-icon{width:48px;height:48px;border-radius:14px;background:#EAF4F1;color:#0E5E56;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .dash-vertretung-text{flex:1;min-width:0;}
-.dash-vertretung-title{font-size:13px;font-weight:800;color:var(--text-1);display:flex;align-items:center;gap:8px;}
+.dash-vertretung-title{font-size:14px;font-weight:800;color:var(--text-1);display:flex;align-items:center;gap:8px;}
 .dash-vertretung-badge{background:#dc2626;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
-.dash-vertretung-sub{font-size:11px;color:var(--text-2);margin-top:1px;}
-.dash-vertretung-arrow{font-size:16px;color:#0E5E56;flex-shrink:0;}
+.dash-vertretung-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.dash-vertretung-arrow{font-size:18px;color:#0E5E56;flex-shrink:0;}
 /* Second column (dash-timeline-card) is real content -- today's actual
    schedule -- not a wider copy of the first column, so a bigger Dashboard
    window on a large monitor fills with more real information instead of
@@ -2834,7 +2834,7 @@ body.windows-mode #karteiBtn{display:none;}
          exactly the kind of thing a doctor needs to find fast during an
          actual urgent absence. -->
     <div class="dash-vertretung-card" onclick="openWindow('vertretung')">
-      <div class="dash-vertretung-icon"><svg width="17" height="17" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="dash-vertretung-icon"><svg width="26" height="26" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="dash-vertretung-text">
         <div class="dash-vertretung-title">Vertretung einstellen<span class="dash-vertretung-badge">NEU</span></div>
         <div class="dash-vertretung-sub">Abwesenheit eintragen und Patient/innen automatisch informieren</div>
