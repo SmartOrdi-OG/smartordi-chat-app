@@ -1387,7 +1387,7 @@ body.windows-mode #karteiBtn{display:none;}
 .stat-change{font-size:11px;font-weight:700;margin-top:8px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;}
 .stat-change.up{color:#16a34a;background:#f0fdf4;}
 .stat-change.down{color:#dc2626;background:#fef2f2;}
-.dash-vertretung-card{display:flex;align-items:center;gap:10px;margin:0 20px 12px;background:white;border:1px solid var(--border);border-radius:12px;padding:7px 14px;box-shadow:0 2px 16px rgba(0,0,0,0.07);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
+.dash-vertretung-card{display:flex;align-items:center;gap:10px;width:calc(50% - 20px);box-sizing:border-box;margin:0 20px 12px;background:white;border:1px solid var(--border);border-radius:12px;padding:7px 14px;box-shadow:0 2px 16px rgba(0,0,0,0.07);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
 .dash-vertretung-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1);}
 .dash-vertretung-icon{width:30px;height:30px;border-radius:9px;background:#EAF4F1;color:#0E5E56;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .dash-vertretung-text{flex:1;min-width:0;}
@@ -1478,6 +1478,7 @@ body.windows-mode #karteiBtn{display:none;}
   .dashboard{padding:0;}
   .dash-header{padding:12px 14px;}
   .compliance-bar{margin:0 14px;margin-top:-8px;gap:10px;padding:10px 14px;}
+  .dash-vertretung-card{width:calc(100% - 28px);margin:0 14px 12px;}
   .dash-title span{font-size:15px;}
   .vertretung-main{padding:16px;}
   .transfer-stats{grid-template-columns:repeat(3,1fr);}
