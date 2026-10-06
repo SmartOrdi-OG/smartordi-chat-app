@@ -342,7 +342,6 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
 }
 @media(min-width:1024px){
   .app-wrapper.active{overflow-x:visible;padding-top:48px;padding-left:136px;}
-  .vertretung-main{padding-left:32px !important;}
   .dash-grid{padding-left:32px !important;}
   .dash-header{padding-left:32px !important;}
   /* Icon nav becomes a fixed left sidebar instead of a horizontal top bar
@@ -1177,11 +1176,6 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .send-btn:hover{transform:scale(1.08);box-shadow:0 4px 12px rgba(14,94,86,0.45);}
 
 /* ══ VERTRETUNG ══ */
-.vertretung-layout{flex:1;display:flex;overflow:hidden;}
-.vertretung-main{flex:1;overflow-y:auto;padding:28px;background:#f8fafc;}
-.vertretung-back-link{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;color:#0E5E56;cursor:pointer;margin-bottom:14px;}
-.vertretung-back-link:hover{text-decoration:underline;}
-.vertretung-title{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--text-1);margin-bottom:6px;letter-spacing:-0.5px;}
 .vertretung-subtitle{font-size:13px;color:var(--text-2);margin-bottom:24px;}
 /* max-width: same reasoning as .k-section above -- this form's text inputs
    (Name/Fachrichtung/Adresse/...) stretch unreadably wide otherwise once
@@ -1480,7 +1474,6 @@ body.windows-mode #karteiBtn{display:none;}
   .compliance-bar{margin:0 14px;margin-top:-8px;gap:10px;padding:10px 14px;}
   .dash-vertretung-card{width:calc(100% - 28px);margin:0 14px 12px;}
   .dash-title span{font-size:15px;}
-  .vertretung-main{padding:16px;}
   .transfer-stats{grid-template-columns:repeat(3,1fr);}
 }
 @media(max-width:480px){
@@ -2723,12 +2716,21 @@ body.windows-mode #karteiBtn{display:none;}
 
 </div>
 
-<!-- ══ VERTRETUNG VIEW ══ -->
-<div id="view-vertretung" class="view">
-  <div class="vertretung-layout">
-    <div class="vertretung-main scrollbar">
-      <div class="vertretung-back-link" onclick="openWindow('dashboard')">← Zurück zum Dashboard</div>
-      <div class="vertretung-title">Vertretung & Weiterleitung</div>
+<!-- ══ VERTRETUNG MODAL ══ -->
+<!-- Content-sized modal instead of a full page -- this form (a handful of
+     fields plus a short recipient list) never came close to filling a
+     whole view, and the Dashboard card it opens from is the only entry
+     point left since the nav tab was removed, so a modal (reusing the
+     existing .modal-overlay/.modal pattern -- no close-on-outside-click,
+     only the X/buttons, so an in-progress form can't be lost by a
+     misclick) fits better than a full page. -->
+<div class="modal-overlay" id="vertretungModal">
+  <div class="modal" style="width:560px;max-width:92vw;">
+    <div class="modal-header">
+      <div class="modal-title">Vertretung & Weiterleitung</div>
+      <button class="modal-close" onclick="closeVertretungModal()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
       <div class="vertretung-subtitle">Tragen Sie Ihre Abwesenheit ein und informieren Sie Ihre Patient/innen über die Vertretung</div>
 
       <!-- Vacation / substitute form -->
@@ -2833,7 +2835,7 @@ body.windows-mode #karteiBtn{display:none;}
          carried over) rather than buried in a smaller widget, since it's
          exactly the kind of thing a doctor needs to find fast during an
          actual urgent absence. -->
-    <div class="dash-vertretung-card" onclick="openWindow('vertretung')">
+    <div class="dash-vertretung-card" onclick="openVertretungModal()">
       <div class="dash-vertretung-icon"><svg width="26" height="26" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="dash-vertretung-text">
         <div class="dash-vertretung-title">Vertretung einstellen<span class="dash-vertretung-badge">NEU</span></div>
@@ -6849,8 +6851,18 @@ function updateElgaPatientCount(){
 // Init canvas when settings view opens
 document.addEventListener('smartordi-view-change', async function(e){
   if(e.detail === 'settings'){ setTimeout(initSigCanvas, 100); await termineReady; updateElgaPatientCount(); }
-  if(e.detail === 'vertretung'){ await vertretungReady; renderVertretungView(); }
 });
+
+// Vertretung opens as a content-sized modal (not a full view) from its
+// Dashboard card -- see the modal markup's comment for why.
+async function openVertretungModal(){
+  document.getElementById('vertretungModal').classList.add('show');
+  await vertretungReady;
+  renderVertretungView();
+}
+function closeVertretungModal(){
+  document.getElementById('vertretungModal').classList.remove('show');
+}
 
 // ══ VERTRETUNG (real absence + substitute-doctor notice, replacing the old
 // fully-static "Dr. Klaus Weber" demo and fictional inter-practice network
