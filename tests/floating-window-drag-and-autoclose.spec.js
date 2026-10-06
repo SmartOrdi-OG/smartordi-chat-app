@@ -213,14 +213,18 @@ test.describe('secretary.html #secCalWindow', () => {
 
 // Real report + screenshot: dragging secretary.html's #secFloatingChatWindow
 // (the Messenger-style chat popup) at all made it "turn into weird sizes and
-// shapes" with no way back except reloading the page. Root cause: unlike
-// #secCalWindow, that window has no fixed width/height in CSS -- it's sized
-// via top/right/bottom + width:auto/height:auto so its width can grow/shrink
-// with the viewport (see that CSS rule's own comment). The shared drag
-// helper used to clear right/bottom without ever giving the window an
-// explicit width/height first, so the size had nothing left to compute from
-// and collapsed to the browser's intrinsic shrink-to-fit size.
-test.describe('secretary.html #secFloatingChatWindow (width:auto sizing model)', () => {
+// shapes" with no way back except reloading the page. Root cause at the
+// time: that window used to have no fixed width/height in CSS -- it was
+// sized via top/right/bottom + width:auto/height:auto so its width could
+// grow/shrink with the viewport, and the shared drag helper cleared right/
+// bottom without ever giving the window an explicit width/height first, so
+// the size had nothing left to compute from and collapsed to the browser's
+// intrinsic shrink-to-fit size. The window has since gone back to a fixed
+// default size (420×600, see positionSecFloatingChatWindow()'s own comment),
+// but these drag/resize-don't-collapse regression tests stay relevant --
+// the same shared helpers are still used, and still must not let any
+// floating window collapse mid-drag/resize.
+test.describe('secretary.html #secFloatingChatWindow drag/resize', () => {
   async function openFloatingChat(page) {
     await setupSecretaryPage(page, []);
     await page.click('.nav-tab[data-view="patienten"]');
@@ -255,11 +259,12 @@ test.describe('secretary.html #secFloatingChatWindow (width:auto sizing model)',
     const before = await page.locator('#secFloatingChatWindow').boundingBox();
     // Pinned to a corner with plenty of open viewport around it -- see the
     // identical note on the #tuCalWindow/#secCalWindow resize tests above.
-    // Width/height must be pinned explicitly too, same reason
-    // makeFloatingWindowDraggable() itself has to (see its own comment) --
-    // this window has no fixed width/height in CSS, so clearing right/
-    // bottom with nothing pinning width/height first collapses it to an
-    // intrinsic/shrink-to-fit size, same bug the real fix targets.
+    // Width/height pinned explicitly too, matching what
+    // makeFloatingWindowDraggable()/makeFloatingWindowResizable() themselves
+    // do before clearing right/bottom (see their own comments) -- without
+    // that, clearing right/bottom with nothing pinning width/height first
+    // collapses the window to an intrinsic/shrink-to-fit size, the original
+    // bug this test guards against.
     await page.evaluate(() => {
       const win = document.getElementById('secFloatingChatWindow');
       const rect = win.getBoundingClientRect();
@@ -277,12 +282,10 @@ test.describe('secretary.html #secFloatingChatWindow (width:auto sizing model)',
 
     const resized = await page.locator('#secFloatingChatWindow').boundingBox();
     expect(resized.width).toBeGreaterThan(before.width + 50);
-    // Height is intentionally not asserted to grow here -- this window
-    // already fills top:24 to bottom:24 by design (the whole point of its
-    // width:auto sizing model), so at a typical viewport height there's
-    // legitimately little to no headroom left to grow taller into; the
-    // resize handler's own stay-on-screen clamp is doing exactly what it
-    // should. Just confirm it never shrank.
+    // Not asserting an exact grown height -- the resize handler's own
+    // stay-on-screen clamp may cap it below the full dragged distance
+    // depending on the test viewport's actual height. Just confirm it grew
+    // (or at least never shrank) rather than collapsing.
     expect(resized.height).toBeGreaterThanOrEqual(before.height);
   });
 });

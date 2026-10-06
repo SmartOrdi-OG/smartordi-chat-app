@@ -244,7 +244,14 @@ test('a patient with an overdue vaccination shows an "Impfung fällig" warning i
   expect(impfText).toContain('Impfung fällig');
 });
 
-test('the floating chat popup is a right-side panel (top-to-bottom, not just a bottom-right corner box)', async ({ page }) => {
+// The full-height/width-tracks-viewport behavior these two tests used to
+// cover (requested 2026-08-xx) made the default popup far too big in
+// practice -- real report ("نافذة الرسايل كتير كبيرة"), with a follow-up
+// screenshot of the much smaller size actually wanted. Back to a fixed,
+// reasonably-sized default (the shared .floating-chat-window rule: 420×600,
+// bottom-right corner), same as doctor.html's own floating chat -- still
+// freely draggable/resizable (see floating-window-drag-and-autoclose.spec.js).
+test('the floating chat popup opens at a fixed, reasonably-sized default (bottom-right corner), not stretched to fill the viewport', async ({ page }) => {
   await setupPage(page);
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(200);
@@ -252,23 +259,15 @@ test('the floating chat popup is a right-side panel (top-to-bottom, not just a b
   await page.waitForTimeout(200);
   const state = await page.evaluate(() => {
     const r = document.getElementById('secFloatingChatWindow').getBoundingClientRect();
-    const listRight = document.querySelector('.nachrichten-list-pane').getBoundingClientRect().right;
-    return { left: Math.round(r.left), listRight: Math.round(listRight), top: Math.round(r.top), bottom: Math.round(r.bottom), viewportHeight: window.innerHeight };
+    return { width: Math.round(r.width), height: Math.round(r.height), right: Math.round(window.innerWidth - r.right), bottom: Math.round(window.innerHeight - r.bottom) };
   });
-  // Fills whatever space is free to the right of the patient list, not a
-  // guessed fixed width -- left edge sits at the list pane's right edge
-  // plus a small margin ("تاخد كل المساحة الفاضية يمين قائمة المرضى").
-  expect(state.left).toBeGreaterThan(state.listRight);
-  expect(state.left).toBeLessThan(state.listRight + 40);
-  // Pinned near the top AND the bottom of the viewport (a real right-side
-  // panel), not just anchored by a bottom margin with a fixed 600px height
-  // that left empty space above it on a normal-height screen -- real user
-  // report ("بدي نافذة المحادثة العايمة تظهر بالجانب اليمين مو بالاسفل").
-  expect(state.top).toBeLessThan(30);
-  expect(state.viewportHeight - state.bottom).toBeLessThan(30);
+  expect(state.width).toBe(420);
+  expect(state.height).toBe(600);
+  expect(state.right).toBe(20);
+  expect(state.bottom).toBe(20);
 });
 
-test('the floating chat popup width grows and shrinks with the viewport ("تكبر لما الشاشة تكبر")', async ({ page }) => {
+test('the floating chat popup width stays fixed regardless of viewport size (no longer tracks it)', async ({ page }) => {
   await setupPage(page);
   await page.click('#patientList .patient-row[data-real]:has-text("Maria Huber")');
   await page.waitForTimeout(200);
@@ -278,7 +277,7 @@ test('the floating chat popup width grows and shrinks with the viewport ("تكب
   await page.setViewportSize({ width: 1900, height: 1000 });
   await page.waitForTimeout(500);
   const wideWidth = await page.evaluate(() => Math.round(document.getElementById('secFloatingChatWindow').getBoundingClientRect().width));
-  expect(wideWidth).toBeGreaterThan(narrowWidth);
+  expect(wideWidth).toBe(narrowWidth);
 });
 
 // Merging Patienten with Termine (2026-08-06, "ندمج Patienten مع Termine"):
