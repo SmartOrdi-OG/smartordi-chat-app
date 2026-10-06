@@ -844,11 +844,6 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
       <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100"><path fill-rule="evenodd" fill="currentColor" d="M32 10 H78 A12 12 0 0 1 90 22 V64 A12 12 0 0 1 78 76 H42 L20 92 L26 76 H32 A12 12 0 0 1 20 64 V22 A12 12 0 0 1 32 10 Z M43 22 H57 V33 H76 V47 H57 V60 H43 V47 H24 V33 H43 Z"/></svg></span>
       <span class="nav-tab-label">Praxis<span class="chat-nav-badge" id="topNavChatBadge">0</span></span>
     </button>
-    <button class="nav-tab vertretung-tab" onclick="openWindow('vertretung',this)">
-      <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="nav-tab-label">Vertretung</span>
-      <span class="new-badge">NEU</span>
-    </button>
     <button class="nav-tab" onclick="openWindow('dashboard',this)">
       <span class="nav-tab-icon"><svg width="34" height="34" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M 14 60 L 28 60 L 38 24 L 50 80 L 60 32 L 68 60 L 78 60 Q 88 60 88 70 Q 88 80 78 80"/></svg></span>
       <span class="nav-tab-label">Dashboard</span>
@@ -968,8 +963,6 @@ body{font-family:'IBM Plex Sans',system-ui,-apple-system,sans-serif;background:v
 .nav-tab:hover .nav-tab-icon{background:#DCEAE6;color:#0E5E56;}
 .nav-tab.active{background:transparent;color:#0E5E56;font-weight:700;}
 .nav-tab.active .nav-tab-icon{background:#DCEAE6;color:#0E5E56;}
-.nav-tab.vertretung-tab{position:relative;}
-.nav-tab.vertretung-tab .new-badge{position:absolute;top:-4px;right:-4px;background:#dc2626;color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:8px;}
 .lang-switcher{display:flex;gap:4px;}
 .lang-btn{padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-2);cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;transition:all 0.2s;}
 .lang-btn.active{background:#0E5E56;color:white;border-color:#0E5E56;}
@@ -1392,6 +1385,14 @@ body.windows-mode #karteiBtn{display:none;}
 .stat-change{font-size:11px;font-weight:700;margin-top:8px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;}
 .stat-change.up{color:#16a34a;background:#f0fdf4;}
 .stat-change.down{color:#dc2626;background:#fef2f2;}
+.dash-vertretung-card{display:flex;align-items:center;gap:14px;margin:0 20px 20px;background:white;border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:0 2px 16px rgba(0,0,0,0.07);cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
+.dash-vertretung-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1);}
+.dash-vertretung-icon{width:48px;height:48px;border-radius:14px;background:#EAF4F1;color:#0E5E56;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.dash-vertretung-text{flex:1;min-width:0;}
+.dash-vertretung-title{font-size:14px;font-weight:800;color:var(--text-1);display:flex;align-items:center;gap:8px;}
+.dash-vertretung-badge{background:#dc2626;color:white;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px;}
+.dash-vertretung-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.dash-vertretung-arrow{font-size:18px;color:#0E5E56;flex-shrink:0;}
 /* Second column (dash-timeline-card) is real content -- today's actual
    schedule -- not a wider copy of the first column, so a bigger Dashboard
    window on a large monitor fills with more real information instead of
@@ -1432,7 +1433,6 @@ body.windows-mode #karteiBtn{display:none;}
 .mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px 10px;gap:3px;background:transparent;border:none;border-radius:10px;cursor:pointer;font-family:inherit;color:var(--text-3);font-size:10px;font-weight:600;transition:all 0.15s;position:relative;}
 .mobile-nav-item.active{color:#0E5E56;background:#EAF4F1;}
 .mobile-nav-item .mnav-icon{font-size:20px;line-height:1;}
-.mobile-nav-badge{position:absolute;top:6px;right:calc(50% - 18px);background:#dc2626;color:white;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center;}
 
 /* Mobile back header */
 .mobile-chat-back{display:none;align-items:center;gap:10px;padding:12px 16px;background:white;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
@@ -1562,11 +1562,6 @@ body.windows-mode #karteiBtn{display:none;}
     <button class="mobile-nav-item" id="mnav-kartei" onclick="mobileOpenKartei();mnavActive('mnav-kartei')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
       <span>Kartei</span>
-    </button>
-    <button class="mobile-nav-item" id="mnav-vertretung" onclick="openWindow('vertretung',null);mnavActive('mnav-vertretung')">
-      <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span>Vertretung</span>
-      <span class="mobile-nav-badge">NEU</span>
     </button>
     <button class="mobile-nav-item" id="mnav-dashboard" onclick="openWindow('dashboard',null);mnavActive('mnav-dashboard')">
       <span class="mnav-icon"><svg width="20" height="20" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M 14 60 L 28 60 L 38 24 L 50 80 L 60 32 L 68 60 L 78 60 Q 88 60 88 70 Q 88 80 78 80"/></svg></span>
@@ -2827,6 +2822,22 @@ body.windows-mode #karteiBtn{display:none;}
       </div>
     </div>
 
+    <!-- Vertretung quick-access -- promoted here from its own top-level nav
+         tab (removed) since it's used rarely (a few times a year, not
+         daily); this keeps it just as reachable without permanently taking
+         a nav slot. Kept prominent (its own banner-style card, "NEU" badge
+         carried over) rather than buried in a smaller widget, since it's
+         exactly the kind of thing a doctor needs to find fast during an
+         actual urgent absence. -->
+    <div class="dash-vertretung-card" onclick="openWindow('vertretung')">
+      <div class="dash-vertretung-icon"><svg width="26" height="26" viewBox="0 0 100 100"><circle cx="30" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="70" cy="50" r="15" fill="none" stroke="currentColor" stroke-width="6"/><path d="M 44 38 H 64 M 64 38 L 57 31 M 64 38 L 57 45" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M 56 62 H 36 M 36 62 L 43 55 M 36 62 L 43 69" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="dash-vertretung-text">
+        <div class="dash-vertretung-title">Vertretung einstellen<span class="dash-vertretung-badge">NEU</span></div>
+        <div class="dash-vertretung-sub">Abwesenheit eintragen und Patient/innen automatisch informieren</div>
+      </div>
+      <div class="dash-vertretung-arrow">→</div>
+    </div>
+
     <!-- Dash Grid -->
     <div class="dash-grid">
 
@@ -3553,7 +3564,7 @@ function switchView(view,btn){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   if(btn) btn.classList.add('active');
-  const mmap={'clinic':'mnav-clinic','kartei':'mnav-kartei','vertretung':'mnav-vertretung','dashboard':'mnav-dashboard','settings':'mnav-settings'};
+  const mmap={'clinic':'mnav-clinic','kartei':'mnav-kartei','dashboard':'mnav-dashboard','settings':'mnav-settings'};
   if(mmap[view]) mnavActive(mmap[view]);
   // على الجوال — أغلق الكارتاي إذا مفتوح
   if(typeof karteiOpen!=='undefined'&&karteiOpen) toggleKartei();
