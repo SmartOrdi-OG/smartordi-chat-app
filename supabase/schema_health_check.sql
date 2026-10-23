@@ -103,7 +103,10 @@ from unnest(array[
   'patient_record_login_consent',
   -- phase87
   'practice_ack_pilot_end_notice','practice_trial_ends_at','practice_trial_active',
-  'guard_practice_billing_columns'
+  'guard_practice_billing_columns',
+  -- phase88
+  'purge_practice_data','_detach_patient_portal_account','_delete_auth_user_if_unlinked',
+  'practice_export_status','practice_export_table'
 ]) as f
 
 union all
@@ -592,5 +595,37 @@ select 'anon has NO grant (deliberate)', 'patient_report_sends',
     select 1 from information_schema.role_table_grants
     where table_schema='public' and table_name='patient_report_sends' and grantee='anon'
   ) then 'OK' else 'WARNING -- anon has been granted some privilege on patient_report_sends -- this was deliberately revoked in phase85, verify this was intentional' end
+
+union all
+
+-- ══════════════════════════════════════════════════════════════
+-- 8) Practice-end deletion is complete (phase88_complete_practice_
+-- deletion.sql). Files live in table columns, not in Supabase Storage --
+-- if a bucket ever appears, purge_practice_data() must also delete its
+-- objects (via the Storage API), so this warns until that is built.
+-- ══════════════════════════════════════════════════════════════
+select 'no storage buckets (files live in tables)', 'storage.buckets',
+  case when not exists (select 1 from storage.buckets)
+       then 'OK' else 'WARNING -- a Storage bucket exists: extend purge_practice_data() (phase88) to delete its objects for ended practices' end
+
+union all
+
+-- Every practice marked anonymized must really be empty: no patient rows,
+-- no clinical/lab/message rows, and no audit_log row payloads left.
+select 'anonymized practice fully purged', coalesce(p.id::text, 'none'),
+  case when p.id is null then 'OK'
+       when exists (select 1 from public.patients x where x.practice_id = p.id)
+         or exists (select 1 from public.patient_visits x where x.practice_id = p.id)
+         or exists (select 1 from public.patient_documents x where x.practice_id = p.id)
+         or exists (select 1 from public.patient_rezepte x where x.practice_id = p.id)
+         or exists (select 1 from public.patient_lab_results x where x.practice_id = p.id)
+         or exists (select 1 from public.lab_result_uploads x where x.practice_id = p.id)
+         or exists (select 1 from public.patient_messages x where x.practice_id = p.id)
+         or exists (select 1 from public.termine x where x.practice_id = p.id)
+         or exists (select 1 from public.audit_log x where x.practice_id = p.id and x.data is not null)
+       then 'STALE -- personal data left behind for an anonymized practice: run select public.purge_practice_data(id) (phase88)'
+       else 'OK' end
+from (select 1) one
+left join public.practices p on p.retention_status = 'anonymized'
 
 order by check_type, name;

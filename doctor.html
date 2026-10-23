@@ -3442,6 +3442,11 @@ body.windows-mode #karteiBtn{display:none;}
     <div id="trialLockTitle" style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:8px;">Ihre Testphase ist abgelaufen</div>
     <div id="trialLockText" style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Ihre kostenlose 30-Tage-Testphase ist beendet. Bitte wählen Sie ein Paket und hinterlegen Sie eine Zahlungsmethode, um Smartordi.chat weiter zu nutzen.</div>
     <button onclick="openTrialPaymentModal()" style="display:block;width:auto;min-width:200px;margin:0 auto 10px;padding:11px 24px;background:#EAF4F1;color:#0E5E56;border:1px solid #bfdbfe;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Paket wählen & fortsetzen</button>
+    <!-- supabase/phase88: export stays possible while locked, until the deletion date (admins only, server-checked) -->
+    <div id="trialLockExportBox" style="display:none;margin:4px 0 12px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+      <div id="trialLockExportText" style="font-size:13px;color:#9a3412;font-weight:700;line-height:1.5;margin-bottom:8px;"></div>
+      <button id="trialLockExportBtn" onclick="exportPracticeDataZip()" style="padding:9px 18px;background:white;color:#9a3412;border:1px solid #fdba74;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Daten exportieren (ZIP)</button>
+    </div>
     <button onclick="doctorLogout()" style="width:100%;padding:10px;background:none;border:none;color:#64748b;font-size:12px;cursor:pointer;font-family:inherit;">Abmelden</button>
   </div>
 </div>
@@ -4764,6 +4769,7 @@ function applyTrialStatus(){
       document.getElementById('trialLockText').textContent='Ihre Pilotphase ist am '+formatPilotDate(new Date(getPilotUntil()))+' zu Ende gegangen. Um Smartordi.chat weiter zu nutzen, wählen Sie bitte ein Paket und hinterlegen Sie eine Zahlungsmethode – oder melden Sie sich bei uns: '+SMARTORDI_CONTACT_EMAIL+' · '+SMARTORDI_CONTACT_TEL+'.';
     }
     lock.style.display=pilotEnded?'flex':'none';
+    if(pilotEnded) refreshLockExportOption();
     applyPilotEndNotice({onChoosePlan:openTrialPaymentModal});
     return;
   }
@@ -4776,6 +4782,7 @@ function applyTrialStatus(){
   if(daysRemaining<=0){
     banner.style.display='none';
     lock.style.display='flex';
+    refreshLockExportOption();
     return;
   }
   lock.style.display='none';
@@ -4786,6 +4793,30 @@ function applyTrialStatus(){
   }else{
     banner.style.display='none';
   }
+}
+// supabase/phase88_complete_practice_deletion.sql -- once locked (trial/
+// pilot over, or churn), the practice must still be able to take its data
+// with it (Art. 28(3)(g) DSGVO; the doctor keeps it 10 years, § 51 ÄrzteG)
+// until the deletion date. practice_export_status() decides server-side
+// (admin of this practice, not yet deleted) and returns that date; the RLS
+// lock on the clinical tables itself stays in place.
+function lockExportText(untilIso){
+  if(!untilIso) return 'Ihr Zugang ist gesperrt. Sie können Ihre Daten weiterhin exportieren.';
+  const p=String(untilIso).slice(0,10).split('-');
+  return 'Ihr Zugang ist gesperrt. Sie können Ihre Daten bis '+p[2]+'.'+p[1]+'.'+p[0]+' exportieren.';
+}
+async function refreshLockExportOption(){
+  const box=document.getElementById('trialLockExportBox');
+  if(!box) return;
+  box.style.display='none';
+  let st=null;
+  try{
+    const {data,error}=await sb.rpc('practice_export_status');
+    if(!error) st=Array.isArray(data)?data[0]:data;
+  }catch(e){ st=null; }
+  if(!st||!st.allowed) return;
+  document.getElementById('trialLockExportText').textContent=lockExportText(st.export_until);
+  box.style.display='block';
 }
 function applyPlanGating(){
   const locked=!planHasFeature('rezeptImpfung');
@@ -5238,10 +5269,42 @@ async function exportPatientJson(){
 // recent-500 cache (see TODO.md's patient search-on-demand rollout) --
 // this is a rare, admin-triggered bulk action, not the hot path that
 // bound was built for, so the full unbounded fetch is appropriate here.
+// Complete raw export of every practice table (Rezepte, Überweisungen,
+// AU/Pflegefreistellung, Labor incl. Laborpostfach, Dokumente incl. PDF,
+// Nachrichten, Einwilligungen, ...) via supabase/phase88's
+// practice_export_table() -- keyset-paged, admin-only, and it keeps working
+// while the practice is locked, unlike the direct table reads above.
+// Returns {counts} or {error}.
+const PRACTICE_EXPORT_TABLES=['patients','termine','patient_visits','patient_rezepte','patient_ueberweisungen',
+  'patient_arbeitsunfaehigkeit','patient_pflegefreistellung','patient_lab_results','lab_result_uploads',
+  'patient_documents','patient_messages','mkp_untersuchungen','patient_impfungen',
+  'patient_vaccine_dismissals','consent_records','patient_report_sends'];
+async function addPracticeTablesToZip(zip){
+  const counts={};
+  try{
+    for(const t of PRACTICE_EXPORT_TABLES){
+      const pageSize=(t==='patient_documents'||t==='lab_result_uploads')?20:200;
+      let after=null, rows=[];
+      for(;;){
+        const {data,error}=await sb.rpc('practice_export_table',{p_table:t,p_after:after,p_limit:pageSize});
+        if(error) return {error};
+        const page=Array.isArray(data)?data:[];
+        rows=rows.concat(page);
+        if(page.length<pageSize) break;
+        after=page[page.length-1].id;
+      }
+      zip.file('tabellen/'+t+'.json',JSON.stringify(rows,null,2));
+      counts[t]=rows.length;
+    }
+  }catch(err){ return {error:err}; }
+  return {counts};
+}
 async function exportPracticeDataZip(){
   if(!isCurrentUserAdmin()){ showToast('Nur für Admins verfügbar.','error'); return; }
   const btn=document.getElementById('exportPracticeBtn');
   if(btn){ btn.disabled=true; btn.textContent='Exportiere...'; }
+  const lockBtn=document.getElementById('trialLockExportBtn');
+  if(lockBtn){ lockBtn.disabled=true; lockBtn.textContent='Exportiere...'; }
   try{
     const {data,error}=await sb.from('patients').select(PATIENTS_COLUMNS);
     if(error){ showToast('Export fehlgeschlagen: '+error.message,'error'); return; }
@@ -5265,8 +5328,18 @@ async function exportPracticeDataZip(){
       zip.file(filename,JSON.stringify(exportData,null,2));
       count++;
     }));
+    const tables=await addPracticeTablesToZip(zip);
+    if(tables.error){
+      console.error('practice_export_table failed',tables.error);
+      // Locked practice: the per-patient part above is empty (RLS), so
+      // without the table export there is nothing to hand over.
+      if(count===0){ showToast('Export fehlgeschlagen','error'); return; }
+    }
+    if(tables.counts) count=Math.max(count,tables.counts.patients||0);
     const practiceName=(getPracticeSettings()&&getPracticeSettings().name)||'Praxis';
-    zip.file('manifest.json',JSON.stringify({praxis:practiceName,exportiertAm:new Date().toISOString(),anzahlPatienten:count},null,2));
+    zip.file('manifest.json',JSON.stringify({praxis:practiceName,exportiertAm:new Date().toISOString(),anzahlPatienten:count,
+      tabellen:tables.counts||null,
+      hinweis:'Ärztliche Dokumentation: Aufbewahrungspflicht 10 Jahre (§ 51 Abs 3 ÄrzteG) liegt bei der Ordination.'},null,2));
     const blob=await zip.generateAsync({type:'blob'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
@@ -5282,6 +5355,7 @@ async function exportPracticeDataZip(){
     showToast('Export fehlgeschlagen','error');
   }finally{
     if(btn){ btn.disabled=false; btn.textContent='Alle Patientendaten exportieren (ZIP)'; }
+    if(lockBtn){ lockBtn.disabled=false; lockBtn.textContent='Daten exportieren (ZIP)'; }
   }
 }
 
