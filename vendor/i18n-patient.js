@@ -7,8 +7,8 @@
 // patient's UI was set to. Free-text fields (Anamnese, visit notes) are not
 // machine-translated at all: the patient is asked to write those in German,
 // since auto-translating health data through a third-party service would
-// conflict with this app's end-to-end-encrypted / DSGVO-konform handling of
-// medical data.
+// conflict with this app's DSGVO-oriented handling of medical data (TLS in
+// transit, encrypted at rest in Frankfurt -- NOT end-to-end encrypted).
 
 const PATIENT_LANG_KEY='smartordi_patient_lang';
 const PATIENT_LANGS=[
@@ -131,7 +131,7 @@ const I18N={
     'childpicker.title':'Kind auswählen','childpicker.sub':'Wessen Profil möchten Sie öffnen?',
     'childpicker.err.none':'Es sind noch keine Kinder mit diesem Konto verknüpft. Bitte wenden Sie sich an Ihre Ordination.',
     'childpicker.err.selectFailed':'✗ Auswahl fehlgeschlagen. Bitte versuchen Sie es erneut.',
-    'footer.privacy':'Ende-zu-Ende verschlüsselt · EU-Server Frankfurt',
+    'footer.privacy':'Verschlüsselt · EU-Hosting (Frankfurt)',
     'footer.datenschutz':'Datenschutz','footer.agb':'AGB','footer.impressum':'Impressum',
     'an.common.section.allergien':'Allergien & Unverträglichkeiten',
     'an.common.allergie.penizillin':'Penizillin',
@@ -491,7 +491,7 @@ const I18N={
     'childpicker.title':'Select child','childpicker.sub':'Whose profile would you like to open?',
     'childpicker.err.none':'No children are linked to this account yet. Please contact your practice.',
     'childpicker.err.selectFailed':'✗ Selection failed. Please try again.',
-    'footer.privacy':'End-to-end encrypted · EU servers (Frankfurt)',
+    'footer.privacy':'Encrypted · EU hosting (Frankfurt)',
     'footer.datenschutz':'Privacy Policy','footer.agb':'Terms','footer.impressum':'Legal Notice',
     'an.common.section.allergien':'Allergies & Intolerances',
     'an.common.allergie.penizillin':'Penicillin',
@@ -847,7 +847,7 @@ const I18N={
     'childpicker.title':'اختيار الطفل','childpicker.sub':'ملف من تريد فتحه؟',
     'childpicker.err.none':'لا يوجد أطفال مرتبطين بهذا الحساب بعد. يرجى التواصل مع عيادتك.',
     'childpicker.err.selectFailed':'✗ فشل الاختيار. يرجى المحاولة مرة أخرى.',
-    'footer.privacy':'مشفّر من طرف إلى طرف · خوادم الاتحاد الأوروبي (فرانكفورت)',
+    'footer.privacy':'مشفّر · استضافة في الاتحاد الأوروبي (فرانكفورت)',
     'footer.datenschutz':'سياسة الخصوصية','footer.agb':'الشروط والأحكام','footer.impressum':'بيانات الناشر',
     'an.common.section.allergien':'الحساسية وعدم التحمل',
     'an.common.allergie.penizillin':'البنسلين',
@@ -1203,7 +1203,7 @@ const I18N={
     'childpicker.title':'Çocuk seçin','childpicker.sub':'Kimin profilini açmak istiyorsunuz?',
     'childpicker.err.none':'Bu hesaba henüz bağlı bir çocuk yok. Lütfen ordinasyonunuzla iletişime geçin.',
     'childpicker.err.selectFailed':'✗ Seçim başarısız oldu. Lütfen tekrar deneyin.',
-    'footer.privacy':'Uçtan uca şifrelenmiş · AB sunucuları (Frankfurt)',
+    'footer.privacy':'Şifreli · AB\'de barındırma (Frankfurt)',
     'footer.datenschutz':'Gizlilik Politikası','footer.agb':'Kullanım Şartları','footer.impressum':'Yasal Bilgiler',
     'an.common.section.allergien':'Alerjiler ve İntoleranslar',
     'an.common.allergie.penizillin':'Penisilin',
@@ -1559,7 +1559,7 @@ const I18N={
     'childpicker.title':'Odaberite dijete','childpicker.sub':'Čiji profil želite otvoriti?',
     'childpicker.err.none':'Uz ovaj račun još nisu povezana djeca. Obratite se svojoj ordinaciji.',
     'childpicker.err.selectFailed':'✗ Odabir nije uspio. Pokušajte ponovo.',
-    'footer.privacy':'End-to-end enkriptovano · EU serveri (Frankfurt)',
+    'footer.privacy':'Šifrovano · Hosting u EU (Frankfurt)',
     'footer.datenschutz':'Politika privatnosti','footer.agb':'Uslovi korištenja','footer.impressum':'Impresum',
     'an.common.section.allergien':'Alergije i netolerancije',
     'an.common.allergie.penizillin':'Penicilin',
