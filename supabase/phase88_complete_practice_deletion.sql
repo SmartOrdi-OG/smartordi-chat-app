@@ -40,7 +40,9 @@
 --    actor_id = null). Refuses to run on a practice whose retention_status
 --    is 'active' -- the only callers are run_scheduled_practice_deletions()
 --    (unchanged eligibility: deletion_scheduled + date reached) and the
---    one-time backfill for already-anonymized practices at the end.
+--    owner-triggered calls. No existing account is deleted by this file;
+--    practices created before 2026-10-24 are test accounts (is_test_account)
+--    and are never locked, flagged or purged.
 --    anonymize_practice() keeps its name (cron + docs call it) and now
 --    delegates to it.
 --    run_scheduled_practice_deletions() additionally SKIPS a practice that
@@ -90,6 +92,11 @@
 -- 10-year anonymization, lock window, paid-after-flag and the backfill.
 -- Apply it by hand in the SQL editor (it is one transaction-safe file).
 -- ══════════════════════════════════════════════════════════════
+
+-- ── 0) Test accounts: never locked, never flagged, never purged ──
+alter table public.practices add column if not exists is_test_account boolean not null default false;
+-- Every practice that exists today (2026-10-23) is a test/demo account of the owners.
+update public.practices set is_test_account = true where created_at < '2026-10-24';
 
 -- ── helper: delete a Supabase Auth login only if nothing else still uses it ──
 create or replace function public._delete_auth_user_if_unlinked(p_auth_user_id uuid)
@@ -236,6 +243,9 @@ begin
   if v_status = 'active' then
     raise exception 'practice_still_active: refusing to purge %', p_practice_id;
   end if;
+  if exists (select 1 from public.practices where id = p_practice_id and is_test_account) then
+    raise exception 'test_account: refusing to purge %', p_practice_id;
+  end if;
 
   select coalesce(array_agg(id), '{}') into v_patients from public.patients where practice_id = p_practice_id;
   select coalesce(array_agg(distinct x), '{}') into v_auth from (
@@ -333,6 +343,7 @@ begin
   for r in
     select id from public.practices
     where retention_status = 'deletion_scheduled' and scheduled_data_deletion_date <= current_date
+      and not is_test_account
       -- auto-flagged (phase50/87) but paid in the meantime: not due any more
       and not (churn_confirmed_at is null and public.practice_trial_active(id))
   loop
@@ -461,18 +472,73 @@ $function$;
 revoke all on function public.practice_export_table(text, uuid, int) from public, anon;
 grant execute on function public.practice_export_table(text, uuid, int) to authenticated;
 
--- ── one-time backfill: practices that were already "anonymized" under the
--- old, incomplete phase43 logic get the complete purge now. On 2026-10-23
--- these were exactly the 3 test practices (approved by the owner). ──
-do $$
-declare r record;
-begin
-  for r in select id from public.practices where retention_status = 'anonymized' loop
-    perform public.purge_practice_data(r.id);
-  end loop;
-end $$;
+-- (No one-time backfill: the owner decided on 2026-10-23 that NO existing
+-- account is deleted by this migration. Existing practices are marked as
+-- test accounts below and are never locked, flagged or purged.)
 
--- orphaned audit payloads whose patient row no longer exists anywhere
-update public.audit_log a set data = null
-where a.data is not null and a.patient_id is not null
-  and not exists (select 1 from public.patients p where p.id = a.patient_id);
+
+
+-- ── 5) Test accounts stay usable: no lock, no auto-flag ──
+create or replace function public.practice_trial_active(p_practice_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path to 'public'
+as $function$
+  select coalesce(
+    (select p.is_test_account
+            or p.payment_method is not null
+            or public.practice_trial_ends_at(p.trial_start, p.is_pilot, p.pilot_until) is null
+            or now() < public.practice_trial_ends_at(p.trial_start, p.is_pilot, p.pilot_until)
+     from public.practices p
+     where p.id = p_practice_id),
+    false
+  );
+$function$;
+
+create or replace function public.flag_expired_unpaid_trials()
+returns int
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+declare
+  v_count int := 0;
+begin
+  update public.practices
+  set retention_status = 'deletion_scheduled',
+      scheduled_data_deletion_date = current_date
+  where retention_status = 'active'
+    and not is_test_account
+    and payment_method is null
+    and stripe_subscription_id is null
+    and public.practice_trial_ends_at(trial_start, is_pilot, pilot_until) is not null
+    and now() > public.practice_trial_ends_at(trial_start, is_pilot, pilot_until) + interval '14 days';
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$function$;
+revoke all on function public.flag_expired_unpaid_trials() from public, anon, authenticated;
+
+-- The app must not be able to set or clear the test flag.
+create or replace function public.guard_practice_test_flag()
+returns trigger
+language plpgsql
+set search_path to 'public'
+as $function$
+begin
+  if current_user not in ('authenticated', 'anon') then
+    return new;
+  end if;
+  if tg_op = 'INSERT' then
+    new.is_test_account := false;
+  elsif new.is_test_account is distinct from old.is_test_account then
+    raise exception 'is_test_account cannot be changed from the app.' using errcode = '42501';
+  end if;
+  return new;
+end;
+$function$;
+create or replace trigger practices_guard_test_flag
+  before insert or update on public.practices
+  for each row execute function public.guard_practice_test_flag();
