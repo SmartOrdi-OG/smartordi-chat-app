@@ -1,5 +1,22 @@
 # Smartordi – قائمة المهام
 
+## ✅ تحديث شروط الـAGB التجارية في `agb.html` (قرار عبدالرحمن، 2026-10-23 — نص بس، من غير أي تغيير في السلوك)
+
+ده بيقفل بندين من "محتاج قرار منك" في قسم ادعاءات الأمان تحت (§ 8 والـ99%، و§ 4 الدفع والـUSt).
+
+- **§ 4 الأسعار**: شلنا "zuzüglich der gesetzlichen Umsatzsteuer". دلوقتي: "Alle angegebenen Preise sind Endpreise. Gemäß § 6 Abs. 1 Z 27 UStG (Kleinunternehmerregelung) wird keine Umsatzsteuer ausgewiesen." ومفيش أي badge في التطبيق مكتوب فيه "zzgl. USt"/"exkl. MwSt" (دوّرت في كل ملفات الـHTML/JS).
+- **§ 4 الدفع**: "Banküberweisung oder SEPA-Lastschrift" بقت "über den Zahlungsdienstleister Stripe per SEPA-Lastschrift oder Kreditkarte".
+- **§ 3 الـPilot**: زوّدت فقرة للـPilotpraxen: ٩٠ يوم مجانًا، تنبيه قبل النهاية بـ١٤ يوم (نفس بانر phase87 من يوم ٧٦)، **ومفيش تجديد تلقائي ولا تحويل تلقائي لاشتراك مدفوع** — الاشتراك المدفوع محتاج طلب صريح ومنفصل. نص الـtrial العادي (٣٠ يوم) زي ما هو.
+- **§ 5**: "Nach der Pilotphase wird der Vertrag auf unbestimmte Zeit geschlossen" كانت بتوحي إن العقد بيكمل لوحده بعد الـPilot، فبقت بتربط المدة المفتوحة بالاشتراك المدفوع بعد اختيار صريح لباقة (§ 3).
+- **§ 8 التوافر**: "gewährleistet … mindestens 99%" بقت "Wir streben eine Systemverfügbarkeit von 99 % im Jahresdurchschnitt an … Eine bestimmte Verfügbarkeit wird nicht garantiert."
+- **العنوان**: "Steingasse 6A" بقت "Steingasse 6a" في الهيدر والفوتر بتوع `agb.html`. الإيميل `team@smartordi.eu` كان صح.
+- `doctor.html` و`register.html` مفيهمش نص AGB (بس روابط لـ`agb.html` وcheckbox)، فما اتلمسوش.
+- **اتأكدت منها**: Playwright `login-corner-links` + `practice-export-and-churn` (٨/٨ نجحوا)، وسكريبت بمتصفح آلي فتح `agb.html` وأكّد إن كل جملة جديدة موجودة وكل جملة قديمة اتشالت.
+- **محتاج قرار/خطوة منك**:
+  - `create-checkout-session` مش بيحدد `payment_method_types`، يعني طرق الدفع جاية من إعدادات Stripe Dashboard. اتأكد إن SEPA Direct Debit مفعّلة هناك، وإلا الـAGB بتوعد بحاجة مش موجودة.
+  - § 10 بيقول أي تغيير في الـAGB لازم يتبلّغ للعملاء الموجودين بالإيميل قبلها بـ٤ أسابيع.
+  - "Steingasse 6A" لسه موجودة في `doctor.html` (فوتر الـlanding، modals الـDatenschutz/Impressum، والقيمة الافتراضية لـ`setAdresse`) — برّه نطاق المهمة دي فما غيّرتهاش.
+
 ## ⏳ مسح كامل لبيانات الـpraxis في آخر العقد + حذف حساب البوابة بس لما المريض يطلب الحذف + تصدير أثناء القفل (phase88) — نص الملف اتطبّق تلقائيًا، الباقي محتاج تشغّله بنفسك
 
 الإطار القانوني (متقرر): إحنا Auftragsverarbeiter، فلما عقد الـpraxis يخلص (نهاية الـPilot، انتهاء الـtrial، أو churn) لازم نرجّع البيانات (export) وبعدين نمسحها كلها (Art. 28(3)(g) DSGVO). والدكتور هو اللي عليه يحتفظ بالتوثيق الطبي ١٠ سنين (§ 51 Abs 3 ÄrzteG)، عشان كده التصدير قبل المسح لازم يشتغل لحد آخر يوم.
