@@ -100,7 +100,10 @@ from unnest(array[
   -- phase76
   'staff_add_linked_child',
   -- phase79
-  'patient_record_login_consent'
+  'patient_record_login_consent',
+  -- phase87
+  'practice_ack_pilot_end_notice','practice_trial_ends_at','practice_trial_active',
+  'guard_practice_billing_columns'
 ]) as f
 
 union all
@@ -221,7 +224,17 @@ from (values
   -- entirely server-side, with no JS sender at all) keeps arriving in
   -- German forever regardless of the patient's selected language, same gap
   -- phase83 closed for the other 6 button-triggered messages.
-  ('send_termine_reminders', 'chat.system.terminReminder')
+  ('send_termine_reminders', 'chat.system.terminReminder'),
+  -- phase87: catches a deployed lock/deletion that still hardcodes
+  -- trial_start + 30 days -- a pilot practice (90 days) would then be
+  -- locked after 30 and anonymized after 44 days again, which is exactly
+  -- what happened to a real pilot practice on 2026-09-22.
+  ('practice_trial_active', 'practice_trial_ends_at'),
+  ('flag_expired_unpaid_trials', 'practice_trial_ends_at'),
+  -- phase87: catches a deployed deletion flag that would again anonymize
+  -- a practice the night after its PAID subscription was cancelled (live
+  -- incident 2026-10-22) instead of leaving it to phase43's 60-day path.
+  ('flag_expired_unpaid_trials', 'stripe_subscription_id is null')
 ) as f(name, expect)
 
 union all
@@ -286,8 +299,21 @@ select 'practices column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'working_hours','chat_enabled','retention_status','churn_confirmed_at','scheduled_data_deletion_date',
-  'online_booking_enabled'
+  'online_booking_enabled',
+  -- phase87
+  'is_pilot','pilot_until','pilot_end_notice_seen_at'
 ]) as c
+
+union all
+
+-- phase87: without this trigger a staff session can write pilot_until/
+-- payment_method on its own practice row (phase15's "update own practice"
+-- policy) and skip the trial/pilot lock entirely.
+select 'trigger', 'trg_guard_practice_billing_columns',
+  case when exists (
+    select 1 from pg_trigger where tgrelid = 'public.practices'::regclass
+      and tgname = 'trg_guard_practice_billing_columns' and tgenabled <> 'D'
+  ) then 'OK' else 'MISSING -- rerun phase87_pilot_90_day_lock.sql' end
 
 union all
 

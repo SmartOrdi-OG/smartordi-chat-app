@@ -59,8 +59,12 @@ begin
     raise exception 'Es gibt schon eine Praxis mit dem Namen "%". Anderen Namen wählen oder Script nicht erneut ausführen.', v_practice_name;
   end if;
 
-  insert into practices (name, adresse, tel, plan, trial_start)
-  values (v_practice_name, v_practice_adresse, v_practice_tel, 'enterprise', now())
+  -- phase87_pilot_90_day_lock.sql: Pilot-Praxen bekommen 90 Tage statt
+  -- der normalen 30-Tage-Testphase (Sperre erst bei pilot_until, Hinweis
+  -- 14 Tage vorher in doctor.html/secretary.html, Löschung frühestens
+  -- 14 Tage nach der Sperre).
+  insert into practices (name, adresse, tel, plan, trial_start, is_pilot, pilot_until)
+  values (v_practice_name, v_practice_adresse, v_practice_tel, 'enterprise', now(), true, now() + interval '90 days')
   returning id into v_practice_id;
 
   insert into staff_profiles (id, vorname, nachname, role, fach, is_admin, email, practice_id)
