@@ -96,3 +96,117 @@ test('exportPracticeDataZip() (admin) exports every patient in the practice as o
   expect(manifest.anzahlPatienten).toBe(2);
   expect(manifest.praxis).toBe('Musterordination');
 });
+
+// supabase/phase88_complete_practice_deletion.sql: after the lock (trial/
+// pilot over) the admin must still be able to export until the deletion
+// date -- via practice_export_status()/practice_export_table(), which work
+// while the RLS lock on the clinical tables stays in place.
+const DAY = 24 * 60 * 60 * 1000;
+function lockedSeed(extra) {
+  return Object.assign({
+    practices: [{ id: 'prac1', name: 'Musterordination', plan: 'pro', trial_start: new Date(Date.now() - 40 * DAY).toISOString(), payment_method: null }],
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+  }, extra);
+}
+const ADMIN = { role: 'arzt', name: 'Dr. Sarah Ahmed', username: 'dr.ahmed', isAdmin: true };
+
+test('lock overlay offers the export with the German deadline text when the server allows it', async ({ page }) => {
+  await installJsZipMock(page);
+  const initScript = `sessionStorage.setItem('smartordi_user', ${JSON.stringify(JSON.stringify(ADMIN))});
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));`;
+  await installMockSupabase(page, lockedSeed(), initScript);
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  const r = await page.evaluate(async () => {
+    await practiceSettingsReady;
+    sb.rpc = async (name) => name === 'practice_export_status'
+      ? { data: [{ allowed: true, locked: true, export_until: '2026-11-05' }], error: null }
+      : { data: null, error: null };
+    applyTrialStatus();
+    await new Promise(res => setTimeout(res, 100));
+    return {
+      lock: document.getElementById('trialLockOverlay').style.display,
+      box: document.getElementById('trialLockExportBox').style.display,
+      text: document.getElementById('trialLockExportText').textContent,
+    };
+  });
+  expect(r.lock).toBe('flex');
+  expect(r.box).toBe('block');
+  expect(r.text).toBe('Ihr Zugang ist gesperrt. Sie können Ihre Daten bis 05.11.2026 exportieren.');
+});
+
+test('lock overlay hides the export when the server says not allowed (e.g. non-admin)', async ({ page }) => {
+  await installJsZipMock(page);
+  const initScript = `sessionStorage.setItem('smartordi_user', ${JSON.stringify(JSON.stringify(ADMIN))});
+    localStorage.setItem('smartordi_patient_accounts', JSON.stringify({}));`;
+  await installMockSupabase(page, lockedSeed(), initScript);
+  await page.goto('file://' + path.join(__dirname, '..', 'doctor.html'));
+  await page.waitForTimeout(1200);
+  const r = await page.evaluate(async () => {
+    await practiceSettingsReady;
+    sb.rpc = async (name) => name === 'practice_export_status'
+      ? { data: [{ allowed: false, locked: true, export_until: null }], error: null }
+      : { data: null, error: null };
+    applyTrialStatus();
+    await new Promise(res => setTimeout(res, 100));
+    return { lock: document.getElementById('trialLockOverlay').style.display, box: document.getElementById('trialLockExportBox').style.display };
+  });
+  expect(r.lock).toBe('flex');
+  expect(r.box).toBe('none');
+});
+
+test('exportPracticeDataZip() adds every practice table via practice_export_table, paging by id', async ({ page }) => {
+  await setupPage(page, ADMIN, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+  });
+  const result = await page.evaluate(async () => {
+    const calls = [];
+    // 200 Rezepte on page 1 + 1 on page 2 proves keyset paging; one patient
+    // row stands in for a locked practice where direct reads return nothing.
+    sb.rpc = async (name, args) => {
+      if (name !== 'practice_export_table') return { data: null, error: null };
+      calls.push(args);
+      if (args.p_table === 'patients') return { data: [{ id: 'p1', full_name: 'Maria Huber', svnr: '123' }], error: null };
+      if (args.p_table === 'patient_rezepte') {
+        if (!args.p_after) return { data: Array.from({ length: 200 }, (_, i) => ({ id: 'r' + String(i).padStart(3, '0'), med1: 'X' })), error: null };
+        return { data: [{ id: 'r999', med1: 'Y' }], error: null };
+      }
+      return { data: [], error: null };
+    };
+    await exportPracticeDataZip();
+    await new Promise(r => setTimeout(r, 100));
+    return { calls, zipFiles: window.__lastZipFiles, toastText: document.getElementById('toast')?.textContent };
+  });
+  const files = Object.keys(result.zipFiles);
+  for (const t of ['patients', 'patient_visits', 'patient_rezepte', 'patient_ueberweisungen', 'patient_lab_results', 'lab_result_uploads', 'patient_documents', 'patient_messages', 'consent_records']) {
+    expect(files).toContain('tabellen/' + t + '.json');
+  }
+  expect(JSON.parse(result.zipFiles['tabellen/patient_rezepte.json'])).toHaveLength(201);
+  const rezCalls = result.calls.filter(c => c.p_table === 'patient_rezepte');
+  expect(rezCalls).toHaveLength(2);
+  expect(rezCalls[1].p_after).toBe('r199');
+  const docCall = result.calls.find(c => c.p_table === 'patient_documents');
+  expect(docCall.p_limit, 'documents carry PDFs, so they page in small batches').toBe(20);
+  const manifest = JSON.parse(result.zipFiles['manifest.json']);
+  expect(manifest.tabellen.patient_rezepte).toBe(201);
+  expect(manifest.anzahlPatienten).toBe(1);
+  expect(result.toastText).toContain('1 Patient(en) exportiert');
+});
+
+test('exportPracticeDataZip() reports failure instead of an empty ZIP when nothing could be read', async ({ page }) => {
+  await setupPage(page, ADMIN, {
+    staff_profiles: [{ id: 'u1', vorname: 'Sarah', nachname: 'Ahmed', full_name: 'Dr. Sarah Ahmed', role: 'arzt', fach: 'Allgemeinmedizin', is_admin: true, email: 'a@a.at', username: 'dr.ahmed' }],
+  });
+  const result = await page.evaluate(async () => {
+    window.__lastZipFiles = undefined;
+    sb.rpc = async () => ({ data: null, error: { message: 'export_forbidden' } });
+    let downloaded = false;
+    const orig = URL.createObjectURL;
+    URL.createObjectURL = (b) => { downloaded = true; return orig(b); };
+    await exportPracticeDataZip();
+    await new Promise(r => setTimeout(r, 100));
+    return { downloaded, toastText: document.getElementById('toast')?.textContent };
+  });
+  expect(result.downloaded).toBe(false);
+  expect(result.toastText).toContain('Export fehlgeschlagen');
+});

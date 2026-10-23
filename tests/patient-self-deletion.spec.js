@@ -72,6 +72,33 @@ test('a still-running retention period is reported with the scheduled date and l
   expect(result.resultText).toContain('§ 51 ÄrzteG');
 });
 
+// supabase/phase88: even while the clinical record is kept (retention not
+// over), the portal login is removed at once -- so the patient is told so
+// and logged out, instead of keeping the account until the 10-year date.
+test('a scheduled deletion still removes the portal access right away and logs the patient out', async ({ page }) => {
+  await setup(page);
+  const result = await page.evaluate(async () => {
+    let signedOut = false;
+    sb.auth.signOut = async () => { signedOut = true; return { error: null }; };
+    sb.rpc = (name) => name === 'patient_request_deletion'
+      ? Promise.resolve({ data: [{ anonymized_immediately: false, effective_or_scheduled_date: '2031-03-05' }], error: null })
+      : Promise.resolve({ data: [], error: null });
+    const p = requestOwnDataDeletion();
+    resolveGenericConfirm(true);
+    await p;
+    await new Promise(r => setTimeout(r, 50));
+    return {
+      resultText: document.getElementById('profilDeletionResult').textContent,
+      signedOut,
+      user: sessionStorage.getItem('smartordi_user'),
+    };
+  });
+  expect(result.resultText).toContain('Portal-Zugang wurde gelöscht');
+  expect(result.resultText).toContain('2031');
+  expect(result.signedOut).toBe(true);
+  expect(result.user).toBeNull();
+});
+
 test('a local-only (demo/guardian) account never sees the deletion option', async ({ page }) => {
   await installMockSupabase(page, {}, () => {
     sessionStorage.setItem('smartordi_user', JSON.stringify({ username: 'demo.kid' }));
