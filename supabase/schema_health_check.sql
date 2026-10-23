@@ -614,6 +614,7 @@ union all
 -- no clinical/lab/message rows, and no audit_log row payloads left.
 select 'anonymized practice fully purged', coalesce(p.id::text, 'none'),
   case when p.id is null then 'OK'
+       when p.is_test_account then 'N/A -- test account (is_test_account, phase88): kept on purpose, never purged without the owner''s explicit OK'
        when exists (select 1 from public.patients x where x.practice_id = p.id)
          or exists (select 1 from public.patient_visits x where x.practice_id = p.id)
          or exists (select 1 from public.patient_documents x where x.practice_id = p.id)
