@@ -436,6 +436,103 @@ function isChatEnabled(){
 function isOnlineBookingEnabled(){
   return _practiceSettings?.online_booking_enabled!==false;
 }
+// ══ PILOTPHASE ══ supabase/phase87_pilot_90_day_lock.sql -- a pilot
+// practice (is_pilot + pilot_until, set by phase53_pilot_account_setup.sql
+// to setup + 90 days) is locked at its own pilot_until instead of the
+// normal trial_start + 30 days, and BOTH staff consoles (doctor.html and
+// secretary.html, which both load this file) show a notice from 14 days
+// before that date. The server-side lock/deletion use the same date via
+// practice_trial_ends_at() -- this is only the UI half.
+const PILOT_NOTICE_WINDOW_DAYS=14;
+const SMARTORDI_CONTACT_EMAIL='team@smartordi.eu';
+const SMARTORDI_CONTACT_TEL='+43 667 762439293';
+// pilot_until as ms, or null for every non-pilot practice (normal trials
+// keep their own 30-day logic in doctor.html untouched).
+function getPilotUntil(){
+  const s=getPracticeSettings();
+  if(!s||!s.is_pilot||!s.pilot_until) return null;
+  const t=new Date(s.pilot_until).getTime();
+  return isNaN(t)?null:t;
+}
+function isPilotPractice(){
+  return getPilotUntil()!==null;
+}
+// Pure decision for the "Pilotphase endet" notice -- null means "show
+// nothing" (not a pilot, payment on file, or more than 14 days left).
+// daysLeft rounds UP so "ends tomorrow at 09:00" reads as 1 day, never 0
+// while the practice still has access.
+function getPilotEndNotice(nowMs){
+  const until=getPilotUntil();
+  if(until===null) return null;
+  if(getPracticeSettings()?.payment_method) return null;
+  const now=(typeof nowMs==='number')?nowMs:Date.now();
+  const msLeft=until-now;
+  if(msLeft>PILOT_NOTICE_WINDOW_DAYS*24*60*60*1000) return null;
+  return {
+    endsAt:new Date(until),
+    ended:msLeft<=0,
+    daysLeft:msLeft<=0?0:Math.ceil(msLeft/(24*60*60*1000)),
+  };
+}
+function formatPilotDate(d){
+  return d.toLocaleDateString('de-AT',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function pilotEndNoticeText(n){
+  const date=formatPilotDate(n.endsAt);
+  if(n.ended){
+    return 'Ihre Pilotphase ist am '+date+' zu Ende gegangen. Damit Ihre Daten erhalten bleiben, wählen Sie bitte ein Paket oder melden Sie sich bei uns: '+SMARTORDI_CONTACT_EMAIL+' · '+SMARTORDI_CONTACT_TEL+'.';
+  }
+  const inDays=n.daysLeft===1?'morgen':'in '+n.daysLeft+' Tagen';
+  return 'Ihre Pilotphase endet am '+date+' ('+inDays+'). Danach ist der Zugang zu den Patientendaten gesperrt. Wenn Sie Smartordi.chat weiter nutzen möchten, wählen Sie bitte ein Paket oder melden Sie sich bei uns: '+SMARTORDI_CONTACT_EMAIL+' · '+SMARTORDI_CONTACT_TEL+'. Wir beraten Sie gerne.';
+}
+let _pilotNoticeAckSent=false;
+// Shows/hides the #pilotEndBanner (created on first use, so neither page
+// needs its own markup). opts.onChoosePlan: doctor.html passes its Stripe
+// plan flow; secretary.html has none and only offers "Kontakt aufnehmen".
+function applyPilotEndNotice(opts){
+  opts=opts||{};
+  const n=getPilotEndNotice();
+  let el=document.getElementById('pilotEndBanner');
+  if(!n || sessionStorage.getItem('smartordi_pilot_notice_dismissed')==='1'){
+    if(el) el.style.display='none';
+    return;
+  }
+  if(!el){
+    el=document.createElement('div');
+    el.id='pilotEndBanner';
+    el.setAttribute('role','status');
+    el.style.cssText='display:none;position:fixed;left:0;right:0;bottom:0;z-index:860;background:#fffbeb;border-top:1px solid #fde68a;padding:10px 16px;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;box-shadow:0 -2px 10px rgba(0,0,0,0.06);';
+    document.body.appendChild(el);
+  }
+  const btnStyle='padding:6px 14px;background:#EAF4F1;color:#0E5E56;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;';
+  const mailto='mailto:'+SMARTORDI_CONTACT_EMAIL+'?subject='+encodeURIComponent('Pilotphase Smartordi.chat – '+(getPracticeSettings()?.name||''));
+  el.innerHTML=
+    '<span id="pilotEndText" style="font-size:13px;color:#92400e;font-weight:600;max-width:820px;line-height:1.5;">'+escapeHtml(pilotEndNoticeText(n))+'</span>'+
+    (typeof opts.onChoosePlan==='function'?'<button type="button" id="pilotEndChoosePlan" style="'+btnStyle+'">Paket wählen</button>':'')+
+    '<a id="pilotEndContact" href="'+mailto+'" style="'+btnStyle+'">Kontakt aufnehmen</a>'+
+    (n.ended?'':'<button type="button" id="pilotEndDismiss" title="Schließen" style="background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;padding:0 4px;">✕</button>');
+  const choose=document.getElementById('pilotEndChoosePlan');
+  if(choose) choose.onclick=opts.onChoosePlan;
+  const dismiss=document.getElementById('pilotEndDismiss');
+  if(dismiss) dismiss.onclick=function(){
+    // Per browser session only -- the notice comes back on the next login,
+    // so it can't be clicked away once and then forgotten for 14 days.
+    sessionStorage.setItem('smartordi_pilot_notice_dismissed','1');
+    el.style.display='none';
+  };
+  el.style.display='flex';
+  // Records (once, server-side) that the practice actually saw the notice
+  // -- evidence that it was told before the lock. Fire-and-forget: a
+  // failed ack must never hide the notice itself.
+  if(!_pilotNoticeAckSent && !getPracticeSettings()?.pilot_end_notice_seen_at){
+    _pilotNoticeAckSent=true;
+    try{
+      Promise.resolve(sb.rpc('practice_ack_pilot_end_notice')).then(function(r){
+        if(r&&r.error) console.error('practice_ack_pilot_end_notice failed',r.error);
+      }).catch(function(e){ console.error('practice_ack_pilot_end_notice failed',e); });
+    }catch(e){ console.error('practice_ack_pilot_end_notice failed',e); }
+  }
+}
 async function savePracticeSettings(fields){
   if(!_practiceSettings||!_practiceSettings.id){
     console.error('savePracticeSettings called before practice settings loaded');

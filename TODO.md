@@ -1,5 +1,19 @@
 # Smartordi – قائمة المهام
 
+## ✅ حسابات الـPilot بقت بتتقفل بعد ٩٠ يوم مش ٣٠، مع تنبيه قبلها بأسبوعين (phase87)
+
+المشكلة: `phase53_pilot_account_setup.sql` كان بيعمل الـPilot-Praxis بـ`trial_start = now()` ومن غير طريقة دفع، فـ`phase21` كان بيقفل البيانات بعد ٣٠ يوم و`phase50` بيمسحها (anonymize) بعد ١٤ يوم من القفل، يعني يوم ٤٤. **ده حصل فعلًا على الـlive**: الـPilot-Praxis الوحيدة اللي اتعملت (plan `enterprise` + رابط دخول من phase60) اتمسحت أوتوماتيك يوم 2026-09-22. وكمان في الفحص لقينا إن praxis كان عندها اشتراك Stripe مدفوع واتلغى اتمسحت يوم 2026-10-22 من غير أي مهلة، لأن `stripe-webhook` بيفضّي `payment_method` لما الاشتراك يتلغي و`phase50` كان بيبص على `payment_method` بس.
+
+- **`supabase/phase87_pilot_90_day_lock.sql`** (اتطبق على الـlive كـ٣ migrations: `_a_columns` / `_b_functions` / `_c_guard_trigger`، لأن تطبيق الملف كله مرة واحدة كان بيعمل timeout في أداة الـMCP):
+  - أعمدة جديدة على `practices`: `is_pilot`، `pilot_until` (لحظة القفل بالظبط)، `pilot_end_notice_seen_at` (أول مرة حد من الطاقم شاف التنبيه، كدليل إن الـpraxis اتبلّغت).
+  - `practice_trial_ends_at()` بقت المصدر الوحيد لنهاية الفترة المجانية: `pilot_until` للـpilot، و`trial_start + 30 days` لأي حد تاني (من غير أي تغيير). `practice_trial_active()` و`flag_expired_unpaid_trials()` الاتنين بيستخدموها، فالقفل والمسح بيتحركوا مع بعض: الـpilot بيتقفل يوم ٩٠ وبيتعلّم للمسح بعد ١٤ يوم من القفل (يوم ١٠٤).
+  - `flag_expired_unpaid_trials()` بقت بتتجاهل أي praxis كان ليها `stripe_subscription_id` قبل كده، فالعميل اللي دفع ولغى بيمشي في مسار phase43 اليدوي (٦٠ يوم) زي ما `agb.html` § 6 بتقول. ده بيقلّل المسح الأوتوماتيك بس، عمره ما بيزوّده.
+  - Trigger `trg_guard_practice_billing_columns`: جلسة `authenticated`/`anon` من المتصفح مش قادرة تغيّر `is_pilot`/`pilot_until`/`trial_start`/`payment_method`/`plan`/`stripe_*`/`retention_*`، وإلا أي دكتور بالـdevtools كان يقدر يحط `pilot_until = 2099` ويهرب من القفل. الأعمدة العادية (Adresse/Tel/chat_enabled/working_hours/...) لسه شغالة عادي.
+  - `phase53` بقى بيحط `is_pilot = true, pilot_until = now() + 90 days`.
+- **الواجهة** (`vendor/staff-accounts.js`، اللي `doctor.html` و`secretary.html` الاتنين بيحمّلوه): بانر "Pilotphase endet am TT.MM.JJJJ (in N Tagen)" من يوم ٧٦، مش بيقفل الشاشة، فيه "Kontakt aufnehmen" (mailto) وفي `doctor.html` كمان "Paket wählen". التنبيه بيتقفل لحد آخر الجلسة بس، ويرجع مع الدخول اللي بعده. بعد `pilot_until` الـoverlay بيقول "Ihre Pilotphase ist beendet". الـtrials العادية لسه بالـreminder والقفل القديم من غير أي تغيير.
+- **مفيش إيميل أوتوماتيك يوم ٧٦**: مفيش مسار Resend لطاقم الـpraxis (`notify-*` بتروح لـ`OWNER_ALERT_EMAIL` بس)، و`phase53` بيستخدم إيميلات دخول وهمية للـpilot. اللي عليه الدور تلاقيه بالـquery اللي في هيدر phase87، وكلّمه بنفسك.
+- **اتأكدت منها**: قبل التطبيق، كل practices الـlive (٣ متمسحة + Demo-Ordination trial عادي عمره ١٣ يوم) اتحسب لها `practice_trial_active` ونفس النتيجة طلعت بعده، والـflag الليلي كان هيعلّم ٠. `schema_health_check.sql`: ٣٨٥ OK + ٩ N/A مقصودة، صفر MISSING/STALE/WARNING. سيناريوهات الـpilot (يوم ٨٠ مفتوح، قفل+٥ مقفول ومش متعلّم، قفل+١٥ متعلّم، trial عادي يوم ٤٥ مقفول ومتعلّم) والـtrigger كجلسة staff حقيقية (الإعدادات شغالة، `pilot_until`/`payment_method`/`plan` اتمنعوا بـ42501) اتجربوا كلهم جوه transaction ورجعت (rollback). Playwright: `tests/pilot-phase.spec.js` (٨ جديدة) + اختبارات الـpractice-settings/registration، ٢٣/٢٣ نجحوا.
+
 ## ✅ شلنا كل ادعاءات الأمان/الامتثال اللي مش حقيقية من الصفحات العامة (نص بس، من غير أي تغيير في السلوك)
 
 طلب المدير (بموافقة عبدالرحمن): أي جملة عن الأمان أو DSGVO مش صح أو فيها خطر قانوني في الاتحاد الأوروبي/النمسا تتشال أو تتصحح، ونفضل محتفظين بموقف قوي بس صادق. الجدول الكامل لكل نص اتغيّر (الملف، النص القديم، الجديد، والسبب) في `claims-fix-changelog.md` اللي اتسلّم مع الشغل ده.
