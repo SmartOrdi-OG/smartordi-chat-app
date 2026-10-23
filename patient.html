@@ -1689,7 +1689,7 @@ function renderPatientMessages(){
     msgs.innerHTML='<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">'+escapeHtml(tr('chat.empty.title'))+'</div><div class="empty-sub">'+escapeHtml(tr('chat.empty.sub'))+'</div></div>';
     return;
   }
-  msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Ende-zu-Ende verschlüsselt · DSGVO-konform</div>';
+  msgs.innerHTML=items.map(msgRowHtml).join('')+'<div class="system-msg">Verschlüsselt · EU-Hosting (Frankfurt)</div>';
   msgs.scrollTop=msgs.scrollHeight;
 }
 

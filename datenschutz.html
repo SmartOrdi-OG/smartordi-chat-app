@@ -62,9 +62,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
 </nav>
 
 <div class="hero">
-  <div class="hero-badge">DSGVO-konform · Österreich</div>
+  <div class="hero-badge">DSGVO · Österreich</div>
   <div class="hero-title">Datenschutzerklärung</div>
-  <div class="hero-meta">SmartOrdi OG · Stand: Juli 2026 · Version 2.1</div>
+  <div class="hero-meta">SmartOrdi OG · Stand: Oktober 2026 · Version 2.2</div>
 </div>
 
 <div class="main">
@@ -113,7 +113,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
         <li><strong>Kontaktdaten:</strong> E-Mail oder Telefonnummer (freiwillig)</li>
         <li><strong>Dokumente:</strong> Laborbefunde, Röntgenbilder, medizinische Unterlagen (freiwillig)</li>
       </ul>
-      <div class="highlight-box">Wichtig zur SVNR: Die Sozialversicherungsnummer wird verschlüsselt gespeichert und ist im generierten PDF-Bericht nicht im Klartext sichtbar. Sie wird nach Beendigung des Behandlungsverhältnisses gelöscht.</div>
+      <div class="highlight-box">Wichtig zur SVNR: Die Sozialversicherungsnummer wird – wie alle Daten – verschlüsselt auf EU-Servern gespeichert und ist nur für die behandelnde Ordination und die betroffene Person selbst einsehbar. Auf Rezepten und Patientenberichten, die die Ordination erstellt, wird sie angedruckt. Sie wird nach Ablauf der gesetzlichen Aufbewahrungsfrist (§ 51 ÄrzteG) gelöscht bzw. anonymisiert.</div>
     </div>
   </div>
 
@@ -141,11 +141,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
     <div class="section-body">
       <ul>
         <li><strong>Verschlüsselung:</strong> Alle Datenübertragungen über SSL/TLS (HTTPS)</li>
-        <li><strong>Datenspeicherung:</strong> Verschlüsselt auf EU-Servern</li>
+        <li><strong>Datenspeicherung:</strong> Verschlüsselt auf EU-Servern in Frankfurt am Main</li>
         <li><strong>Hosting:</strong> Supabase Inc. (Datenbank- und Backend-Infrastruktur), Serverstandort Frankfurt am Main (EU, Region eu-central-1)</li>
-        <li><strong>Zugriffskontrolle:</strong> Nur autorisiertes Personal mit Vertraulichkeitsvereinbarung</li>
+        <li><strong>Zugriffskontrolle:</strong> Nur autorisiertes Personal mit Vertraulichkeitsvereinbarung; jede Ordination sieht ausschließlich ihre eigenen Patientendaten (Row Level Security)</li>
+        <li><strong>Protokollierung:</strong> Änderungen an Patientendaten (Anlegen, Ändern, Löschen) werden in einem Audit-Log protokolliert, das auch das Praxispersonal nicht verändern kann</li>
         <li><strong>Datensparsamkeit:</strong> Nur notwendige Daten werden erhoben</li>
-        <li>Regelmäßige Sicherheitsupdates und Penetrationstests</li>
+        <li>Regelmäßige Sicherheitsupdates</li>
       </ul>
     </div>
   </div>
@@ -241,7 +242,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:#f1f5f9;min-height:1
 
 <div class="footer">
   SmartOrdi OG · Steingasse 6A, 4020 Linz · <a href="mailto:team@smartordi.eu">team@smartordi.eu</a><br>
-  Stand: Juli 2026 · Version 2.1<br>
+  Stand: Oktober 2026 · Version 2.2<br>
   <a href="agb.html">AGB</a> · <a href="register.html">Registrierung</a> · <a href="login.html">Login</a>
 </div>
 

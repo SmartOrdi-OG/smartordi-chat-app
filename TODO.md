@@ -1,5 +1,26 @@
 # Smartordi – قائمة المهام
 
+## ✅ شلنا كل ادعاءات الأمان/الامتثال اللي مش حقيقية من الصفحات العامة (نص بس، من غير أي تغيير في السلوك)
+
+طلب المدير (بموافقة عبدالرحمن): أي جملة عن الأمان أو DSGVO مش صح أو فيها خطر قانوني في الاتحاد الأوروبي/النمسا تتشال أو تتصحح، ونفضل محتفظين بموقف قوي بس صادق. الجدول الكامل لكل نص اتغيّر (الملف، النص القديم، الجديد، والسبب) في `claims-fix-changelog.md` اللي اتسلّم مع الشغل ده.
+
+- **"Ende-zu-Ende verschlüsselt" / "E2E"** اتشالت من كل مكان (`doctor.html` الـlanding + ملاحظات الكارتيه + بانر DSGVO، `register.html`، `patient.html`، `patient-login.html`، و`footer.privacy` بالـ٥ لغات في `vendor/i18n-patient.js`). الحقيقة: تشفير أثناء النقل (TLS) وتشفير وهي متخزنة على Supabase فرانكفورت، والسيرفر يقدر يقرا البيانات. الصيغة الجديدة: "Verschlüsselt · EU-Hosting (Frankfurt)". وكمان صلّحت "EU-Server Wien" (السيرفرات في فرانكفورت مش فيينا).
+- **"Verschlüsselte Anrufe … HIPAA und DSGVO-konform"** و**"Sprachnachrichten"** في كروت الـlanding اتشالوا: الميزتين **مش موجودين أصلًا** — زرار الاتصال وزرار الميكروفون في `patient.html`/`doctor.html` بيعملوا `showToast` بس، و`phase1` عمره ما بيكتب `type='voice'`، ومفيش أي WebRTC في الكود. حطّيت مكانهم ميزات حقيقية (Anamnese vorab، Online-Termine مع تذكير قبلها بـ٢٤ ساعة).
+- **"API-Anbindung"** في باقتين Enterprise اتشالت (مفيش API). مكانها "Alles in Standard" و"Uploads bis 25 MB" زي `PLAN_FEATURES`.
+- **"Zertifiziert"، "100% DSGVO-konform"، "rechtssicher"، "Lesebestätigung"** اتشالوا أو اتبدّلوا بإجراءات حقيقية: AVV حسب Art. 28، RLS لكل أوردينيشن، و**Audit-Log للتعديلات بس** (`phase16` بيسجّل insert/update/delete على ٦ جداول، مش القراءة، فما كتبتش "Zugriffe protokolliert").
+- **`datenschutz.html`**: جملة الـSVNR كانت غلط ("مش ظاهرة بشكل واضح في الـPDF" و"بتتمسح بعد نهاية العلاج") — `buildPatientReportPdf` وPDF الروشتة بيطبعوا الـSV-Nr عادي، والمسح بيحصل بعد مدة الحفظ القانونية (`phase17`). شلت "Penetrationstests" (ما اتعملتش)، وزوّدت RLS والـAudit-Log في الـTOMs. Version 2.2 / Oktober 2026.
+- **`agb.html` § 2**: "Automatische Übersetzung der Patientendaten" اتبدّلت بالحقيقة (الحقول اللي فيها اختيارات بتوصل بالألماني، والنص الحر مش بيتترجم).
+- **`impressum.html`**: زوّدت FN 675586 i، وشلت "Datenschutzbeauftragter" (مفيش واحد متعيّن) و"DSGVO-konform" و"gemäß den Anforderungen des österreichischen Gesundheitswesens".
+- **Modals الـlanding في `doctor.html`**: الـDatenschutz كانت بتقول إن SmartOrdi هي الـVerantwortlicher وإننا بنجمع "رقم الموبايل بس"، والـImpressum كانت بتقول إن الـWKO هي جهة الرقابة — صلّحتهم كلهم.
+- **اتأكدت منها**: Playwright على ١٣ ملف (pricing-limits، registration/settings، deferred-registration، patient-login-consent/always-light، topbar-language، login-corner-links، patient-message-translations، app-manifest، kartei-report-send، save-settings-persist، doctor-chat-unread-count، consent-records): ٨٩/٨٩ نجحوا. وكمان سكريبت فتح كل صفحة اتعدّلت وأكّد إن مفيش أي جملة من الممنوعين في النص الظاهر. `node --check` على `vendor/i18n-patient.js` نجح.
+- **محتاج قرار منك (ما غيّرتهوش)**:
+  - `agb.html` § 8: "Systemverfügbarkeit von mindestens 99%" ضمان تعاقدي على شركة فيها اتنين بس — احذفه أو حوّله لـ"angestrebt".
+  - § 4 في `agb.html` بيقول الدفع "Banküberweisung oder SEPA" بس فيه Stripe شغال (`phase26`)، و"zuzüglich USt" مع إنكم Kleinunternehmer.
+  - قايمة الـSub-Auftragsverarbeiter في `datenschutz.html` § 6 فيها Supabase بس — ناقصها Resend (التقارير والإيميلات)، وCloudflare (Email Worker بتاع المعمل)، وStripe.
+  - رقم التليفون مكتوب بشكلين: `+43 667 762439293` (datenschutz/agb/impressum) و`+43 677 62439293` (doctor.html). وفيه دومينين للإيميل `smartordi.eu` و`smartordiog.eu` (الاتنين بتوعنا، بس لازم يتوحّدوا).
+  - أزرار الاتصال والميكروفون والمرفقات اللي في شات المريض stubs ظاهرة للمريض ("Anruf wird gestartet..."): يا إما تتشال أو تتبني — ده تغيير في السلوك، فما لمستهوش.
+  - "DSGVO-konform" لسه مكتوبة في ذيل الـPDFs (Rezept/Atteste/Impfpass/Bericht) وفي ملاحظات جوه التطبيق (`k-dsgvo-note`، معاينة Überweisung، Anwesenheitsbestätigung في `secretary.html`). دي مش صفحات عامة، بس بتوصل لناس برا — اقتراحي نشيلها في خطوة جاية.
+
 ## ✅ تثبيت تنفيذ الـ Edge Functions اللي بتلمس بيانات صحية على eu-central-1 (فرانكفورت)
 
 بعد ما دقّقت إن قاعدة البيانات مثبتة على `eu-central-1` لكن **تنفيذ الـEdge Functions نفسه حاجة منفصلة** (بيتنفذ افتراضيًا على أقرب "edge node" للمتصل، مش بالضرورة نفس منطقة المشروع — حسب توثيق GDPR الرسمي بتاع Supabase)، ثبّت الاتنين اللي بيلمسوا بيانات صحية فعليًا:
