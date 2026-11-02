@@ -603,6 +603,12 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
    the topbar is already tight there (Zurück + logo + user chip). */
 .topbar-practice-name{color:white;font-size:18px;font-weight:800;letter-spacing:-0.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;margin-left:40px;}
 @media(max-width:900px){.topbar-practice-name{display:none;}}
+/* Today's date, shown next to the practice name -- desktop only (same
+   breakpoint/reasoning as .topbar-practice-name above: the topbar has no
+   room for it once the back button/logo/user chip already crowd a narrow
+   screen, and most phones already show the system clock/date anyway). */
+.topbar-date{color:rgba(255,255,255,0.7);font-size:13px;font-weight:600;white-space:nowrap;margin-left:14px;}
+@media(max-width:900px){.topbar-date{display:none;}}
 .topbar-user-menu{position:relative;}
 .topbar-user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border:1px solid transparent;border-radius:9px;padding:6px 10px 6px 9px;cursor:pointer;font-family:inherit;transition:background 0.15s;}
 .topbar-user-chip:hover{background:rgba(255,255,255,0.16);}
@@ -821,6 +827,7 @@ body.mobile-tuhome-active #tuHome{display:flex;overflow-y:auto;padding:36px 40px
         <img src="logo-icon.png" alt="Logo" class="topbar-logo">
         <span class="topbar-brand-name">smartordi.chat</span>
         <span class="topbar-practice-name" id="topbarPracticeName"></span>
+        <span class="topbar-date" id="topbarDate"></span>
       </div>
     </div>
     <div class="topbar-user-menu" id="topbarUserMenu">
@@ -7569,6 +7576,8 @@ window.addEventListener('load', async function() {
     const uwVonInput=document.getElementById('uwVon');
     if(uwVonInput) uwVonInput.value=session.name+' – '+(savedFach||'Allgemeinmedizin')+', Linz';
   }
+  const topbarDate=document.getElementById('topbarDate');
+  if(topbarDate) topbarDate.textContent=new Date().toLocaleDateString('de-AT',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
   // Plan/Praxisprofil (Adresse, Telefon) live in the shared practice_settings
   // Supabase row now, not per-device localStorage -- wait for the fetch
   // kicked off by vendor/staff-accounts.js before reading it.
