@@ -177,6 +177,22 @@ body {
 .app-shell .send-btn { width: 38px; height: 38px; background: linear-gradient(135deg,var(--p-teal),#12746A); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: white; box-shadow: 0 2px 8px rgba(13,148,136,0.35); }
 .app-shell .send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── Calendar ── */
+.app-shell .calendar { background: white; border-radius: 16px; border-left: 4px solid var(--p-teal); padding: 14px; margin-bottom: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.app-shell .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.app-shell .cal-month { font-size: 14px; font-weight: 700; }
+.app-shell .cal-nav { background: none; border: none; font-size: 28px; line-height: 1; cursor: pointer; color: var(--p-muted); padding: 6px 12px; font-family: inherit; }
+.app-shell .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.app-shell .cal-day-label { text-align: center; font-size: 10px; font-weight: 700; color: var(--p-muted); padding: 4px 0; }
+.app-shell .cal-day { aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.15s; font-variant-numeric: tabular-nums; position: relative; }
+.app-shell .cal-day:hover { background: var(--p-teal-light); color: var(--p-teal); }
+.app-shell .cal-day.today { background: var(--p-teal); color: white; font-weight: 800; }
+.app-shell .cal-day.has-termin::after { content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: var(--p-amber); }
+.app-shell .cal-day.selected { background: var(--p-teal-light); color: var(--p-teal); border: 2px solid var(--p-teal); }
+.app-shell .cal-day.empty { cursor: default; }
+.app-shell .cal-day.past, .app-shell .cal-day.closed { opacity: 0.3; cursor: not-allowed; }
+.app-shell .cal-day.past:hover, .app-shell .cal-day.closed:hover { background: none; color: inherit; }
+
 /* ── Termine tab ── */
 .app-shell .section-title { font-size: 12px; font-weight: 700; color: var(--p-muted); text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 10px; }
 .app-shell .termin-card { background: white; border-radius: 16px; border-left: 4px solid var(--p-teal); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
@@ -256,5 +272,29 @@ body {
 .app-shell .logout-btn:hover { background: #F5E1DF; }
 .app-shell .logout-btn.secondary { background: var(--p-teal-light); color: var(--p-teal); }
 .app-shell .logout-btn.secondary:hover { background: var(--p-teal-bg); }
+
+/* ── Modal (symptom picker) ── */
+.app-shell .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 900; display: none; align-items: center; justify-content: center; padding: 16px; }
+.app-shell .modal-overlay.show { display: flex; }
+.app-shell .modal { background: white; border-radius: 20px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.25); }
+.app-shell .modal-header { padding: 18px 20px; border-bottom: 1px solid var(--p-border); display: flex; align-items: center; justify-content: space-between; }
+.app-shell .modal-title { font-size: 16px; font-weight: 700; }
+.app-shell .modal-close { background: none; border: none; cursor: pointer; color: var(--p-muted); padding: 0; }
+.app-shell .modal-body { padding: 20px; }
+.app-shell .modal-footer { padding: 14px 20px; border-top: 1px solid var(--p-border); }
+.app-shell .btn-confirm { display: block; width: auto; min-width: 200px; margin: 0 auto; padding: 11px 26px; border: 1px solid var(--p-teal); border-radius: 12px; background: var(--p-teal-light); color: var(--p-teal); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.app-shell .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* pointer-events:visible (not the SVG default) so the whole shape area is
+   tappable, not just its stroke -- these are fill:none outlines, and most
+   of their interior would otherwise be a dead zone on a touchscreen. */
+.app-shell .body-part { fill: none; stroke: var(--p-slate); stroke-width: 1.5; cursor: pointer; transition: fill 0.15s, stroke 0.15s; pointer-events: visible; }
+.app-shell .body-part:hover { fill: var(--p-teal-light); stroke: var(--p-teal); }
+.app-shell .body-part.active { fill: #FAF0EE; stroke: var(--p-red); }
+.app-shell .region-chip { padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--p-teal-bg); background: white; color: var(--p-teal); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.app-shell .region-chip.active { background: var(--p-teal); color: white; }
+.app-shell .body-gender-toggle { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+.app-shell .symptom-chip { padding: 6px 11px; border-radius: 16px; border: 1.5px solid var(--p-border); background: white; color: var(--p-slate); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.app-shell .symptom-chip.active { background: var(--p-teal); border-color: var(--p-teal); color: white; }
 
 ::-webkit-scrollbar { width: 0; }
