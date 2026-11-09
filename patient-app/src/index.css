@@ -42,7 +42,11 @@ body {
 .form-group { margin-bottom: 16px; }
 .form-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 6px; }
 .input-wrap { position: relative; }
-.form-input { width: 100%; padding: 13px 14px; background: var(--blue-light); border: 1.5px solid #C7D7F5; border-radius: 12px; color: var(--slate); font-family: inherit; font-size: 14px; outline: none; transition: all 0.2s; -webkit-appearance: none; }
+/* font-size:16px (not 14px) is deliberate -- iOS Safari auto-zooms the
+   whole page on focus for any text input under 16px, which is jarring on a
+   touch device. Same reasoning on every other real input/select/textarea
+   below. */
+.form-input { width: 100%; padding: 13px 14px; background: var(--blue-light); border: 1.5px solid #C7D7F5; border-radius: 12px; color: var(--slate); font-family: inherit; font-size: 16px; outline: none; transition: all 0.2s; -webkit-appearance: none; }
 .form-input::placeholder { color: #94a3b8; }
 .form-input:focus { border-color: #1e40af; background: #EEF4FF; box-shadow: 0 0 0 3px rgba(30,64,175,0.15); }
 
@@ -107,8 +111,9 @@ body {
 }
 
 .app-shell .topbar {
-  background: white; height: 56px; flex-shrink: 0;
-  padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  background: white; height: calc(56px + env(safe-area-inset-top)); flex-shrink: 0; box-sizing: border-box;
+  padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+  display: flex; align-items: center; justify-content: space-between;
   border-bottom: 1px solid var(--p-border); box-shadow: 0 1px 8px rgba(0,0,0,0.06);
 }
 .app-shell .topbar-logo { display: flex; align-items: center; gap: 9px; min-width: 0; flex-shrink: 1; }
@@ -136,7 +141,8 @@ body {
 /* ── Bottom nav ── */
 .app-shell .bottom-nav {
   background: white; border-top: 1px solid var(--p-border); display: flex; flex-shrink: 0;
-  padding: 4px 2px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+  padding: 4px max(2px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(2px, env(safe-area-inset-left));
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
 }
 .app-shell .nav-item {
   flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -172,7 +178,7 @@ body {
 .app-shell .chat-input-area { background: white; border-top: 1px solid var(--p-border); padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .app-shell .chat-input-wrap { flex: 1; background: #FFFFFF; border: 1.5px solid var(--p-border); border-radius: 22px; display: flex; align-items: center; padding: 4px 6px 4px 16px; }
 .app-shell .chat-input-wrap:focus-within { border-color: var(--p-teal); }
-.app-shell .chat-input { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 14px; color: var(--p-slate); outline: none; padding: 9px 0; }
+.app-shell .chat-input { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 16px; color: var(--p-slate); outline: none; padding: 9px 0; }
 .app-shell .chat-input::placeholder { color: var(--p-muted); }
 .app-shell .send-btn { width: 38px; height: 38px; background: linear-gradient(135deg,var(--p-teal),#12746A); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: white; box-shadow: 0 2px 8px rgba(13,148,136,0.35); }
 .app-shell .send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -212,7 +218,7 @@ body {
 .app-shell .booking-card select,
 .app-shell .booking-card input[type="date"] {
   width: 100%; padding: 9px 12px; border: none; border-radius: 10px; background: rgba(255,255,255,0.15);
-  color: white; font-family: inherit; font-size: 13px; font-weight: 700; outline: none; margin-bottom: 10px;
+  color: white; font-family: inherit; font-size: 16px; font-weight: 700; outline: none; margin-bottom: 10px;
 }
 .app-shell .booking-card select option { color: var(--p-slate); }
 .app-shell .booking-card .form-label { color: rgba(255,255,255,0.75); }

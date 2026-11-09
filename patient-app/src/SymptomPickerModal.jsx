@@ -149,7 +149,7 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
               placeholder="Beschreiben Sie kurz Ihre Beschwerden…"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              style={{ width: '100%', padding: 10, border: '1.5px solid var(--p-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 13, outline: 'none', resize: 'vertical' }}
+              style={{ width: '100%', padding: 10, border: '1.5px solid var(--p-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 16, outline: 'none', resize: 'vertical' }}
             />
           </div>
         </div>
