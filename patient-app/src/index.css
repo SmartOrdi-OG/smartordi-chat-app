@@ -88,6 +88,37 @@ body {
 .checkbox-label input { margin-top: 2px; }
 .checkbox-label a { color: #1e40af; }
 
+/* Anamnese (medical-history questionnaire) -- wider card, scrollable form
+   body, section cards styled with this same login-flow palette (not
+   doctor.html's Kartei colors, which this form's data-key scheme is
+   compatible with but visually unrelated to). */
+.card.wide { max-width: 520px; }
+.anamnese-scroll { max-height: 60vh; overflow-y: auto; padding-right: 4px; margin-bottom: 14px; }
+.anamnese-specialty-title { font-size: 12px; font-weight: 700; color: var(--teal-dark); margin: 4px 0 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.an-section { background: var(--blue-light); border: 1px solid #C7D7F5; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.an-section-title { font-size: 12px; font-weight: 700; color: #1e40af; margin-bottom: 10px; }
+.an-block { margin-bottom: 10px; }
+.an-block:last-child { margin-bottom: 0; }
+.an-field-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+.an-checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.an-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.an-field-grid:last-child { margin-bottom: 0; }
+.an-field .form-input, .an-block .form-input { padding: 10px 12px; font-size: 14px; }
+.an-textarea { resize: none; }
+.an-subheader { font-size: 11px; font-weight: 700; color: var(--muted); margin: 2px 0 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+.an-gfb-row { padding: 8px 0; border-bottom: 1px solid #DCE7FB; }
+.an-gfb-row:last-child { border-bottom: none; }
+.an-gfb-row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.an-gfb-question { font-size: 12px; color: var(--slate); flex: 1; line-height: 1.4; }
+.an-gfb-select { width: 84px; flex-shrink: 0; padding: 8px 10px; font-size: 13px; }
+.an-gfb-detail { margin-top: 6px; padding: 8px 12px; font-size: 13px; }
+
+@media (max-width: 420px) {
+  .an-checkbox-grid, .an-field-grid { grid-template-columns: 1fr; }
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    PORTAL APP SHELL -- mirrors patient.html's own design system (real teal/
    slate tokens, IBM Plex Sans/Fraunces/IBM Plex Mono, full-viewport topbar

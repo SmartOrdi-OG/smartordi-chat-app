@@ -193,3 +193,17 @@ export async function patientSetSymptoms(terminId, reason, reasonNote) {
   }
   return true;
 }
+
+// Mirrors patient-login.html's submitAnamnese() -- saves the mandatory
+// first-use medical-history questionnaire server-side (supabase/
+// phase8_anamnese.sql) so doctor.html's Kartei "Anamnese" tab
+// (vendor/kartei-anamnese.js) sees the exact same data, keyed by the same
+// data-key strings as vendor/anamnese-shared.js (see lib/anamneseSchema.js).
+export async function patientSetAnamnese(data) {
+  const { data: ok, error } = await sb.rpc('patient_set_anamnese', { p_data: data });
+  if (error) {
+    console.error('patientSetAnamnese failed', error);
+    return false;
+  }
+  return !!ok;
+}

@@ -5,6 +5,7 @@ import { resolveLogin } from './lib/patientLoginFlow';
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import FirstLoginScreen from './FirstLoginScreen';
+import AnamneseScreen from './AnamneseScreen';
 import RequestStatusScreen from './RequestStatusScreen';
 import PatientPortal from './PatientPortal';
 
@@ -37,8 +38,9 @@ export default function App() {
   const [profile, setProfile] = useState(null);
   const [checking, setChecking] = useState(true);
   const [initial] = useState(parseUrl);
-  const [view, setView] = useState(initial.view); // 'login' | 'register' | 'qrlogin' | 'firstlogin' | 'requeststatus'
+  const [view, setView] = useState(initial.view); // 'login' | 'register' | 'qrlogin' | 'firstlogin' | 'anamnese' | 'requeststatus'
   const [firstLoginInfo, setFirstLoginInfo] = useState(null); // resolveLogin()'s 'firstlogin' result
+  const [anamneseProfile, setAnamneseProfile] = useState(null); // resolveLogin()'s 'anamnese' result, or a just-finished firstlogin profile that still needs it
   const [requestStatus, setRequestStatus] = useState(null); // { status, note }
   const [loginFallback, setLoginFallback] = useState(null); // prefill + error after a failed QR auto-login
 
@@ -80,6 +82,9 @@ export default function App() {
     } else if (result.kind === 'firstlogin') {
       setFirstLoginInfo(result);
       setView('firstlogin');
+    } else if (result.kind === 'anamnese') {
+      setAnamneseProfile(result.profile);
+      setView('anamnese');
     } else if (result.kind === 'pending' || result.kind === 'rejected') {
       setRequestStatus({ status: result.kind, note: result.note });
       setView('requeststatus');
@@ -111,6 +116,22 @@ export default function App() {
         needsUsername={firstLoginInfo.needsUsername}
         needsPassword={firstLoginInfo.needsPassword}
         needsConsent={firstLoginInfo.needsConsent}
+        onDone={(updatedProfile) => {
+          if (firstLoginInfo.needsAnamnese) {
+            setAnamneseProfile(updatedProfile);
+            setView('anamnese');
+          } else {
+            setProfile(updatedProfile);
+          }
+        }}
+      />
+    );
+  }
+
+  if (view === 'anamnese' && anamneseProfile) {
+    return (
+      <AnamneseScreen
+        profile={anamneseProfile}
         onDone={(updatedProfile) => setProfile(updatedProfile)}
       />
     );

@@ -9,9 +9,21 @@ import { checkJoinRequestStatus } from './patientRegister';
 // soft-migrated into the unified patient_account_profiles system this
 // portal's own "Meine Profile" already uses -- see phase66's own header).
 //
+// Mirrors doLogin()'s "has this patient already filled in their Anamnese"
+// check (supabase/phase8_anamnese.sql): mandatory on a first login
+// (firstLogin flag), and for a self-registered account's first login after
+// approval (joinStatus === 'approved' && no anamnese yet) even once
+// password/consent are already out of the way -- but never re-prompted
+// once answered, and never for a staff-created (non-self-registered)
+// account past its own first login.
+function needsAnamnese(profile) {
+  return !profile.anamnese && (!!profile.firstLogin || profile.joinStatus === 'approved');
+}
+
 // Returns one of:
 //   { kind: 'portal', profile }
-//   { kind: 'firstlogin', profile, needsUsername, needsPassword }
+//   { kind: 'firstlogin', profile, needsUsername, needsPassword, needsConsent, needsAnamnese }
+//   { kind: 'anamnese', profile }
 //   { kind: 'pending' | 'rejected', note }
 //   { kind: 'invalid' }
 //   { kind: 'error', message }
@@ -35,14 +47,22 @@ export async function resolveLogin(username, password, { qrNeedsNewUsername = fa
       return { kind: profile.joinStatus, note: profile.joinNote || '' };
     }
     const needsConsent = !profile.consentGiven;
+    const anamneseDue = needsAnamnese(profile);
     if (profile.firstLogin) {
       return {
         kind: 'firstlogin', profile, needsPassword: true, needsConsent,
         needsUsername: !!profile.isChild || !!qrNeedsNewUsername,
+        needsAnamnese: anamneseDue,
       };
     }
     if (needsConsent) {
-      return { kind: 'firstlogin', profile, needsPassword: false, needsUsername: false, needsConsent: true };
+      return {
+        kind: 'firstlogin', profile, needsPassword: false, needsUsername: false, needsConsent: true,
+        needsAnamnese: anamneseDue,
+      };
+    }
+    if (anamneseDue) {
+      return { kind: 'anamnese', profile };
     }
     return { kind: 'portal', profile };
   }
