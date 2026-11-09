@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPracticeJoinInfo, submitJoinRequest } from './lib/patientRegister';
 
-function getPracticeIdFromUrl() {
-  return new URLSearchParams(window.location.search).get('practice');
-}
-
-export default function RegisterScreen({ onBackToLogin }) {
-  const practiceId = getPracticeIdFromUrl();
+export default function RegisterScreen({ onBackToLogin, practiceId }) {
   const [practiceInfo, setPracticeInfo] = useState(null);
   const [isChild, setIsChild] = useState(false);
   const [fields, setFields] = useState({
