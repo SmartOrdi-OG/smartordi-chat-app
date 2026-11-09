@@ -64,3 +64,34 @@ export async function patientGetProfile() {
 export async function patientLogout() {
   await sb.auth.signOut();
 }
+
+// Mirrors vendor/patient-portal-data.js's patientChangePassword(): a real
+// Supabase Auth password update, then a server-side marker so a forced
+// first-login password change (not yet ported here) only ever triggers
+// once.
+export async function patientChangePassword(newPassword) {
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  if (error) {
+    console.error('patientChangePassword failed', error);
+    return false;
+  }
+  const { data: ok, error: markErr } = await sb.rpc('patient_mark_password_changed');
+  if (markErr) {
+    console.error('patient_mark_password_changed failed', markErr);
+    return false;
+  }
+  return !!ok;
+}
+
+// Mirrors vendor/patient-portal-data.js's patientChangeUsername().
+export async function patientChangeUsername(newUsername) {
+  const { data: ok, error } = await sb.rpc('patient_change_username', { p_new_username: newUsername });
+  if (error) {
+    const msg = String(error.message || '');
+    if (msg.indexOf('username_too_short') !== -1) return { ok: false, code: 'too_short' };
+    if (msg.indexOf('username_taken') !== -1) return { ok: false, code: 'taken' };
+    console.error('patientChangeUsername failed', error);
+    return { ok: false, code: 'error' };
+  }
+  return { ok: !!ok };
+}
