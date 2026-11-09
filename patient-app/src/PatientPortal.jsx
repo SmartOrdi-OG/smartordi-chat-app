@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
 import { patientLogout } from './lib/patientAuth';
-import { patientGetMessages, patientGetTermine, patientSendMessage } from './lib/patientData';
+import {
+  patientGetArztRoster, patientGetBookingEnabled, patientGetDocuments,
+  patientGetImpfungen, patientGetMessages, patientGetTermine, patientGetWorkingHours,
+  patientSendMessage,
+} from './lib/patientData';
+import DokumenteTab from './DokumenteTab';
+import ImpfpassTab from './ImpfpassTab';
+import BookingForm from './BookingForm';
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
@@ -37,24 +44,46 @@ function HomeTab({ profile, termine, messages }) {
   );
 }
 
-function TermineTab({ termine }) {
-  if (termine.length === 0) {
-    return <div className="empty-state">Keine Termine vorhanden.</div>;
+function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, onBooked }) {
+  const [booking, setBooking] = useState(false);
+
+  if (booking) {
+    return (
+      <BookingForm
+        arzte={arzte}
+        workingHours={workingHours}
+        bookingEnabled={bookingEnabled}
+        onCancel={() => setBooking(false)}
+        onBooked={() => { setBooking(false); onBooked(); }}
+      />
+    );
   }
+
   return (
-    <div className="list-col">
-      {termine.map((t) => (
-        <div className="list-row" key={t.id}>
-          <div className="list-row-main">{fmtDate(t.date)}</div>
-          <div className="list-row-sub">{t.time}{t.endTime ? ` – ${t.endTime}` : ''} · {t.art || 'Ordination'}</div>
-          <span className={`status-pill status-${t.status}`}>{t.status}</span>
+    <div>
+      <button className="btn-main" style={{ width: '100%', marginBottom: 16 }} onClick={() => setBooking(true)}>
+        + Termin buchen
+      </button>
+      {loading ? (
+        <div className="empty-state">Lädt…</div>
+      ) : termine.length === 0 ? (
+        <div className="empty-state">Keine Termine vorhanden.</div>
+      ) : (
+        <div className="list-col">
+          {termine.map((t) => (
+            <div className="list-row" key={t.id}>
+              <div className="list-row-main">{fmtDate(t.date)}</div>
+              <div className="list-row-sub">{t.time}{t.endTime ? ` – ${t.endTime}` : ''} · {t.art || 'Ordination'}</div>
+              <span className={`status-pill status-${t.status}`}>{t.status}</span>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
 
-function ChatTab({ messages, onSent }) {
+function ChatTab({ messages, loading, onSent }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -74,7 +103,8 @@ function ChatTab({ messages, onSent }) {
   return (
     <div className="chat-col">
       <div className="chat-messages">
-        {messages.length === 0 && <div className="empty-state">Noch keine Nachrichten.</div>}
+        {loading && <div className="empty-state">Lädt…</div>}
+        {!loading && messages.length === 0 && <div className="empty-state">Noch keine Nachrichten.</div>}
         {messages.map((m, i) => (
           <div key={i} className={`chat-bubble chat-${m.dir}`}>
             <div>{m.text}</div>
@@ -112,6 +142,8 @@ const TABS = [
   { id: 'home', label: 'Start', icon: '⌂' },
   { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'termine', label: 'Termine', icon: '📅' },
+  { id: 'dokumente', label: 'Befunde', icon: '📄' },
+  { id: 'impfpass', label: 'Impfpass', icon: '💉' },
   { id: 'profil', label: 'Profil', icon: '👤' },
 ];
 
@@ -119,16 +151,30 @@ export default function PatientPortal({ profile, onLoggedOut }) {
   const [tab, setTab] = useState('home');
   const [termine, setTermine] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [impfungen, setImpfungen] = useState([]);
+  const [arzte, setArzte] = useState([]);
+  const [workingHours, setWorkingHours] = useState(null);
+  const [bookingEnabled, setBookingEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
 
   async function reload() {
-    const [t, m] = await Promise.all([patientGetTermine(), patientGetMessages()]);
+    const [t, m, d, i] = await Promise.all([
+      patientGetTermine(), patientGetMessages(), patientGetDocuments(), patientGetImpfungen(),
+    ]);
     setTermine(t);
     setMessages(m);
+    setDocuments(d);
+    setImpfungen(i);
   }
 
   useEffect(() => {
-    reload().finally(() => setLoading(false));
+    Promise.all([
+      reload(),
+      patientGetArztRoster().then(setArzte),
+      patientGetWorkingHours().then(setWorkingHours),
+      patientGetBookingEnabled().then(setBookingEnabled),
+    ]).finally(() => setLoading(false));
   }, []);
 
   async function handleLogout() {
@@ -144,17 +190,18 @@ export default function PatientPortal({ profile, onLoggedOut }) {
       </div>
 
       <div className="portal-body">
-        {loading ? (
-          <div className="empty-state">Lädt…</div>
-        ) : tab === 'home' ? (
-          <HomeTab profile={profile} termine={termine} messages={messages} />
-        ) : tab === 'termine' ? (
-          <TermineTab termine={termine} />
-        ) : tab === 'chat' ? (
-          <ChatTab messages={messages} onSent={reload} />
-        ) : (
-          <ProfilTab profile={profile} onLoggedOut={handleLogout} />
+        {tab === 'home' && <HomeTab profile={profile} termine={termine} messages={messages} />}
+        {tab === 'termine' && (
+          <TermineTab
+            termine={termine} loading={loading} arzte={arzte}
+            workingHours={workingHours} bookingEnabled={bookingEnabled}
+            onBooked={reload}
+          />
         )}
+        {tab === 'chat' && <ChatTab messages={messages} loading={loading} onSent={reload} />}
+        {tab === 'dokumente' && <DokumenteTab documents={documents} loading={loading} />}
+        {tab === 'impfpass' && <ImpfpassTab impfungen={impfungen} loading={loading} />}
+        {tab === 'profil' && <ProfilTab profile={profile} onLoggedOut={handleLogout} />}
       </div>
 
       <nav className="bottom-nav">
