@@ -26,8 +26,19 @@ export default function App() {
 
   if (checking) return null;
 
+  async function handleProfileSwitched() {
+    const p = await patientGetProfile();
+    if (p) setProfile(p);
+  }
+
   if (profile) {
-    return <PatientPortal profile={profile} onLoggedOut={() => setProfile(null)} />;
+    return (
+      <PatientPortal
+        profile={profile}
+        onLoggedOut={() => setProfile(null)}
+        onProfileSwitched={handleProfileSwitched}
+      />
+    );
   }
 
   return view === 'register' ? (

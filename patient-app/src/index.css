@@ -88,6 +88,7 @@ body {
 .nav-icon { font-size: 16px; }
 
 .list-row-button { width: 100%; text-align: start; background: white; font-family: inherit; cursor: pointer; }
+.list-row-button.profile-active { border-color: var(--teal); background: var(--teal-light); cursor: default; }
 .list-row-button:disabled { opacity: 0.6; cursor: wait; }
 .list-row-loading { font-size: 11px; color: var(--teal-dark); font-weight: 700; margin-top: 4px; display: block; }
 .next-due { color: var(--amber); font-weight: 600; }
