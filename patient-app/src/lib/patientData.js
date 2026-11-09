@@ -182,3 +182,14 @@ export async function patientBookTermin(fields) {
   }
   return terminRowToJs(data);
 }
+
+export async function patientSetSymptoms(terminId, reason, reasonNote) {
+  const { error } = await sb.rpc('patient_set_symptoms', {
+    p_termin_id: terminId, p_reason: reason, p_reason_note: reasonNote,
+  });
+  if (error) {
+    console.error('patientSetSymptoms failed', error);
+    return false;
+  }
+  return true;
+}

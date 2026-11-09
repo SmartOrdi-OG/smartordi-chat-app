@@ -11,6 +11,9 @@ import BookingForm from './BookingForm';
 import PasswordChangeForm from './PasswordChangeForm';
 import AddProfileForm from './AddProfileForm';
 import MkpTab from './MkpTab';
+import Calendar from './Calendar';
+import SymptomPickerModal from './SymptomPickerModal';
+import { artNeedsSymptomPicker } from './lib/symptomRegions';
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
@@ -65,10 +68,23 @@ function HomeTab({ profile, termine, messages }) {
   );
 }
 
-function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, onBooked }) {
+function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, profile, onBooked }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [symptomTerminId, setSymptomTerminId] = useState(null);
   const todayKey = new Date().toDateString();
   const upcoming = termine.filter((t) => t.status !== 'cancelled' && new Date(t.date) >= new Date(todayKey));
   const past = termine.filter((t) => t.status === 'cancelled' || new Date(t.date) < new Date(todayKey));
+
+  function fmtSelectedDate(ds) {
+    const d = new Date(ds + 'T00:00:00');
+    return `${d.getDate()}. ${d.toLocaleDateString('de-AT', { month: 'long' })} ${d.getFullYear()}`;
+  }
+
+  async function handleBooked(termin) {
+    setSelectedDate(null);
+    await onBooked();
+    if (artNeedsSymptomPicker(termin.art)) setSymptomTerminId(termin.id);
+  }
 
   function TerminCard({ t }) {
     const d = new Date(t.date + 'T00:00:00');
@@ -89,10 +105,18 @@ function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, onB
 
   return (
     <div className="view-content">
+      <Calendar
+        workingHours={workingHours} termine={termine}
+        selectedDate={selectedDate} onSelectDate={setSelectedDate}
+      />
+
       {bookingEnabled ? (
         <div className="booking-card">
           <div className="booking-card-title">Termin buchen</div>
-          <BookingForm arzte={arzte} workingHours={workingHours} onBooked={onBooked} />
+          <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
+            {selectedDate ? fmtSelectedDate(selectedDate) : 'Wählen Sie einen Tag im Kalender'}
+          </div>
+          <BookingForm arzte={arzte} workingHours={workingHours} selectedDate={selectedDate} onBooked={handleBooked} />
         </div>
       ) : (
         <div className="booking-card">
@@ -115,6 +139,16 @@ function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, onB
         <div className="empty-state">Keine vergangenen Besuche.</div>
       ) : (
         past.map((t) => <TerminCard t={t} key={t.id} />)
+      )}
+
+      {symptomTerminId && (
+        <SymptomPickerModal
+          terminId={symptomTerminId}
+          isChild={!!profile.isChild}
+          geschlecht={profile.geschlecht}
+          onClose={() => setSymptomTerminId(null)}
+          onSaved={async () => { setSymptomTerminId(null); await onBooked(); }}
+        />
       )}
     </div>
   );
@@ -372,7 +406,7 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
             <TermineTab
               termine={termine} loading={loading} arzte={arzte}
               workingHours={workingHours} bookingEnabled={bookingEnabled}
-              onBooked={reload}
+              profile={profile} onBooked={reload}
             />
           </>
         )}

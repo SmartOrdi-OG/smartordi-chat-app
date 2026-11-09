@@ -1,33 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
 import { patientBookTermin } from './lib/patientData';
-import { DEFAULT_WORKING_HOURS, addMinutesToTime, buildTimeSlotsFromBlocks, todayStr, workingHoursFor } from './lib/workingHours';
+import { DEFAULT_WORKING_HOURS, addMinutesToTime, buildTimeSlotsFromBlocks, workingHoursFor } from './lib/workingHours';
 
 const ART_OPTIONS = [
   'Ordination', 'Kontrolle', 'Erstgespräch', 'Impfung', 'Blutabnahme',
   'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung', 'Sonstige',
 ];
 
-export default function BookingForm({ arzte, workingHours, onBooked }) {
+// Date picking itself moved to Calendar.jsx (selectedDate is lifted into
+// TermineTab) -- this just turns a selected day into a real booking, same
+// as before.
+export default function BookingForm({ arzte, workingHours, selectedDate, onBooked }) {
   const [arztUsername, setArztUsername] = useState(arzte[0]?.username || '');
-  const [date, setDate] = useState('');
   const [art, setArt] = useState('');
   const [slot, setSlot] = useState(null);
   const [status, setStatus] = useState(null); // null | 'booking' | {error}
 
   const hours = workingHours || DEFAULT_WORKING_HOURS;
-  const dayHours = date ? workingHoursFor(date, hours) : null;
-  const slots = useMemo(() => (dayHours && dayHours.open ? buildTimeSlotsFromBlocks(dayHours.blocks) : []), [date]);
+  const dayHours = selectedDate ? workingHoursFor(selectedDate, hours) : null;
+  const slots = useMemo(() => (dayHours && dayHours.open ? buildTimeSlotsFromBlocks(dayHours.blocks) : []), [selectedDate]);
 
-  useEffect(() => { setSlot(null); }, [date]);
+  useEffect(() => { setSlot(null); }, [selectedDate]);
 
   async function handleConfirm() {
-    if (!arztUsername || !date || !art || !slot) return;
+    if (!arztUsername || !selectedDate || !art || !slot) return;
     setStatus('booking');
     try {
-      await patientBookTermin({
-        arztUsername, date, time: slot, endTime: addMinutesToTime(slot, 20), art,
+      const termin = await patientBookTermin({
+        arztUsername, date: selectedDate, time: slot, endTime: addMinutesToTime(slot, 20), art,
       });
-      onBooked();
+      setArt('');
+      setSlot(null);
+      setStatus(null);
+      onBooked(termin);
     } catch (err) {
       const msg = (err && err.message) || '';
       const key = msg.indexOf('slot_taken') !== -1
@@ -51,14 +56,12 @@ export default function BookingForm({ arzte, workingHours, onBooked }) {
         </select>
       )}
 
-      <input type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} />
-
       <select value={art} onChange={(e) => setArt(e.target.value)}>
         <option value="">Grund des Besuchs wählen…</option>
         {ART_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
       </select>
 
-      {date && (
+      {selectedDate && (
         dayHours && dayHours.open ? (
           <div className="time-slots">
             {slots.map((s) => (
@@ -82,7 +85,7 @@ export default function BookingForm({ arzte, workingHours, onBooked }) {
       <button
         type="button"
         className="btn-book"
-        disabled={!arztUsername || !date || !art || !slot || status === 'booking'}
+        disabled={!arztUsername || !selectedDate || !art || !slot || status === 'booking'}
         onClick={handleConfirm}
       >
         {status === 'booking' ? 'Wird gebucht…' : 'Termin bestätigen'}
