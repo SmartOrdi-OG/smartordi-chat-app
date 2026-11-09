@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { patientLogin } from './lib/patientAuth';
+import { resolveLogin } from './lib/patientLoginFlow';
 
-export default function LoginScreen({ onLoggedIn, onRegister }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+export default function LoginScreen({ onResolve, onRegister, initialUsername, initialPassword, initialError }) {
+  const [username, setUsername] = useState(initialUsername || '');
+  const [password, setPassword] = useState(initialPassword || '');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError || '');
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -13,21 +13,16 @@ export default function LoginScreen({ onLoggedIn, onRegister }) {
     setLoading(true);
     setError('');
     try {
-      const profile = await patientLogin(username.trim().toLowerCase(), password);
-      if (!profile) {
+      const result = await resolveLogin(username.trim().toLowerCase(), password);
+      if (result.kind === 'invalid') {
         setError('Falscher Benutzername oder Passwort.');
         return;
       }
-      onLoggedIn(profile);
-    } catch (err) {
-      const msg = (err && err.message) || '';
-      setError(
-        msg.indexOf('account_locked') !== -1
-          ? 'Konto vorübergehend gesperrt. Bitte später erneut versuchen.'
-          : msg.indexOf('temp_password_expired') !== -1
-          ? 'Temporäres Passwort abgelaufen. Bitte kontaktieren Sie Ihre Ordination.'
-          : 'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.'
-      );
+      if (result.kind === 'error') {
+        setError(result.message);
+        return;
+      }
+      onResolve(result);
     } finally {
       setLoading(false);
     }

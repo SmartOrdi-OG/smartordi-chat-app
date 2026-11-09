@@ -12,7 +12,7 @@ deploy time.
 and recommit this folder:
 
 ```sh
-cd patient-app && npm run build
+cd patient-app && VITE_BASE_PATH=/patient-app-dist/ npm run build
 cd .. && rm -rf patient-app-dist && cp -r patient-app/dist patient-app-dist
 git add patient-app-dist patient-app
 git commit -m "Rebuild patient-app-dist"
