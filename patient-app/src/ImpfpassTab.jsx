@@ -4,15 +4,33 @@ function fmtDate(iso) {
 
 export default function ImpfpassTab({ impfungen, loading }) {
   if (loading) return <div className="empty-state">Lädt…</div>;
-  if (impfungen.length === 0) return <div className="empty-state">Keine Impfungen erfasst.</div>;
+  if (impfungen.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg>
+        </div>
+        <div className="empty-text">Noch keine Impfungen erfasst</div>
+        <div className="empty-sub">Sobald Ihre Ordination eine Impfung einträgt, erscheint sie hier.</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="list-col">
+    <div className="info-card">
+      <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M12 8v6"/><path d="M9 11h6"/></svg>
+        <span>Impfungen</span>
+      </div>
       {impfungen.map((imp) => (
-        <div className="list-row" key={imp.id}>
-          <div className="list-row-main">{imp.vaccineName}{imp.doseLabel ? ` · ${imp.doseLabel}` : ''}</div>
-          <div className="list-row-sub">Geimpft am {fmtDate(imp.datum)}</div>
-          {imp.nextDue && <div className="list-row-sub next-due">Nächste Auffrischung: {fmtDate(imp.nextDue)}</div>}
+        <div className="info-row" key={imp.id}>
+          <span className="info-label">{imp.vaccineName}{imp.doseLabel ? ` · ${imp.doseLabel}` : ''}</span>
+          <span className="info-value" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+            <span style={{ color: '#94a3b8', fontWeight: 400 }}>
+              {fmtDate(imp.datum)}{imp.nextDue ? ` · nächste: ${fmtDate(imp.nextDue)}` : ''}
+            </span>
+            <span className="status-badge given">Erhalten</span>
+          </span>
         </div>
       ))}
     </div>

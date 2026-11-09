@@ -1,5 +1,14 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+/* Real fonts used by patient.html (the in-app portal, once logged in) --
+   mirrored here for the .app-shell below. Login/Register keep system fonts,
+   matching patient-login.html, which never used these. */
+@font-face{font-family:'IBM Plex Sans';font-weight:400 700;font-style:normal;font-display:swap;src:url('/fonts/ibm-plex-sans-variable.woff2') format('woff2');}
+@font-face{font-family:'Fraunces';font-weight:400 700;font-style:normal;font-display:swap;src:url('/fonts/fraunces-variable.woff2') format('woff2');}
+@font-face{font-family:'IBM Plex Mono';font-weight:400;font-style:normal;font-display:swap;src:url('/fonts/ibm-plex-mono-400.woff2') format('woff2');}
+@font-face{font-family:'IBM Plex Mono';font-weight:500;font-style:normal;font-display:swap;src:url('/fonts/ibm-plex-mono-500.woff2') format('woff2');}
+@font-face{font-family:'IBM Plex Mono';font-weight:600;font-style:normal;font-display:swap;src:url('/fonts/ibm-plex-mono-600.woff2') format('woff2');}
+
 :root {
   --teal: #0d9488;
   --teal-dark: #0f766e;
@@ -52,57 +61,6 @@ body {
 .welcome-row span:first-child { color: var(--muted); font-weight: 600; }
 .welcome-row span:last-child { color: var(--slate); font-weight: 600; }
 
-.portal-card { width: 100%; max-width: 420px; background: white; border-radius: 20px; box-shadow: 0 4px 32px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; min-height: 580px; }
-.portal-card .card-logo { padding: 24px 24px 0; margin-bottom: 8px; }
-.portal-body { flex: 1; padding: 8px 24px 24px; overflow-y: auto; }
-
-.empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0; }
-
-.home-card { background: var(--blue-light); border: 1.5px solid #C7D7F5; border-radius: 14px; padding: 14px 16px; margin-top: 14px; }
-.home-card-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.home-card-main { font-size: 15px; font-weight: 700; color: var(--slate); }
-.home-card-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
-
-.list-col { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-.list-row { border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; position: relative; }
-.list-row-main { font-size: 14px; font-weight: 700; color: var(--slate); }
-.list-row-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.status-pill { position: absolute; top: 12px; right: 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; padding: 3px 8px; border-radius: 20px; background: #f1f5f9; color: var(--muted); }
-.status-pill.status-confirmed, .status-pill.status-approved { background: #dcfce7; color: #166534; }
-.status-pill.status-pending { background: #fef3c7; color: #92400e; }
-.status-pill.status-cancelled { background: #fee2e2; color: #991b1b; }
-
-.chat-col { display: flex; flex-direction: column; height: 100%; min-height: 360px; }
-.chat-messages { flex: 1; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; margin-bottom: 12px; }
-.chat-bubble { max-width: 80%; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.4; }
-.chat-bubble.chat-out { align-self: flex-end; background: var(--teal); color: white; border-bottom-right-radius: 4px; }
-.chat-bubble.chat-in { align-self: flex-start; background: #f1f5f9; color: var(--slate); border-bottom-left-radius: 4px; }
-.chat-time { font-size: 10px; opacity: 0.7; margin-top: 3px; }
-.chat-input-row { display: flex; gap: 8px; }
-.chat-input-row .form-input { flex: 1; padding: 11px 14px; }
-.chat-input-row .btn-main { min-width: auto; margin: 0; padding: 11px 18px; }
-
-.bottom-nav { display: flex; border-top: 1px solid #f1f5f9; }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 10px; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 9.5px; font-weight: 600; color: var(--muted); }
-.nav-item.active { color: var(--teal-dark); }
-.nav-icon { font-size: 16px; }
-
-.list-row-button { width: 100%; text-align: start; background: white; font-family: inherit; cursor: pointer; }
-.list-row-button.profile-active { border-color: var(--teal); background: var(--teal-light); cursor: default; }
-.list-row-button:disabled { opacity: 0.6; cursor: wait; }
-.list-row-loading { font-size: 11px; color: var(--teal-dark); font-weight: 700; margin-top: 4px; display: block; }
-.next-due { color: var(--amber); font-weight: 600; }
-
-.mkp-fields { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #e2e8f0; display: flex; flex-direction: column; gap: 3px; }
-.mkp-field-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; }
-.mkp-field-row span:first-child { color: var(--muted); }
-.mkp-field-row span:last-child { color: var(--slate); font-weight: 600; }
-
-.booking-form .form-group:first-child { margin-top: 0; }
-.slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 4px; }
-.slot-btn { padding: 8px 4px; border-radius: 9px; border: 1.5px solid #e2e8f0; background: white; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--slate); cursor: pointer; }
-.slot-btn:hover { border-color: #1e40af; }
-.slot-btn.selected { background: var(--teal); border-color: var(--teal); color: white; }
 .booking-actions { display: flex; gap: 10px; margin-top: 20px; }
 .booking-actions .btn-main { flex: 1; margin: 0; min-width: auto; }
 .btn-secondary { flex: 1; padding: 13px 20px; border-radius: 12px; border: 1.5px solid #e2e8f0; background: white; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -122,3 +80,181 @@ body {
 .checkbox-label { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--slate); cursor: pointer; }
 .checkbox-label input { margin-top: 2px; }
 .checkbox-label a { color: #1e40af; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   PORTAL APP SHELL -- mirrors patient.html's own design system (real teal/
+   slate tokens, IBM Plex Sans/Fraunces/IBM Plex Mono, full-viewport topbar
+   + bottom-nav app, not a centered card). Scoped under .app-shell so it
+   never touches the login/register tokens above, which intentionally stay
+   matched to patient-login.html's own (different, older) palette instead.
+   ══════════════════════════════════════════════════════════════════════ */
+.app-shell {
+  --p-teal: #0E5E56;
+  --p-teal-dark: #0A4A44;
+  --p-teal-light: #EAF4F1;
+  --p-teal-bg: #DCEAE6;
+  --p-slate: #16211F;
+  --p-border: #E4DFD3;
+  --p-muted: #5B6B66;
+  --p-red: #B23A34;
+  --p-green: #2F7A4F;
+  --p-amber: #B8742E;
+
+  position: fixed; inset: 0; z-index: 10;
+  background: #FFFFFF; color: var(--p-slate);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.app-shell .topbar {
+  background: white; height: 56px; flex-shrink: 0;
+  padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--p-border); box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+}
+.app-shell .topbar-logo { display: flex; align-items: center; gap: 9px; min-width: 0; flex-shrink: 1; }
+.app-shell .topbar-icon { width: 36px; height: 36px; flex-shrink: 0; border-radius: 9px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.app-shell .topbar-icon img { width: 100%; height: 100%; object-fit: contain; }
+.app-shell .topbar-name { font-size: 15px; font-weight: 800; color: var(--p-slate); letter-spacing: -0.3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-shell .topbar-name span { color: var(--p-teal); }
+.app-shell .topbar-user { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; }
+.app-shell .topbar-username { font-size: 12px; font-weight: 600; color: var(--p-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.app-shell .topbar-logout { background: rgba(178,58,52,0.12); border: none; color: var(--p-red); padding: 6px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 600; flex-shrink: 0; white-space: nowrap; }
+.app-shell .topbar-logout:hover { background: rgba(178,58,52,0.2); }
+
+.app-shell .views { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; }
+
+.app-shell .view-header { background: white; border-bottom: 1px solid var(--p-border); padding: 16px; flex-shrink: 0; }
+.app-shell .view-title { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; color: var(--p-slate); }
+.app-shell .view-sub { font-size: 12px; color: var(--p-muted); margin-top: 2px; }
+.app-shell .view-content { flex: 1; padding: 16px; }
+
+.app-shell .empty-state { text-align: center; padding: 40px 20px; color: var(--p-muted); }
+.app-shell .empty-icon { margin-bottom: 12px; display: flex; justify-content: center; color: var(--p-muted); }
+.app-shell .empty-text { font-size: 14px; font-weight: 600; }
+.app-shell .empty-sub { font-size: 12px; margin-top: 4px; }
+
+/* ── Bottom nav ── */
+.app-shell .bottom-nav {
+  background: white; border-top: 1px solid var(--p-border); display: flex; flex-shrink: 0;
+  padding: 4px 2px calc(10px + env(safe-area-inset-bottom)); box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+}
+.app-shell .nav-item {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 6px 2px; gap: 2px; background: none; border: none; border-radius: 8px; cursor: pointer;
+  font-family: inherit; color: var(--p-muted); font-size: 9px; font-weight: 600; transition: all 0.15s;
+}
+.app-shell .nav-item.active { color: var(--p-teal); background: var(--p-teal-light); }
+.app-shell .nav-icon { display: flex; align-items: center; justify-content: center; line-height: 1; }
+.app-shell .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Home tab ── */
+.app-shell .home-greeting-name { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; color: var(--p-slate); }
+.app-shell .home-greeting-sub { font-size: 13px; font-weight: 600; color: var(--p-muted); margin-top: 3px; margin-bottom: 18px; }
+.app-shell .home-card { background: white; border-radius: 16px; border-left: 4px solid var(--p-teal); padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.app-shell .home-card-label { font-size: 11px; font-weight: 700; color: var(--p-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.app-shell .home-card-main { font-size: 15px; font-weight: 700; color: var(--p-slate); }
+.app-shell .home-card-sub { font-size: 13px; color: var(--p-muted); margin-top: 2px; }
+
+/* ── Chat tab ── */
+.app-shell .chat-view { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.app-shell .chat-header { background: white; border-bottom: 1px solid var(--p-border); padding: 12px 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.app-shell .chat-header-avatar { width: 42px; height: 42px; background: var(--p-teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: white; flex-shrink: 0; }
+.app-shell .chat-header-info { flex: 1; }
+.app-shell .chat-doctor-name { font-size: 15px; font-weight: 700; color: var(--p-slate); }
+.app-shell .chat-doctor-sub { font-size: 11px; color: var(--p-teal); font-weight: 600; margin-top: 1px; }
+.app-shell .messages { flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
+.app-shell .msg-row { display: flex; }
+.app-shell .msg-row.out { justify-content: flex-end; }
+.app-shell .msg-bubble { max-width: 75%; padding: 10px 13px; border-radius: 16px; font-size: 14px; line-height: 1.45; color: var(--p-slate); background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border-bottom-left-radius: 4px; }
+.app-shell .msg-row.out .msg-bubble { background: var(--p-teal-bg); color: var(--p-teal); border-bottom-left-radius: 16px; border-bottom-right-radius: 4px; }
+.app-shell .msg-time { font-size: 10px; color: var(--p-muted); margin-top: 4px; display: block; text-align: right; }
+.app-shell .msg-row.out .msg-time { color: rgba(14,94,86,0.65); }
+.app-shell .chat-input-area { background: white; border-top: 1px solid var(--p-border); padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.app-shell .chat-input-wrap { flex: 1; background: #FFFFFF; border: 1.5px solid var(--p-border); border-radius: 22px; display: flex; align-items: center; padding: 4px 6px 4px 16px; }
+.app-shell .chat-input-wrap:focus-within { border-color: var(--p-teal); }
+.app-shell .chat-input { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 14px; color: var(--p-slate); outline: none; padding: 9px 0; }
+.app-shell .chat-input::placeholder { color: var(--p-muted); }
+.app-shell .send-btn { width: 38px; height: 38px; background: linear-gradient(135deg,var(--p-teal),#12746A); border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: white; box-shadow: 0 2px 8px rgba(13,148,136,0.35); }
+.app-shell .send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Termine tab ── */
+.app-shell .section-title { font-size: 12px; font-weight: 700; color: var(--p-muted); text-transform: uppercase; letter-spacing: 0.6px; margin: 0 0 10px; }
+.app-shell .termin-card { background: white; border-radius: 16px; border-left: 4px solid var(--p-teal); padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.app-shell .termin-date-box { width: 46px; height: 46px; background: var(--p-teal-light); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+.app-shell .termin-day { font-size: 18px; font-weight: 800; color: var(--p-teal); line-height: 1; }
+.app-shell .termin-month { font-size: 9px; font-weight: 700; color: var(--p-teal); text-transform: uppercase; }
+.app-shell .termin-info { flex: 1; min-width: 0; }
+.app-shell .termin-title { font-size: 13px; font-weight: 700; color: var(--p-slate); }
+.app-shell .termin-sub { font-size: 11px; color: var(--p-muted); margin-top: 2px; }
+.app-shell .termin-status { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; }
+.app-shell .termin-status.status-confirmed, .app-shell .termin-status.status-approved { background: #E3F0E6; color: #256B41; }
+.app-shell .termin-status.status-pending { background: #F6E9D9; color: #8A4E1E; }
+.app-shell .termin-status.status-cancelled { background: #FAE2E1; color: #8A2E27; }
+
+.app-shell .booking-card { background: linear-gradient(135deg,var(--p-teal),#12746A); border-radius: 16px; padding: 18px; margin-bottom: 16px; color: white; }
+.app-shell .booking-card-title { font-size: 15px; font-weight: 800; margin-bottom: 12px; }
+.app-shell .booking-card select,
+.app-shell .booking-card input[type="date"] {
+  width: 100%; padding: 9px 12px; border: none; border-radius: 10px; background: rgba(255,255,255,0.15);
+  color: white; font-family: inherit; font-size: 13px; font-weight: 700; outline: none; margin-bottom: 10px;
+}
+.app-shell .booking-card select option { color: var(--p-slate); }
+.app-shell .booking-card .form-label { color: rgba(255,255,255,0.75); }
+.app-shell .time-slots { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 4px; }
+.app-shell .time-slot {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px;
+  padding: 8px 4px; text-align: center; cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; font-weight: 600; color: white; transition: all 0.15s; font-variant-numeric: tabular-nums;
+}
+.app-shell .time-slot:hover, .app-shell .time-slot.selected { background: white; color: var(--p-teal); }
+.app-shell .btn-book { width: 100%; padding: 11px; border: none; border-radius: 12px; background: white; color: var(--p-teal); font-family: inherit; font-size: 13px; font-weight: 800; cursor: pointer; margin-top: 14px; transition: all 0.15s; }
+.app-shell .btn-book:hover { background: var(--p-teal-bg); }
+.app-shell .btn-book:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Dokumente tab ── */
+.app-shell .doc-card {
+  background: white; border-radius: 16px; border-left: 4px solid #0891b2; padding: 14px 16px; margin-bottom: 10px;
+  display: flex; align-items: center; gap: 14px; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: all 0.15s; width: 100%; text-align: start; border-top: none; border-right: none; border-bottom: none;
+  font-family: inherit;
+}
+.app-shell .doc-card:hover { box-shadow: 0 4px 16px rgba(8,145,178,0.15); }
+.app-shell .doc-card:disabled { opacity: 0.7; cursor: wait; }
+.app-shell .doc-icon-box { width: 46px; height: 46px; border-radius: 12px; background: #ECFEFF; color: #0891b2; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.app-shell .doc-info { flex: 1; min-width: 0; }
+.app-shell .doc-title { font-size: 13px; font-weight: 700; color: var(--p-slate); }
+.app-shell .doc-meta { font-size: 11px; color: var(--p-muted); margin-top: 2px; }
+.app-shell .doc-loading { font-size: 11px; color: var(--p-teal); font-weight: 700; margin-top: 4px; display: block; }
+
+/* ── Profil / Impfpass / MKP: shared info-card list style ── */
+.app-shell .profil-header-card { background: linear-gradient(135deg,var(--p-slate),var(--p-slate)); border-radius: 16px; padding: 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 14px; }
+.app-shell .profil-avatar-lg { width: 56px; height: 56px; background: var(--p-teal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: white; flex-shrink: 0; }
+.app-shell .profil-name { font-size: 17px; font-weight: 800; color: white; }
+.app-shell .profil-sub { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 3px; }
+
+.app-shell .info-card { background: white; border-radius: 16px; border: 1px solid var(--p-border); overflow: hidden; margin-bottom: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.app-shell .info-card-header { padding: 12px 16px; border-bottom: 1px solid var(--p-border); font-size: 12px; font-weight: 700; color: var(--p-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.app-shell .info-row { padding: 11px 16px; border-bottom: 1px solid #FBF9F4; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.app-shell .info-row:last-child { border-bottom: none; }
+.app-shell .info-label { font-size: 12px; color: var(--p-muted); }
+.app-shell .info-value { font-size: 13px; font-weight: 600; color: var(--p-slate); text-align: right; max-width: 60%; }
+
+.app-shell .status-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; flex-shrink: 0; white-space: nowrap; }
+.app-shell .status-badge.given { background: #dcfce7; color: #16a34a; }
+.app-shell .status-badge.due { background: #fef9c3; color: #854d0e; }
+
+.app-shell .profile-row {
+  width: 100%; text-align: start; background: white; border: 1px solid var(--p-border); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 8px; font-family: inherit; cursor: pointer;
+}
+.app-shell .profile-row.profile-active { border-color: var(--p-teal); background: var(--p-teal-light); cursor: default; }
+.app-shell .profile-row:disabled { opacity: 0.6; cursor: wait; }
+.app-shell .profile-row-main { font-size: 13px; font-weight: 700; color: var(--p-slate); }
+.app-shell .profile-row-sub { font-size: 11px; color: var(--p-muted); margin-top: 2px; }
+
+.app-shell .logout-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #FAF0EE; color: var(--p-red); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
+.app-shell .logout-btn:hover { background: #F5E1DF; }
+.app-shell .logout-btn.secondary { background: var(--p-teal-light); color: var(--p-teal); }
+.app-shell .logout-btn.secondary:hover { background: var(--p-teal-bg); }
+
+::-webkit-scrollbar { width: 0; }
