@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import { patientLogout } from './lib/patientAuth';
 import {
   patientGetArztRoster, patientGetBookingEnabled, patientGetDocuments,
-  patientGetImpfungen, patientGetMessages, patientGetTermine, patientGetWorkingHours,
-  patientSendMessage,
+  patientGetImpfungen, patientGetMessages, patientGetProfiles, patientGetTermine,
+  patientGetWorkingHours, patientSendMessage, patientSwitchProfile,
 } from './lib/patientData';
 import DokumenteTab from './DokumenteTab';
 import ImpfpassTab from './ImpfpassTab';
 import BookingForm from './BookingForm';
 import PasswordChangeForm from './PasswordChangeForm';
+import AddProfileForm from './AddProfileForm';
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
@@ -126,7 +127,60 @@ function ChatTab({ messages, loading, onSent }) {
   );
 }
 
-function ProfilTab({ profile, onLoggedOut }) {
+function ProfilesSection({ profiles, loading, onSwitch, onAdd }) {
+  const [switching, setSwitching] = useState(null);
+  const [adding, setAdding] = useState(null); // null | 'child' | 'adult'
+  const activeProfile = profiles.find((p) => p.isActive);
+
+  if (adding) {
+    return (
+      <AddProfileForm
+        type={adding}
+        practiceId={activeProfile ? activeProfile.practiceId : null}
+        onCancel={() => setAdding(null)}
+        onDone={() => { setAdding(null); onAdd(); }}
+      />
+    );
+  }
+
+  async function handleSwitch(patientId) {
+    setSwitching(patientId);
+    try {
+      await onSwitch(patientId);
+    } finally {
+      setSwitching(null);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div className="form-label" style={{ marginBottom: 8 }}>Meine Profile</div>
+      {loading ? (
+        <div className="empty-state">Lädt…</div>
+      ) : (
+        <div className="list-col">
+          {profiles.map((p) => (
+            <button
+              key={p.patientId}
+              className={`list-row list-row-button${p.isActive ? ' profile-active' : ''}`}
+              onClick={() => !p.isActive && handleSwitch(p.patientId)}
+              disabled={switching === p.patientId}
+            >
+              <div className="list-row-main">{p.fullName}{p.isActive ? ' (aktiv)' : ''}</div>
+              <div className="list-row-sub">{p.relationLabel || p.relation}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('child')}>+ Kind</button>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('adult')}>+ Erwachsene:r</button>
+      </div>
+    </div>
+  );
+}
+
+function ProfilTab({ profile, profiles, profilesLoading, onProfileSwitch, onProfilesReload, onLoggedOut }) {
   const [changingPw, setChangingPw] = useState(false);
 
   if (changingPw) {
@@ -148,6 +202,11 @@ function ProfilTab({ profile, onLoggedOut }) {
       <div className="welcome-row"><span>Telefon</span><span>{profile.tel || '—'}</span></div>
       <button className="btn-secondary" style={{ width: '100%', marginTop: 20 }} onClick={() => setChangingPw(true)}>Passwort ändern</button>
       <button className="btn-main" style={{ marginTop: 10 }} onClick={onLoggedOut}>Abmelden</button>
+
+      <ProfilesSection
+        profiles={profiles} loading={profilesLoading}
+        onSwitch={onProfileSwitch} onAdd={onProfilesReload}
+      />
     </div>
   );
 }
@@ -161,7 +220,7 @@ const TABS = [
   { id: 'profil', label: 'Profil', icon: '👤' },
 ];
 
-export default function PatientPortal({ profile, onLoggedOut }) {
+export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched }) {
   const [tab, setTab] = useState('home');
   const [termine, setTermine] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -170,6 +229,8 @@ export default function PatientPortal({ profile, onLoggedOut }) {
   const [arzte, setArzte] = useState([]);
   const [workingHours, setWorkingHours] = useState(null);
   const [bookingEnabled, setBookingEnabled] = useState(true);
+  const [profiles, setProfiles] = useState([]);
+  const [profilesLoading, setProfilesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
 
   async function reload() {
@@ -182,9 +243,19 @@ export default function PatientPortal({ profile, onLoggedOut }) {
     setImpfungen(i);
   }
 
+  async function reloadProfiles() {
+    setProfilesLoading(true);
+    try {
+      setProfiles(await patientGetProfiles());
+    } finally {
+      setProfilesLoading(false);
+    }
+  }
+
   useEffect(() => {
     Promise.all([
       reload(),
+      reloadProfiles(),
       patientGetArztRoster().then(setArzte),
       patientGetWorkingHours().then(setWorkingHours),
       patientGetBookingEnabled().then(setBookingEnabled),
@@ -194,6 +265,11 @@ export default function PatientPortal({ profile, onLoggedOut }) {
   async function handleLogout() {
     await patientLogout();
     onLoggedOut();
+  }
+
+  async function handleProfileSwitch(patientId) {
+    const ok = await patientSwitchProfile(patientId);
+    if (ok) await onProfileSwitched();
   }
 
   return (
@@ -215,7 +291,13 @@ export default function PatientPortal({ profile, onLoggedOut }) {
         {tab === 'chat' && <ChatTab messages={messages} loading={loading} onSent={reload} />}
         {tab === 'dokumente' && <DokumenteTab documents={documents} loading={loading} />}
         {tab === 'impfpass' && <ImpfpassTab impfungen={impfungen} loading={loading} />}
-        {tab === 'profil' && <ProfilTab profile={profile} onLoggedOut={handleLogout} />}
+        {tab === 'profil' && (
+          <ProfilTab
+            profile={profile} onLoggedOut={handleLogout}
+            profiles={profiles} profilesLoading={profilesLoading}
+            onProfileSwitch={handleProfileSwitch} onProfilesReload={reloadProfiles}
+          />
+        )}
       </div>
 
       <nav className="bottom-nav">

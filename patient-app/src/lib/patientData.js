@@ -118,6 +118,48 @@ export async function patientGetArztRoster() {
     .map((p) => ({ username: p.id, fullName: p.full_name, fach: p.fach }));
 }
 
+export async function patientGetProfiles() {
+  const { data, error } = await sb.rpc('patient_get_profiles');
+  if (error) {
+    console.error('patientGetProfiles failed', error);
+    return [];
+  }
+  return (data || []).map((r) => ({
+    patientId: r.patient_id, fullName: r.full_name, relation: r.relation,
+    relationLabel: r.relation_label, practiceId: r.practice_id,
+    practiceName: r.practice_name, isActive: r.is_active,
+  }));
+}
+
+export async function patientSwitchProfile(patientId) {
+  const { data, error } = await sb.rpc('patient_switch_profile', { p_patient_id: patientId });
+  if (error) {
+    console.error('patientSwitchProfile failed', error);
+    return false;
+  }
+  return !!data;
+}
+
+// Mirrors patient.html's "+ Profil hinzufügen" modal -- lets an already
+// logged-in account request a new linked profile (a child, or another
+// adult like a father/mother) on the SAME practice as its active profile.
+// Goes through the same staff review as a brand-new registration
+// (patient_join_requests), just carrying which login it should attach to
+// once approved.
+export async function patientSubmitProfileJoinRequest(fields, practiceId, relation, relationLabel) {
+  const { data, error } = await sb.rpc('patient_submit_profile_join_request', {
+    p_practice_id: practiceId, p_vorname: fields.vorname, p_nachname: fields.nachname,
+    p_adresse: fields.adresse, p_svnr: fields.svnr, p_relation: relation,
+    p_relation_label: relationLabel || null, p_dob: fields.dob || null,
+    p_versicherung: fields.versicherung || null, p_geschlecht: fields.geschlecht || null,
+  });
+  if (error) {
+    console.error('patientSubmitProfileJoinRequest failed', error);
+    throw error;
+  }
+  return data;
+}
+
 export async function patientBookTermin(fields) {
   const { data, error } = await sb.rpc('patient_book_termin', {
     p_arzt_id: fields.arztUsername, p_date: fields.date,
