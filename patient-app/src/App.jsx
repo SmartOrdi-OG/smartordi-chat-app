@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { sb } from './lib/supabase';
 import { patientGetProfile } from './lib/patientAuth';
 import LoginScreen from './LoginScreen';
+import RegisterScreen from './RegisterScreen';
 import PatientPortal from './PatientPortal';
 
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [view, setView] = useState('login'); // 'login' | 'register'
 
   // If a session already exists (e.g. this browser just logged in through
   // the real patient-login.html), pick it up instead of asking again --
@@ -24,9 +26,13 @@ export default function App() {
 
   if (checking) return null;
 
-  return profile ? (
-    <PatientPortal profile={profile} onLoggedOut={() => setProfile(null)} />
+  if (profile) {
+    return <PatientPortal profile={profile} onLoggedOut={() => setProfile(null)} />;
+  }
+
+  return view === 'register' ? (
+    <RegisterScreen onBackToLogin={() => setView('login')} />
   ) : (
-    <LoginScreen onLoggedIn={setProfile} />
+    <LoginScreen onLoggedIn={setProfile} onRegister={() => setView('register')} />
   );
 }

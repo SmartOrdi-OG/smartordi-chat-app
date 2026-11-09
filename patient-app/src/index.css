@@ -100,3 +100,19 @@ body {
 .booking-actions { display: flex; gap: 10px; margin-top: 20px; }
 .booking-actions .btn-main { flex: 1; margin: 0; min-width: auto; }
 .btn-secondary { flex: 1; padding: 13px 20px; border-radius: 12px; border: 1.5px solid #e2e8f0; background: white; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+.text-link { font-size: 12px; color: #1e40af; font-weight: 600; text-decoration: none; }
+.text-link:hover { text-decoration: underline; }
+
+.acctype-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
+.acctype-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid #e2e8f0; background: white; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.acctype-btn.active { background: var(--teal); border-color: var(--teal); color: white; }
+
+.notice { background: var(--blue-light); border: 1px solid #C7D7F5; border-radius: 12px; padding: 10px 14px; margin: 16px 0; }
+.notice-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 4px; }
+.notice-main { font-size: 13px; font-weight: 700; color: var(--slate); }
+.notice-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.checkbox-label { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; color: var(--slate); cursor: pointer; }
+.checkbox-label input { margin-top: 2px; }
+.checkbox-label a { color: #1e40af; }
