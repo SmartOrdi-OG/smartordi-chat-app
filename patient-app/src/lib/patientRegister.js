@@ -2,6 +2,18 @@ import { sb } from './supabase';
 
 const POLICY_VERSION = '2.1';
 
+// phase89_practice_short_code.sql -- resolves a short, typeable practice
+// code (practices.short_code, e.g. "2TW3BZ") from a /patient-register/<code>
+// link into the real practice id. Case-insensitive on the server side.
+export async function resolvePracticeShortCode(code) {
+  const { data, error } = await sb.rpc('public_resolve_practice_short_code', { p_code: code });
+  if (error) {
+    console.error('resolvePracticeShortCode failed', error);
+    return null;
+  }
+  return data || null;
+}
+
 // Mirrors patient-login.html's public_get_practice_join_info() call --
 // shows the practice name on the registration form so the patient can
 // confirm they're applying to the right Ordination.
