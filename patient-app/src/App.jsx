@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { sb } from './lib/supabase';
 import { patientGetProfile } from './lib/patientAuth';
 import LoginScreen from './LoginScreen';
-import WelcomeScreen from './WelcomeScreen';
+import PatientPortal from './PatientPortal';
 
 export default function App() {
   const [profile, setProfile] = useState(null);
@@ -25,7 +25,7 @@ export default function App() {
   if (checking) return null;
 
   return profile ? (
-    <WelcomeScreen profile={profile} onLoggedOut={() => setProfile(null)} />
+    <PatientPortal profile={profile} onLoggedOut={() => setProfile(null)} />
   ) : (
     <LoginScreen onLoggedIn={setProfile} />
   );
