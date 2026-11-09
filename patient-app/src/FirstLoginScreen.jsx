@@ -5,10 +5,11 @@ import { POLICY_VERSION } from './lib/patientRegister';
 // Mirrors patient-login.html's screen-changepw + saveNewPw() -- the
 // mandatory step between a first real login (QR-provisioned temp password,
 // or a self-registered account's first login after the login-consent
-// feature shipped) and the portal. Anamnese (the medical-history
-// questionnaire patient-login.html also forces at this point) isn't ported
-// yet -- deliberately deferred; this screen goes straight to the portal
-// once password/username/consent are handled.
+// feature shipped) and the portal. Whether the mandatory Anamnese
+// questionnaire comes next is decided by the caller (App.jsx, from the
+// needsAnamnese flag resolveLogin() already computed) -- this screen just
+// reports the freshly-updated profile back via onDone once password/
+// username/consent are handled.
 export default function FirstLoginScreen({ profile, needsUsername, needsPassword, needsConsent, onDone }) {
   const [username, setUsername] = useState(needsUsername ? '' : profile.username);
   const [newPw, setNewPw] = useState('');
