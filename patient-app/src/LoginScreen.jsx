@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { patientLogin } from './lib/patientAuth';
 
-export default function LoginScreen({ onLoggedIn }) {
+export default function LoginScreen({ onLoggedIn, onRegister }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,6 +84,12 @@ export default function LoginScreen({ onLoggedIn }) {
           {loading ? <span className="spinner" /> : 'Anmelden'}
         </button>
       </form>
+
+      <div style={{ textAlign: 'center', marginTop: 12 }}>
+        <a href="#" onClick={(e) => { e.preventDefault(); onRegister(); }} className="text-link">
+          Neu hier? Anmeldung beantragen
+        </a>
+      </div>
     </div>
   );
 }
