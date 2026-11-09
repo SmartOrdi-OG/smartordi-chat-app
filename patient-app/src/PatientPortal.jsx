@@ -459,6 +459,19 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
           </button>
         ))}
       </nav>
+
+      <nav className="sidebar-nav">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            className={`sidebar-nav-item${tab === t.id ? ' active' : ''}`}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="sidebar-nav-icon"><NavIcon name={t.icon} /></span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

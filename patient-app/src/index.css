@@ -153,6 +153,44 @@ body {
 .app-shell .nav-icon { display: flex; align-items: center; justify-content: center; line-height: 1; }
 .app-shell .nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ── Desktop (>=1024px): left icon-rail sidebar instead of a bottom-nav,
+   same breakpoint/structure patient.html's own #appNavBar uses, swapped in
+   via a CSS grid (topbar spans the top row; sidebar + content share the
+   row below) so the bottom-nav markup can stay mounted and just hide. Tab
+   content itself isn't given patient.html's own "each view is a draggable
+   window" treatment (a lot of machinery for little real benefit here) --
+   simpler and just as usable: cap each view's content at a readable width
+   and center it in the now much wider pane. ── */
+.app-shell .sidebar-nav { display: none; }
+@media (min-width: 1024px) {
+  .app-shell { display: grid; grid-template-columns: 84px 1fr; grid-template-rows: calc(56px + env(safe-area-inset-top)) 1fr; grid-template-areas: "topbar topbar" "sidebar main"; }
+  .app-shell .topbar { grid-area: topbar; }
+  .app-shell .bottom-nav { display: none; }
+  .app-shell .sidebar-nav {
+    display: flex; grid-area: sidebar; flex-direction: column; align-items: center;
+    background: white; border-right: 1px solid var(--p-border); padding: 14px 8px; gap: 6px; overflow-y: auto;
+  }
+  .app-shell .views { grid-area: main; }
+
+  .app-shell .view-header, .app-shell .view-content, .app-shell .chat-view {
+    max-width: 640px; width: 100%; margin-left: auto; margin-right: auto;
+  }
+}
+.app-shell .sidebar-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  width: 64px; padding: 6px 10px; border-radius: 10px; border: none; cursor: pointer;
+  font-family: inherit; font-size: 11px; font-weight: 600; color: var(--p-muted); background: transparent;
+  white-space: nowrap; transition: all 0.18s;
+}
+.app-shell .sidebar-nav-icon {
+  width: 30px; height: 30px; border-radius: 8px; background: #F1F5F9; color: var(--p-muted);
+  display: flex; align-items: center; justify-content: center; transition: all 0.18s;
+}
+.app-shell .sidebar-nav-item:hover { background: var(--p-teal-light); color: var(--p-teal); }
+.app-shell .sidebar-nav-item:hover .sidebar-nav-icon { background: var(--p-teal-bg); color: var(--p-teal); }
+.app-shell .sidebar-nav-item.active { color: var(--p-teal); font-weight: 700; }
+.app-shell .sidebar-nav-item.active .sidebar-nav-icon { background: var(--p-teal-bg); color: var(--p-teal); }
+
 /* ── Home tab ── */
 .app-shell .home-greeting-name { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; color: var(--p-slate); }
 .app-shell .home-greeting-sub { font-size: 13px; font-weight: 600; color: var(--p-muted); margin-top: 3px; margin-bottom: 18px; }
