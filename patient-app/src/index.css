@@ -1,4 +1,7 @@
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* touch-action:manipulation disables double-tap-to-zoom (not fully covered
+   by the viewport meta's maximum-scale/user-scalable alone on some mobile
+   browsers) while still allowing normal panning/scrolling. */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
 /* Real fonts used by patient.html (the in-app portal, once logged in) --
    mirrored here for the .app-shell below. Login/Register keep system fonts,
