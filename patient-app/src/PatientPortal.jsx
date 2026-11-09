@@ -8,6 +8,7 @@ import {
 import DokumenteTab from './DokumenteTab';
 import ImpfpassTab from './ImpfpassTab';
 import BookingForm from './BookingForm';
+import PasswordChangeForm from './PasswordChangeForm';
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
@@ -126,6 +127,18 @@ function ChatTab({ messages, loading, onSent }) {
 }
 
 function ProfilTab({ profile, onLoggedOut }) {
+  const [changingPw, setChangingPw] = useState(false);
+
+  if (changingPw) {
+    return (
+      <PasswordChangeForm
+        currentUsername={profile.username}
+        onCancel={() => setChangingPw(false)}
+        onDone={() => setChangingPw(false)}
+      />
+    );
+  }
+
   return (
     <div>
       <div className="welcome-row"><span>Benutzername</span><span>{profile.username}</span></div>
@@ -133,7 +146,8 @@ function ProfilTab({ profile, onLoggedOut }) {
       <div className="welcome-row"><span>Geburtsdatum</span><span>{profile.dob || '—'}</span></div>
       <div className="welcome-row"><span>Adresse</span><span>{profile.adresse || '—'}</span></div>
       <div className="welcome-row"><span>Telefon</span><span>{profile.tel || '—'}</span></div>
-      <button className="btn-main" style={{ marginTop: 20 }} onClick={onLoggedOut}>Abmelden</button>
+      <button className="btn-secondary" style={{ width: '100%', marginTop: 20 }} onClick={() => setChangingPw(true)}>Passwort ändern</button>
+      <button className="btn-main" style={{ marginTop: 10 }} onClick={onLoggedOut}>Abmelden</button>
     </div>
   );
 }
