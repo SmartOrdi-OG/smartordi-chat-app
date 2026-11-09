@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { patientLogout } from './lib/patientAuth';
 import {
   patientGetArztRoster, patientGetBookingEnabled, patientGetDocuments,
-  patientGetImpfungen, patientGetMessages, patientGetProfiles, patientGetTermine,
-  patientGetWorkingHours, patientSendMessage, patientSwitchProfile,
+  patientGetImpfungen, patientGetMessages, patientGetMkpExams, patientGetProfiles,
+  patientGetTermine, patientGetWorkingHours, patientSendMessage, patientSwitchProfile,
 } from './lib/patientData';
 import DokumenteTab from './DokumenteTab';
 import ImpfpassTab from './ImpfpassTab';
 import BookingForm from './BookingForm';
 import PasswordChangeForm from './PasswordChangeForm';
 import AddProfileForm from './AddProfileForm';
+import MkpTab from './MkpTab';
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
@@ -211,14 +212,20 @@ function ProfilTab({ profile, profiles, profilesLoading, onProfileSwitch, onProf
   );
 }
 
-const TABS = [
-  { id: 'home', label: 'Start', icon: '⌂' },
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'termine', label: 'Termine', icon: '📅' },
-  { id: 'dokumente', label: 'Befunde', icon: '📄' },
-  { id: 'impfpass', label: 'Impfpass', icon: '💉' },
-  { id: 'profil', label: 'Profil', icon: '👤' },
-];
+function baseTabs(isChild) {
+  const tabs = [
+    { id: 'home', label: 'Start', icon: '⌂' },
+    { id: 'chat', label: 'Chat', icon: '💬' },
+    { id: 'termine', label: 'Termine', icon: '📅' },
+    { id: 'dokumente', label: 'Befunde', icon: '📄' },
+    { id: 'impfpass', label: 'Impfpass', icon: '💉' },
+  ];
+  // Mutter-Kind-Pass is pediatric-only, same as patient.html's own
+  // updateMkpTileVisibility() -- there's nothing to show for an adult.
+  if (isChild) tabs.push({ id: 'mkp', label: 'MKP', icon: '🤱' });
+  tabs.push({ id: 'profil', label: 'Profil', icon: '👤' });
+  return tabs;
+}
 
 export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched }) {
   const [tab, setTab] = useState('home');
@@ -226,21 +233,25 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
   const [messages, setMessages] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [impfungen, setImpfungen] = useState([]);
+  const [mkpExams, setMkpExams] = useState([]);
   const [arzte, setArzte] = useState([]);
   const [workingHours, setWorkingHours] = useState(null);
   const [bookingEnabled, setBookingEnabled] = useState(true);
   const [profiles, setProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const TABS = baseTabs(profile.isChild);
 
   async function reload() {
-    const [t, m, d, i] = await Promise.all([
+    const [t, m, d, i, mk] = await Promise.all([
       patientGetTermine(), patientGetMessages(), patientGetDocuments(), patientGetImpfungen(),
+      profile.isChild ? patientGetMkpExams() : Promise.resolve([]),
     ]);
     setTermine(t);
     setMessages(m);
     setDocuments(d);
     setImpfungen(i);
+    setMkpExams(mk);
   }
 
   async function reloadProfiles() {
@@ -291,6 +302,7 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         {tab === 'chat' && <ChatTab messages={messages} loading={loading} onSent={reload} />}
         {tab === 'dokumente' && <DokumenteTab documents={documents} loading={loading} />}
         {tab === 'impfpass' && <ImpfpassTab impfungen={impfungen} loading={loading} />}
+        {tab === 'mkp' && <MkpTab exams={mkpExams} loading={loading} />}
         {tab === 'profil' && (
           <ProfilTab
             profile={profile} onLoggedOut={handleLogout}

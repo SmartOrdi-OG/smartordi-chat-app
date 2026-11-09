@@ -118,6 +118,17 @@ export async function patientGetArztRoster() {
     .map((p) => ({ username: p.id, fullName: p.full_name, fach: p.fach }));
 }
 
+export async function patientGetMkpExams() {
+  const { data, error } = await sb.rpc('patient_get_mkp_exams');
+  if (error) {
+    console.error('patientGetMkpExams failed', error);
+    return [];
+  }
+  return (data || []).map((row) => ({
+    examKey: row.exam_key, data: row.data || {}, completedAt: row.completed_at,
+  }));
+}
+
 export async function patientGetProfiles() {
   const { data, error } = await sb.rpc('patient_get_profiles');
   if (error) {
