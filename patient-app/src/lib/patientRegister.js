@@ -1,6 +1,6 @@
 import { sb } from './supabase';
 
-const POLICY_VERSION = '2.1';
+export const POLICY_VERSION = '2.1';
 
 // phase89_practice_short_code.sql -- resolves a short, typeable practice
 // code (practices.short_code, e.g. "2TW3BZ") from a /patient-register/<code>
@@ -59,4 +59,19 @@ export async function submitJoinRequest(fields, practiceId, isChild) {
     p_full_name: fullName, p_email: null, p_policy_version: POLICY_VERSION,
     p_user_agent: navigator.userAgent,
   }).then(({ error: consentErr }) => { if (consentErr) console.error('record_consent failed', consentErr); });
+}
+
+// Mirrors patient-login.html's check_join_request_status() call -- lets
+// the login screen tell "wrong password" apart from "your self-
+// registration is still pending/was rejected" when no real account exists
+// yet to actually sign in to.
+export async function checkJoinRequestStatus(username) {
+  const { data, error } = await sb.rpc('check_join_request_status', { p_username: username });
+  if (error) {
+    console.error('checkJoinRequestStatus failed', error);
+    return null;
+  }
+  const row = data && data[0];
+  if (!row) return null;
+  return { status: row.status, note: row.note };
 }

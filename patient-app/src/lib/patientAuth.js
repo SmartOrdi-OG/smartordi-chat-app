@@ -95,3 +95,15 @@ export async function patientChangeUsername(newUsername) {
   }
   return { ok: !!ok };
 }
+
+// Mirrors patient-login.html's patientRecordLoginConsent() -- the one
+// unified consent moment at first real login (supabase/
+// phase79_patient_login_consent.sql), not account-creation time.
+export async function patientRecordLoginConsent(policyVersion) {
+  const { data: ok, error } = await sb.rpc('patient_record_login_consent', { p_policy_version: policyVersion });
+  if (error) {
+    console.error('patientRecordLoginConsent failed', error);
+    return false;
+  }
+  return !!ok;
+}
