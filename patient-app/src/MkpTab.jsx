@@ -17,30 +17,31 @@ export default function MkpTab({ exams, loading }) {
 
   return (
     <div>
-      <div className="welcome-sub" style={{ marginBottom: 12 }}>
-        Nur zur Ansicht — ausgefüllt von Ihrer Kinderärztin/Ihrem Kinderarzt.
-      </div>
-      <div className="list-col">
-        {exams.map((ex) => {
-          const info = MKP_EXAM_INFO[ex.examKey] || { title: ex.examKey, ageLabel: '' };
-          const fieldEntries = Object.entries(ex.data || {});
-          return (
-            <div className="list-row" key={ex.examKey}>
-              <div className="list-row-main">{info.title}</div>
-              <div className="list-row-sub">{info.ageLabel} · {fmtDate(ex.completedAt)}</div>
-              {fieldEntries.length > 0 && (
-                <div className="mkp-fields">
-                  {fieldEntries.map(([k, v]) => (
-                    <div className="mkp-field-row" key={k}>
-                      <span>{k}</span><span>{fmtValue(v)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+      {exams.map((ex) => {
+        const info = MKP_EXAM_INFO[ex.examKey] || { title: ex.examKey, ageLabel: '' };
+        const fieldEntries = Object.entries(ex.data || {});
+        return (
+          <div className="info-card" key={ex.examKey}>
+            <div className="info-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span>
+                {info.title}
+                <span style={{ display: 'block', fontSize: 10, fontWeight: 600, color: 'var(--p-muted)', textTransform: 'none', letterSpacing: 0, marginTop: 2 }}>{info.ageLabel}</span>
+              </span>
+              <span className="status-badge given">{fmtDate(ex.completedAt)}</span>
             </div>
-          );
-        })}
-      </div>
+            {fieldEntries.length > 0 ? (
+              fieldEntries.map(([k, v]) => (
+                <div className="info-row" key={k}>
+                  <span className="info-label">{k}</span>
+                  <span className="info-value">{fmtValue(v)}</span>
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--p-muted)' }}>Keine Angaben erfasst.</div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { patientGetDocumentFile } from './lib/patientData';
 
 function fmtDate(iso) {
@@ -26,15 +26,30 @@ export default function DokumenteTab({ documents, loading }) {
   }
 
   if (loading) return <div className="empty-state">Lädt…</div>;
-  if (documents.length === 0) return <div className="empty-state">Keine Dokumente vorhanden.</div>;
+  if (documents.length === 0) {
+    return (
+      <div className="empty-state">
+        <div className="empty-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div className="empty-text">Noch keine Dokumente</div>
+        <div className="empty-sub">Befunde, Überweisungen und Rezepte Ihrer Ordination erscheinen hier, sobald sie verfügbar sind.</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="list-col">
+    <div>
       {documents.map((d) => (
-        <button key={d.id} className="list-row list-row-button" onClick={() => handleOpen(d)} disabled={openingId === d.id}>
-          <div className="list-row-main">{d.title || d.filename}</div>
-          <div className="list-row-sub">{d.category || 'Dokument'} · {fmtDate(d.createdAt)}</div>
-          {openingId === d.id && <span className="list-row-loading">Öffnet…</span>}
+        <button key={d.id} className="doc-card" onClick={() => handleOpen(d)} disabled={openingId === d.id}>
+          <span className="doc-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </span>
+          <span className="doc-info">
+            <span className="doc-title" style={{ display: 'block' }}>{d.title || d.filename}</span>
+            <span className="doc-meta" style={{ display: 'block' }}>{d.category || 'Dokument'} · {fmtDate(d.createdAt)}</span>
+            {openingId === d.id && <span className="doc-loading">Öffnet…</span>}
+          </span>
         </button>
       ))}
     </div>

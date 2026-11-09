@@ -7,7 +7,7 @@ const ART_OPTIONS = [
   'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung', 'Sonstige',
 ];
 
-export default function BookingForm({ arzte, workingHours, bookingEnabled, onBooked, onCancel }) {
+export default function BookingForm({ arzte, workingHours, onBooked }) {
   const [arztUsername, setArztUsername] = useState(arzte[0]?.username || '');
   const [date, setDate] = useState('');
   const [art, setArt] = useState('');
@@ -41,71 +41,52 @@ export default function BookingForm({ arzte, workingHours, bookingEnabled, onBoo
     }
   }
 
-  if (!bookingEnabled) {
-    return <div className="empty-state">Die Online-Terminbuchung ist derzeit nicht verfügbar.</div>;
-  }
-
   return (
-    <div className="booking-form">
+    <>
       {arzte.length > 1 && (
-        <div className="form-group">
-          <label className="form-label">Arzt / Ärztin</label>
-          <select className="form-input" value={arztUsername} onChange={(e) => setArztUsername(e.target.value)}>
-            {arzte.map((a) => (
-              <option key={a.username} value={a.username}>{a.fullName}{a.fach ? ` · ${a.fach}` : ''}</option>
-            ))}
-          </select>
-        </div>
+        <select value={arztUsername} onChange={(e) => setArztUsername(e.target.value)}>
+          {arzte.map((a) => (
+            <option key={a.username} value={a.username}>{a.fullName}{a.fach ? ` · ${a.fach}` : ''}</option>
+          ))}
+        </select>
       )}
 
-      <div className="form-group">
-        <label className="form-label">Datum</label>
-        <input className="form-input" type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
+      <input type="date" min={todayStr()} value={date} onChange={(e) => setDate(e.target.value)} />
 
-      <div className="form-group">
-        <label className="form-label">Grund des Besuchs</label>
-        <select className="form-input" value={art} onChange={(e) => setArt(e.target.value)}>
-          <option value="">Grund wählen…</option>
-          {ART_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-      </div>
+      <select value={art} onChange={(e) => setArt(e.target.value)}>
+        <option value="">Grund des Besuchs wählen…</option>
+        {ART_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+      </select>
 
       {date && (
         dayHours && dayHours.open ? (
-          <div className="form-group">
-            <label className="form-label">Uhrzeit</label>
-            <div className="slot-grid">
-              {slots.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`slot-btn${slot === s ? ' selected' : ''}`}
-                  onClick={() => setSlot(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
+          <div className="time-slots">
+            {slots.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`time-slot${slot === s ? ' selected' : ''}`}
+                onClick={() => setSlot(s)}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         ) : (
-          <div className="empty-state">Praxis an diesem Tag geschlossen.</div>
+          <div style={{ fontSize: 12.5, opacity: 0.85, textAlign: 'center', padding: '8px 0' }}>Praxis an diesem Tag geschlossen.</div>
         )
       )}
 
-      {status && status.error && <div className="error-msg" style={{ marginTop: 12 }}><span>!</span><span>{status.error}</span></div>}
+      {status && status.error && <div className="error-msg" style={{ marginTop: 10, marginBottom: 0 }}><span>!</span><span>{status.error}</span></div>}
 
-      <div className="booking-actions">
-        <button type="button" className="btn-secondary" onClick={onCancel}>Abbrechen</button>
-        <button
-          type="button"
-          className="btn-main"
-          disabled={!arztUsername || !date || !art || !slot || status === 'booking'}
-          onClick={handleConfirm}
-        >
-          {status === 'booking' ? 'Wird gebucht…' : 'Termin bestätigen'}
-        </button>
-      </div>
-    </div>
+      <button
+        type="button"
+        className="btn-book"
+        disabled={!arztUsername || !date || !art || !slot || status === 'booking'}
+        onClick={handleConfirm}
+      >
+        {status === 'booking' ? 'Wird gebucht…' : 'Termin bestätigen'}
+      </button>
+    </>
   );
 }
