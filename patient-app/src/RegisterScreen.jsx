@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { getPracticeJoinInfo, submitJoinRequest } from './lib/patientRegister';
+import { getPracticeJoinInfo, resolvePracticeShortCode, submitJoinRequest } from './lib/patientRegister';
 
-export default function RegisterScreen({ onBackToLogin, practiceId }) {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default function RegisterScreen({ onBackToLogin, practiceRef }) {
+  const [practiceId, setPracticeId] = useState(() => (practiceRef && UUID_RE.test(practiceRef) ? practiceRef : null));
   const [practiceInfo, setPracticeInfo] = useState(null);
   const [isChild, setIsChild] = useState(false);
   const [fields, setFields] = useState({
@@ -12,6 +15,15 @@ export default function RegisterScreen({ onBackToLogin, practiceId }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+
+  // practiceRef is either a UUID (older-style shared link) or a short code
+  // (phase89_practice_short_code.sql, e.g. "2TW3BZ") -- resolve the latter
+  // via the server before the rest of this screen treats it as a real id.
+  useEffect(() => {
+    if (practiceRef && !UUID_RE.test(practiceRef)) {
+      resolvePracticeShortCode(practiceRef).then(setPracticeId);
+    }
+  }, [practiceRef]);
 
   useEffect(() => {
     if (practiceId) getPracticeJoinInfo(practiceId).then(setPracticeInfo);
@@ -149,7 +161,7 @@ export default function RegisterScreen({ onBackToLogin, practiceId }) {
 
         <div className="notice">
           <div className="notice-label">Ordination</div>
-          <div className="notice-main">{practiceInfo ? practiceInfo.practiceName : practiceId ? 'Lädt…' : '— kein Link erkannt —'}</div>
+          <div className="notice-main">{practiceInfo ? practiceInfo.practiceName : practiceRef ? 'Lädt…' : '— kein Link erkannt —'}</div>
           {practiceInfo && practiceInfo.adminFullName && (
             <div className="notice-sub">{practiceInfo.adminFullName}{practiceInfo.adminFach ? ` · ${practiceInfo.adminFach}` : ''}</div>
           )}

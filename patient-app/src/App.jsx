@@ -11,19 +11,22 @@ import PatientPortal from './PatientPortal';
 // vercel.json rewrite) -- so a staff-shared link/QR looks and behaves the
 // same regardless of which app it points at. Falls back to the old
 // ?practice=<id> query form so an existing link still works.
+// practiceRef is whatever the link carries -- a short code (practices.
+// short_code, phase89) or, for an older-style shared link, the practice's
+// raw UUID. RegisterScreen resolves which one it got.
 function parseRegisterUrl() {
   const path = window.location.pathname;
   const params = new URLSearchParams(window.location.search);
   const m = path.match(/^\/patient-register(?:\/([^/]+))?\/?$/);
-  if (m) return { view: 'register', practiceId: m[1] || params.get('practice') || null };
-  if (params.get('practice')) return { view: 'register', practiceId: params.get('practice') };
-  return { view: 'login', practiceId: null };
+  if (m) return { view: 'register', practiceRef: m[1] || params.get('practice') || null };
+  if (params.get('practice')) return { view: 'register', practiceRef: params.get('practice') };
+  return { view: 'login', practiceRef: null };
 }
 
 export default function App() {
   const [profile, setProfile] = useState(null);
   const [checking, setChecking] = useState(true);
-  const [{ view: initialView, practiceId }] = useState(parseRegisterUrl);
+  const [{ view: initialView, practiceRef }] = useState(parseRegisterUrl);
   const [view, setView] = useState(initialView); // 'login' | 'register'
 
   // If a session already exists (e.g. this browser just logged in through
@@ -58,7 +61,7 @@ export default function App() {
   }
 
   return view === 'register' ? (
-    <RegisterScreen practiceId={practiceId} onBackToLogin={() => setView('login')} />
+    <RegisterScreen practiceRef={practiceRef} onBackToLogin={() => setView('login')} />
   ) : (
     <LoginScreen onLoggedIn={setProfile} onRegister={() => setView('register')} />
   );
