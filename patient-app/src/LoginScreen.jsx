@@ -76,7 +76,7 @@ export default function LoginScreen({ onResolve, onRegister, initialUsername, in
         </div>
 
         <button className="btn-main" type="submit" disabled={loading}>
-          {loading ? <span className="spinner" /> : 'Anmelden'}
+          {loading ? <span className="spinner-row"><span className="spinner" /> Einen Moment...</span> : 'Anmelden'}
         </button>
       </form>
 

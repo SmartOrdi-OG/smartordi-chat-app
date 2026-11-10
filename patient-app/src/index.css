@@ -67,9 +67,16 @@ body {
 
 .btn-main { display: block; width: auto; min-width: 220px; margin: 4px auto 0; padding: 13px 28px; border: 1px solid #bfdbfe; border-radius: 12px; background: #EFF6FF; color: #1e40af; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
 .btn-main:hover { background: #dbeafe; }
-.btn-main:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-main:disabled { cursor: not-allowed; }
 
-.spinner { width: 18px; height: 18px; border: 2px solid rgba(30,64,175,0.25); border-top-color: #1e40af; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto; }
+/* Real feedback found live (2026-11-10): the old spinner (18px, a barely-
+   visible 0.25-alpha ring) read as "the button text just vanished" rather
+   than "this is loading" -- especially in a quick phone photo of the
+   screen, where the thin moving highlight blurred into what looked like an
+   empty button. Bigger, fully-opaque ring + a visible label next to it so
+   there's no ambiguity about what's happening. */
+.spinner-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.spinner { width: 20px; height: 20px; border: 3px solid #bfdbfe; border-top-color: #1e40af; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .welcome-title { font-size: 18px; font-weight: 800; color: var(--slate); margin-bottom: 8px; }
