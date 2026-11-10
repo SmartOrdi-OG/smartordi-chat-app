@@ -3,6 +3,16 @@
    browsers) while still allowing normal panning/scrolling. */
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
+/* Real bug found live (2026-11-10): on iOS Safari, a <button> left at its
+   default -webkit-appearance renders with the system's native button chrome
+   instead of this app's own styles once the page's form has iOS AutoFill
+   engaged (the credential fields highlighted yellow) -- which can make the
+   button's own text invisible (native system text color on this app's
+   background) even though the button still works/submits fine. Resetting
+   appearance on every button forces our own color/background to always
+   render, not just on .btn-main. */
+button { -webkit-appearance: none; appearance: none; }
+
 /* Real fonts used by patient.html (the in-app portal, once logged in) --
    mirrored here for the .app-shell below. Login/Register keep system fonts,
    matching patient-login.html, which never used these. */
