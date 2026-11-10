@@ -201,7 +201,7 @@ export default function AnamneseScreen({ profile, onDone }) {
         </div>
 
         <button className="btn-main" type="submit" disabled={saving}>
-          {saving ? <span className="spinner" /> : '✓ Anamnese absenden'}
+          {saving ? <span className="spinner-row"><span className="spinner" /> Einen Moment...</span> : '✓ Anamnese absenden'}
         </button>
       </form>
     </div>

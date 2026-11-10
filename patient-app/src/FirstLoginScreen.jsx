@@ -163,7 +163,7 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
         )}
 
         <button className="btn-main" type="submit" disabled={saving}>
-          {saving ? <span className="spinner" /> : (needsPassword ? 'Passwort speichern & einloggen' : 'Bestätigen')}
+          {saving ? <span className="spinner-row"><span className="spinner" /> Einen Moment...</span> : (needsPassword ? 'Passwort speichern & einloggen' : 'Bestätigen')}
         </button>
       </form>
     </div>
