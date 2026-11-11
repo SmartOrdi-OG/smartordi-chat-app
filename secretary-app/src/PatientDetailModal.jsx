@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { updatePatientIdentity, ensurePatientAuthUser, generateTempPassword, requestPatientDeletion } from './lib/patientsData';
+import { fetchPracticeSettings } from './lib/staffAuth';
 import { svnrMatchesDob } from './lib/svnr';
 import { showToast } from './lib/toast';
+import NewTerminModal from './NewTerminModal';
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
 
 // Mirrors secretary.html's #patientDetailModal ("Bearbeiten") +
 // savePatientEdit()/resetPatientPassword()/requestPatientDeletion(). Phase
@@ -10,8 +16,9 @@ import { showToast } from './lib/toast';
 // retention, immediate anonymization vs. scheduling the exact legal date)
 // lives server-side in the already-reviewed request_patient_deletion RPC
 // (supabase/phase17_data_retention.sql); this only confirms, calls it, and
-// relays the result. Deliberately still leaves out the "Neuen Termin
-// buchen" sub-section (duplicate of Phase 5's own "+ Neuer Termin").
+// relays the result. Phase 19 adds "Neuen Termin buchen" -- reuses Phase
+// 5's own NewTerminModal (pre-filled via its initialPatient prop) instead
+// of duplicating the original's separate inline PD_SLOT_IDS form.
 export default function PatientDetailModal({ patient, onClose, onSaved }) {
   const [form, setForm] = useState({
     svnr: patient.svnr || '',
@@ -27,6 +34,12 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
   const [newPassword, setNewPassword] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deletionResult, setDeletionResult] = useState(null);
+  const [newTerminOpen, setNewTerminOpen] = useState(false);
+  const [practice, setPractice] = useState(null);
+
+  useEffect(() => {
+    fetchPracticeSettings().then(setPractice);
+  }, []);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -147,6 +160,16 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
               </select>
             </div>
 
+            <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 12, marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0E5E56', marginBottom: 8 }}>Neuen Termin buchen</div>
+              <button
+                type="button" onClick={() => setNewTerminOpen(true)}
+                style={{ display: 'block', width: 'auto', minWidth: 160, margin: '0 auto', padding: '8px 22px', background: '#EAF4F1', border: '1px solid #bfdbfe', borderRadius: 12, color: '#0E5E56', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Termin buchen
+              </button>
+            </div>
+
             <div style={{ background: '#fef2f2', borderLeft: '4px solid #dc2626', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 12, marginTop: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 6 }}>Passwort zurücksetzen</div>
               <div style={{ fontSize: 11, color: '#7f1d1d', marginBottom: 8 }}>Erstellt ein neues temporäres Passwort — der/die Patient/in muss es beim nächsten Login durch ein eigenes ersetzen.</div>
@@ -185,6 +208,15 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
           </div>
         </form>
       </div>
+      {newTerminOpen && (
+        <NewTerminModal
+          defaultDate={todayStr()}
+          practiceHours={practice && practice.working_hours}
+          initialPatient={patient}
+          onClose={() => setNewTerminOpen(false)}
+          onCreated={() => setNewTerminOpen(false)}
+        />
+      )}
     </div>
   );
 }
