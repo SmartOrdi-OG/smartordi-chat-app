@@ -5,11 +5,12 @@ import QrCodeModal from './QrCodeModal';
 import PatientCredentialsModal from './PatientCredentialsModal';
 import PatientChatPane from './PatientChatPane';
 import JoinRequestsModal from './JoinRequestsModal';
+import PatientDetailModal from './PatientDetailModal';
 import { listPatients, searchPatients } from './lib/patientsData';
 import { fetchPendingJoinRequests } from './lib/joinRequestsData';
 import { colorForName } from './lib/avatarColor';
 
-function PatientRow({ p, onClick }) {
+function PatientRow({ p, onClick, onEdit }) {
   const name = p.fullName || p.name || '?';
   const metaParts = [p.versicherung, p.svnr ? 'SV: ' + p.svnr : null].filter(Boolean);
   return (
@@ -19,6 +20,9 @@ function PatientRow({ p, onClick }) {
         <div className="p-name">{name}</div>
         <div className="p-meta">{metaParts.join(' · ') || '—'}</div>
       </div>
+      <button className="p-action" type="button" onClick={(e) => { e.stopPropagation(); onEdit(p); }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z" /></svg>
+      </button>
     </div>
   );
 }
@@ -39,6 +43,7 @@ export default function PatientenView() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
+  const [editPatient, setEditPatient] = useState(null);
   const searchTimer = useRef(null);
 
   function refreshList() {
@@ -115,12 +120,12 @@ export default function PatientenView() {
           <div className="scroll-content" style={{ paddingTop: 0 }}>
             {loadingList && searchResults === null && <div className="empty-placeholder">Lädt...</div>}
             {!loadingList && rows.length === 0 && <div className="empty-placeholder">{searchResults !== null ? 'Keine Treffer' : 'Noch keine Patienten'}</div>}
-            {rows.map((p) => <PatientRow key={p.id} p={p} onClick={() => setSelectedPatient(p)} />)}
+            {rows.map((p) => <PatientRow key={p.id} p={p} onClick={() => setSelectedPatient(p)} onEdit={setEditPatient} />)}
           </div>
         </div>
 
         {selectedPatient && (
-          <PatientChatPane patient={selectedPatient} onBack={() => setSelectedPatient(null)} />
+          <PatientChatPane patient={selectedPatient} onBack={() => setSelectedPatient(null)} onEdit={() => setEditPatient(selectedPatient)} />
         )}
       </div>
 
@@ -141,6 +146,13 @@ export default function PatientenView() {
         <JoinRequestsModal
           onClose={() => { setJoinRequestsOpen(false); refreshPendingCount(); }}
           onChanged={() => { refreshList(); refreshPendingCount(); }}
+        />
+      )}
+      {editPatient && (
+        <PatientDetailModal
+          patient={editPatient}
+          onClose={() => setEditPatient(null)}
+          onSaved={() => { setEditPatient(null); refreshList(); }}
         />
       )}
     </div>

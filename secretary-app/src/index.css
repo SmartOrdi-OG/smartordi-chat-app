@@ -199,6 +199,8 @@ body {
 .patient-row:hover { border-color: #0E5E56; background: #EAF4F1; box-shadow: 0 3px 10px rgba(14,94,86,0.1); }
 .p-info { flex: 1; min-width: 0; }
 .p-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.p-action { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; color: var(--text-muted); flex-shrink: 0; }
+.p-action:hover { border-color: #0E5E56; color: #0E5E56; }
 .mp-preview { font-size: 11px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .p-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .mp-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
