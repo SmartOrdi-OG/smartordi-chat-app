@@ -13,7 +13,7 @@
     { "src": "/patient-login", "dest": "/patient-app-dist/index.html" },
     { "src": "/patient-register/(.*)", "dest": "/patient-app-dist/index.html" },
     { "src": "/patient-register", "dest": "/patient-app-dist/index.html" },
-    { "src": "/secretary", "dest": "/secretary.html" },
+    { "src": "/secretary", "dest": "/secretary-app-dist/index.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ],
   "headers": [
