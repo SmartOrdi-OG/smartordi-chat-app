@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { updatePatientIdentity, ensurePatientAuthUser, generateTempPassword } from './lib/patientsData';
+import { updatePatientIdentity, ensurePatientAuthUser, generateTempPassword, requestPatientDeletion } from './lib/patientsData';
 import { svnrMatchesDob } from './lib/svnr';
 import { showToast } from './lib/toast';
 
 // Mirrors secretary.html's #patientDetailModal ("Bearbeiten") +
-// savePatientEdit()/resetPatientPassword(). Deliberately leaves out the
-// "Neuen Termin buchen" sub-section (duplicate of Phase 5's own "+ Neuer
-// Termin") and the DSGVO "Datenlöschung beantragen" (Art. 17 GDPR
-// anonymization/deletion) -- the latter is a real legal/compliance
-// feature that deserves its own dedicated, carefully-reviewed phase, not
-// something to bundle in here.
+// savePatientEdit()/resetPatientPassword()/requestPatientDeletion(). Phase
+// 15 adds the DSGVO "Datenlöschung beantragen" (Art. 17 GDPR) section --
+// all of its legal/retention logic (10-year § 51 ÄrzteG statutory
+// retention, immediate anonymization vs. scheduling the exact legal date)
+// lives server-side in the already-reviewed request_patient_deletion RPC
+// (supabase/phase17_data_retention.sql); this only confirms, calls it, and
+// relays the result. Deliberately still leaves out the "Neuen Termin
+// buchen" sub-section (duplicate of Phase 5's own "+ Neuer Termin").
 export default function PatientDetailModal({ patient, onClose, onSaved }) {
   const [form, setForm] = useState({
     svnr: patient.svnr || '',
@@ -23,6 +25,8 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [newPassword, setNewPassword] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deletionResult, setDeletionResult] = useState(null);
 
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -61,6 +65,31 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
       showToast('Zurücksetzen fehlgeschlagen', 'error');
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleRequestDeletion() {
+    if (!window.confirm(
+      'Datenlöschung für ' + name + ' beantragen? Der Portal-Zugang des Patienten wird sofort gelöscht; '
+      + 'die Karteidaten bleiben bis zum Ende der gesetzlichen Aufbewahrungsfrist erhalten. '
+      + 'Dies kann nicht rückgängig gemacht werden.',
+    )) return;
+    setDeleting(true);
+    try {
+      const result = await requestPatientDeletion(patient.id);
+      if (!result) { showToast('Löschung fehlgeschlagen', 'error'); return; }
+      if (result.anonymizedImmediately) {
+        showToast('Patientendaten anonymisiert', 'success');
+        onSaved();
+        return;
+      }
+      setDeletionResult(result);
+      const df = new Date(result.date).toLocaleDateString('de-AT');
+      showToast('Löschung geplant für ' + df, 'success');
+    } catch {
+      showToast('Löschung fehlgeschlagen', 'error');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -131,6 +160,22 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
                 style={{ width: '100%', padding: 8, background: 'white', border: '1.5px solid #dc2626', borderRadius: 12, color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 {resetting ? 'Wird erstellt...' : newPassword ? 'Erneut generieren' : 'Neues Passwort generieren'}
+              </button>
+            </div>
+
+            <div style={{ background: '#fef2f2', borderLeft: '4px solid #7f1d1d', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 12, marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 6 }}>Datenlöschung beantragen (DSGVO)</div>
+              <div style={{ fontSize: 11, color: '#7f1d1d', marginBottom: 8 }}>Prüft automatisch die gesetzliche Aufbewahrungsfrist (10 Jahre nach letzter Behandlung, § 51 ÄrzteG) und anonymisiert sofort oder plant den frühestmöglichen gesetzlich zulässigen Termin.</div>
+              {deletionResult && !deletionResult.anonymizedImmediately && (
+                <div style={{ background: 'white', border: '1.5px dashed #7f1d1d', borderRadius: 8, padding: '8px 10px', marginBottom: 8, fontSize: 12, fontWeight: 700, color: '#0f172a', textAlign: 'center' }}>
+                  Portal-Zugang gelöscht. Karteidaten bleiben bis {new Date(deletionResult.date).toLocaleDateString('de-AT')} gespeichert (gesetzliche Aufbewahrungsfrist § 51 ÄrzteG: 10 Jahre nach letzter Behandlung), dann Löschung.
+                </div>
+              )}
+              <button
+                type="button" disabled={deleting} onClick={handleRequestDeletion}
+                style={{ width: '100%', padding: 8, background: 'white', border: '1.5px solid #7f1d1d', borderRadius: 12, color: '#7f1d1d', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {deleting ? 'Wird geprüft...' : 'Löschung beantragen'}
               </button>
             </div>
           </div>
