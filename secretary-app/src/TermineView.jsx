@@ -10,6 +10,8 @@ import {
 } from './lib/termineData';
 import { fetchPracticeSettings } from './lib/staffAuth';
 import { isOnlineBookingEnabled, setOnlineBookingEnabled } from './lib/onlineBookingData';
+import { listPatients } from './lib/patientsData';
+import { dueVaccinationPatientIdSet } from './lib/vaccineSchedule';
 import { showToast } from './lib/toast';
 
 function todayStr() {
@@ -32,15 +34,23 @@ const STATUS_LABEL = {
   nicht_erschienen: { text: 'Nicht erschienen', cls: 't-noshow' },
 };
 
-function TerminRow({ t, arztName, onConfirm, onMove, onCancel }) {
+function TerminRow({ t, arztName, dueSet, onConfirm, onMove, onCancel }) {
   const status = STATUS_LABEL[t.status] || { text: 'Neu', cls: 't-pending' };
   const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
   const actionable = t.status !== 'abgesagt' && t.status !== 'nicht_erschienen';
+  const vaccineDue = dueSet && t.patientId && dueSet.has(t.patientId);
   return (
     <div className="termin-item">
       <div className="t-time-box"><div className="t-time">{t.time}</div></div>
       <div className="t-info">
-        <div className="t-patient">{t.patient}</div>
+        <div className="t-patient">
+          {t.patient}
+          {vaccineDue && (
+            <span title="Impfung fällig — Patient/in informieren" style={{ marginLeft: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px', color: '#d97706' }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
+            </span>
+          )}
+        </div>
         <div className="t-type">{timeRange} · {arztName || '—'} · {t.art}{t.versicherung ? ' · ' + t.versicherung : ''}{t.tel ? ' · ' + t.tel : ''}</div>
         {actionable && (
           <div className="t-actions">
@@ -69,7 +79,10 @@ function TerminRow({ t, arztName, onConfirm, onMove, onCancel }) {
 // configurable (Phase 8) and "+ Neuer Termin" now generates its Uhrzeit/Bis
 // slots from it (Phase 9) -- same as the original, "Verschieben" stays a
 // plain time input either way. Phase 13 adds the "Online-Buchung"
-// aktiv/gesperrt toggle.
+// aktiv/gesperrt toggle. Phase 18 adds the Impfung-fällig badge next to a
+// patient's name (keyed by patientId, not full-name text like the
+// original's own dueSet -- avoids a same-name-collision bug already fixed
+// elsewhere in this port).
 export default function TermineView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [date, setDate] = useState(todayStr());
@@ -80,6 +93,7 @@ export default function TermineView() {
   const [moveTarget, setMoveTarget] = useState(null);
   const [workingHoursOpen, setWorkingHoursOpen] = useState(false);
   const [practice, setPractice] = useState(null);
+  const [dueSet, setDueSet] = useState(null);
 
   function refresh() {
     setLoading(true);
@@ -101,6 +115,7 @@ export default function TermineView() {
       setArztById(map);
     });
     fetchPracticeSettings().then(setPractice);
+    listPatients().then((patients) => dueVaccinationPatientIdSet(patients)).then(setDueSet);
   }, []);
 
   async function handleConfirm(t) {
@@ -186,7 +201,7 @@ export default function TermineView() {
         {loading && <div className="empty-placeholder">Lädt...</div>}
         {!loading && termine.length === 0 && <div className="empty-placeholder">Keine Termine an diesem Tag</div>}
         {!loading && termine.map((t) => (
-          <TerminRow key={t.id} t={t} arztName={arztById[t.arztId]} onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} />
+          <TerminRow key={t.id} t={t} arztName={arztById[t.arztId]} dueSet={dueSet} onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} />
         ))}
       </div>
 

@@ -7,6 +7,7 @@ import PflegefreistellungModal from './PflegefreistellungModal';
 import ArbeitsunfaehigkeitModal from './ArbeitsunfaehigkeitModal';
 import ImpfungModal from './ImpfungModal';
 import PatientDocumentsModal from './PatientDocumentsModal';
+import { dueVaccinationsForPatient, getImpfungenForPatient } from './lib/vaccineSchedule';
 
 function CheckIcon() {
   return (
@@ -19,9 +20,10 @@ function CheckIcon() {
 // Mirrors secretary.html's openChat()/sendSecChatMsg() -- simplified to go
 // straight from the patient list into the conversation itself (the original
 // shows a "Nächste Termine/Letzte Nachrichten" overview pane first, with the
-// actual thread living in a separate floating popup; both pull in Termine/
-// Impfung data this app doesn't have yet, so this phase skips straight to
-// the conversation). Only plain text messages are supported so far.
+// actual thread living in a separate floating popup; this phase skips
+// straight to the conversation instead). Only plain text messages are
+// supported so far. Phase 18 adds the same Impfung-fällig warning banner
+// that overview pane's own #secOvImpfWarning shows (lib/vaccineSchedule.js).
 export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +34,7 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
   const [arbeitsunfaehigkeitOpen, setArbeitsunfaehigkeitOpen] = useState(false);
   const [impfungOpen, setImpfungOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [impfWarning, setImpfWarning] = useState(null);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -49,6 +52,17 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
     markChatViewed(patient.id);
     return () => { cancelled = true; };
   }, [patient.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setImpfWarning(null);
+    getImpfungenForPatient(patient.id).then((impfungen) => {
+      if (cancelled) return;
+      const due = dueVaccinationsForPatient(patient.dob, impfungen);
+      setImpfWarning(due[0] || null);
+    });
+    return () => { cancelled = true; };
+  }, [patient.id, patient.dob]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -102,6 +116,12 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z" /></svg> Bearbeiten
         </button>
       </div>
+      {impfWarning && (
+        <div style={{ margin: '10px 16px 0', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 10, padding: '11px 14px' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#854d0e' }}>Impfung fällig</div>
+          <div style={{ fontSize: 12.5, color: '#854d0e', marginTop: 3 }}>{impfWarning.vaccine} — {impfWarning.detail}</div>
+        </div>
+      )}
       <div className="messages" ref={scrollRef}>
         {!loading && messages.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: 13 }}>Noch keine Nachrichten</div>
