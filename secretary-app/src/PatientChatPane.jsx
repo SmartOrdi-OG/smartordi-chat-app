@@ -3,6 +3,9 @@ import { getMessagesForPatient, sendMessageToPatient } from './lib/patientsData'
 import { colorForName } from './lib/avatarColor';
 import { showToast } from './lib/toast';
 import { markChatViewed } from './lib/unreadTracking';
+import PflegefreistellungModal from './PflegefreistellungModal';
+import ArbeitsunfaehigkeitModal from './ArbeitsunfaehigkeitModal';
+import ImpfungModal from './ImpfungModal';
 
 function CheckIcon() {
   return (
@@ -18,11 +21,15 @@ function CheckIcon() {
 // actual thread living in a separate floating popup; both pull in Termine/
 // Impfung data this app doesn't have yet, so this phase skips straight to
 // the conversation). Only plain text messages are supported so far.
-export default function PatientChatPane({ patient, onBack, onEdit }) {
+export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [attestMenuOpen, setAttestMenuOpen] = useState(false);
+  const [pflegefreistellungOpen, setPflegefreistellungOpen] = useState(false);
+  const [arbeitsunfaehigkeitOpen, setArbeitsunfaehigkeitOpen] = useState(false);
+  const [impfungOpen, setImpfungOpen] = useState(false);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -77,6 +84,16 @@ export default function PatientChatPane({ patient, onBack, onEdit }) {
           <div className="view-sub">Chat</div>
         </div>
         <div style={{ flex: 1 }} />
+        <div style={{ position: 'relative' }}>
+          <button className="patient-actions-toggle" type="button" onClick={() => setAttestMenuOpen((v) => !v)}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg> Aktionen
+          </button>
+          <div className={`patient-actions-menu${attestMenuOpen ? ' show' : ''}`} style={{ right: 0, left: 'auto' }}>
+            <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setPflegefreistellungOpen(true); }}>Pflegefreistellung ausstellen</button>
+            <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setArbeitsunfaehigkeitOpen(true); }}>Arbeitsunfähigkeit ausstellen</button>
+            <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setImpfungOpen(true); }}>Impfung eintragen</button>
+          </div>
+        </div>
         <button type="button" onClick={onEdit} style={{ background: '#f1f5f9', border: 'none', color: '#475569', padding: '7px 12px', borderRadius: 9, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z" /></svg> Bearbeiten
         </button>
@@ -116,6 +133,9 @@ export default function PatientChatPane({ patient, onBack, onEdit }) {
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
         </button>
       </div>
+      {pflegefreistellungOpen && <PflegefreistellungModal patient={patient} profile={profile} onClose={() => setPflegefreistellungOpen(false)} />}
+      {arbeitsunfaehigkeitOpen && <ArbeitsunfaehigkeitModal patient={patient} profile={profile} onClose={() => setArbeitsunfaehigkeitOpen(false)} />}
+      {impfungOpen && <ImpfungModal patient={patient} profile={profile} onClose={() => setImpfungOpen(false)} />}
     </div>
   );
 }

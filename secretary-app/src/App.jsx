@@ -93,7 +93,7 @@ export default function App() {
       <div className="views">
         {view === 'uebersicht' && <UebersichtView onNavigate={setView} />}
         {view === 'termine' && <TermineView />}
-        {view === 'patienten' && <PatientenView />}
+        {view === 'patienten' && <PatientenView profile={profile} />}
       </div>
 
       <div className="bottom-nav">

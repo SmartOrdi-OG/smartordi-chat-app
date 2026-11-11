@@ -34,7 +34,7 @@ function PatientRow({ p, onClick, onEdit }) {
 // added "Beitrittsanfragen". Phase 10 added "Patienten importieren" (CSV
 // bulk import). Phase 11 adds "Dokumente importieren" (ZIP + manifest CSV
 // -> patient_documents, attaches files to existing patients only).
-export default function PatientenView() {
+export default function PatientenView({ profile }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
   const [qrPickerOpen, setQrPickerOpen] = useState(false);
@@ -131,7 +131,7 @@ export default function PatientenView() {
         </div>
 
         {selectedPatient && (
-          <PatientChatPane patient={selectedPatient} onBack={() => setSelectedPatient(null)} onEdit={() => setEditPatient(selectedPatient)} />
+          <PatientChatPane patient={selectedPatient} profile={profile} onBack={() => setSelectedPatient(null)} onEdit={() => setEditPatient(selectedPatient)} />
         )}
       </div>
 
