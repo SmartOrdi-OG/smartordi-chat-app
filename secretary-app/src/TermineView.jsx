@@ -9,6 +9,7 @@ import {
   buildTerminConfirmedText, buildTerminMovedText, buildTerminCancelledText,
 } from './lib/termineData';
 import { fetchPracticeSettings } from './lib/staffAuth';
+import { isOnlineBookingEnabled, setOnlineBookingEnabled } from './lib/onlineBookingData';
 import { showToast } from './lib/toast';
 
 function todayStr() {
@@ -64,10 +65,11 @@ function TerminRow({ t, arztName, onConfirm, onMove, onCancel }) {
 
 // Mirrors secretary.html's #view-termine -- simplified to a single day's
 // agenda (prev/today/next navigation) instead of the original's month-grid
-// calendar with a draggable floating day window. "Online-Buchung" still
-// isn't built. "Öffnungszeiten" is configurable (Phase 8) and "+ Neuer
-// Termin" now generates its Uhrzeit/Bis slots from it (Phase 9) -- same as
-// the original, "Verschieben" stays a plain time input either way.
+// calendar with a draggable floating day window. "Öffnungszeiten" is
+// configurable (Phase 8) and "+ Neuer Termin" now generates its Uhrzeit/Bis
+// slots from it (Phase 9) -- same as the original, "Verschieben" stays a
+// plain time input either way. Phase 13 adds the "Online-Buchung"
+// aktiv/gesperrt toggle.
 export default function TermineView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [date, setDate] = useState(todayStr());
@@ -123,6 +125,14 @@ export default function TermineView() {
     refresh();
   }
 
+  async function handleToggleOnlineBooking() {
+    const next = !isOnlineBookingEnabled(practice);
+    const ok = await setOnlineBookingEnabled(practice.id, next);
+    if (!ok) { showToast('Speichern fehlgeschlagen', 'error'); return; }
+    setPractice((p) => ({ ...p, online_booking_enabled: next }));
+    showToast(next ? 'Online-Buchung aktiviert' : 'Online-Buchung für Patienten gesperrt');
+  }
+
   async function handleMoved(updated) {
     setMoveTarget(null);
     let messaged = false;
@@ -145,6 +155,15 @@ export default function TermineView() {
             <Icon name="menu" size={15} /> Aktionen
           </button>
           <div className={`patient-actions-menu${menuOpen ? ' show' : ''}`}>
+            {practice && (
+              <button
+                className="rail-btn" type="button"
+                style={isOnlineBookingEnabled(practice) ? undefined : { color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                onClick={() => { setMenuOpen(false); handleToggleOnlineBooking(); }}
+              >
+                {isOnlineBookingEnabled(practice) ? 'Online-Buchung aktiv' : 'Online-Buchung gesperrt'}
+              </button>
+            )}
             <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setWorkingHoursOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="clock" /></span> Öffnungszeiten
             </button>
