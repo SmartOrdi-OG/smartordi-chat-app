@@ -17,6 +17,11 @@ git add secretary-app-dist secretary-app
 git commit -m "Rebuild secretary-app-dist"
 ```
 
+**This step wiped out this very README** (`rm -rf` removes the whole folder,
+and this file lives alongside the build output, not inside `secretary-app/dist`
+itself) -- recreate it from git history (`git show HEAD:secretary-app-dist/README.md`)
+or copy it back in before committing, same as this rebuild had to.
+
 `secretary-app`'s own separate Vercel project (`smartordi-secretary.vercel.app`)
 stays the live-reloading place to test changes -- this folder is only what
 actually serves `/secretary` in production.

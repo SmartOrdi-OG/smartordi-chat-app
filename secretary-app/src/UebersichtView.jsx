@@ -3,9 +3,12 @@ import { createPortal } from 'react-dom';
 import { Icon } from './icons';
 import { fetchPracticeSettings } from './lib/staffAuth';
 import { listTermineForDate } from './lib/termineData';
-import { fetchUnreadMessageSummaries, buildGeneralRegisterUrl } from './lib/patientsData';
+import { fetchUnreadMessageSummaries, buildGeneralRegisterUrl, listPatients, sendMessageToPatient } from './lib/patientsData';
 import { lastViewedFor } from './lib/unreadTracking';
 import { renderQrDataUrl } from './lib/qr';
+import { computeRecallList, buildRecallReminderText } from './lib/followupReminders';
+import { colorForName } from './lib/avatarColor';
+import { showToast } from './lib/toast';
 
 function todayStr() {
   return new Date().toISOString().split('T')[0];
@@ -15,11 +18,12 @@ const TODAY_LABEL = new Date().toLocaleDateString('de-AT', { weekday: 'long', da
 const STATUS_LABEL = { bestaetigt: 'Bestätigt', abgesagt: 'Abgesagt', nicht_erschienen: 'Nicht erschienen' };
 
 // Mirrors secretary.html's #view-uebersicht -- Phase 1 built the layout
-// with mock numbers, this phase wires up real data: today's Termine stats/
-// list, the practice's real registration QR, and real unread-message
-// summaries (lib/unreadTracking.js's per-device marker). "Kontrollpatienten
-// fällig" stays a placeholder -- that needs the Impfpass/vaccine-schedule
-// subsystem, not built in this app yet.
+// with mock numbers, Phase 7 wired up real data for Termine/QR/unread
+// messages. Phase 17 adds "Kontrollpatienten fällig" -- a chronic-
+// condition follow-up worklist (lib/followupReminders.js), not the
+// Impfpass/vaccine-schedule subsystem (a different, still-unbuilt
+// feature despite the similar-sounding name -- see that file's own
+// comment).
 export default function UebersichtView({ onNavigate }) {
   const [termine, setTermine] = useState([]);
   const [loadingTermine, setLoadingTermine] = useState(true);
@@ -27,6 +31,8 @@ export default function UebersichtView({ onNavigate }) {
   const [loadingUnread, setLoadingUnread] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const [practiceName, setPracticeName] = useState('');
+  const [recallList, setRecallList] = useState([]);
+  const [loadingRecall, setLoadingRecall] = useState(true);
 
   useEffect(() => {
     listTermineForDate(todayStr()).then((list) => {
@@ -41,7 +47,21 @@ export default function UebersichtView({ onNavigate }) {
       setPracticeName((p && p.name) || '');
       setQrDataUrl(renderQrDataUrl(buildGeneralRegisterUrl(p && p.id)));
     });
+    listPatients().then((patients) => computeRecallList(patients)).then((list) => {
+      setRecallList(list);
+      setLoadingRecall(false);
+    });
   }, []);
+
+  async function handleRemind(entry) {
+    const text = buildRecallReminderText(entry.name, entry.label, entry.monthsSince);
+    try {
+      await sendMessageToPatient(entry.patientId, text);
+      showToast('Erinnerung per Chat gesendet', 'success');
+    } catch {
+      showToast('Senden fehlgeschlagen', 'error');
+    }
+  }
 
   const ausstehend = termine.filter((t) => t.status === 'neu').length;
   const totalUnread = unread.reduce((sum, p) => sum + p.unreadCount, 0);
@@ -151,7 +171,29 @@ export default function UebersichtView({ onNavigate }) {
             <div className="section-title">Kontrollpatienten fällig</div>
             <div className="card">
               <div className="card-body" style={{ padding: 0 }}>
-                <div className="empty-placeholder">Keine fälligen Kontrollen</div>
+                {loadingRecall && <div className="empty-placeholder">Lädt...</div>}
+                {!loadingRecall && recallList.length === 0 && <div className="empty-placeholder">Keine fälligen Kontrollpatienten</div>}
+                {!loadingRecall && recallList.map((e) => (
+                  <div
+                    key={e.patientId}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                    onClick={() => onNavigate && onNavigate('patienten')}
+                  >
+                    <div className="avatar" style={{ width: 34, height: 34, fontSize: 13, background: colorForName(e.name), flexShrink: 0 }}>{e.name[0]}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{e.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {e.label} · seit {e.monthsSince} Monaten (empfohlen: alle {e.thresholdMonths})
+                      </div>
+                    </div>
+                    <button
+                      type="button" onClick={(ev) => { ev.stopPropagation(); handleRemind(e); }}
+                      style={{ border: 'none', background: '#EAF4F1', color: '#0E5E56', fontSize: 11, fontWeight: 700, padding: '6px 10px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
+                    >
+                      🔔 Erinnern
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
