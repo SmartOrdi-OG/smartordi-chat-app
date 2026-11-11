@@ -7,6 +7,7 @@ import PatientChatPane from './PatientChatPane';
 import JoinRequestsModal from './JoinRequestsModal';
 import PatientDetailModal from './PatientDetailModal';
 import ImportPatientsModal from './ImportPatientsModal';
+import DocImportModal from './DocImportModal';
 import { listPatients, searchPatients } from './lib/patientsData';
 import { fetchPendingJoinRequests } from './lib/joinRequestsData';
 import { colorForName } from './lib/avatarColor';
@@ -30,8 +31,9 @@ function PatientRow({ p, onClick, onEdit }) {
 
 // Phase 1 built the header/actions menu shell. Phase 2 wired up "Neuer
 // Patient"/"QR-Code". Phase 3 added the real patient list + chat. Phase 4
-// added "Beitrittsanfragen". Phase 10 adds "Patienten importieren"
-// (CSV bulk import) -- "Dokumente importieren" still isn't built.
+// added "Beitrittsanfragen". Phase 10 added "Patienten importieren" (CSV
+// bulk import). Phase 11 adds "Dokumente importieren" (ZIP + manifest CSV
+// -> patient_documents, attaches files to existing patients only).
 export default function PatientenView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
@@ -47,6 +49,7 @@ export default function PatientenView() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [editPatient, setEditPatient] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [docImportOpen, setDocImportOpen] = useState(false);
   const searchTimer = useRef(null);
 
   function refreshList() {
@@ -98,7 +101,7 @@ export default function PatientenView() {
             <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setImportOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="importUp" /></span> Patienten importieren
             </button>
-            <button className="rail-btn" type="button">
+            <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setDocImportOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="docImport" /></span> Dokumente importieren
             </button>
             <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setQrPickerOpen(true); }}>
@@ -164,6 +167,7 @@ export default function PatientenView() {
           onImported={refreshList}
         />
       )}
+      {docImportOpen && <DocImportModal onClose={() => setDocImportOpen(false)} />}
     </div>
   );
 }

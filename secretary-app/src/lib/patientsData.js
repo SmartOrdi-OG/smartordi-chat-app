@@ -84,6 +84,16 @@ export async function isPatientLimitReached() {
   return (count || 0) >= limit;
 }
 
+// Mirrors getPlanUploadMaxBytes()/formatUploadMaxLabel() (vendor/staff-accounts.js).
+const PLAN_UPLOAD_MAX_BYTES = { standard: 8 * 1024 * 1024, enterprise: 25 * 1024 * 1024, enterprise_annual: 25 * 1024 * 1024 };
+export async function getPlanUploadMaxBytes() {
+  const { plan } = await getPlanLabelAndLimit();
+  return PLAN_UPLOAD_MAX_BYTES[plan] ?? PLAN_UPLOAD_MAX_BYTES.standard;
+}
+export function formatUploadMaxLabel(maxBytes) {
+  return Math.round(maxBytes / (1024 * 1024)) + ' MB';
+}
+
 export function slugifyName(s) {
   return (s || '').trim().toLowerCase()
     .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
