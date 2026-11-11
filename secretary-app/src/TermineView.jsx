@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { Icon } from './icons';
 import NewTerminModal from './NewTerminModal';
 import MoveTerminModal from './MoveTerminModal';
+import WorkingHoursModal from './WorkingHoursModal';
 import { sendMessageToPatient } from './lib/patientsData';
 import {
   listTermineForDate, listArztStaff, updateTerminStatus,
   buildTerminConfirmedText, buildTerminMovedText, buildTerminCancelledText,
 } from './lib/termineData';
+import { fetchPracticeSettings } from './lib/staffAuth';
 import { showToast } from './lib/toast';
 
 function todayStr() {
@@ -62,8 +64,10 @@ function TerminRow({ t, arztName, onConfirm, onMove, onCancel }) {
 
 // Mirrors secretary.html's #view-termine -- simplified to a single day's
 // agenda (prev/today/next navigation) instead of the original's month-grid
-// calendar with a draggable floating day window. "Öffnungszeiten"/
-// "Online-Buchung" still aren't built.
+// calendar with a draggable floating day window. "Online-Buchung" still
+// isn't built. "Öffnungszeiten" is now configurable (Phase 8), but "+ Neuer
+// Termin"/"Verschieben" don't validate against it yet -- still plain time
+// inputs, same as before.
 export default function TermineView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [date, setDate] = useState(todayStr());
@@ -72,6 +76,8 @@ export default function TermineView() {
   const [arztById, setArztById] = useState({});
   const [newTerminOpen, setNewTerminOpen] = useState(false);
   const [moveTarget, setMoveTarget] = useState(null);
+  const [workingHoursOpen, setWorkingHoursOpen] = useState(false);
+  const [practice, setPractice] = useState(null);
 
   function refresh() {
     setLoading(true);
@@ -92,6 +98,7 @@ export default function TermineView() {
       list.forEach((a) => { map[a.id] = a.full_name; });
       setArztById(map);
     });
+    fetchPracticeSettings().then(setPractice);
   }, []);
 
   async function handleConfirm(t) {
@@ -138,7 +145,7 @@ export default function TermineView() {
             <Icon name="menu" size={15} /> Aktionen
           </button>
           <div className={`patient-actions-menu${menuOpen ? ' show' : ''}`}>
-            <button className="rail-btn" type="button">
+            <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setWorkingHoursOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="clock" /></span> Öffnungszeiten
             </button>
             <div className="rail-divider" />
@@ -176,6 +183,14 @@ export default function TermineView() {
           termin={moveTarget}
           onClose={() => setMoveTarget(null)}
           onMoved={handleMoved}
+        />
+      )}
+      {workingHoursOpen && practice && (
+        <WorkingHoursModal
+          practiceId={practice.id}
+          currentHours={practice.working_hours}
+          onClose={() => setWorkingHoursOpen(false)}
+          onSaved={(hours) => { setWorkingHoursOpen(false); setPractice((p) => ({ ...p, working_hours: hours })); }}
         />
       )}
     </div>
