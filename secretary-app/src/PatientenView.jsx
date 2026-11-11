@@ -4,7 +4,9 @@ import NewPatientModal from './NewPatientModal';
 import QrCodeModal from './QrCodeModal';
 import PatientCredentialsModal from './PatientCredentialsModal';
 import PatientChatPane from './PatientChatPane';
+import JoinRequestsModal from './JoinRequestsModal';
 import { listPatients, searchPatients } from './lib/patientsData';
+import { fetchPendingJoinRequests } from './lib/joinRequestsData';
 import { colorForName } from './lib/avatarColor';
 
 function PatientRow({ p, onClick }) {
@@ -22,12 +24,14 @@ function PatientRow({ p, onClick }) {
 }
 
 // Phase 1 built the header/actions menu shell. Phase 2 wired up "Neuer
-// Patient"/"QR-Code". Phase 3 adds the real patient list + chat --
-// Beitrittsanfragen/Importieren are still not built yet.
+// Patient"/"QR-Code". Phase 3 added the real patient list + chat. Phase 4
+// adds "Beitrittsanfragen" -- Importieren still isn't built yet.
 export default function PatientenView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
   const [qrPickerOpen, setQrPickerOpen] = useState(false);
+  const [joinRequestsOpen, setJoinRequestsOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const [cred, setCred] = useState(null);
 
   const [patients, setPatients] = useState([]);
@@ -45,8 +49,13 @@ export default function PatientenView() {
     });
   }
 
+  function refreshPendingCount() {
+    fetchPendingJoinRequests().then((list) => setPendingCount(list.length));
+  }
+
   useEffect(() => {
     refreshList();
+    refreshPendingCount();
   }, []);
 
   function onSearchInput(value) {
@@ -71,10 +80,12 @@ export default function PatientenView() {
           </div>
           <button className="patient-actions-toggle" type="button" onClick={() => setMenuOpen((v) => !v)}>
             <Icon name="menu" size={15} /> Aktionen
+            {pendingCount > 0 && <span className="mp-badge" style={{ position: 'absolute', top: -6, right: -6, background: '#dc2626' }}>{pendingCount}</span>}
           </button>
           <div className={`patient-actions-menu${menuOpen ? ' show' : ''}`}>
-            <button className="rail-btn rail-btn-cyan" type="button">
+            <button className="rail-btn rail-btn-cyan" type="button" style={{ position: 'relative' }} onClick={() => { setMenuOpen(false); setJoinRequestsOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="joinRequests" /></span> Beitrittsanfragen
+              {pendingCount > 0 && <span className="mp-badge" style={{ position: 'absolute', top: 8, right: 10, background: '#dc2626' }}>{pendingCount}</span>}
             </button>
             <button className="rail-btn" type="button">
               <span className="rail-btn-icon"><Icon name="importUp" /></span> Patienten importieren
@@ -126,6 +137,12 @@ export default function PatientenView() {
         />
       )}
       {cred && <PatientCredentialsModal cred={cred} onClose={() => setCred(null)} />}
+      {joinRequestsOpen && (
+        <JoinRequestsModal
+          onClose={() => { setJoinRequestsOpen(false); refreshPendingCount(); }}
+          onChanged={() => { refreshList(); refreshPendingCount(); }}
+        />
+      )}
     </div>
   );
 }
