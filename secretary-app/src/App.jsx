@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from './icons';
 import UebersichtView from './UebersichtView';
 import TermineView from './TermineView';
 import PatientenView from './PatientenView';
+import StaffLoginScreen from './StaffLoginScreen';
+import Toast from './Toast';
+import { restoreStaffSession, staffSignOut, fetchPracticeSettings } from './lib/staffAuth';
 
 const TABS = [
   { key: 'uebersicht', label: 'Übersicht', icon: 'uebersicht' },
@@ -10,15 +13,42 @@ const TABS = [
   { key: 'patienten', label: 'Patienten', icon: 'patienten' },
 ];
 
+const TODAY_LABEL = new Date().toLocaleDateString('de-AT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
 // Phase 1 of the secretary.html -> React port: the visual shell only
-// (topbar, bottom-nav/sidebar-nav, the three views' layout) with mock
-// data -- no login, no real Supabase wiring, no modals yet. Mirrors
-// patient-app's own App.jsx/PatientPortal.jsx pattern (single top-level
-// view-switch state, feather-style inline icons) for consistency across
-// both React ports.
+// (topbar, bottom-nav/sidebar-nav, the three views' layout). Phase 2 adds a
+// real session on top of it: StaffLoginScreen (real Supabase Auth) gates the
+// shell, and the topbar now shows the real signed-in staff member/practice
+// instead of a hardcoded mock.
 export default function App() {
   const [view, setView] = useState('uebersicht');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [profile, setProfile] = useState(undefined); // undefined = still checking, null = logged out
+  const [practiceName, setPracticeName] = useState('');
+
+  useEffect(() => {
+    restoreStaffSession().then(setProfile);
+  }, []);
+
+  useEffect(() => {
+    if (!profile) return;
+    fetchPracticeSettings().then((p) => setPracticeName((p && p.name) || ''));
+  }, [profile]);
+
+  async function handleLogout() {
+    setUserMenuOpen(false);
+    await staffSignOut();
+    setProfile(null);
+    setPracticeName('');
+  }
+
+  if (profile === undefined) return null;
+  if (!profile) return (
+    <div className="auth-shell">
+      <StaffLoginScreen onLoggedIn={setProfile} />
+      <Toast />
+    </div>
+  );
 
   return (
     <div className="app-shell">
@@ -27,18 +57,18 @@ export default function App() {
           <img src="/logo-icon.png" alt="Logo" />
           <div>
             <div className="topbar-name">smartordi.chat <span className="topbar-badge">Sekretariat</span></div>
-            <div className="topbar-practice-name">Pilot-Praxis Dr. Saadat Alina</div>
+            <div className="topbar-practice-name">{practiceName}</div>
           </div>
         </div>
-        <span className="topbar-date">Dienstag, 10. November 2026</span>
+        <span className="topbar-date">{TODAY_LABEL}</span>
         <div className="topbar-user-menu">
           <button className="topbar-right" type="button" onClick={() => setUserMenuOpen((v) => !v)}>
             <span className="topbar-user-dot" />
-            <div className="topbar-uname">Ahmad Team</div>
+            <div className="topbar-uname">{profile.fullName}</div>
             <span className="topbar-user-chev"><Icon name="chevDown" size={12} /></span>
           </button>
           <div className={`topbar-user-dropdown${userMenuOpen ? ' show' : ''}`}>
-            <button className="topbar-user-dropdown-item" type="button">
+            <button className="topbar-user-dropdown-item" type="button" onClick={handleLogout}>
               <Icon name="logout" size={13} />
               Abmelden
             </button>
@@ -80,6 +110,7 @@ export default function App() {
           </button>
         ))}
       </div>
+      <Toast />
     </div>
   );
 }
