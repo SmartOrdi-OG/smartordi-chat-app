@@ -65,9 +65,9 @@ function TerminRow({ t, arztName, onConfirm, onMove, onCancel }) {
 // Mirrors secretary.html's #view-termine -- simplified to a single day's
 // agenda (prev/today/next navigation) instead of the original's month-grid
 // calendar with a draggable floating day window. "Online-Buchung" still
-// isn't built. "Öffnungszeiten" is now configurable (Phase 8), but "+ Neuer
-// Termin"/"Verschieben" don't validate against it yet -- still plain time
-// inputs, same as before.
+// isn't built. "Öffnungszeiten" is configurable (Phase 8) and "+ Neuer
+// Termin" now generates its Uhrzeit/Bis slots from it (Phase 9) -- same as
+// the original, "Verschieben" stays a plain time input either way.
 export default function TermineView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [date, setDate] = useState(todayStr());
@@ -174,6 +174,7 @@ export default function TermineView() {
       {newTerminOpen && (
         <NewTerminModal
           defaultDate={date}
+          practiceHours={practice && practice.working_hours}
           onClose={() => setNewTerminOpen(false)}
           onCreated={() => { setNewTerminOpen(false); refresh(); }}
         />

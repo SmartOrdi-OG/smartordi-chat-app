@@ -1,24 +1,30 @@
 import { useEffect, useState } from 'react';
 import { searchPatients } from './lib/patientsData';
-import { listArztStaff, createTermin, findTerminConflict } from './lib/termineData';
+import { listArztStaff, createTermin, findTerminConflict, busyRangesForArzt } from './lib/termineData';
+import { workingHoursFor, buildTimeSlotsFromBlocks, buildEndSlotsFromBlocks } from './lib/workingHoursData';
 import { showToast } from './lib/toast';
 import PatientSearchResults from './PatientSearchResults';
 
 const ART_OPTIONS = ['Ordination', 'Kontrolle', 'Erstgespräch', 'Folgetermin', 'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung'];
 
-// Mirrors secretary.html's "+ Neuer Termin" modal + confirmNewTermin().
-// Uhrzeit/Bis are plain time inputs here instead of the original's
-// working-hours-aware slot <select>s -- Öffnungszeiten isn't built in this
-// app yet.
-export default function NewTerminModal({ defaultDate, onClose, onCreated }) {
+// Mirrors secretary.html's "+ Neuer Termin" modal + confirmNewTermin()/
+// refreshTermineSlotOptions()/refreshTermineEndOptions() -- Uhrzeit/Bis are
+// now real slot <select>s generated from the practice's configured
+// Öffnungszeiten (Phase 8), filtered against the chosen Arzt's already-
+// booked times for that day, same as the original.
+export default function NewTerminModal({ defaultDate, practiceHours, onClose, onCreated }) {
   const [patientQuery, setPatientQuery] = useState('');
   const [patientResults, setPatientResults] = useState([]);
   const [patient, setPatient] = useState(null);
   const [arztList, setArztList] = useState([]);
   const [arztId, setArztId] = useState('');
   const [date, setDate] = useState(defaultDate);
-  const [time, setTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('09:15');
+  const [time, setTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  // null = still loading this date/Arzt's busy ranges -- the reset effect
+  // below waits for a real answer before picking a default, so it never
+  // defaults to a slot before knowing whether that slot is actually busy.
+  const [busyRanges, setBusyRanges] = useState(null);
   const [art, setArt] = useState(ART_OPTIONS[0]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,6 +34,39 @@ export default function NewTerminModal({ defaultDate, onClose, onCreated }) {
       if (list.length) setArztId(list[0].id);
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBusyRanges(null);
+    busyRangesForArzt(date, arztId).then((ranges) => { if (!cancelled) setBusyRanges(ranges); });
+    return () => { cancelled = true; };
+  }, [date, arztId]);
+
+  const dayHours = workingHoursFor(date, practiceHours);
+  const daySlots = buildTimeSlotsFromBlocks(dayHours.blocks);
+  const dayEndSlots = buildEndSlotsFromBlocks(dayHours.blocks);
+  const ranges = busyRanges || [];
+  const startOptions = daySlots.filter((s) => !ranges.some((r) => s >= r.start && s < r.end));
+  const laterStarts = ranges.map((r) => r.start).filter((s) => s >= time).sort();
+  const cap = laterStarts.length ? laterStarts[0] : null;
+  const endOptions = dayEndSlots.filter((e) => e > time && (cap === null || e <= cap));
+
+  // Picks the first available slot once the real busy ranges for this
+  // date/Arzt are known, and re-picks whenever the current selection falls
+  // outside the now-current options (date/Arzt changed, or a slot got
+  // booked out from under it) -- mirrors refreshTermineSlotOptions()'s own
+  // "keep if still valid, else reset" logic.
+  useEffect(() => {
+    if (busyRanges === null) return;
+    if (!startOptions.includes(time)) setTime(startOptions[0] || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, arztId, busyRanges, daySlots.join(',')]);
+
+  useEffect(() => {
+    if (busyRanges === null) return;
+    if (!endOptions.includes(endTime)) setEndTime(endOptions[0] || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, time, busyRanges, dayEndSlots.join(',')]);
 
   function onPatientSearch(value) {
     setPatientQuery(value);
@@ -46,6 +85,7 @@ export default function NewTerminModal({ defaultDate, onClose, onCreated }) {
     e.preventDefault();
     if (!patient) { showToast('Bitte Patient wählen', 'error'); return; }
     if (!date) { showToast('Bitte Datum wählen', 'error'); return; }
+    if (!time || !endTime) { showToast('Praxis an diesem Tag geschlossen', 'error'); return; }
     if (endTime <= time) { showToast('Endzeit muss nach der Startzeit liegen', 'error'); return; }
     setSubmitting(true);
     try {
@@ -108,11 +148,19 @@ export default function NewTerminModal({ defaultDate, onClose, onCreated }) {
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Uhrzeit</label>
-                <input type="time" className="form-input" value={time} onChange={(e) => setTime(e.target.value)} />
+                {daySlots.length === 0 ? (
+                  <select className="form-input" disabled><option>Praxis an diesem Tag geschlossen</option></select>
+                ) : (
+                  <select className="form-input" value={time} onChange={(e) => setTime(e.target.value)}>
+                    {startOptions.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Bis</label>
-                <input type="time" className="form-input" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <select className="form-input" disabled={!time} value={endTime} onChange={(e) => setEndTime(e.target.value)}>
+                  {endOptions.map((eOpt) => <option key={eOpt}>{eOpt}</option>)}
+                </select>
               </div>
             </div>
             <div className="form-group">
@@ -124,7 +172,7 @@ export default function NewTerminModal({ defaultDate, onClose, onCreated }) {
           </div>
           <div className="modal-footer">
             <button className="btn-cancel" type="button" onClick={onClose}>Abbrechen</button>
-            <button className="btn-confirm" type="submit" disabled={submitting}>
+            <button className="btn-confirm" type="submit" disabled={submitting || !time || !endTime}>
               {submitting ? <span className="spinner-row"><span className="spinner" style={{ width: 13, height: 13, borderWidth: 2 }} /> Wird gebucht...</span> : 'Termin erstellen'}
             </button>
           </div>

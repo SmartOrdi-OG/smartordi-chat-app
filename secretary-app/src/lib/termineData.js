@@ -42,6 +42,10 @@ export async function listArztStaff() {
   return data || [];
 }
 
+// status:'bestaetigt' -- mirrors createTermin() (secretary.html): a Termin
+// booked directly by staff has no one else who needs to review/approve it,
+// so it's created already confirmed, unlike a patient's own self-booked
+// request (patient_book_termin), which lands in 'neu' to wait for staff.
 export async function createTermin(fields) {
   const row = {
     patient_id: fields.patientId || null,
@@ -50,7 +54,7 @@ export async function createTermin(fields) {
     date: fields.date,
     time: fields.time,
     end_time: fields.endTime || null,
-    status: 'neu',
+    status: 'bestaetigt',
     arzt_id: fields.arztId || null,
     versicherung: fields.versicherung || null,
     tel: fields.tel || null,
@@ -120,4 +124,15 @@ export async function findTerminConflict({ date, time, endTime, arztId, patientN
   if (arztId && active.some((t) => t.arztId === arztId)) return 'arzt';
   if (patientName && active.some((t) => t.patient === patientName)) return 'patient';
   return null;
+}
+
+// Busy [start,end) ranges for one doctor on one date -- mirrors
+// busyRangesForDoctor(), the basis for filtering the "+ Neuer Termin"
+// slot dropdowns so an already-booked start isn't even offered.
+export async function busyRangesForArzt(date, arztId, excludeId) {
+  if (!date || !arztId) return [];
+  const dayTermine = await listTermineForDate(date);
+  return dayTermine
+    .filter((t) => t.arztId === arztId && t.status !== 'abgesagt' && t.id !== excludeId)
+    .map((t) => ({ start: t.time, end: t.endTime || t.time }));
 }
