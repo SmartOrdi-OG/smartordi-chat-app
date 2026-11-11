@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { getMessagesForPatient, sendMessageToPatient } from './lib/patientsData';
 import { colorForName } from './lib/avatarColor';
 import { showToast } from './lib/toast';
+import { markChatViewed } from './lib/unreadTracking';
 
 function CheckIcon() {
   return (
@@ -34,6 +35,9 @@ export default function PatientChatPane({ patient, onBack, onEdit }) {
         setLoading(false);
       }
     });
+    // The secretary has now seen this patient's messages -- clears their
+    // unread badge on Übersicht, same as openChat()'s own markChatViewed().
+    markChatViewed(patient.id);
     return () => { cancelled = true; };
   }, [patient.id]);
 
