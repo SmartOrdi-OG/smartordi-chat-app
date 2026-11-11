@@ -28,17 +28,36 @@ function patientRowToJs(row) {
 }
 
 // Live substring search against the server (name OR SV-Nummer contains the
-// query, case-insensitive) -- mirrors searchPatientsServer().
+// query, case-insensitive) -- mirrors searchPatientsServer(). join_status
+// filtered server-side here (isRealSelectablePatient() filters it
+// client-side in the original, after the fact -- equivalent, just one
+// fewer unneeded row to ever send over the wire).
 export async function searchPatients(query, limit) {
   const q = (query || '').trim();
   if (!q) return [];
   const escaped = q.replace(/[%_]/g, '\\$&');
   const { data, error } = await sb.from('patients').select(PATIENTS_COLUMNS)
+    .eq('join_status', 'approved')
     .or('full_name.ilike.%' + escaped + '%,svnr.ilike.%' + escaped + '%')
     .order('full_name')
     .limit(limit || 20);
   if (error) {
     console.error('searchPatients failed', error);
+    return [];
+  }
+  return (data || []).map(patientRowToJs);
+}
+
+// The unfiltered "Patienten" list shown with an empty search box -- mirrors
+// realPatientEntries()/loadPatients()'s own bounded cache (there, ≤500
+// most-recently-active; here, a plain name-ordered page of the same size).
+export async function listPatients(limit) {
+  const { data, error } = await sb.from('patients').select(PATIENTS_COLUMNS)
+    .eq('join_status', 'approved')
+    .order('full_name')
+    .limit(limit || 300);
+  if (error) {
+    console.error('listPatients failed', error);
     return [];
   }
   return (data || []).map(patientRowToJs);
@@ -222,4 +241,40 @@ export async function regeneratePatientQrCredentials(patient) {
   ensurePatientAuthUser('patient', patient.id, { password: newPw });
   const loginUrl = buildPatientLoginUrl(patient.username, newPw, patient.fullName || patient.name);
   return { password: newPw, loginUrl };
+}
+
+// ── CHAT (patient_messages) -- mirrors vendor/patient-data.js's
+// getMessagesForPatient()/sendMessageToPatient(). dir:'in' = from the
+// patient, dir:'out' = from staff. Only plain text messages are supported
+// here so far -- type 'doc'/'uw' (document attachments) aren't built yet. ──
+const MESSAGE_COLUMNS = 'id,patient_id,dir,type,text,created_at';
+
+function messageRowToJs(row) {
+  return {
+    id: row.id,
+    out: row.dir === 'out',
+    text: row.text,
+    time: row.created_at
+      ? new Date(row.created_at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })
+      : '',
+    createdAt: row.created_at,
+  };
+}
+
+export async function getMessagesForPatient(patientId) {
+  const { data, error } = await sb.from('patient_messages').select(MESSAGE_COLUMNS).eq('patient_id', patientId).order('created_at');
+  if (error) {
+    console.error('getMessagesForPatient failed', error);
+    return [];
+  }
+  return (data || []).map(messageRowToJs);
+}
+
+export async function sendMessageToPatient(patientId, text) {
+  const { data, error } = await sb.from('patient_messages').insert({ patient_id: patientId, dir: 'out', type: 'text', text }).select(MESSAGE_COLUMNS).single();
+  if (error) {
+    console.error('sendMessageToPatient failed', error);
+    throw error;
+  }
+  return messageRowToJs(data);
 }
