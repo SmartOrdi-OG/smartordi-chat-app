@@ -232,6 +232,12 @@ export function buildPatientLoginUrl(username, password, displayName, needsNewUs
   return PATIENT_PORTAL_ORIGIN + '/patient-login?' + params.toString();
 }
 
+// Mirrors the Übersicht "Patienten einladen" QR -- a general, not-patient-
+// specific self-registration link for this practice.
+export function buildGeneralRegisterUrl(practiceId) {
+  return PATIENT_PORTAL_ORIGIN + '/patient-register' + (practiceId ? '/' + practiceId : '');
+}
+
 // Generates a fresh temp password for an EXISTING patient (creating their
 // login if they never had one, resetting it if they already do) and
 // returns the QR login URL for them. Mirrors selectQrPatient().
@@ -268,6 +274,47 @@ export async function getMessagesForPatient(patientId) {
     return [];
   }
   return (data || []).map(messageRowToJs);
+}
+
+// Real "Neue Patientennachrichten" (Übersicht) data -- mirrors
+// uebersichtUnreadEntries()/renderUebersichtNeueNachrichten(), using
+// lib/unreadTracking.js's per-device "last viewed" marker instead of the
+// original's bulk 365-day _allMessagesByPatient cache (this app doesn't
+// keep one). Only looks back 90 days -- a message older than that with no
+// marker yet is vanishingly unlikely to matter for "what's new right now".
+const UNREAD_WINDOW_DAYS = 90;
+export async function fetchUnreadMessageSummaries(lastViewedFor) {
+  const cutoff = new Date(Date.now() - UNREAD_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await sb.from('patient_messages').select('patient_id,text,created_at')
+    .eq('dir', 'in').gte('created_at', cutoff).order('created_at', { ascending: false });
+  if (error) {
+    console.error('fetchUnreadMessageSummaries failed', error);
+    return [];
+  }
+  const byPatient = {};
+  (data || []).forEach((row) => {
+    if (!byPatient[row.patient_id]) byPatient[row.patient_id] = { latest: row, unreadCount: 0 };
+    if (row.created_at > lastViewedFor(row.patient_id)) byPatient[row.patient_id].unreadCount++;
+  });
+  const unreadIds = Object.keys(byPatient).filter((id) => byPatient[id].unreadCount > 0);
+  if (!unreadIds.length) return [];
+  const { data: patients, error: pErr } = await sb.from('patients').select('id,full_name').in('id', unreadIds);
+  if (pErr) {
+    console.error('fetchUnreadMessageSummaries: patient lookup failed', pErr);
+    return [];
+  }
+  const nameById = {};
+  (patients || []).forEach((p) => { nameById[p.id] = p.full_name; });
+  return unreadIds
+    .map((id) => ({
+      patientId: id,
+      fullName: nameById[id] || '—',
+      unreadCount: byPatient[id].unreadCount,
+      preview: byPatient[id].latest.text,
+      time: new Date(byPatient[id].latest.created_at).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' }),
+      createdAt: byPatient[id].latest.created_at,
+    }))
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
 export async function sendMessageToPatient(patientId, text) {

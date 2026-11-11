@@ -91,7 +91,7 @@ export default function App() {
       </div>
 
       <div className="views">
-        {view === 'uebersicht' && <UebersichtView />}
+        {view === 'uebersicht' && <UebersichtView onNavigate={setView} />}
         {view === 'termine' && <TermineView />}
         {view === 'patienten' && <PatientenView />}
       </div>
