@@ -1,0 +1,123 @@
+import { sb } from './supabase';
+
+// Mirrors vendor/patient-data.js's loadTermine()/insertTermin()/updateTermin()
+// -- simplified to fetch one day at a time (live, not a standing in-memory
+// cache of a rolling window) since this app's Termine view only ever shows
+// one day's agenda so far, not the original's month-grid calendar.
+
+const TERMINE_COLUMNS = 'id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,created_at';
+
+function terminRowToJs(row) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    patient: row.patient_name,
+    art: row.art,
+    date: row.date,
+    time: row.time,
+    endTime: row.end_time,
+    status: row.status,
+    arztId: row.arzt_id,
+    versicherung: row.versicherung,
+    tel: row.tel,
+    createdAt: row.created_at,
+  };
+}
+
+export async function listTermineForDate(date) {
+  const { data, error } = await sb.from('termine').select(TERMINE_COLUMNS).eq('date', date).order('time');
+  if (error) {
+    console.error('listTermineForDate failed', error);
+    return [];
+  }
+  return (data || []).map(terminRowToJs);
+}
+
+export async function listArztStaff() {
+  const { data, error } = await sb.from('staff_profiles').select('id,full_name,fach').eq('role', 'arzt');
+  if (error) {
+    console.error('listArztStaff failed', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createTermin(fields) {
+  const row = {
+    patient_id: fields.patientId || null,
+    patient_name: fields.patientName,
+    art: fields.art || null,
+    date: fields.date,
+    time: fields.time,
+    end_time: fields.endTime || null,
+    status: 'neu',
+    arzt_id: fields.arztId || null,
+    versicherung: fields.versicherung || null,
+    tel: fields.tel || null,
+  };
+  const { data, error } = await sb.from('termine').insert(row).select(TERMINE_COLUMNS).single();
+  if (error) {
+    console.error('createTermin failed', error);
+    throw error;
+  }
+  return terminRowToJs(data);
+}
+
+export async function updateTerminStatus(id, status) {
+  const { data, error } = await sb.from('termine').update({ status }).eq('id', id).select(TERMINE_COLUMNS).maybeSingle();
+  if (error || !data) {
+    console.error('updateTerminStatus failed', error);
+    return null;
+  }
+  return terminRowToJs(data);
+}
+
+export async function moveTermin(id, { date, time, endTime }) {
+  const patch = { time, end_time: endTime };
+  if (date) patch.date = date;
+  const { data, error } = await sb.from('termine').update(patch).eq('id', id).select(TERMINE_COLUMNS).maybeSingle();
+  if (error || !data) {
+    console.error('moveTermin failed', error);
+    return null;
+  }
+  return terminRowToJs(data);
+}
+
+export function longDateDE(dateStr) {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-AT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Plain-text equivalents of sendTerminConfirmationMessage()/
+// sendTerminMoveMessage()/sendTerminCancelMessage() -- the original builds
+// an i18n msgKey/msgParams pair so the patient's own app can re-render this
+// in whatever language they've chosen; this app doesn't have that machinery
+// yet, so it just sends the literal German text.
+export function buildTerminConfirmedText(t, arztName) {
+  const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
+  const arztPart = arztName ? ' bei ' + arztName : '';
+  return `✓ Ihr Termin${arztPart} wurde bestätigt: ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`;
+}
+export function buildTerminMovedText(t, arztName) {
+  const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
+  const arztPart = arztName ? ' bei ' + arztName : '';
+  return `↕ Ihr Termin${arztPart} wurde verschoben: neu am ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`;
+}
+export function buildTerminCancelledText(t) {
+  const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
+  return `✗ Ihr Termin am ${longDateDE(t.date)}, ${timeRange} Uhr wurde abgesagt. Bitte vereinbaren Sie bei Bedarf einen neuen Termin.`;
+}
+
+function timeRangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+// Live, date-scoped conflict check (mirrors findTermineConflict()) -- same
+// patient or same Arzt already booked overlapping this exact date/time.
+export async function findTerminConflict({ date, time, endTime, arztId, patientName, excludeId }) {
+  const dayTermine = (await listTermineForDate(date)).filter((t) => t.status !== 'abgesagt' && t.id !== excludeId);
+  const et = endTime || time;
+  const active = dayTermine.filter((t) => timeRangesOverlap(time, et, t.time, t.endTime || t.time));
+  if (arztId && active.some((t) => t.arztId === arztId)) return 'arzt';
+  if (patientName && active.some((t) => t.patient === patientName)) return 'patient';
+  return null;
+}

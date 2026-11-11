@@ -218,6 +218,26 @@ body {
 .send-btn { width: 42px; height: 42px; flex-shrink: 0; background: linear-gradient(135deg,#0E5E56,#12746A); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer; }
 .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* TERMINE (Phase 5) -- ported from secretary.html's own termin-item/t- rules.
+   Simplified to a single day's agenda instead of the month-grid calendar. */
+.termin-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.termin-item:last-child { border-bottom: none; }
+.t-time-box { width: 44px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.t-time { font-family: monospace; font-size: 12px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.t-info { flex: 1; min-width: 0; }
+.t-patient { font-size: 13px; font-weight: 600; color: var(--text); }
+.t-type { font-size: 11px; color: var(--text-muted); margin-top: 1px; font-family: monospace; }
+.t-status { font-family: monospace; font-size: 9.5px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; border: 1px solid transparent; flex-shrink: 0; align-self: flex-start; }
+.t-confirmed { background: #EAF4F1; color: #0E5E56; border-color: #0E5E56; }
+.t-pending { background: #fbf3e1; color: #9a6a00; border-color: #c99a2e; }
+.t-cancelled { background: #f5f7f8; color: #7c8a92; border-color: #d7dee2; }
+.t-noshow { background: #fbf3e1; color: #c2410c; border-color: #f0b184; }
+.t-actions { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+.t-btn { font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 7px; border: none; cursor: pointer; font-family: inherit; }
+.t-btn-confirm { background: #dcfce7; color: #16a34a; }
+.t-btn-cancel { background: #fee2e2; color: var(--red); }
+.t-btn-move { background: #f1f5f9; color: var(--text-muted); }
+
 /* TOAST */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(24px) scale(0.92); background: linear-gradient(135deg,#0A4A44,#0E5E56); color: white; padding: 12px 20px 12px 46px; border-radius: 16px; font-size: 13px; font-weight: 600; z-index: 9999; transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; box-shadow: 0 8px 28px rgba(14,94,86,0.4); opacity: 0; pointer-events: none; }
 .toast::before { content: ''; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; background: rgba(255,255,255,0.18) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") no-repeat center/13px; border-radius: 50%; }
