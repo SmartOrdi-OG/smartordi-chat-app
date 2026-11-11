@@ -17,7 +17,7 @@ function CheckIcon() {
 // actual thread living in a separate floating popup; both pull in Termine/
 // Impfung data this app doesn't have yet, so this phase skips straight to
 // the conversation). Only plain text messages are supported so far.
-export default function PatientChatPane({ patient, onBack }) {
+export default function PatientChatPane({ patient, onBack, onEdit }) {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState('');
@@ -72,6 +72,10 @@ export default function PatientChatPane({ patient, onBack }) {
           <div className="view-title" style={{ fontSize: 15 }}>{name}</div>
           <div className="view-sub">Chat</div>
         </div>
+        <div style={{ flex: 1 }} />
+        <button type="button" onClick={onEdit} style={{ background: '#f1f5f9', border: 'none', color: '#475569', padding: '7px 12px', borderRadius: 9, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z" /></svg> Bearbeiten
+        </button>
       </div>
       <div className="messages" ref={scrollRef}>
         {!loading && messages.length === 0 && (
