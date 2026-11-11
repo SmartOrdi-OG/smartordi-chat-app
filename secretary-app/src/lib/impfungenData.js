@@ -3,9 +3,8 @@ import { sb } from './supabase';
 // Mirrors secretary.html's VACCINE_SCHEDULE (just the name/key pairs
 // "Impfung eintragen" needs to resolve a dropdown pick back to its
 // vaccine_key -- the full per-dose due-date schedule that same constant
-// also carries belongs to the Kontrollpatienten/Impfpass subsystem, not
-// built in this phase) and addImpfungEntry() (vendor/patient-data.js,
-// supabase/phase5_impfungen.sql).
+// also carries lives in lib/vaccineSchedule.js, Phase 18) and
+// addImpfungEntry() (vendor/patient-data.js, supabase/phase5_impfungen.sql).
 export const VACCINE_NAMES = [
   { key: 'sechsfach', name: '6-fach (Diphtherie-Tetanus-Pertussis-Hib-Polio-Hepatitis B)' },
   { key: 'pneumokokken', name: 'Pneumokokken' },
