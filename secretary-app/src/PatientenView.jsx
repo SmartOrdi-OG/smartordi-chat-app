@@ -6,6 +6,7 @@ import PatientCredentialsModal from './PatientCredentialsModal';
 import PatientChatPane from './PatientChatPane';
 import JoinRequestsModal from './JoinRequestsModal';
 import PatientDetailModal from './PatientDetailModal';
+import ImportPatientsModal from './ImportPatientsModal';
 import { listPatients, searchPatients } from './lib/patientsData';
 import { fetchPendingJoinRequests } from './lib/joinRequestsData';
 import { colorForName } from './lib/avatarColor';
@@ -29,7 +30,8 @@ function PatientRow({ p, onClick, onEdit }) {
 
 // Phase 1 built the header/actions menu shell. Phase 2 wired up "Neuer
 // Patient"/"QR-Code". Phase 3 added the real patient list + chat. Phase 4
-// adds "Beitrittsanfragen" -- Importieren still isn't built yet.
+// added "Beitrittsanfragen". Phase 10 adds "Patienten importieren"
+// (CSV bulk import) -- "Dokumente importieren" still isn't built.
 export default function PatientenView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [newPatientOpen, setNewPatientOpen] = useState(false);
@@ -44,6 +46,7 @@ export default function PatientenView() {
   const [searchResults, setSearchResults] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [editPatient, setEditPatient] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
   const searchTimer = useRef(null);
 
   function refreshList() {
@@ -92,7 +95,7 @@ export default function PatientenView() {
               <span className="rail-btn-icon"><Icon name="joinRequests" /></span> Beitrittsanfragen
               {pendingCount > 0 && <span className="mp-badge" style={{ position: 'absolute', top: 8, right: 10, background: '#dc2626' }}>{pendingCount}</span>}
             </button>
-            <button className="rail-btn" type="button">
+            <button className="rail-btn" type="button" onClick={() => { setMenuOpen(false); setImportOpen(true); }}>
               <span className="rail-btn-icon"><Icon name="importUp" /></span> Patienten importieren
             </button>
             <button className="rail-btn" type="button">
@@ -153,6 +156,12 @@ export default function PatientenView() {
           patient={editPatient}
           onClose={() => setEditPatient(null)}
           onSaved={() => { setEditPatient(null); refreshList(); }}
+        />
+      )}
+      {importOpen && (
+        <ImportPatientsModal
+          onClose={() => { setImportOpen(false); refreshList(); }}
+          onImported={refreshList}
         />
       )}
     </div>
