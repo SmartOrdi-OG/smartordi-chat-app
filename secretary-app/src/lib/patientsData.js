@@ -327,6 +327,24 @@ export async function fetchUnreadMessageSummaries(lastViewedFor) {
     .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 }
 
+// Mirrors secretary.html's requestPatientDeletion() -- supabase/
+// phase17_data_retention.sql's request_patient_deletion RPC decides
+// server-side whether the 10-year statutory retention (§ 51 ÄrzteG) has
+// already elapsed (anonymizes immediately) or not (schedules the exact
+// legal date instead); this only calls it and relays whichever outcome
+// the server returns. It never anonymizes/deletes anything itself -- all
+// of that logic (and its own test, tests/dsgvo-deletion.spec.js) already
+// lives server-side, reviewed and in production.
+export async function requestPatientDeletion(patientId) {
+  const { data, error } = await sb.rpc('request_patient_deletion', { p_patient_id: patientId });
+  if (error) {
+    console.error('requestPatientDeletion failed', error);
+    throw error;
+  }
+  const row = data && data[0];
+  return row ? { anonymizedImmediately: !!row.anonymized_immediately, date: row.effective_or_scheduled_date } : null;
+}
+
 export async function sendMessageToPatient(patientId, text) {
   const { data, error } = await sb.from('patient_messages').insert({ patient_id: patientId, dir: 'out', type: 'text', text }).select(MESSAGE_COLUMNS).single();
   if (error) {
