@@ -61,14 +61,14 @@ export function parseCsv(text) {
   return { headers, rows };
 }
 
-function normalizeDob(str) {
+export function normalizeDob(str) {
   if (!str) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
   const m = str.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
   if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
   return str;
 }
-function normalizeSvnr(s) {
+export function normalizeSvnr(s) {
   return (s || '').replace(/\s+/g, '');
 }
 
