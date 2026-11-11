@@ -6,6 +6,7 @@ import { markChatViewed } from './lib/unreadTracking';
 import PflegefreistellungModal from './PflegefreistellungModal';
 import ArbeitsunfaehigkeitModal from './ArbeitsunfaehigkeitModal';
 import ImpfungModal from './ImpfungModal';
+import PatientDocumentsModal from './PatientDocumentsModal';
 
 function CheckIcon() {
   return (
@@ -30,6 +31,7 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
   const [pflegefreistellungOpen, setPflegefreistellungOpen] = useState(false);
   const [arbeitsunfaehigkeitOpen, setArbeitsunfaehigkeitOpen] = useState(false);
   const [impfungOpen, setImpfungOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const scrollRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -92,6 +94,8 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
             <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setPflegefreistellungOpen(true); }}>Pflegefreistellung ausstellen</button>
             <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setArbeitsunfaehigkeitOpen(true); }}>Arbeitsunfähigkeit ausstellen</button>
             <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setImpfungOpen(true); }}>Impfung eintragen</button>
+            <div className="rail-divider" />
+            <button className="rail-btn" type="button" onClick={() => { setAttestMenuOpen(false); setDocumentsOpen(true); }}>Dokumente anzeigen</button>
           </div>
         </div>
         <button type="button" onClick={onEdit} style={{ background: '#f1f5f9', border: 'none', color: '#475569', padding: '7px 12px', borderRadius: 9, fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -136,6 +140,7 @@ export default function PatientChatPane({ patient, profile, onBack, onEdit }) {
       {pflegefreistellungOpen && <PflegefreistellungModal patient={patient} profile={profile} onClose={() => setPflegefreistellungOpen(false)} />}
       {arbeitsunfaehigkeitOpen && <ArbeitsunfaehigkeitModal patient={patient} profile={profile} onClose={() => setArbeitsunfaehigkeitOpen(false)} />}
       {impfungOpen && <ImpfungModal patient={patient} profile={profile} onClose={() => setImpfungOpen(false)} />}
+      {documentsOpen && <PatientDocumentsModal patient={patient} profile={profile} onClose={() => setDocumentsOpen(false)} />}
     </div>
   );
 }
