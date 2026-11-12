@@ -20,6 +20,36 @@ export const VACCINE_NAMES = [
 ];
 export const VACCINE_DOSE_LABELS = ['1. Dosis', '2. Dosis', '3. Dosis', 'Auffrischung', 'Einmaldosis'];
 
+// Mirrors secretary.html's matchVaccineKey()/VACCINE_NAME_ALIASES -- CSV
+// import (Phase 20's "Impfungen" column) only ever has the free-text
+// vaccine name an old system's export happened to use, never a pick from
+// this file's own VACCINE_NAMES dropdown, which already sets vaccineKey
+// correctly. Without a key, dueVaccinationsForPatient() (lib/
+// vaccineSchedule.js) -- which matches a given dose against VACCINE_SCHEDULE
+// strictly by `key`, never by free-text name -- could never recognize an
+// imported dose as satisfying that vaccine's requirement, silently leaving
+// an already-given, already-recorded dose showing up as overdue forever.
+const VACCINE_NAME_ALIASES = {
+  sechsfach: ['6-fach', '6fach', 'sechsfach', 'hexavalent'],
+  pneumokokken: ['pneumokokken', 'pneumo'],
+  rotavirus: ['rotavirus', 'rota'],
+  mmr: ['mmr', 'masern-mumps-röteln', 'masern', 'mumps', 'röteln'],
+  varizellen: ['varizellen', 'windpocken'],
+  meningokokken_b: ['meningokokken b', 'meningokokken-b', 'men b'],
+  meningokokken_acwy: ['meningokokken acwy', 'meningokokken-acwy', 'men acwy'],
+  hpv: ['hpv'],
+  influenza: ['influenza', 'grippe'],
+  fsme: ['fsme', 'zecken', 'zeckenimpfung', 'zecken-impfung'],
+};
+export function matchVaccineKey(rawName) {
+  const n = (rawName || '').trim().toLowerCase();
+  if (!n) return null;
+  const byExactOrPrefix = VACCINE_NAMES.find((v) => n === v.key || n === v.name.toLowerCase() || v.name.toLowerCase().startsWith(n));
+  if (byExactOrPrefix) return byExactOrPrefix.key;
+  const aliasKey = Object.keys(VACCINE_NAME_ALIASES).find((key) => VACCINE_NAME_ALIASES[key].some((alias) => n === alias || n.startsWith(alias)));
+  return aliasKey || null;
+}
+
 // uploaded_by is a staff_profiles(id) uuid FK -- the signed-in staff
 // member's own id, unlike the original's session.username text (a
 // pre-existing mismatch there; this is the correct value for the column).

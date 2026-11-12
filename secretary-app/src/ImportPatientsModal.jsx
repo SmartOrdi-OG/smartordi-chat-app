@@ -9,10 +9,10 @@ const PLACEHOLDER_CSV = 'Vorname,Nachname,Geburtsdatum,SVNr,Versicherung,Telefon
 
 // Mirrors secretary.html's "Patienten importieren" 3-step wizard
 // (openImportModal()/proceedToMapping()/confirmImport()/
-// renderImportResults()) -- narrower scope than the original, see
-// lib/importData.js's own comment for what's not supported yet
-// (Impfungen/Termine/Behandlungsverlauf CSV columns).
-export default function ImportPatientsModal({ onClose, onImported }) {
+// renderImportResults()). Phase 20 adds the Impfungen/Termine/
+// Behandlungsverlauf CSV columns -- see lib/importData.js's own comment
+// for what still isn't supported (Blutgruppe, free-text Krankengeschichte).
+export default function ImportPatientsModal({ profile, onClose, onImported }) {
   const [step, setStep] = useState(1);
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -61,10 +61,10 @@ export default function ImportPatientsModal({ onClose, onImported }) {
     setProgress({ current: 0, total: parsed.rows.length });
     try {
       const fach = await fetchPracticeAdminFach();
-      const { results: res, skipped } = await runImport(parsed.rows, fieldIdx, fach, (current, total) => setProgress({ current, total }));
+      const { results: res, skipped, ...termineStats } = await runImport(parsed.rows, fieldIdx, fach, profile?.id, (current, total) => setProgress({ current, total }));
       const { label, limit } = await getPlanLabelAndLimit();
       setResults(res);
-      setResultSummary(summarizeResults(res, skipped, label, limit));
+      setResultSummary(summarizeResults(res, skipped, label, limit, termineStats));
       setStep(3);
       onImported();
     } finally {
@@ -162,6 +162,7 @@ export default function ImportPatientsModal({ onClose, onImported }) {
                           {r.name}
                           {r.updated && !r.syncFailed && <span style={{ color: '#0369a1', fontWeight: 700 }} title="Bestehender Patient aktualisiert"> ↻</span>}
                           {r.syncFailed && <span style={{ color: '#dc2626', fontWeight: 700 }} title="Serverabgleich fehlgeschlagen"> ⚠</span>}
+                          {r.historyFailed && <span style={{ color: '#d97706', fontWeight: 700 }} title="Impfung/Termin/Verlaufseintrag konnte nicht gespeichert werden -- Kartei manuell prüfen"> ⚠</span>}
                           {r.limitReached && <span style={{ color: '#dc2626', fontWeight: 700 }} title="Patientenlimit erreicht"> ✕</span>}
                         </td>
                         <td style={{ padding: 6, borderBottom: '1px solid #f1f5f9', fontFamily: 'monospace' }}>{r.limitReached ? '—' : r.username}</td>
