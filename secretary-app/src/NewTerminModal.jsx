@@ -11,11 +11,14 @@ const ART_OPTIONS = ['Ordination', 'Kontrolle', 'Erstgespräch', 'Folgetermin', 
 // refreshTermineSlotOptions()/refreshTermineEndOptions() -- Uhrzeit/Bis are
 // now real slot <select>s generated from the practice's configured
 // Öffnungszeiten (Phase 8), filtered against the chosen Arzt's already-
-// booked times for that day, same as the original.
-export default function NewTerminModal({ defaultDate, practiceHours, onClose, onCreated }) {
-  const [patientQuery, setPatientQuery] = useState('');
+// booked times for that day, same as the original. initialPatient (Phase
+// 19) pre-fills the patient search when opened from PatientDetailModal's
+// own "Neuen Termin buchen" button, mirroring that section's PD_SLOT_IDS
+// form but reusing this exact modal instead of duplicating it.
+export default function NewTerminModal({ defaultDate, practiceHours, initialPatient, onClose, onCreated }) {
+  const [patientQuery, setPatientQuery] = useState(initialPatient ? (initialPatient.fullName || initialPatient.name) : '');
   const [patientResults, setPatientResults] = useState([]);
-  const [patient, setPatient] = useState(null);
+  const [patient, setPatient] = useState(initialPatient || null);
   const [arztList, setArztList] = useState([]);
   const [arztId, setArztId] = useState('');
   const [date, setDate] = useState(defaultDate);
