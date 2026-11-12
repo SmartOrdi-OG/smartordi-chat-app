@@ -103,16 +103,18 @@ function TerminRow({ t, arztName, dueSet, onConfirm, onMove, onCancel }) {
   );
 }
 
-// Mirrors secretary.html's #view-termine -- simplified to a single day's
-// agenda (prev/today/next navigation) instead of the original's month-grid
-// calendar with a draggable floating day window. "Öffnungszeiten" is
-// configurable (Phase 8) and "+ Neuer Termin" now generates its Uhrzeit/Bis
-// slots from it (Phase 9) -- same as the original, "Verschieben" stays a
-// plain time input either way. Phase 13 adds the "Online-Buchung"
-// aktiv/gesperrt toggle. Phase 18 adds the Impfung-fällig badge next to a
-// patient's name (keyed by patientId, not full-name text like the
-// original's own dueSet -- avoids a same-name-collision bug already fixed
-// elsewhere in this port).
+// Mirrors secretary.html's #view-termine -- a single day's agenda (prev/
+// today/next navigation) plus, since Phase 23, a "Monat" toggle mirroring
+// the original's own month-grid overview (a plain modal for the day detail
+// instead of the original's draggable/resizable floating window, which
+// research confirmed is pure window-chrome, not an alternate way to move a
+// Termin). "Öffnungszeiten" is configurable (Phase 8) and "+ Neuer Termin"
+// now generates its Uhrzeit/Bis slots from it (Phase 9) -- same as the
+// original, "Verschieben" stays a plain time input either way. Phase 13
+// adds the "Online-Buchung" aktiv/gesperrt toggle. Phase 18 adds the
+// Impfung-fällig badge next to a patient's name (keyed by patientId, not
+// full-name text like the original's own dueSet -- avoids a same-name-
+// collision bug already fixed elsewhere in this port).
 export default function TermineView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [date, setDate] = useState(todayStr());
