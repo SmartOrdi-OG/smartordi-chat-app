@@ -5,7 +5,7 @@ import { sb } from './supabase';
 // cache of a rolling window) since this app's Termine view only ever shows
 // one day's agenda so far, not the original's month-grid calendar.
 
-const TERMINE_COLUMNS = 'id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,created_at';
+const TERMINE_COLUMNS = 'id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,completed_at,created_at';
 
 function terminRowToJs(row) {
   return {
@@ -20,6 +20,7 @@ function terminRowToJs(row) {
     arztId: row.arzt_id,
     versicherung: row.versicherung,
     tel: row.tel,
+    completedAt: row.completed_at,
     createdAt: row.created_at,
   };
 }
@@ -46,6 +47,10 @@ export async function listArztStaff() {
 // booked directly by staff has no one else who needs to review/approve it,
 // so it's created already confirmed, unlike a patient's own self-booked
 // request (patient_book_termin), which lands in 'neu' to wait for staff.
+// completedAt (Phase 20): set only by the CSV import's own Termine column
+// for a past-dated row -- marks a historical appointment carried over from
+// an old system as already done, same as the original's own
+// importTermineFromRow().
 export async function createTermin(fields) {
   const row = {
     patient_id: fields.patientId || null,
@@ -58,6 +63,7 @@ export async function createTermin(fields) {
     arzt_id: fields.arztId || null,
     versicherung: fields.versicherung || null,
     tel: fields.tel || null,
+    completed_at: fields.completedAt || null,
   };
   const { data, error } = await sb.from('termine').insert(row).select(TERMINE_COLUMNS).single();
   if (error) {

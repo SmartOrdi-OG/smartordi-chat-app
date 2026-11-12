@@ -163,6 +163,7 @@ export default function PatientenView({ profile }) {
       )}
       {importOpen && (
         <ImportPatientsModal
+          profile={profile}
           onClose={() => { setImportOpen(false); refreshList(); }}
           onImported={refreshList}
         />
