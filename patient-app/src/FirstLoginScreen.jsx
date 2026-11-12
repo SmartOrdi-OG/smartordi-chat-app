@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { patientChangePassword, patientChangeUsername, patientGetProfile, patientRecordLoginConsent } from './lib/patientAuth';
 import { POLICY_VERSION } from './lib/patientRegister';
 
@@ -11,6 +12,7 @@ import { POLICY_VERSION } from './lib/patientRegister';
 // reports the freshly-updated profile back via onDone once password/
 // username/consent are handled.
 export default function FirstLoginScreen({ profile, needsUsername, needsPassword, needsConsent, onDone }) {
+  const { t } = useLanguage();
   const [username, setUsername] = useState(needsUsername ? '' : profile.username);
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -26,21 +28,21 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
     setError('');
 
     if (needsConsent && (!consentProcessing || !consentAccuracy)) {
-      setError('Bitte bestätigen Sie beide Punkte, um fortzufahren.');
+      setError(t('changepw.err.consentRequired'));
       return;
     }
 
     if (needsPassword) {
       if (newPw.length < 6) {
-        setError('Passwort muss mindestens 6 Zeichen haben.');
+        setError(t('changepw.err.tooShort'));
         return;
       }
       if (newPw !== confirmPw) {
-        setError('Passwörter stimmen nicht überein.');
+        setError(t('changepw.err.mismatch'));
         return;
       }
       if (needsUsername && !username.trim()) {
-        setError('Bitte wählen Sie einen Benutzernamen.');
+        setError(t('changepw.err.usernameRequired'));
         return;
       }
     }
@@ -53,9 +55,9 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
           const result = await patientChangeUsername(trimmed);
           if (!result.ok) {
             setError(
-              result.code === 'too_short' ? 'Benutzername muss mindestens 3 Zeichen haben.'
-                : result.code === 'taken' ? 'Dieser Benutzername ist bereits vergeben.'
-                : 'Benutzername konnte nicht geändert werden.'
+              result.code === 'too_short' ? t('changepw.err.usernameTooShort')
+                : result.code === 'taken' ? t('changepw.err.usernameTaken')
+                : t('changepw2.err.usernameChangeFailed')
             );
             setSaving(false);
             return;
@@ -63,7 +65,7 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
         }
         const ok = await patientChangePassword(newPw);
         if (!ok) {
-          setError('Passwort konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.');
+          setError(t('changepw.err.saveFailed'));
           setSaving(false);
           return;
         }
@@ -72,7 +74,7 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
       if (needsConsent) {
         const consentOk = await patientRecordLoginConsent(POLICY_VERSION);
         if (!consentOk) {
-          setError('Passwort konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.');
+          setError(t('changepw.err.saveFailed'));
           setSaving(false);
           return;
         }
@@ -92,13 +94,11 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
         <div className="card-logo-text">Smartordi<span>.chat</span></div>
       </div>
 
-      <div className="welcome-title">{needsPassword ? (isChild ? 'Konto für Ihr Kind einrichten' : 'Neues Passwort wählen') : 'Ihre Zustimmung ist erforderlich'}</div>
+      <div className="welcome-title">{needsPassword ? (isChild ? t('changepw.child.title') : t('changepw.title')) : t('changepw.consent.title')}</div>
       <div className="welcome-sub">
         {needsPassword
-          ? (isChild
-            ? 'Bitte wählen Sie einen Benutzernamen und ein Passwort für das Konto Ihres Kindes. Die Ordination wird keinen Zugriff darauf haben.'
-            : 'Bitte wählen Sie ein persönliches Passwort. Die Ordination wird keinen Zugriff darauf haben.')
-          : 'Bitte bestätigen Sie die folgenden Punkte, um fortzufahren.'}
+          ? (isChild ? t('changepw.child.sub') : t('changepw.sub'))
+          : t('changepw.consent.sub')}
       </div>
 
       {error && <div className="error-msg"><span>!</span><span>{error}</span></div>}
@@ -107,7 +107,7 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
         {needsPassword && (
           <>
             <div className="form-group">
-              <label className="form-label" htmlFor="newUsername">Benutzername</label>
+              <label className="form-label" htmlFor="newUsername">{t('changepw.newUsername.label')}</label>
               <div className="input-wrap">
                 <input
                   id="newUsername" className="form-input" autoCapitalize="off" autoCorrect="off" spellCheck={false}
@@ -116,24 +116,24 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
               </div>
               {needsUsername && (
                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
-                  Bitte wählen Sie einen Benutzernamen für {isChild ? 'dieses Konto' : 'Ihr Konto'}.
+                  {isChild ? t('changepw.child.newUsername.notice') : t('changepw.newAccount.newUsername.notice')}
                 </div>
               )}
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="newPw">Neues Passwort</label>
+              <label className="form-label" htmlFor="newPw">{t('changepw.newPw.label')}</label>
               <div className="input-wrap">
                 <input
-                  id="newPw" className="form-input" type="password" placeholder="Mindestens 6 Zeichen"
+                  id="newPw" className="form-input" type="password" placeholder={t('changepw.newPw.placeholder')}
                   value={newPw} onChange={(e) => setNewPw(e.target.value)}
                 />
               </div>
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="confirmPw">Passwort bestätigen</label>
+              <label className="form-label" htmlFor="confirmPw">{t('changepw.confirmPw.label')}</label>
               <div className="input-wrap">
                 <input
-                  id="confirmPw" className="form-input" type="password" placeholder="Passwort wiederholen"
+                  id="confirmPw" className="form-input" type="password" placeholder={t('changepw.confirmPw.placeholder')}
                   value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
                 />
               </div>
@@ -145,25 +145,17 @@ export default function FirstLoginScreen({ profile, needsUsername, needsPassword
           <div className="form-group">
             <label className="checkbox-label" style={{ marginBottom: 10 }}>
               <input type="checkbox" checked={consentProcessing} onChange={(e) => setConsentProcessing(e.target.checked)} />
-              <span>
-                {isChild
-                  ? 'Ich habe die Datenschutzerklärung gelesen und stimme als Erziehungsberechtigte:r der Verarbeitung der Gesundheitsdaten meines Kindes über die SmartOrdi-Plattform zu.'
-                  : 'Ich habe die Datenschutzerklärung gelesen und stimme der Verarbeitung meiner Gesundheitsdaten über die SmartOrdi-Plattform zu.'}
-              </span>
+              <span>{isChild ? t('changepw.consent.processing.child') : t('changepw.consent.processing')}</span>
             </label>
             <label className="checkbox-label">
               <input type="checkbox" checked={consentAccuracy} onChange={(e) => setConsentAccuracy(e.target.checked)} />
-              <span>
-                {isChild
-                  ? 'Ich bestätige, dass ich als Erziehungsberechtigte:r die Angaben für mein Kind in eigener Verantwortung wahrheitsgemäß und vollständig eingegeben habe.'
-                  : 'Ich bestätige, dass die von mir eingegebenen Angaben wahrheitsgemäß und vollständig sind, und übernehme hierfür die persönliche Verantwortung.'}
-              </span>
+              <span>{isChild ? t('changepw.consent.accuracy.child') : t('changepw.consent.accuracy')}</span>
             </label>
           </div>
         )}
 
         <button className="btn-main" type="submit" disabled={saving}>
-          {saving ? <span className="spinner-row"><span className="spinner" /> Einen Moment...</span> : (needsPassword ? 'Passwort speichern & einloggen' : 'Bestätigen')}
+          {saving ? <span className="spinner-row"><span className="spinner" /> {t('login.loading')}</span> : (needsPassword ? t('changepw.save') : t('common.confirm'))}
         </button>
       </form>
     </div>
