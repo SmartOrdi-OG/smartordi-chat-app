@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { resolveLogin } from './lib/patientLoginFlow';
 
 export default function LoginScreen({ onResolve, onRegister, initialUsername, initialPassword, initialError }) {
+  const { t } = useLanguage();
   const [username, setUsername] = useState(initialUsername || '');
   const [password, setPassword] = useState(initialPassword || '');
   const [loading, setLoading] = useState(false);
@@ -15,7 +17,7 @@ export default function LoginScreen({ onResolve, onRegister, initialUsername, in
     try {
       const result = await resolveLogin(username.trim().toLowerCase(), password);
       if (result.kind === 'invalid') {
-        setError('Falscher Benutzername oder Passwort.');
+        setError(t('login.error.wrongCreds'));
         return;
       }
       if (result.kind === 'error') {
@@ -46,13 +48,13 @@ export default function LoginScreen({ onResolve, onRegister, initialUsername, in
 
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label" htmlFor="username">Benutzername</label>
+          <label className="form-label" htmlFor="username">{t('login.username.label')}</label>
           <div className="input-wrap">
             <input
               id="username"
               className="form-input"
               type="text"
-              placeholder="benutzername"
+              placeholder={t('login.username.placeholder')}
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -61,7 +63,7 @@ export default function LoginScreen({ onResolve, onRegister, initialUsername, in
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="password">Passwort</label>
+          <label className="form-label" htmlFor="password">{t('login.password.label')}</label>
           <div className="input-wrap">
             <input
               id="password"
@@ -76,13 +78,13 @@ export default function LoginScreen({ onResolve, onRegister, initialUsername, in
         </div>
 
         <button className="btn-main" type="submit" disabled={loading}>
-          {loading ? <span className="spinner-row"><span className="spinner" /> Einen Moment...</span> : 'Anmelden'}
+          {loading ? <span className="spinner-row"><span className="spinner" /> {t('login.loading')}</span> : t('login.button')}
         </button>
       </form>
 
       <div style={{ textAlign: 'center', marginTop: 12 }}>
         <a href="#" onClick={(e) => { e.preventDefault(); onRegister(); }} className="text-link">
-          Neu hier? Anmeldung beantragen
+          {t('request.link')}
         </a>
       </div>
     </div>

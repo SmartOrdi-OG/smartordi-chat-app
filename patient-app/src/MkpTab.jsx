@@ -1,19 +1,25 @@
+import { useLanguage } from './LanguageContext';
 import { MKP_EXAM_INFO } from './lib/mkpExams';
 
 function fmtDate(iso) {
   return iso ? new Date(iso).toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 }
 
-function fmtValue(v) {
-  if (v === true) return 'Ja';
-  if (v === false) return 'Nein';
-  if (v === null || v === undefined || v === '') return '—';
+// field KEYS and free-text VALUES (ex.data) stay untranslated -- same
+// documented scope boundary as Anamnese (see lib/i18n.js's own header
+// comment): only true/false/empty get a translated word, exactly like the
+// original's own mkp.yes/mkp.no/mkp.notFilled.
+function fmtValue(v, t) {
+  if (v === true) return t('mkp.yes');
+  if (v === false) return t('mkp.no');
+  if (v === null || v === undefined || v === '') return t('mkp.notFilled');
   return String(v);
 }
 
 export default function MkpTab({ exams, loading }) {
-  if (loading) return <div className="empty-state">Lädt…</div>;
-  if (exams.length === 0) return <div className="empty-state">Noch keine Mutter-Kind-Pass-Untersuchungen erfasst.</div>;
+  const { t } = useLanguage();
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
+  if (exams.length === 0) return <div className="empty-state">{t('mkp.noExams')}</div>;
 
   return (
     <div>
@@ -33,11 +39,11 @@ export default function MkpTab({ exams, loading }) {
               fieldEntries.map(([k, v]) => (
                 <div className="info-row" key={k}>
                   <span className="info-label">{k}</span>
-                  <span className="info-value">{fmtValue(v)}</span>
+                  <span className="info-value">{fmtValue(v, t)}</span>
                 </div>
               ))
             ) : (
-              <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--p-muted)' }}>Keine Angaben erfasst.</div>
+              <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--p-muted)' }}>{t('mkp.examEmpty')}</div>
             )}
           </div>
         );
