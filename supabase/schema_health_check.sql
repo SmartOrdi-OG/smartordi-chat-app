@@ -388,7 +388,7 @@ select 'patient_pflegefreistellung column', c,
   case when exists (select 1 from information_schema.columns where table_schema='public' and table_name='patient_pflegefreistellung' and column_name=c)
        then 'OK' else 'MISSING' end
 from unnest(array[
-  'antragsteller_name','verwandtschaftsverhaeltnis','von','bis','ort','ausstellungsdatum','document_id'
+  'antragsteller_name','verwandtschaftsverhaeltnis','von','bis','ort','ausstellungsdatum','document_id','arzt_id'
 ]) as c
 
 union all
@@ -399,7 +399,7 @@ select 'patient_arbeitsunfaehigkeit column', c,
        then 'OK' else 'MISSING' end
 from unnest(array[
   'krankenstandsadresse','von','bis','ausgehzeit_von','ausgehzeit_bis','bettruhe','grund',
-  'versicherungstraeger','versicherungsnummer','ausstellungsdatum','document_id'
+  'versicherungstraeger','versicherungsnummer','ausstellungsdatum','document_id','arzt_id'
 ]) as c
 
 union all

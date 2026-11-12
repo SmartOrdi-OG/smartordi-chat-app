@@ -1,13 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   buildPflegefreistellungPdf, persistPflegefreistellung, openPdfAndPrint,
   resolveAttestArztInfo, fetchPracticeAdresse,
 } from './lib/attesteData';
+import { listArztStaff } from './lib/termineData';
 
 // Mirrors secretary.html's #pflegefreistellungModal -- opened from the chat
 // pane's "Aktionen" menu for whichever patient's chat is currently open.
 // Field IDs there match doctor.html's own Kartei tab; here they're just
-// plain component state instead.
+// plain component state instead. Phase 21 adds the Arzt-picker (only shown
+// once listArztStaff() comes back with more than one doctor) -- the
+// original always just picked "the first arzt found" with no way for the
+// secretary to choose, which resolveAttestArztInfo() still falls back to
+// here whenever there's only one doctor or the picker hasn't loaded yet.
 export default function PflegefreistellungModal({ patient, profile, onClose }) {
   const [antragsteller, setAntragsteller] = useState('');
   const [verwandtschaft, setVerwandtschaft] = useState('');
@@ -15,12 +20,21 @@ export default function PflegefreistellungModal({ patient, profile, onClose }) {
   const [bis, setBis] = useState('');
   const [ort, setOrt] = useState('');
   const [busy, setBusy] = useState(false);
+  const [arztList, setArztList] = useState([]);
+  const [arztId, setArztId] = useState(profile?.role === 'arzt' ? profile.id : '');
+
+  useEffect(() => {
+    listArztStaff().then((list) => {
+      setArztList(list);
+      setArztId((cur) => cur || (list[0] && list[0].id) || '');
+    });
+  }, []);
 
   async function buildAndPersist() {
-    const [arzt, practiceAdresse] = await Promise.all([resolveAttestArztInfo(profile), fetchPracticeAdresse()]);
+    const [arzt, practiceAdresse] = await Promise.all([resolveAttestArztInfo(profile, arztId), fetchPracticeAdresse()]);
     const fields = { antragstellerName: antragsteller, verwandtschaftsverhaeltnis: verwandtschaft, von, bis, ort };
     const doc = buildPflegefreistellungPdf(patient, fields, arzt, practiceAdresse);
-    try { await persistPflegefreistellung(patient.id, fields, profile?.fullName || null, null); }
+    try { await persistPflegefreistellung(patient.id, fields, profile?.fullName || null, null, arztId); }
     catch (err) { console.error('Failed to persist structured Pflegefreistellung record', err); }
     return doc;
   }
@@ -56,6 +70,14 @@ export default function PflegefreistellungModal({ patient, profile, onClose }) {
               {patient.fullName || patient.name}
             </div>
           </div>
+          {arztList.length > 1 && (
+            <div className="form-group">
+              <label className="form-label">Ausstellende Ärztin/Arzt</label>
+              <select className="form-input" value={arztId} onChange={(e) => setArztId(e.target.value)}>
+                {arztList.map((a) => <option key={a.id} value={a.id}>{a.full_name}{a.fach ? ' · ' + a.fach : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">Antragsteller/in (pflegende, berufstätige Person)</label>
             <input type="text" className="form-input" placeholder="Vor- und Nachname" value={antragsteller} onChange={(e) => setAntragsteller(e.target.value)} />

@@ -17,14 +17,21 @@ function fmtDate(iso) {
 }
 
 // Whose name/Fachrichtung/stamp/signature to print as the issuing doctor.
-// When the signed-in staff member IS a doctor, that's simply their own
-// staff_profiles row. A secretary has no such row of their own -- for them,
-// issuing staff is always "the practice's doctor" (falls back to the first
-// role==='arzt' account found; a practice with more than one doctor would
-// need the secretary to pick one explicitly, not yet supported -- same
-// limitation the original documents).
-export async function resolveAttestArztInfo(currentProfile) {
+// `arztId` (Phase 21): the doctor explicitly picked in the modal's
+// Arzt-picker, shown whenever listArztStaff() finds more than one --
+// takes priority when given. Without it: when the signed-in staff member
+// IS a doctor, that's simply their own staff_profiles row; a secretary
+// has no such row of their own, so for them (or when a practice turns out
+// to have only one `arzt` and the picker was never shown) this falls back
+// to the first role==='arzt' account found. That fallback alone, with no
+// way for the secretary to choose, was the original's own documented
+// limitation -- the picker above is what actually fixes it.
+export async function resolveAttestArztInfo(currentProfile, arztId) {
   const cols = 'id,full_name,fach,stempel_data_url,sig_data_url';
+  if (arztId) {
+    const { data } = await sb.from('staff_profiles').select(cols).eq('id', arztId).maybeSingle();
+    if (data) return rowToArzt(data);
+  }
   if (currentProfile && currentProfile.role === 'arzt') {
     const { data } = await sb.from('staff_profiles').select(cols).eq('id', currentProfile.id).maybeSingle();
     if (data) return rowToArzt(data);
@@ -106,7 +113,7 @@ export function buildPflegefreistellungPdf(patient, fields, arzt, practiceAdress
   return doc;
 }
 
-export async function persistPflegefreistellung(patientId, fields, createdBy, documentId) {
+export async function persistPflegefreistellung(patientId, fields, createdBy, documentId, arztId) {
   const row = {
     patient_id: patientId,
     antragsteller_name: fields.antragstellerName || '',
@@ -116,6 +123,7 @@ export async function persistPflegefreistellung(patientId, fields, createdBy, do
     ort: fields.ort || null,
     document_id: documentId || null,
     created_by: createdBy || null,
+    arzt_id: arztId || null,
   };
   const { error } = await sb.from('patient_pflegefreistellung').insert(row);
   if (error) { console.error('persistPflegefreistellung failed', error); throw error; }
@@ -189,7 +197,7 @@ export function buildArbeitsunfaehigkeitPdf(patient, fields, arzt) {
   return doc;
 }
 
-export async function persistArbeitsunfaehigkeit(patientId, fields, createdBy, documentId) {
+export async function persistArbeitsunfaehigkeit(patientId, fields, createdBy, documentId, arztId) {
   const row = {
     patient_id: patientId,
     krankenstandsadresse: fields.krankenstandsadresse || null,
@@ -203,6 +211,7 @@ export async function persistArbeitsunfaehigkeit(patientId, fields, createdBy, d
     versicherungsnummer: fields.versicherungsnummer || null,
     document_id: documentId || null,
     created_by: createdBy || null,
+    arzt_id: arztId || null,
   };
   const { error } = await sb.from('patient_arbeitsunfaehigkeit').insert(row);
   if (error) { console.error('persistArbeitsunfaehigkeit failed', error); throw error; }

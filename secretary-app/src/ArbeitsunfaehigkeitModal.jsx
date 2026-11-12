@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   buildArbeitsunfaehigkeitPdf, persistArbeitsunfaehigkeit, openPdfAndPrint, resolveAttestArztInfo,
 } from './lib/attesteData';
+import { listArztStaff } from './lib/termineData';
 
-// Mirrors secretary.html's #arbeitsunfaehigkeitModal.
+// Mirrors secretary.html's #arbeitsunfaehigkeitModal. Phase 21 adds the
+// same Arzt-picker as PflegefreistellungModal.jsx -- see that file's own
+// header comment for why.
 export default function ArbeitsunfaehigkeitModal({ patient, profile, onClose }) {
   const [von, setVon] = useState('');
   const [bis, setBis] = useState('');
@@ -15,16 +18,25 @@ export default function ArbeitsunfaehigkeitModal({ patient, profile, onClose }) 
   const [versTraeger, setVersTraeger] = useState(patient.versicherung || '');
   const [versNummer, setVersNummer] = useState(patient.svnr || '');
   const [busy, setBusy] = useState(false);
+  const [arztList, setArztList] = useState([]);
+  const [arztId, setArztId] = useState(profile?.role === 'arzt' ? profile.id : '');
+
+  useEffect(() => {
+    listArztStaff().then((list) => {
+      setArztList(list);
+      setArztId((cur) => cur || (list[0] && list[0].id) || '');
+    });
+  }, []);
 
   async function buildAndPersist() {
-    const arzt = await resolveAttestArztInfo(profile);
+    const arzt = await resolveAttestArztInfo(profile, arztId);
     const fields = {
       von, bis, grund, krankenstandsadresse: adresse, bettruhe,
       ausgehzeitVon: ausgehVon, ausgehzeitBis: ausgehBis,
       versicherungstraeger: versTraeger, versicherungsnummer: versNummer,
     };
     const doc = buildArbeitsunfaehigkeitPdf(patient, fields, arzt);
-    try { await persistArbeitsunfaehigkeit(patient.id, fields, profile?.fullName || null, null); }
+    try { await persistArbeitsunfaehigkeit(patient.id, fields, profile?.fullName || null, null, arztId); }
     catch (err) { console.error('Failed to persist structured Arbeitsunfähigkeit record', err); }
     return doc;
   }
@@ -60,6 +72,14 @@ export default function ArbeitsunfaehigkeitModal({ patient, profile, onClose }) 
               {patient.fullName || patient.name}
             </div>
           </div>
+          {arztList.length > 1 && (
+            <div className="form-group">
+              <label className="form-label">Ausstellende Ärztin/Arzt</label>
+              <select className="form-input" value={arztId} onChange={(e) => setArztId(e.target.value)}>
+                {arztList.map((a) => <option key={a.id} value={a.id}>{a.full_name}{a.fach ? ' · ' + a.fach : ''}</option>)}
+              </select>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div className="form-group">
               <label className="form-label">Arbeitsunfähig von</label>
