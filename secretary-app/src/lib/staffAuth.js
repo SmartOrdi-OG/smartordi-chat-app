@@ -64,6 +64,18 @@ export async function fetchPracticeAdminFach() {
   return (data && data.fach) || 'Allgemeinmedizin';
 }
 
+// Mirrors secretary.html's practiceAdminName() -- used on the
+// Termininformationen print slip's "Ordination ..." footer line, same as
+// the original (the practice's own `name` field isn't used there).
+export async function fetchPracticeAdminName() {
+  const { data, error } = await sb.from('staff_profiles').select('full_name').eq('role', 'arzt').eq('is_admin', true).limit(1).maybeSingle();
+  if (error) {
+    console.error('fetchPracticeAdminName failed', error);
+    return '—';
+  }
+  return (data && data.full_name) || '—';
+}
+
 // On load, Supabase Auth itself persists the session (localStorage) --
 // this just re-resolves the real staff_profiles row for whatever session
 // comes back, mirroring login.html's own post-sign-in lookup.
