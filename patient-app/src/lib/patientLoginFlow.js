@@ -1,5 +1,6 @@
 import { patientLogin } from './patientAuth';
 import { checkJoinRequestStatus } from './patientRegister';
+import { tr } from './i18n';
 
 // Mirrors patient-login.html's doLogin() branching -- centralized here so
 // both a manually-typed login (LoginScreen) and a QR-provisioned
@@ -34,10 +35,10 @@ export async function resolveLogin(username, password, { qrNeedsNewUsername = fa
   } catch (err) {
     const msg = (err && err.message) || '';
     if (msg.indexOf('account_locked') !== -1) {
-      return { kind: 'error', message: 'Konto vorübergehend gesperrt. Bitte später erneut versuchen.' };
+      return { kind: 'error', message: tr('login.error.accountLocked') };
     }
     if (msg.indexOf('temp_password_expired') !== -1) {
-      return { kind: 'error', message: 'Temporäres Passwort abgelaufen. Bitte kontaktieren Sie Ihre Ordination.' };
+      return { kind: 'error', message: tr('login.error.tempPasswordExpired') };
     }
     throw err;
   }

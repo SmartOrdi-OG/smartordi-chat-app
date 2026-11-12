@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from './LanguageContext';
+import { renderSystemMessage, localizedDate, monthsShort, dayLabels } from './lib/i18n';
 import { patientLogout } from './lib/patientAuth';
 import {
   patientGetArztRoster, patientGetBookingEnabled, patientGetDocuments,
@@ -15,11 +17,31 @@ import Calendar from './Calendar';
 import SymptomPickerModal from './SymptomPickerModal';
 import { artNeedsSymptomPicker } from './lib/symptomRegions';
 
+// Renders a chat message in the patient's CURRENTLY selected language --
+// mirrors patient.html's msgRowHtml(): a FIXED/system message (Termin
+// confirmed/moved/cancelled, Vertretung/address-change, doctor transfer)
+// carries msgKey/msgParams (supabase/phase83_patient_message_translations.sql,
+// written by secretary-app since Phase 22), re-rendered here at display
+// time; every other message (the patient's own, or staff free-text) has no
+// msgKey and just shows its stored `text` as-is, same as before.
+function renderMessageText(m) {
+  if (!m.msgKey) return m.text;
+  try { return renderSystemMessage(m.msgKey, m.msgParams || {}); }
+  catch { return m.text; }
+}
+
+// Mirrors the day-label table dayLabels() itself already provides for the
+// calendar grid (Monday-start) -- used here instead of
+// toLocaleDateString(..., {weekday:'short'}), which only ever renders the
+// GERMAN weekday abbreviation (a fixed 'de-AT' locale) regardless of which
+// language the patient has chosen.
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-AT', {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-  });
+  const d = new Date(dateStr + 'T00:00:00');
+  const dow = dayLabels()[(d.getDay() + 6) % 7];
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dow}., ${dd}.${mm}.${d.getFullYear()}`;
 }
 
 const ICONS = {
@@ -41,44 +63,43 @@ function NavIcon({ name, size = 18 }) {
 }
 
 function HomeTab({ profile, termine, messages }) {
+  const { t, tp } = useLanguage();
   const nextTermin = termine.find((t) => t.status !== 'cancelled' && new Date(t.date) >= new Date(new Date().toDateString()));
   const unread = messages.filter((m) => m.dir === 'in').length;
   return (
     <div className="view-content">
-      <div className="home-greeting-name">Hallo, {profile.name || profile.fullName}!</div>
-      <div className="home-greeting-sub">Ihr Bereich bei {profile.fach ? `Dr. ${profile.fach}` : 'Ihrer Ordination'}.</div>
+      <div className="home-greeting-name">{tp('home.greeting', { name: profile.name || profile.fullName })}</div>
+      <div className="home-greeting-sub">{tp('home.areaAt', { doctor: profile.fach ? `Dr. ${profile.fach}` : t('home.yourPractice') })}</div>
 
       <div className="home-card">
-        <div className="home-card-label">Nächster Termin</div>
+        <div className="home-card-label">{t('home.nextTermin')}</div>
         {nextTermin ? (
           <>
             <div className="home-card-main">{fmtDate(nextTermin.date)} · {nextTermin.time}</div>
-            <div className="home-card-sub">{nextTermin.art || 'Ordination'}</div>
+            <div className="home-card-sub">{nextTermin.art || t('termine.art.ordination')}</div>
           </>
         ) : (
-          <div className="home-card-sub">Kein bevorstehender Termin</div>
+          <div className="home-card-sub">{t('termine.noUpcoming')}</div>
         )}
       </div>
 
       <div className="home-card">
-        <div className="home-card-label">Nachrichten</div>
-        <div className="home-card-main">{unread > 0 ? `${unread} neu` : 'Keine neuen Nachrichten'}</div>
+        <div className="home-card-label">{t('home.messages')}</div>
+        <div className="home-card-main">{unread > 0 ? tp('home.newMessagesCount', { count: unread }) : t('home.noNewMessages')}</div>
       </div>
     </div>
   );
 }
 
+const TERMIN_STATUS_KEY = { bestaetigt: 'confirmed', abgesagt: 'cancelled', neu: 'pending' };
+
 function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, profile, onBooked }) {
+  const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState(null);
   const [symptomTerminId, setSymptomTerminId] = useState(null);
   const todayKey = new Date().toDateString();
   const upcoming = termine.filter((t) => t.status !== 'cancelled' && new Date(t.date) >= new Date(todayKey));
   const past = termine.filter((t) => t.status === 'cancelled' || new Date(t.date) < new Date(todayKey));
-
-  function fmtSelectedDate(ds) {
-    const d = new Date(ds + 'T00:00:00');
-    return `${d.getDate()}. ${d.toLocaleDateString('de-AT', { month: 'long' })} ${d.getFullYear()}`;
-  }
 
   async function handleBooked(termin) {
     setSelectedDate(null);
@@ -86,19 +107,20 @@ function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, pro
     if (artNeedsSymptomPicker(termin.art)) setSymptomTerminId(termin.id);
   }
 
-  function TerminCard({ t }) {
-    const d = new Date(t.date + 'T00:00:00');
+  function TerminCard({ t: termin }) {
+    const d = new Date(termin.date + 'T00:00:00');
+    const statusKey = TERMIN_STATUS_KEY[termin.status];
     return (
-      <div className="termin-card" key={t.id}>
+      <div className="termin-card" key={termin.id}>
         <div className="termin-date-box">
           <div className="termin-day">{d.getDate()}</div>
-          <div className="termin-month">{d.toLocaleDateString('de-AT', { month: 'short' })}</div>
+          <div className="termin-month">{monthsShort()[d.getMonth()]}</div>
         </div>
         <div className="termin-info">
-          <div className="termin-title">{t.art || 'Ordination'}</div>
-          <div className="termin-sub">{t.time}{t.endTime ? ` – ${t.endTime}` : ''}</div>
+          <div className="termin-title">{termin.art || t('termine.art.ordination')}</div>
+          <div className="termin-sub">{termin.time}{termin.endTime ? ` – ${termin.endTime}` : ''}</div>
         </div>
-        <span className={`termin-status status-${t.status}`}>{t.status}</span>
+        <span className={`termin-status status-${termin.status}`}>{statusKey ? t('termine.status.' + statusKey) : termin.status}</span>
       </div>
     );
   }
@@ -112,33 +134,33 @@ function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, pro
 
       {bookingEnabled ? (
         <div className="booking-card">
-          <div className="booking-card-title">Termin buchen</div>
+          <div className="booking-card-title">{t('termine.bookTitle')}</div>
           <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12 }}>
-            {selectedDate ? fmtSelectedDate(selectedDate) : 'Wählen Sie einen Tag im Kalender'}
+            {selectedDate ? localizedDate(selectedDate) : t('termine.chooseDay')}
           </div>
           <BookingForm arzte={arzte} workingHours={workingHours} selectedDate={selectedDate} onBooked={handleBooked} />
         </div>
       ) : (
         <div className="booking-card">
-          <div className="booking-card-title">Termin buchen</div>
-          <div style={{ fontSize: 12.5, opacity: 0.85 }}>Online-Terminbuchung derzeit nicht verfügbar. Bitte kontaktieren Sie Ihre Ordination telefonisch.</div>
+          <div className="booking-card-title">{t('termine.bookTitle')}</div>
+          <div style={{ fontSize: 12.5, opacity: 0.85 }}>{t('termine.bookingDisabled')}. {t('termine.bookingDisabledSub')}</div>
         </div>
       )}
 
-      <div className="section-title">Kommende Termine</div>
+      <div className="section-title">{t('termine.upcoming')}</div>
       {loading ? (
-        <div className="empty-state">Lädt…</div>
+        <div className="empty-state">{t('common.loading')}</div>
       ) : upcoming.length === 0 ? (
-        <div className="empty-state">Keine kommenden Termine.</div>
+        <div className="empty-state">{t('termine.noUpcoming')}</div>
       ) : (
-        upcoming.map((t) => <TerminCard t={t} key={t.id} />)
+        upcoming.map((termin) => <TerminCard t={termin} key={termin.id} />)
       )}
 
-      <div className="section-title" style={{ marginTop: 16 }}>Vergangene Besuche</div>
+      <div className="section-title" style={{ marginTop: 16 }}>{t('termine.past')}</div>
       {!loading && past.length === 0 ? (
-        <div className="empty-state">Keine vergangenen Besuche.</div>
+        <div className="empty-state">{t('termine.noPast')}</div>
       ) : (
-        past.map((t) => <TerminCard t={t} key={t.id} />)
+        past.map((termin) => <TerminCard t={termin} key={termin.id} />)
       )}
 
       {symptomTerminId && (
@@ -155,6 +177,7 @@ function TermineTab({ termine, loading, arzte, workingHours, bookingEnabled, pro
 }
 
 function ChatTab({ messages, loading, onSent, doctor }) {
+  const { t } = useLanguage();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -184,12 +207,12 @@ function ChatTab({ messages, loading, onSent, doctor }) {
       </div>
 
       <div className="messages">
-        {loading && <div className="empty-state">Lädt…</div>}
-        {!loading && messages.length === 0 && <div className="empty-state">Noch keine Nachrichten.</div>}
+        {loading && <div className="empty-state">{t('common.loading')}</div>}
+        {!loading && messages.length === 0 && <div className="empty-state">{t('chat.empty.title')}</div>}
         {messages.map((m, i) => (
           <div key={i} className={`msg-row ${m.dir === 'out' ? 'out' : ''}`}>
             <div className="msg-bubble">
-              <div>{m.text}</div>
+              <div>{renderMessageText(m)}</div>
               <div className="msg-time">{m.time}</div>
             </div>
           </div>
@@ -199,7 +222,7 @@ function ChatTab({ messages, loading, onSent, doctor }) {
         <div className="chat-input-wrap">
           <input
             className="chat-input"
-            placeholder="Nachricht schreiben…"
+            placeholder={t('chat.placeholder')}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -213,6 +236,7 @@ function ChatTab({ messages, loading, onSent, doctor }) {
 }
 
 function ProfilesSection({ profiles, loading, onSwitch, onAdd }) {
+  const { t } = useLanguage();
   const [switching, setSwitching] = useState(null);
   const [adding, setAdding] = useState(null); // null | 'child' | 'adult'
   const activeProfile = profiles.find((p) => p.isActive);
@@ -239,10 +263,10 @@ function ProfilesSection({ profiles, loading, onSwitch, onAdd }) {
 
   return (
     <div className="info-card">
-      <div className="info-card-header">Meine Profile</div>
+      <div className="info-card-header">{t('profiles.title')}</div>
       <div style={{ padding: 12 }}>
         {loading ? (
-          <div className="empty-state">Lädt…</div>
+          <div className="empty-state">{t('common.loading')}</div>
         ) : (
           profiles.map((p) => (
             <button
@@ -251,14 +275,14 @@ function ProfilesSection({ profiles, loading, onSwitch, onAdd }) {
               onClick={() => !p.isActive && handleSwitch(p.patientId)}
               disabled={switching === p.patientId}
             >
-              <div className="profile-row-main">{p.fullName}{p.isActive ? ' (aktiv)' : ''}</div>
+              <div className="profile-row-main">{p.fullName}{p.isActive ? ` (${t('profiles.active')})` : ''}</div>
               <div className="profile-row-sub">{p.relationLabel || p.relation}</div>
             </button>
           ))
         )}
         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('child')}>+ Kind</button>
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('adult')}>+ Erwachsene:r</button>
+          <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('child')}>{t('profiles.addChild')}</button>
+          <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setAdding('adult')}>{t('profiles.addAdult')}</button>
         </div>
       </div>
     </div>
@@ -266,6 +290,7 @@ function ProfilesSection({ profiles, loading, onSwitch, onAdd }) {
 }
 
 function ProfilTab({ profile, profiles, profilesLoading, onProfileSwitch, onProfilesReload, onLoggedOut }) {
+  const { t, lang, setLanguage, languages } = useLanguage();
   const [changingPw, setChangingPw] = useState(false);
 
   if (changingPw) {
@@ -293,11 +318,20 @@ function ProfilTab({ profile, profiles, profilesLoading, onProfileSwitch, onProf
       </div>
 
       <div className="info-card">
-        <div className="info-card-header">Persönliche Daten</div>
-        <div className="info-row"><span className="info-label">Versicherung</span><span className="info-value">{profile.versicherung || '—'}</span></div>
-        <div className="info-row"><span className="info-label">Geburtsdatum</span><span className="info-value">{profile.dob || '—'}</span></div>
-        <div className="info-row"><span className="info-label">Adresse</span><span className="info-value">{profile.adresse || '—'}</span></div>
-        <div className="info-row"><span className="info-label">Telefon</span><span className="info-value">{profile.tel || '—'}</span></div>
+        <div className="info-card-header">{t('profil.persoenlich')}</div>
+        <div className="info-row"><span className="info-label">{t('profil.versicherung')}</span><span className="info-value">{profile.versicherung || '—'}</span></div>
+        <div className="info-row"><span className="info-label">{t('profil.dob')}</span><span className="info-value">{profile.dob || '—'}</span></div>
+        <div className="info-row"><span className="info-label">{t('profil.adresse')}</span><span className="info-value">{profile.adresse || '—'}</span></div>
+        <div className="info-row"><span className="info-label">{t('profil.tel')}</span><span className="info-value">{profile.tel || '—'}</span></div>
+        <div className="info-row">
+          <span className="info-label">{t('profil.language')}</span>
+          <select
+            className="info-value" value={lang} onChange={(e) => setLanguage(e.target.value)}
+            style={{ fontFamily: 'inherit', fontSize: 11, fontWeight: 600, border: '1px solid #e2e8f0', borderRadius: 7, padding: '4px 6px', background: 'white', color: '#334155', cursor: 'pointer', width: 'auto', flexShrink: 0 }}
+          >
+            {languages.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+          </select>
+        </div>
       </div>
 
       <ProfilesSection
@@ -305,28 +339,34 @@ function ProfilTab({ profile, profiles, profilesLoading, onProfileSwitch, onProf
         onSwitch={onProfileSwitch} onAdd={onProfilesReload}
       />
 
-      <button className="logout-btn secondary" onClick={() => setChangingPw(true)}>Passwort ändern</button>
-      <button className="logout-btn" onClick={onLoggedOut}>Abmelden</button>
+      <button className="logout-btn secondary" onClick={() => setChangingPw(true)}>{t('changepw2.button')}</button>
+      <button className="logout-btn" onClick={onLoggedOut}>{t('topbar.logout')}</button>
     </div>
   );
 }
 
-function baseTabs(isChild) {
+// MKP's own nav-tab label stays the literal "MKP" abbreviation in every
+// language -- mirrors mkp.title ('Mutter-Kind-Pass'), which vendor/
+// i18n-patient.js itself deliberately leaves untranslated in all 5
+// languages too (it's a specific Austrian government program name, not a
+// generic phrase).
+function baseTabs(isChild, t) {
   const tabs = [
-    { id: 'home', label: 'Start', icon: 'home' },
-    { id: 'chat', label: 'Chat', icon: 'chat' },
-    { id: 'termine', label: 'Termine', icon: 'termine' },
-    { id: 'dokumente', label: 'Befunde', icon: 'dokumente' },
-    { id: 'impfpass', label: 'Impfpass', icon: 'impfpass' },
+    { id: 'home', label: t('nav.home'), icon: 'home' },
+    { id: 'chat', label: t('nav.chat'), icon: 'chat' },
+    { id: 'termine', label: t('nav.termine'), icon: 'termine' },
+    { id: 'dokumente', label: t('nav.befunde'), icon: 'dokumente' },
+    { id: 'impfpass', label: t('nav.impfpassShort'), icon: 'impfpass' },
   ];
   // Mutter-Kind-Pass is pediatric-only, same as patient.html's own
   // updateMkpTileVisibility() -- there's nothing to show for an adult.
   if (isChild) tabs.push({ id: 'mkp', label: 'MKP', icon: 'mkp' });
-  tabs.push({ id: 'profil', label: 'Profil', icon: 'profil' });
+  tabs.push({ id: 'profil', label: t('nav.profil'), icon: 'profil' });
   return tabs;
 }
 
 export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched }) {
+  const { t } = useLanguage();
   const [tab, setTab] = useState('home');
   const [termine, setTermine] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -339,7 +379,7 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
   const [profiles, setProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
-  const TABS = baseTabs(profile.isChild);
+  const TABS = baseTabs(profile.isChild, t);
 
   async function reload() {
     const [t, m, d, i, mk] = await Promise.all([
@@ -391,7 +431,7 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         </div>
         <div className="topbar-user">
           <div className="topbar-username">{profile.name || profile.fullName}</div>
-          <button className="topbar-logout" onClick={handleLogout}>Abmelden</button>
+          <button className="topbar-logout" onClick={handleLogout}>{t('topbar.logout')}</button>
         </div>
       </div>
 
@@ -400,8 +440,8 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         {tab === 'termine' && (
           <>
             <div className="view-header">
-              <div className="view-title">Meine Termine</div>
-              <div className="view-sub">{profile.fach ? `Dr. ${profile.fach}` : 'Ihre Ordination'}</div>
+              <div className="view-title">{t('termine.title')}</div>
+              <div className="view-sub">{profile.fach ? `Dr. ${profile.fach}` : t('home.yourPractice')}</div>
             </div>
             <TermineTab
               termine={termine} loading={loading} arzte={arzte}
@@ -414,8 +454,8 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         {tab === 'dokumente' && (
           <>
             <div className="view-header">
-              <div className="view-title">Meine Dokumente</div>
-              <div className="view-sub">Befunde · Überweisungen · Rezepte</div>
+              <div className="view-title">{t('dokumente.title')}</div>
+              <div className="view-sub">{t('dokumente.sub')}</div>
             </div>
             <div className="view-content"><DokumenteTab documents={documents} loading={loading} /></div>
           </>
@@ -423,8 +463,8 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         {tab === 'impfpass' && (
           <>
             <div className="view-header">
-              <div className="view-title">Impfungen</div>
-              <div className="view-sub">Impfpass</div>
+              <div className="view-title">{t('impfungen.title')}</div>
+              <div className="view-sub">{t('impfungen.sub')}</div>
             </div>
             <div className="view-content"><ImpfpassTab impfungen={impfungen} loading={loading} /></div>
           </>
@@ -432,8 +472,8 @@ export default function PatientPortal({ profile, onLoggedOut, onProfileSwitched 
         {tab === 'mkp' && (
           <>
             <div className="view-header">
-              <div className="view-title">Mutter-Kind-Pass</div>
-              <div className="view-sub">Nur zur Ansicht – ausgefüllt von Ihrer Kinderärztin/Ihrem Kinderarzt</div>
+              <div className="view-title">{t('mkp.title')}</div>
+              <div className="view-sub">{t('mkp.sub')}</div>
             </div>
             <div className="view-content"><MkpTab exams={mkpExams} loading={loading} /></div>
           </>

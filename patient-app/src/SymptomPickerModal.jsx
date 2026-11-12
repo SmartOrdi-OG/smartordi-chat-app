@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLanguage } from './LanguageContext';
+import { trRegionLabel, trSymptom } from './lib/i18n';
 import { BODY_FIGURES } from './lib/bodyFigures';
 import { patientSetSymptoms } from './lib/patientData';
 import { SYMPTOM_REGIONS, geschlechtToBodyVariant } from './lib/symptomRegions';
@@ -8,6 +10,7 @@ import { SYMPTOM_REGIONS, geschlechtToBodyVariant } from './lib/symptomRegions';
 // right after booking a symptom-relevant appointment (see TermineTab's
 // artNeedsSymptomPicker()).
 export default function SymptomPickerModal({ terminId, isChild, geschlecht, onClose, onSaved }) {
+  const { t } = useLanguage();
   const [variant, setVariant] = useState(() => geschlechtToBodyVariant(geschlecht) || 'male');
   const [showingBack, setShowingBack] = useState(false);
   const [activeRegions, setActiveRegions] = useState(() => new Set());
@@ -67,26 +70,26 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
     <div className="modal-overlay show">
       <div className="modal">
         <div className="modal-header">
-          <div className="modal-title">Grund für den Besuch</div>
+          <div className="modal-title">{t('symptom.title')}</div>
           <button type="button" className="modal-close" onClick={onClose}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
         <div className="modal-body">
           <div style={{ fontSize: 12, color: 'var(--p-muted)', marginBottom: 12 }}>
-            Tippen Sie auf die betroffene Körperregion — Sie können mehrere auswählen.
+            {t('symptom.hint')}
           </div>
 
           {!isChild && (
             <div className="body-gender-toggle">
-              <button type="button" className={`region-chip${variant === 'male' ? ' active' : ''}`} onClick={() => setVariant('male')}>Mann</button>
-              <button type="button" className={`region-chip${variant === 'female' ? ' active' : ''}`} onClick={() => setVariant('female')}>Frau</button>
+              <button type="button" className={`region-chip${variant === 'male' ? ' active' : ''}`} onClick={() => setVariant('male')}>{t('symptom.figureMale')}</button>
+              <button type="button" className={`region-chip${variant === 'female' ? ' active' : ''}`} onClick={() => setVariant('female')}>{t('symptom.figureFemale')}</button>
             </div>
           )}
 
           <div style={{ textAlign: 'center', marginBottom: 8 }}>
             <button type="button" className="region-chip" style={{ fontWeight: 700 }} onClick={() => setShowingBack((b) => !b)}>
-              {showingBack ? 'Vorderansicht anzeigen' : 'Rückansicht anzeigen'}
+              {showingBack ? t('symptom.toggleFront') : t('symptom.toggleBack')}
             </button>
           </div>
 
@@ -109,7 +112,7 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
               className={`region-chip${activeRegions.has('haut') ? ' active' : ''}`}
               onClick={() => toggleRegion('haut')}
             >
-              Haut (allgemein)
+              {trRegionLabel('haut')}
             </button>
           </div>
 
@@ -119,7 +122,7 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
               if (!info) return null;
               return (
                 <div style={{ marginBottom: 12 }} key={r}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', marginBottom: 6 }}>{info.label}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e40af', marginBottom: 6 }}>{trRegionLabel(r)}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {info.symptoms.map((s) => {
                       const key = r + ':' + s;
@@ -130,7 +133,7 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
                           className={`symptom-chip${selectedSymptoms.has(key) ? ' active' : ''}`}
                           onClick={() => toggleSymptom(key)}
                         >
-                          {s}
+                          {trSymptom(s)}
                         </button>
                       );
                     })}
@@ -142,11 +145,12 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
 
           <div style={{ marginTop: 14 }}>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 11, fontWeight: 700, color: 'var(--p-muted)' }}>
-              Zusätzliche Erklärung (optional)
+              {t('symptom.note.label')}
             </label>
+            <div style={{ fontSize: 10.5, color: 'var(--p-muted)', marginBottom: 6 }}>{t('symptom.note.hint')}</div>
             <textarea
               rows={3}
-              placeholder="Beschreiben Sie kurz Ihre Beschwerden…"
+              placeholder={t('symptom.note.placeholder')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               style={{ width: '100%', padding: 10, border: '1.5px solid var(--p-border)', borderRadius: 10, fontFamily: 'inherit', fontSize: 16, outline: 'none', resize: 'vertical' }}
@@ -155,7 +159,7 @@ export default function SymptomPickerModal({ terminId, isChild, geschlecht, onCl
         </div>
         <div className="modal-footer">
           <button type="button" className="btn-confirm" disabled={saving} onClick={handleSubmit}>
-            {saving ? 'Wird gespeichert…' : 'Absenden'}
+            {saving ? t('symptom.saving') : t('symptom.submit')}
           </button>
         </div>
       </div>

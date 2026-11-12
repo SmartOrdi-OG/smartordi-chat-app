@@ -8,6 +8,7 @@ import FirstLoginScreen from './FirstLoginScreen';
 import AnamneseScreen from './AnamneseScreen';
 import RequestStatusScreen from './RequestStatusScreen';
 import PatientPortal from './PatientPortal';
+import { tr } from './lib/i18n';
 
 // Short deep link into registration, same /patient-register/<practiceId>
 // convention secretary.html's own QR code already uses for the vanilla app
@@ -60,7 +61,7 @@ export default function App() {
           const result = await resolveLogin(initial.qrUsername, initial.qrPassword, { qrNeedsNewUsername: initial.qrNeedsNewUsername });
           handleResolve(result, { username: initial.qrUsername, password: initial.qrPassword });
         } catch {
-          setLoginFallback({ username: initial.qrUsername, password: initial.qrPassword, error: 'Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.' });
+          setLoginFallback({ username: initial.qrUsername, password: initial.qrPassword, error: tr('login.error.qrFailed') });
           setView('login');
         }
       }
@@ -92,7 +93,7 @@ export default function App() {
       // invalid/error -- only reached via the QR auto-login path (a manual
       // LoginScreen submit handles these itself); fall back to the plain
       // login form, prefilled, so the patient at least sees what happened.
-      setLoginFallback({ ...fallbackCreds, error: result.message || 'Falscher Benutzername oder Passwort.' });
+      setLoginFallback({ ...fallbackCreds, error: result.message || tr('login.error.wrongCreds') });
       setView('login');
     }
   }

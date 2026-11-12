@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { patientGetDocumentFile } from './lib/patientData';
 
 function fmtDate(iso) {
@@ -6,6 +7,7 @@ function fmtDate(iso) {
 }
 
 export default function DokumenteTab({ documents, loading }) {
+  const { t } = useLanguage();
   const [openingId, setOpeningId] = useState(null);
 
   async function handleOpen(doc) {
@@ -25,15 +27,15 @@ export default function DokumenteTab({ documents, loading }) {
     }
   }
 
-  if (loading) return <div className="empty-state">Lädt…</div>;
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
   if (documents.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-icon">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
-        <div className="empty-text">Noch keine Dokumente</div>
-        <div className="empty-sub">Befunde, Überweisungen und Rezepte Ihrer Ordination erscheinen hier, sobald sie verfügbar sind.</div>
+        <div className="empty-text">{t('dokumente.empty.title')}</div>
+        <div className="empty-sub">{t('dokumente.empty.sub')}</div>
       </div>
     );
   }
@@ -47,8 +49,8 @@ export default function DokumenteTab({ documents, loading }) {
           </span>
           <span className="doc-info">
             <span className="doc-title" style={{ display: 'block' }}>{d.title || d.filename}</span>
-            <span className="doc-meta" style={{ display: 'block' }}>{d.category || 'Dokument'} · {fmtDate(d.createdAt)}</span>
-            {openingId === d.id && <span className="doc-loading">Öffnet…</span>}
+            <span className="doc-meta" style={{ display: 'block' }}>{d.category || t('dokumente.genericType')} · {fmtDate(d.createdAt)}</span>
+            {openingId === d.id && <span className="doc-loading">{t('dokumente.opening')}</span>}
           </span>
         </button>
       ))}

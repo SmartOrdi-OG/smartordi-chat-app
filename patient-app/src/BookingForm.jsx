@@ -1,16 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from './LanguageContext';
 import { patientBookTermin } from './lib/patientData';
 import { DEFAULT_WORKING_HOURS, addMinutesToTime, buildTimeSlotsFromBlocks, workingHoursFor } from './lib/workingHours';
 
+// The VALUE stored on the Termin (and read back everywhere else -- secretary-
+// app, doctor.html's Kartei) is always this canonical German string, same
+// as every other field this app keeps in German internally; only the
+// OPTION LABEL shown to the patient is translated (termine.art.* keys).
 const ART_OPTIONS = [
-  'Ordination', 'Kontrolle', 'Erstgespräch', 'Impfung', 'Blutabnahme',
-  'Arbeitsunfähigkeitsmeldung', 'Pflegefreistellung', 'Sonstige',
+  { value: 'Ordination', key: 'termine.art.ordination' },
+  { value: 'Kontrolle', key: 'termine.art.kontrolle' },
+  { value: 'Erstgespräch', key: 'termine.art.erstgespraech' },
+  { value: 'Impfung', key: 'termine.art.impfung' },
+  { value: 'Blutabnahme', key: 'termine.art.blutabnahme' },
+  { value: 'Arbeitsunfähigkeitsmeldung', key: 'termine.art.krankmeldung' },
+  { value: 'Pflegefreistellung', key: 'termine.art.pflegefreistellung' },
+  { value: 'Sonstige', key: 'termine.art.sonstige' },
 ];
 
 // Date picking itself moved to Calendar.jsx (selectedDate is lifted into
 // TermineTab) -- this just turns a selected day into a real booking, same
 // as before.
 export default function BookingForm({ arzte, workingHours, selectedDate, onBooked }) {
+  const { t } = useLanguage();
   const [arztUsername, setArztUsername] = useState(arzte[0]?.username || '');
   const [art, setArt] = useState('');
   const [slot, setSlot] = useState(null);
@@ -35,14 +47,14 @@ export default function BookingForm({ arzte, workingHours, selectedDate, onBooke
       onBooked(termin);
     } catch (err) {
       const msg = (err && err.message) || '';
-      const key = msg.indexOf('slot_taken') !== -1
-        ? 'Dieser Termin ist leider schon vergeben. Bitte wählen Sie einen anderen.'
+      const errKey = msg.indexOf('slot_taken') !== -1
+        ? 'termine.toast.slotTaken'
         : msg.indexOf('patient_already_booked') !== -1
-        ? 'Sie haben zu dieser Zeit bereits einen Termin.'
+        ? 'termine.toast.patientAlreadyBooked'
         : msg.indexOf('booking_disabled') !== -1
-        ? 'Die Online-Terminbuchung ist derzeit nicht verfügbar.'
-        : 'Buchung fehlgeschlagen. Bitte versuchen Sie es erneut.';
-      setStatus({ error: key });
+        ? 'termine.bookingDisabled'
+        : 'termine.bookingFailed';
+      setStatus({ error: errKey });
     }
   }
 
@@ -57,8 +69,8 @@ export default function BookingForm({ arzte, workingHours, selectedDate, onBooke
       )}
 
       <select value={art} onChange={(e) => setArt(e.target.value)}>
-        <option value="">Grund des Besuchs wählen…</option>
-        {ART_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+        <option value="">{t('termine.art.choose')}</option>
+        {ART_OPTIONS.map((a) => <option key={a.value} value={a.value}>{t(a.key)}</option>)}
       </select>
 
       {selectedDate && (
@@ -76,11 +88,11 @@ export default function BookingForm({ arzte, workingHours, selectedDate, onBooke
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 12.5, opacity: 0.85, textAlign: 'center', padding: '8px 0' }}>Praxis an diesem Tag geschlossen.</div>
+          <div style={{ fontSize: 12.5, opacity: 0.85, textAlign: 'center', padding: '8px 0' }}>{t('termine.closedDay')}</div>
         )
       )}
 
-      {status && status.error && <div className="error-msg" style={{ marginTop: 10, marginBottom: 0 }}><span>!</span><span>{status.error}</span></div>}
+      {status && status.error && <div className="error-msg" style={{ marginTop: 10, marginBottom: 0 }}><span>!</span><span>{t(status.error)}</span></div>}
 
       <button
         type="button"
@@ -88,7 +100,7 @@ export default function BookingForm({ arzte, workingHours, selectedDate, onBooke
         disabled={!arztUsername || !selectedDate || !art || !slot || status === 'booking'}
         onClick={handleConfirm}
       >
-        {status === 'booking' ? 'Wird gebucht…' : 'Termin bestätigen'}
+        {status === 'booking' ? t('termine.booking') : t('termine.confirmBtn')}
       </button>
     </>
   );

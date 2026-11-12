@@ -20,6 +20,8 @@ export async function patientGetMessages() {
     dir: row.dir,
     type: row.type,
     text: row.text,
+    msgKey: row.msg_key || null,
+    msgParams: row.msg_params || null,
     time: formatMsgTime(row.created_at),
     createdAt: row.created_at,
   }));
