@@ -50,6 +50,10 @@ export default function PatientenView({ profile }) {
   const [editPatient, setEditPatient] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [docImportOpen, setDocImportOpen] = useState(false);
+  const [advOpen, setAdvOpen] = useState(false);
+  const [advSvnr, setAdvSvnr] = useState('');
+  const [advDob, setAdvDob] = useState('');
+  const [advVers, setAdvVers] = useState('');
   const searchTimer = useRef(null);
 
   function refreshList() {
@@ -79,7 +83,23 @@ export default function PatientenView({ profile }) {
     }, 250);
   }
 
-  const rows = searchResults !== null ? searchResults : patients;
+  function clearAdvSearch() {
+    setAdvSvnr(''); setAdvDob(''); setAdvVers('');
+  }
+
+  // Mirrors secAdvSearch() -- narrows whatever's currently shown (the full
+  // list OR an already name/SV-Nr-searched result) by matching the same
+  // SV-Nummer/Versicherung text a PatientRow itself renders (.p-meta).
+  // Geburtsdatum is kept in the panel for parity with the original's own
+  // layout, but -- same as secAdvSearch() -- it was never actually wired
+  // into the match there either, so it stays a no-op filter here too.
+  const svnrQuery = advSvnr.trim().toLowerCase();
+  const versQuery = advVers.trim().toLowerCase();
+  const baseRows = searchResults !== null ? searchResults : patients;
+  const rows = (!svnrQuery && !versQuery) ? baseRows : baseRows.filter((p) => {
+    const meta = [p.versicherung, p.svnr ? 'SV: ' + p.svnr : null].filter(Boolean).join(' · ').toLowerCase();
+    return (!svnrQuery || meta.includes(svnrQuery)) && (!versQuery || meta.includes(versQuery));
+  });
 
   return (
     <div className="view active">
@@ -118,14 +138,57 @@ export default function PatientenView({ profile }) {
       <div className={`nachrichten-split${selectedPatient ? ' chat-open' : ''}`}>
         <div className="nachrichten-list-pane">
           <div style={{ padding: '16px 16px 0' }}>
-            <div className="patient-search">
-              <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg></span>
-              <input type="text" placeholder="Name oder SV-Nummer suchen..." value={query} onChange={(e) => onSearchInput(e.target.value)} />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 0 }}>
+              <div className="patient-search" style={{ flex: 1, marginBottom: 0 }}>
+                <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg></span>
+                <input type="text" placeholder="Name oder SV-Nummer suchen..." value={query} onChange={(e) => onSearchInput(e.target.value)} />
+              </div>
+              <button
+                type="button" onClick={() => setAdvOpen((v) => !v)}
+                style={{ background: '#EAF4F1', border: '1px solid #bfdbfe', borderRadius: 10, padding: '0 12px', fontSize: 12, fontWeight: 700, color: '#0E5E56', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >Filter</button>
             </div>
+            {advOpen && (
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 3px 12px rgba(16,24,29,0.06)', padding: '14px 16px', margin: '10px 0 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, color: '#0E5E56', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Erweiterte Suche</div>
+                  <button type="button" onClick={clearAdvSearch} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>Zurücksetzen</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9.5, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.02em', marginBottom: 4 }}>SV-NUMMER</div>
+                    <input
+                      value={advSvnr} onChange={(e) => setAdvSvnr(e.target.value)} placeholder="XXXX TTMMJJ..."
+                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', background: '#f8fafc' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9.5, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.02em', marginBottom: 4 }}>GEBURTSDATUM</div>
+                    <input
+                      type="date" value={advDob} onChange={(e) => setAdvDob(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', background: '#f8fafc' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9.5, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.02em', marginBottom: 4 }}>VERSICHERUNG</div>
+                  <select
+                    value={advVers} onChange={(e) => setAdvVers(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 12.5, fontFamily: 'inherit', outline: 'none', background: '#f8fafc' }}
+                  >
+                    <option value="">Alle</option>
+                    <option>ÖGK</option>
+                    <option>BVAEB</option>
+                    <option>SVS</option>
+                    <option>KFA</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
           <div className="scroll-content" style={{ paddingTop: 0 }}>
             {loadingList && searchResults === null && <div className="empty-placeholder">Lädt...</div>}
-            {!loadingList && rows.length === 0 && <div className="empty-placeholder">{searchResults !== null ? 'Keine Treffer' : 'Noch keine Patienten'}</div>}
+            {!loadingList && rows.length === 0 && <div className="empty-placeholder">{(searchResults !== null || svnrQuery || versQuery) ? 'Keine Treffer' : 'Noch keine Patienten'}</div>}
             {rows.map((p) => <PatientRow key={p.id} p={p} onClick={() => setSelectedPatient(p)} onEdit={setEditPatient} />)}
           </div>
         </div>
