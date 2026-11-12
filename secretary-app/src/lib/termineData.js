@@ -97,24 +97,45 @@ export function longDateDE(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('de-AT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// Plain-text equivalents of sendTerminConfirmationMessage()/
-// sendTerminMoveMessage()/sendTerminCancelMessage() -- the original builds
-// an i18n msgKey/msgParams pair so the patient's own app can re-render this
-// in whatever language they've chosen; this app doesn't have that machinery
-// yet, so it just sends the literal German text.
+// Mirrors secretary.html's sendTerminConfirmationMessage()/
+// sendTerminMoveMessage()/sendTerminCancelMessage() -- `text` is the
+// German-rendered fallback (what staff themselves see here, and what any
+// OLDER message sent before Phase 22 still has); `msgKey`/`msgParams`
+// (supabase/phase83_patient_message_translations.sql -- already applied on
+// the real project, same columns the original already writes) let the
+// patient's own app re-render this in whatever language they've chosen,
+// via vendor/i18n-patient.js's trParams(), once patient-app itself grows
+// that rendering (it doesn't yet -- today it just shows this same `text`,
+// same as before Phase 22; this only makes the data forward-compatible).
+// msgParams carries raw facts only (a resolved doctor display name, the
+// already-computed time range, the Art text, and the Termin's own ISO
+// date left unformatted so a translated render can apply its own
+// locale's date format) -- never a pre-built German sentence fragment.
 export function buildTerminConfirmedText(t, arztName) {
   const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
   const arztPart = arztName ? ' bei ' + arztName : '';
-  return `✓ Ihr Termin${arztPart} wurde bestätigt: ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`;
+  return {
+    text: `✓ Ihr Termin${arztPart} wurde bestätigt: ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`,
+    msgKey: 'chat.system.terminConfirmed',
+    msgParams: { doctor: arztName || null, date: t.date, time: timeRange, art: t.art || null },
+  };
 }
 export function buildTerminMovedText(t, arztName) {
   const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
   const arztPart = arztName ? ' bei ' + arztName : '';
-  return `↕ Ihr Termin${arztPart} wurde verschoben: neu am ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`;
+  return {
+    text: `↕ Ihr Termin${arztPart} wurde verschoben: neu am ${longDateDE(t.date)}, ${timeRange} Uhr${t.art ? ' · ' + t.art : ''}.`,
+    msgKey: 'chat.system.terminMoved',
+    msgParams: { doctor: arztName || null, date: t.date, time: timeRange, art: t.art || null },
+  };
 }
 export function buildTerminCancelledText(t) {
   const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
-  return `✗ Ihr Termin am ${longDateDE(t.date)}, ${timeRange} Uhr wurde abgesagt. Bitte vereinbaren Sie bei Bedarf einen neuen Termin.`;
+  return {
+    text: `✗ Ihr Termin am ${longDateDE(t.date)}, ${timeRange} Uhr wurde abgesagt. Bitte vereinbaren Sie bei Bedarf einen neuen Termin.`,
+    msgKey: 'chat.system.terminCancelled',
+    msgParams: { date: t.date, time: timeRange },
+  };
 }
 
 function timeRangesOverlap(aStart, aEnd, bStart, bEnd) {

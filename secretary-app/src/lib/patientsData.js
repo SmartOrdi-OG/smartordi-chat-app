@@ -345,8 +345,16 @@ export async function requestPatientDeletion(patientId) {
   return row ? { anonymizedImmediately: !!row.anonymized_immediately, date: row.effective_or_scheduled_date } : null;
 }
 
-export async function sendMessageToPatient(patientId, text) {
-  const { data, error } = await sb.from('patient_messages').insert({ patient_id: patientId, dir: 'out', type: 'text', text }).select(MESSAGE_COLUMNS).single();
+// msgKey/msgParams (Phase 22, optional): supabase/phase83_patient_message_
+// translations.sql's own columns -- present only for the handful of FIXED/
+// system messages (Termin confirmed/moved/cancelled so far) a caller built
+// via an i18n template instead of typing free text, same as the original's
+// own sendMessageToPatient(). `text` stays the German-rendered fallback
+// either way; these two are purely additive and don't change what this
+// app or patient-app currently shows.
+export async function sendMessageToPatient(patientId, text, msgKey, msgParams) {
+  const row = { patient_id: patientId, dir: 'out', type: 'text', text, msg_key: msgKey || null, msg_params: msgParams || null };
+  const { data, error } = await sb.from('patient_messages').insert(row).select(MESSAGE_COLUMNS).single();
   if (error) {
     console.error('sendMessageToPatient failed', error);
     throw error;
