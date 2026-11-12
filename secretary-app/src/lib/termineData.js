@@ -1,9 +1,9 @@
 import { sb } from './supabase';
 
 // Mirrors vendor/patient-data.js's loadTermine()/insertTermin()/updateTermin()
-// -- simplified to fetch one day at a time (live, not a standing in-memory
-// cache of a rolling window) since this app's Termine view only ever shows
-// one day's agenda so far, not the original's month-grid calendar.
+// -- live queries (not a standing in-memory cache of a rolling window):
+// listTermineForDate() for the day view, listTermineForDateRange() for
+// Phase 23's month-grid overview.
 
 const TERMINE_COLUMNS = 'id,patient_id,patient_name,art,date,time,end_time,status,arzt_id,versicherung,tel,completed_at,created_at';
 
