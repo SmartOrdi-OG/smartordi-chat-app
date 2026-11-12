@@ -26,6 +26,15 @@ export async function staffSignIn(email, password) {
 
 export async function staffSignOut() {
   await sb.auth.signOut();
+  // login.html's own stale-session guard (vendor/staff-accounts.js's
+  // guardAgainstStaleLoginSession()) reads this legacy flag on every load.
+  // secretary-app never had to manage it while it stayed on its own page
+  // after logout, but now that logout sends the browser back to /login
+  // (see App.jsx), leaving it behind makes that guard mistake an
+  // intentional logout for an expired session and bounce straight to
+  // login.html?expired=1. doctor.html's own doctorLogout() already clears
+  // it for the exact same reason.
+  sessionStorage.removeItem('smartordi_user');
 }
 
 export async function fetchStaffProfile(userId) {
