@@ -123,7 +123,11 @@ export default function TermineView() {
     if (!updated) { showToast('Bestätigen fehlgeschlagen', 'error'); return; }
     let messaged = false;
     if (t.patientId) {
-      try { await sendMessageToPatient(t.patientId, buildTerminConfirmedText(updated, arztById[t.arztId])); messaged = true; } catch { /* best-effort */ }
+      try {
+        const msg = buildTerminConfirmedText(updated, arztById[t.arztId]);
+        await sendMessageToPatient(t.patientId, msg.text, msg.msgKey, msg.msgParams);
+        messaged = true;
+      } catch { /* best-effort */ }
     }
     showToast(messaged ? 'Bestätigt · Patient per Chat benachrichtigt' : 'Bestätigt', 'success');
     refresh();
@@ -134,7 +138,11 @@ export default function TermineView() {
     if (!updated) { showToast('Absagen fehlgeschlagen', 'error'); return; }
     let messaged = false;
     if (t.patientId) {
-      try { await sendMessageToPatient(t.patientId, buildTerminCancelledText(updated)); messaged = true; } catch { /* best-effort */ }
+      try {
+        const msg = buildTerminCancelledText(updated);
+        await sendMessageToPatient(t.patientId, msg.text, msg.msgKey, msg.msgParams);
+        messaged = true;
+      } catch { /* best-effort */ }
     }
     showToast(messaged ? 'Abgesagt · Patient per Chat informiert' : 'Abgesagt');
     refresh();
@@ -152,7 +160,11 @@ export default function TermineView() {
     setMoveTarget(null);
     let messaged = false;
     if (updated.patientId) {
-      try { await sendMessageToPatient(updated.patientId, buildTerminMovedText(updated, arztById[updated.arztId])); messaged = true; } catch { /* best-effort */ }
+      try {
+        const msg = buildTerminMovedText(updated, arztById[updated.arztId]);
+        await sendMessageToPatient(updated.patientId, msg.text, msg.msgKey, msg.msgParams);
+        messaged = true;
+      } catch { /* best-effort */ }
     }
     showToast(messaged ? 'Termin verschoben · Patient per Chat benachrichtigt' : 'Termin verschoben', 'success');
     refresh();
