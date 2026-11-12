@@ -3,12 +3,14 @@ import { Icon } from './icons';
 import NewTerminModal from './NewTerminModal';
 import MoveTerminModal from './MoveTerminModal';
 import WorkingHoursModal from './WorkingHoursModal';
+import AttendanceModal from './AttendanceModal';
 import { sendMessageToPatient } from './lib/patientsData';
 import {
   listTermineForDate, listTermineForDateRange, listArztStaff, updateTerminStatus,
   buildTerminConfirmedText, buildTerminMovedText, buildTerminCancelledText,
 } from './lib/termineData';
-import { fetchPracticeSettings } from './lib/staffAuth';
+import { fetchPracticeSettings, fetchPracticeAdminName } from './lib/staffAuth';
+import { buildTerminSlipPdf, openPdfAndPrint } from './lib/attesteData';
 import { isOnlineBookingEnabled, setOnlineBookingEnabled } from './lib/onlineBookingData';
 import { listPatients } from './lib/patientsData';
 import { dueVaccinationPatientIdSet } from './lib/vaccineSchedule';
@@ -64,7 +66,7 @@ const STATUS_LABEL = {
   nicht_erschienen: { text: 'Nicht erschienen', cls: 't-noshow' },
 };
 
-function TerminRow({ t, arztName, dueSet, onConfirm, onMove, onCancel }) {
+function TerminRow({ t, arztName, dueSet, onConfirm, onMove, onCancel, onNoShow, onPrintSlip, onAttendance }) {
   const status = STATUS_LABEL[t.status] || { text: 'Neu', cls: 't-pending' };
   const timeRange = t.time + (t.endTime ? '–' + t.endTime : '');
   const actionable = t.status !== 'abgesagt' && t.status !== 'nicht_erschienen';
@@ -94,6 +96,15 @@ function TerminRow({ t, arztName, dueSet, onConfirm, onMove, onCancel }) {
             </button>
             <button className="t-btn t-btn-cancel" type="button" onClick={() => onCancel(t)}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg> Absagen
+            </button>
+            <button className="t-btn t-btn-noshow" type="button" title="Patient/in ist nicht zum Termin erschienen" onClick={() => onNoShow(t)}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg> Nicht erschienen
+            </button>
+            <button className="t-btn t-btn-print" type="button" onClick={() => onPrintSlip(t)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg> Termininformationen
+            </button>
+            <button className="t-btn t-btn-attendance" type="button" onClick={() => onAttendance(t)}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: '-2px' }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg> Anwesenheitsbestätigung
             </button>
           </div>
         )}
@@ -131,6 +142,7 @@ export default function TermineView() {
   const [monthTermine, setMonthTermine] = useState([]);
   const [monthLoading, setMonthLoading] = useState(true);
   const [dayDetailDate, setDayDetailDate] = useState(null);
+  const [attendanceTarget, setAttendanceTarget] = useState(null);
 
   function refresh() {
     setLoading(true);
@@ -202,6 +214,24 @@ export default function TermineView() {
     }
     showToast(messaged ? 'Abgesagt · Patient per Chat informiert' : 'Abgesagt');
     refreshActive();
+  }
+
+  // Mirrors noShowTermin() -- just marks the status, no patient messaging
+  // (unlike Bestätigen/Absagen/Verschieben, which all tell the patient).
+  async function handleNoShow(t) {
+    const updated = await updateTerminStatus(t.id, 'nicht_erschienen');
+    if (!updated) { showToast('Konnte nicht als "Nicht erschienen" markiert werden', 'error'); return; }
+    showToast('Als "Nicht erschienen" markiert');
+    refreshActive();
+  }
+
+  // Mirrors printTerminSlip() -- no modal, prints straight from the click
+  // (same as the original, which calls window.print() synchronously inside
+  // the click handler so it stays within the user gesture).
+  async function handlePrintSlip(t) {
+    const praxisName = await fetchPracticeAdminName();
+    const doc = buildTerminSlipPdf(t.patient, t.date, t.time, t.endTime, t.art, praxisName, practice && practice.adresse, practice && practice.tel);
+    openPdfAndPrint(doc.output('bloburl'));
   }
 
   async function handleToggleOnlineBooking() {
@@ -281,7 +311,11 @@ export default function TermineView() {
             {loading && <div className="empty-placeholder">Lädt...</div>}
             {!loading && termine.length === 0 && <div className="empty-placeholder">Keine Termine an diesem Tag</div>}
             {!loading && termine.map((t) => (
-              <TerminRow key={t.id} t={t} arztName={arztById[t.arztId]} dueSet={dueSet} onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} />
+              <TerminRow
+                key={t.id} t={t} arztName={arztById[t.arztId]} dueSet={dueSet}
+                onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} onNoShow={handleNoShow}
+                onPrintSlip={handlePrintSlip} onAttendance={setAttendanceTarget}
+              />
             ))}
           </div>
         </>
@@ -348,7 +382,11 @@ export default function TermineView() {
             <div className="modal-body">
               {monthTermine.filter((t) => t.date === dayDetailDate).length === 0 && <div className="empty-placeholder">Keine Termine an diesem Tag</div>}
               {monthTermine.filter((t) => t.date === dayDetailDate).map((t) => (
-                <TerminRow key={t.id} t={t} arztName={arztById[t.arztId]} dueSet={dueSet} onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} />
+                <TerminRow
+                  key={t.id} t={t} arztName={arztById[t.arztId]} dueSet={dueSet}
+                  onConfirm={handleConfirm} onMove={setMoveTarget} onCancel={handleCancel} onNoShow={handleNoShow}
+                  onPrintSlip={handlePrintSlip} onAttendance={setAttendanceTarget}
+                />
               ))}
             </div>
           </div>
@@ -376,6 +414,13 @@ export default function TermineView() {
           currentHours={practice.working_hours}
           onClose={() => setWorkingHoursOpen(false)}
           onSaved={(hours) => { setWorkingHoursOpen(false); setPractice((p) => ({ ...p, working_hours: hours })); }}
+        />
+      )}
+      {attendanceTarget && (
+        <AttendanceModal
+          termin={attendanceTarget}
+          practice={practice}
+          onClose={() => setAttendanceTarget(null)}
         />
       )}
     </div>

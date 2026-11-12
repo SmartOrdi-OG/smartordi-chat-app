@@ -48,6 +48,17 @@ export async function fetchPracticeAdresse() {
   return (data && data.adresse) || '';
 }
 
+function fmtDateLong(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('de-AT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+function fmtDateShort(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('de-AT');
+}
+
 function drawHelpers(doc) {
   // align (7th arg, optional): jsPDF's own text-alignment option -- used to
   // center the issuing doctor's name/date directly under the signature
@@ -215,6 +226,99 @@ export async function persistArbeitsunfaehigkeit(patientId, fields, createdBy, d
   };
   const { error } = await sb.from('patient_arbeitsunfaehigkeit').insert(row);
   if (error) { console.error('persistArbeitsunfaehigkeit failed', error); throw error; }
+}
+
+// Mirrors secretary.html's printTerminSlip() -- a small pre-visit slip
+// handed to the patient at the desk (as opposed to buildAnwesenheitPdf()
+// below, the A4 post-visit proof-of-attendance). The original writes a
+// whole separate HTML document via document.write() and needed its own
+// escapeHtml() pass to stay safe from injection through that second
+// surface (found in a 2026-07-29 security audit) -- jsPDF draws text
+// directly with no HTML/DOM step at all, so that whole class of risk
+// doesn't exist here to begin with.
+export function buildTerminSlipPdf(patientName, date, time, endTime, art, praxisName, praxisAdresse, praxisTel) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [90, 120] });
+  const { T, L, R } = drawHelpers(doc);
+  const name = patientName || '?';
+  const timeRange = time + (endTime ? '–' + endTime : '');
+
+  let y = 10;
+  T('Termininformation', 6, y, 12, 'bold');
+  T('ausgestellt am: ' + new Date().toLocaleDateString('de-AT'), 84, y - 3, 7, 'normal', [100, 100, 100], 'right');
+  T('für: ' + name, 84, y + 2, 7, 'normal', [100, 100, 100], 'right');
+  y += 8;
+  doc.setDrawColor(0, 0, 0); L(6, y, 84, y, 0.3);
+  y += 6;
+
+  T('Folgender Termin wurde für ' + name + ' vorgemerkt:', 6, y, 9);
+  y += 6;
+
+  R(6, y, 78, 16);
+  T('Datum / Zeit', 8, y + 5, 8, 'bold');
+  T('Info', 50, y + 5, 8, 'bold');
+  L(48, y, 48, y + 16, 0.2);
+  T(fmtDateShort(date) + ', ' + timeRange + ' Uhr', 8, y + 12, 8);
+  T(art || '', 50, y + 12, 8);
+  y += 24;
+
+  T('Ordination ' + (praxisName || '—') + ' · ' + (praxisAdresse || '—'), 6, y, 7, 'normal', [80, 80, 80]);
+  y += 4;
+  T('Tel.: ' + (praxisTel || '—'), 6, y, 7, 'normal', [80, 80, 80]);
+  y += 4;
+  T('Bitte bringen Sie Ihre e-card mit. Bei Verhinderung bitte 24h vorher absagen.', 6, y, 7, 'normal', [80, 80, 80]);
+
+  return doc;
+}
+
+// Mirrors secretary.html's printAnwesenheitsbestaetigung() -- an A4
+// proof-of-attendance for the patient's employer/school/insurer, with the
+// actually-TREATING doctor's own saved stamp/signature (same
+// staff_profiles.sig_data_url/stempel_data_url the Atteste above use),
+// never the secretary's own (secretaries don't have one).
+export function buildAnwesenheitPdf(patientName, date, von, bis, art, arzt, praxisAdresse, praxisTel) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const { T, L } = drawHelpers(doc);
+  const name = patientName || '?';
+
+  let y = 24;
+  T('ANWESENHEITSBESTÄTIGUNG', 105, y, 16, 'bold', [0, 0, 0], 'center');
+  y += 16;
+  T('Hiermit wird bestätigt, dass', 20, y, 11);
+  y += 12;
+
+  doc.setFillColor(234, 244, 241); doc.roundedRect(20, y, 170, 42, 3, 3, 'F');
+  const row = (label, value, ry) => {
+    T(label, 26, ry, 9, 'normal', [100, 116, 139]);
+    T(value, 184, ry, 10, 'bold', [0, 0, 0], 'right');
+  };
+  row('Patient/in', name, y + 9);
+  row('Datum', fmtDateLong(date), y + 18);
+  row('Anwesenheit', von + '–' + bis + ' Uhr', y + 27);
+  row('Art des Termins', art || '—', y + 36);
+  y += 42;
+  // Dynamic 5th row (Behandelnde/r Arzt/Ärztin) -- kept separate since the
+  // box above was already sized for exactly 4 rows at the original's own
+  // line-height; this one line is appended right after it instead of
+  // resizing the shared box.
+  T('Behandelnde/r Arzt/Ärztin', 26, y + 7, 9, 'normal', [100, 116, 139]);
+  T(arzt ? arzt.fullName : '—', 184, y + 7, 10, 'bold', [0, 0, 0], 'right');
+  y += 16;
+
+  T('sich am oben genannten Datum in der angegebenen Zeit in unserer Ordination', 20, y, 11);
+  y += 7;
+  T('befunden hat.', 20, y, 11);
+
+  y = 230;
+  if (arzt && arzt.stempelDataUrl) { try { doc.addImage(arzt.stempelDataUrl, 'PNG', 140, y - 20, 36, 26); } catch { /* ignore */ } }
+  if (arzt && arzt.sigDataUrl) { try { doc.addImage(arzt.sigDataUrl, 'PNG', 130, y, 56, 22); } catch { /* ignore */ } }
+  L(130, y + 24, 186, y + 24, 0.3);
+  T('Unterschrift / Stempel', 158, y + 29, 8, 'normal', [100, 116, 139], 'center');
+  T(praxisAdresse || '—', 20, y + 20, 9, 'normal', [71, 85, 105]);
+  T(praxisTel || '—', 20, y + 26, 9, 'normal', [71, 85, 105]);
+
+  T('Ausgestellt am ' + new Date().toLocaleDateString('de-AT') + ' · DSGVO-konform', 105, 275, 7, 'normal', [148, 163, 184], 'center');
+
+  return doc;
 }
 
 // doctor.html/secretary.html both use a hidden-iframe print (no visible
