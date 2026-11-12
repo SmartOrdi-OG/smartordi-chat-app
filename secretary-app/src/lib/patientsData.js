@@ -7,7 +7,14 @@ import { sb } from './supabase';
 // brand-new app with no pre-existing local data to merge in, so every call
 // here just talks to Supabase directly.
 
-const PATIENTS_COLUMNS = 'id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,is_child,geschlecht';
+// blutgruppe/legacy_history (Phase 24): doctor-entered clinical fields
+// (supabase/phase10_clinical_fields.sql) -- read-only here, same as
+// NewPatientModal.jsx's own "Diagnosen & medizinische Daten werden nur vom
+// Arzt eingetragen" note. Only ever populated via the CSV import's
+// Blutgruppe/Krankengeschichte columns (lib/importData.js) or by the
+// doctor directly in their own Kartei -- secretary-app has no form field
+// to set or change either one.
+const PATIENTS_COLUMNS = 'id,username,name,full_name,fach,dob,adresse,tel,email,versicherung,svnr,is_child,geschlecht,blutgruppe,legacy_history';
 
 function patientRowToJs(row) {
   return {
@@ -24,6 +31,8 @@ function patientRowToJs(row) {
     svnr: row.svnr,
     isChild: !!row.is_child,
     geschlecht: row.geschlecht || null,
+    blutgruppe: row.blutgruppe || null,
+    legacyHistory: row.legacy_history || null,
   };
 }
 
@@ -183,6 +192,8 @@ export async function createPatientAccount(vorname, nachname, fach, extra) {
     dob: (extra && extra.dob) || null,
     is_child: !!(extra && extra.isChild),
     geschlecht: (extra && extra.geschlecht) || null,
+    blutgruppe: (extra && extra.blutgruppe) || null,
+    legacy_history: (extra && extra.legacy_history) || null,
     join_status: 'approved',
     temp_password: password,
   });

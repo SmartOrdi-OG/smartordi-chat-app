@@ -9,8 +9,11 @@ import { getImpfungenForPatient } from './vaccineSchedule';
 // adds the three multi-entry "a;b;c" columns (Impfungen/Termine/
 // Behandlungsverlauf), writing into patient_impfungen/termine/
 // patient_visits respectively, same as the original's own
-// parseImpfungenCell()/parseTermineCell()/parseVerlaufCell(). The free-text
-// Krankengeschichte notes column and Blutgruppe still aren't supported.
+// parseImpfungenCell()/parseTermineCell()/parseVerlaufCell(). Phase 24
+// adds Blutgruppe/Krankengeschichte (supabase/phase10_clinical_fields.sql's
+// blutgruppe/legacy_history columns) -- both read-only everywhere else in
+// secretary-app (PatientDetailModal.jsx), same as Diagnosen/Allergien:
+// doctor-entered clinical data this app only ever displays, never edits.
 export const IMPORT_FIELDS = [
   { key: 'vorname', label: 'Vorname' },
   { key: 'nachname', label: 'Nachname' },
@@ -22,6 +25,8 @@ export const IMPORT_FIELDS = [
   { key: 'adresse', label: 'Adresse' },
   { key: 'diagnosen', label: 'Diagnosen' },
   { key: 'allergie', label: 'Allergien' },
+  { key: 'blutgruppe', label: 'Blutgruppe' },
+  { key: 'krankengeschichte', label: 'Krankengeschichte (frei, nur lesbar)' },
   { key: 'geschlecht', label: 'Geschlecht (m/w/d)' },
   { key: 'impfungen', label: 'Impfungen (Name:Datum; ...)' },
   { key: 'termine', label: 'Termine, auch vergangene (Art|Datum|Zeit|Arzt; ...)' },
@@ -41,6 +46,8 @@ export function guessFieldForHeader(header) {
   if (h.includes('adresse') || h.includes('address') || h.includes('strass') || h.includes('straß')) return 'adresse';
   if (h.includes('diagnos')) return 'diagnosen';
   if (h.includes('allerg')) return 'allergie';
+  if (h.includes('blutgruppe') || h.includes('blood')) return 'blutgruppe';
+  if (h.includes('krankengeschicht') || h.includes('vorerkrankung') || h.includes('anamnese')) return 'krankengeschichte';
   if (h.includes('geschlecht') || h.includes('gender') || h.includes('sex')) return 'geschlecht';
   if (h.includes('impf') || h.includes('vaccin')) return 'impfungen';
   if (h.includes('termin')) return 'termine';
@@ -199,7 +206,7 @@ function normalizeGeschlechtText(raw) {
   return GESCHLECHT_SYNONYMS[key];
 }
 
-const LOOKUP_COLUMNS = 'id,username,full_name,adresse,tel,email,versicherung,svnr,dob,diagnosen,allergie,geschlecht';
+const LOOKUP_COLUMNS = 'id,username,full_name,adresse,tel,email,versicherung,svnr,dob,diagnosen,allergie,geschlecht,blutgruppe,legacy_history';
 
 // Finds a patient ALREADY in Supabase that this import row almost certainly
 // refers to (by SVNr, the authoritative identifier; falling back to exact
@@ -263,6 +270,7 @@ export async function runImport(rows, fieldIdx, fach, uploadedBy, onProgress) {
       adresse: get(row, 'adresse') || null, dob: dobNorm || null, versicherung: get(row, 'versicherung') || null,
       svnr: svnrRaw || null, tel: get(row, 'tel') || null, email: get(row, 'email') || null,
       diagnosen: get(row, 'diagnosen') || null, allergie: get(row, 'allergie') || null,
+      blutgruppe: get(row, 'blutgruppe') || null, legacy_history: get(row, 'krankengeschichte') || null,
       geschlecht: normalizeGeschlechtText(get(row, 'geschlecht')) || null,
     };
     const impfungenList = get(row, 'impfungen') ? parseImpfungenCell(get(row, 'impfungen')) : [];
@@ -287,6 +295,8 @@ export async function runImport(rows, fieldIdx, fach, uploadedBy, onProgress) {
           dob: extra.dob || existing.dob || null,
           diagnosen: extra.diagnosen || existing.diagnosen || null,
           allergie: extra.allergie || existing.allergie || null,
+          blutgruppe: extra.blutgruppe || existing.blutgruppe || null,
+          legacy_history: extra.legacy_history || existing.legacy_history || null,
           geschlecht: extra.geschlecht || existing.geschlecht || null,
         });
       } catch (err) {

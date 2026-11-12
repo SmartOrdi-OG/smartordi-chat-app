@@ -18,7 +18,11 @@ function todayStr() {
 // (supabase/phase17_data_retention.sql); this only confirms, calls it, and
 // relays the result. Phase 19 adds "Neuen Termin buchen" -- reuses Phase
 // 5's own NewTerminModal (pre-filled via its initialPatient prop) instead
-// of duplicating the original's separate inline PD_SLOT_IDS form.
+// of duplicating the original's separate inline PD_SLOT_IDS form. Phase 24
+// adds a read-only Blutgruppe/Krankengeschichte block (shown only when
+// either is set) -- doctor-entered clinical data, same reasoning as
+// NewPatientModal.jsx's own note that Diagnosen/medical data aren't
+// secretary-editable; this form never writes either field.
 export default function PatientDetailModal({ patient, onClose, onSaved }) {
   const [form, setForm] = useState({
     svnr: patient.svnr || '',
@@ -159,6 +163,24 @@ export default function PatientDetailModal({ patient, onClose, onSaved }) {
                 <option value="d">Divers</option>
               </select>
             </div>
+
+            {(patient.blutgruppe || patient.legacyHistory) && (
+              <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: 16, padding: 12, marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8 }}>Medizinische Daten (nur vom Arzt eintragbar)</div>
+                {patient.blutgruppe && (
+                  <div style={{ fontSize: 12, marginBottom: patient.legacyHistory ? 6 : 0 }}>
+                    <span style={{ color: '#64748b' }}>Blutgruppe: </span>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{patient.blutgruppe}</span>
+                  </div>
+                )}
+                {patient.legacyHistory && (
+                  <div style={{ fontSize: 12 }}>
+                    <div style={{ color: '#64748b', marginBottom: 2 }}>Krankengeschichte:</div>
+                    <div style={{ color: '#0f172a', whiteSpace: 'pre-wrap' }}>{patient.legacyHistory}</div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: 12, marginTop: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#0E5E56', marginBottom: 8 }}>Neuen Termin buchen</div>

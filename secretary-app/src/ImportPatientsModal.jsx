@@ -10,8 +10,8 @@ const PLACEHOLDER_CSV = 'Vorname,Nachname,Geburtsdatum,SVNr,Versicherung,Telefon
 // Mirrors secretary.html's "Patienten importieren" 3-step wizard
 // (openImportModal()/proceedToMapping()/confirmImport()/
 // renderImportResults()). Phase 20 adds the Impfungen/Termine/
-// Behandlungsverlauf CSV columns -- see lib/importData.js's own comment
-// for what still isn't supported (Blutgruppe, free-text Krankengeschichte).
+// Behandlungsverlauf CSV columns; Phase 24 adds Blutgruppe/
+// Krankengeschichte -- see lib/importData.js's own comment.
 export default function ImportPatientsModal({ profile, onClose, onImported }) {
   const [step, setStep] = useState(1);
   const [csvText, setCsvText] = useState('');
