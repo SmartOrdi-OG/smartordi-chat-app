@@ -34,6 +34,19 @@ export async function listTermineForDate(date) {
   return (data || []).map(terminRowToJs);
 }
 
+// Phase 23's month-grid overview -- one query for the whole visible grid
+// (startDate..endDate inclusive, already padded to include the leading/
+// trailing adjacent-month days a 6-row grid shows) instead of a request
+// per day. RLS already scopes this per-practice, same as listTermineForDate().
+export async function listTermineForDateRange(startDate, endDate) {
+  const { data, error } = await sb.from('termine').select(TERMINE_COLUMNS).gte('date', startDate).lte('date', endDate).order('date').order('time');
+  if (error) {
+    console.error('listTermineForDateRange failed', error);
+    return [];
+  }
+  return (data || []).map(terminRowToJs);
+}
+
 export async function listArztStaff() {
   const { data, error } = await sb.from('staff_profiles').select('id,full_name,fach').eq('role', 'arzt');
   if (error) {
